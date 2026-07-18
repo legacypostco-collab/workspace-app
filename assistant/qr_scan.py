@@ -8,8 +8,8 @@
      записывает событие (OrderEvent + SLA recalc)
   4. Возвращает простую страницу с подтверждением
 
-QR-коды формата ORD-<id>-<hash> где hash = sha256(secret + order_id)[:8] —
-защита от перебора простых ID.
+QR-коды формата ORD-<id>-<hash> где hash = HMAC-SHA256(secret, order_id)[:32].
+В production QR_SECRET обязателен; dev-fallback работает только при DEBUG=True.
 
 API:
   GET  /api/assistant/qr/scan/<code>/  — простая HTML-страница «вы успешно
@@ -20,14 +20,15 @@ API:
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 import os
 import re
 
+from django.conf import settings
+from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
-from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 
 logger = logging.getLogger(__name__)
@@ -35,16 +36,24 @@ logger = logging.getLogger(__name__)
 
 # ── Code generation / verification ────────────────────────────
 
-_CODE_RE = re.compile(r"^ORD-(\d+)-([a-f0-9]{8})$")
+_CODE_RE = re.compile(r"^ORD-(\d+)-([a-f0-9]{32})$")
 
 
-def _secret() -> str:
-    return os.getenv("QR_SECRET", "consolidator-qr-demo-secret")
+def _secret() -> str | None:
+    secret = (os.getenv("QR_SECRET") or getattr(settings, "QR_SECRET", "") or "").strip()
+    if secret:
+        return secret
+    if settings.DEBUG:
+        return "dev-only-qr-secret-change-me"
+    return None
 
 
 def encode_qr_code(order_id: int) -> str:
-    """ORD-<id>-<hash8>."""
-    h = hashlib.sha256(f"{_secret()}:{order_id}".encode()).hexdigest()[:8]
+    """ORD-<id>-<hmac32>."""
+    secret = _secret()
+    if not secret:
+        raise RuntimeError("QR_SECRET is required outside DEBUG")
+    h = hmac.new(secret.encode(), str(order_id).encode(), hashlib.sha256).hexdigest()[:32]
     return f"ORD-{order_id}-{h}"
 
 
@@ -54,8 +63,11 @@ def decode_qr_code(code: str) -> int | None:
     if not m:
         return None
     order_id = int(m.group(1))
-    expected = encode_qr_code(order_id)
-    if expected != code:
+    try:
+        expected = encode_qr_code(order_id)
+    except RuntimeError:
+        return None
+    if not hmac.compare_digest(expected, code):
         return None
     return order_id
 
@@ -75,7 +87,6 @@ SCAN_TRANSITIONS = {
 
 # ── View ─────────────────────────────────────────────────────
 
-@method_decorator(csrf_exempt, name="dispatch")
 class QRScanView(View):
     """GET/POST /api/assistant/qr/scan/<code>/
 
@@ -86,6 +97,8 @@ class QRScanView(View):
 
     def get(self, request, code):
         from marketplace.models import Order
+        if self._rate_limited(request, code):
+            return self._html_error("Слишком много попыток. Попробуйте позже.", status=429)
         order_id = decode_qr_code(code)
         if not order_id:
             return self._html_error("Неверный QR-код")
@@ -116,17 +129,20 @@ class QRScanView(View):
 <title>QR · Order #{order_id}</title></head>
 <body style="font-family:system-ui;padding:30px;max-width:600px;margin:0 auto;background:#f5f5f5;">
 <h1>📦 Заказ #{order_id}</h1>
-<p style="color:#666;">{order.customer_name} · {order.get_status_display()}</p>
-<p style="font-size:14px;color:#888;">Сумма: ${order.total_amount:,.0f}</p>
+<p style="color:#666;">Статус: {order.get_status_display()}</p>
 <hr style="margin:24px 0;border:none;border-top:1px solid #ddd;">
-<p style="font-weight:600;">Зафиксировать действие:</p>
-{action_buttons or '<p style="color:#a33;">Доступных действий нет на этом этапе.</p>'}
+<p style="font-weight:600;">Для фиксации действия войдите в систему под аккаунтом участника поставки.</p>
+{action_buttons if request.user.is_authenticated else ''}
 </body></html>""",
             content_type="text/html; charset=utf-8",
         )
 
     def post(self, request, code):
         from marketplace.models import Order, OrderEvent
+        if not request.user.is_authenticated:
+            return JsonResponse({"ok": False, "error": "authentication required"}, status=401)
+        if self._rate_limited(request, code):
+            return JsonResponse({"ok": False, "error": "rate limited"}, status=429)
         order_id = decode_qr_code(code)
         if not order_id:
             return JsonResponse({"ok": False, "error": "invalid code"}, status=400)
@@ -183,9 +199,21 @@ class QRScanView(View):
         except Exception:
             return ""
 
-    def _html_error(self, msg: str) -> HttpResponse:
+    def _rate_limited(self, request, code: str) -> bool:
+        ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "")
+        key = f"qr-scan:{ip}:{hashlib.sha256((code or '').encode()).hexdigest()[:16]}"
+        try:
+            hits = cache.get(key, 0)
+            if hits >= 20:
+                return True
+            cache.set(key, hits + 1, 900)
+        except Exception:
+            return False
+        return False
+
+    def _html_error(self, msg: str, status: int = 400) -> HttpResponse:
         return HttpResponse(
             f"""<!DOCTYPE html><html><body style="font-family:system-ui;padding:30px;">
 <h1>⚠️ Ошибка</h1><p>{msg}</p></body></html>""",
-            status=400, content_type="text/html; charset=utf-8",
+            status=status, content_type="text/html; charset=utf-8",
         )

@@ -41,7 +41,7 @@
   display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;
 }
 .shp-card-id {
-  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#64B5F6;
+  font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#E84A21;
 }
 .shp-card-order { font-size:11px;color:#6A6A6A;margin-top:2px; }
 .shp-card-eta {
@@ -76,8 +76,8 @@
   background:#28C840;border-color:#28C840;
 }
 .shp-step--active .shp-step-dot {
-  background:#64B5F6;border-color:#64B5F6;
-  box-shadow:0 0 8px rgba(100,181,246,0.4);
+  background:#E84A21;border-color:#E84A21;
+  box-shadow:0 0 8px rgba(232,74,33,0.4);
 }
 .shp-step--pending .shp-step-dot {
   background:#2C2C2C;border-color:#484848;
@@ -87,7 +87,7 @@
   height:2px;z-index:1;
 }
 .shp-step--done .shp-step-line { background:#28C840; }
-.shp-step--active .shp-step-line { background:linear-gradient(90deg,#64B5F6,#2C2C2C); }
+.shp-step--active .shp-step-line { background:linear-gradient(90deg,#E84A21,#2C2C2C); }
 .shp-step--pending .shp-step-line { background:#2C2C2C; }
 .shp-step:last-child .shp-step-line { display:none; }
 
@@ -96,7 +96,7 @@
   line-height:1.2;
 }
 .shp-step--done .shp-step-label { color:#28C840; }
-.shp-step--active .shp-step-label { color:#64B5F6; }
+.shp-step--active .shp-step-label { color:#E84A21; }
 .shp-step--pending .shp-step-label { color:#484848; }
 
 .shp-step-date {
@@ -125,7 +125,7 @@
   </div>
   <div class="shp-summary-card">
     <div class="shp-summary-label">{% trans "В пути" %}</div>
-    <div class="shp-summary-val" style="color:#64B5F6;">2</div>
+    <div class="shp-summary-val" style="color:#E84A21;">2</div>
   </div>
   <div class="shp-summary-card">
     <div class="shp-summary-label">{% trans "На таможне" %}</div>
@@ -347,7 +347,7 @@
 
 </div>
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(232,74,33,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#E84A21;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
 (function(){

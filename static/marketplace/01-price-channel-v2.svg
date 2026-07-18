@@ -7,17 +7,17 @@
   <rect x="40" y="62" width="4" height="6" fill="#fff" opacity="0.7"/>
 
   <!-- Direct connection line with subtle flow -->
-  <line x1="68" y1="60" x2="132" y2="60" stroke="#1A1422" stroke-width="2" stroke-linecap="round"/>
+  <line x1="68" y1="60" x2="132" y2="60" stroke="#151515" stroke-width="2" stroke-linecap="round"/>
   <!-- flow dots -->
-  <circle cx="80" cy="60" r="2" fill="#1A1422" opacity="0.3"/>
-  <circle cx="92" cy="60" r="2" fill="#1A1422" opacity="0.5"/>
-  <circle cx="108" cy="60" r="2" fill="#1A1422" opacity="0.7"/>
-  <circle cx="120" cy="60" r="2" fill="#1A1422"/>
+  <circle cx="80" cy="60" r="2" fill="#151515" opacity="0.3"/>
+  <circle cx="92" cy="60" r="2" fill="#151515" opacity="0.5"/>
+  <circle cx="108" cy="60" r="2" fill="#151515" opacity="0.7"/>
+  <circle cx="120" cy="60" r="2" fill="#151515"/>
 
   <!-- Price tag (clean tag shape) -->
-  <path d="M 138 44 L 178 44 L 196 60 L 178 76 L 138 76 Z" fill="#fff" stroke="#1A1422" stroke-width="2" stroke-linejoin="round"/>
-  <circle cx="148" cy="60" r="3" fill="#1A1422"/>
-  <text x="170" y="66" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="800" fill="#1A1422" text-anchor="middle">$</text>
+  <path d="M 138 44 L 178 44 L 196 60 L 178 76 L 138 76 Z" fill="#fff" stroke="#151515" stroke-width="2" stroke-linejoin="round"/>
+  <circle cx="148" cy="60" r="3" fill="#151515"/>
+  <text x="170" y="66" font-family="-apple-system, Inter, sans-serif" font-size="16" font-weight="800" fill="#151515" text-anchor="middle">$</text>
 
   <!-- Bypass label (no middlemen) -->
   <g transform="translate(85, 90)">

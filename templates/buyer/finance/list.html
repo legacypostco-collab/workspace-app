@@ -23,7 +23,7 @@
   transition:border-color .15s,background .15s;cursor:pointer;
 }
 a.bfin-kpi { text-decoration:none; display:block; }
-a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
+a.bfin-kpi:hover { border-color:rgba(232,74,33,0.35) !important; background:#2C2C2C !important; }
 .bfin-kpi-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -59,7 +59,7 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 .bfin-table tbody tr { transition:background .12s; }
 .bfin-table tbody tr:hover { background:rgba(255,255,255,0.03); }
 
-.bfin-id { font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6; }
+.bfin-id { font-family:'Golos Text',sans-serif;font-weight:700;color:#E84A21; }
 .bfin-muted { color:#6A6A6A;font-size:11px; }
 .bfin-amount {
   font-family:'Golos Text',sans-serif;font-weight:700;
@@ -98,10 +98,10 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 /* Pay button */
 .bfin-pay-btn {
   margin-top:8px;padding:6px 14px;border-radius:8px;font-size:11px;font-weight:600;
-  background:rgba(100,181,246,0.12);color:#64B5F6;
-  border:1px solid rgba(100,181,246,0.25);cursor:pointer;transition:all .15s;
+  background:rgba(232,74,33,0.12);color:#E84A21;
+  border:1px solid rgba(232,74,33,0.25);cursor:pointer;transition:all .15s;
 }
-.bfin-pay-btn:hover { background:rgba(100,181,246,0.2); }
+.bfin-pay-btn:hover { background:rgba(232,74,33,0.2); }
 </style>
 {% endblock %}
 
@@ -116,8 +116,8 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 <div class="bfin-kpis">
   <a href="/buyer/finance/?payment=paid" class="bfin-kpi">
     <div class="bfin-kpi-label">{% trans "Оплачено" %}</div>
-    <div class="bfin-kpi-val" style="color:#64B5F6;">$98,420</div>
-    <div class="bfin-kpi-hint" style="color:#64B5F6;">{% trans "за Q1 2026" %}</div>
+    <div class="bfin-kpi-val" style="color:#E84A21;">$98,420</div>
+    <div class="bfin-kpi-hint" style="color:#E84A21;">{% trans "за Q1 2026" %}</div>
   </a>
   <a href="/buyer/finance/?payment=overdue" class="bfin-kpi">
     <div class="bfin-kpi-label">{% trans "Задолженность" %}</div>
@@ -126,13 +126,13 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   </a>
   <a href="/buyer/finance/" class="bfin-kpi">
     <div class="bfin-kpi-label">{% trans "Бюджет остаток" %}</div>
-    <div class="bfin-kpi-val" style="color:#64B5F6;">$81,580</div>
-    <div class="bfin-kpi-hint" style="color:#64B5F6;">{% trans "из $180,000" %}</div>
+    <div class="bfin-kpi-val" style="color:#E84A21;">$81,580</div>
+    <div class="bfin-kpi-hint" style="color:#E84A21;">{% trans "из $180,000" %}</div>
   </a>
   <a href="/buyer/analytics/" class="bfin-kpi">
     <div class="bfin-kpi-label">{% trans "Экономия" %}</div>
-    <div class="bfin-kpi-val" style="color:#64B5F6;">$12,340</div>
-    <div class="bfin-kpi-hint" style="color:#64B5F6;">{% trans "переторжка + объём" %}</div>
+    <div class="bfin-kpi-val" style="color:#E84A21;">$12,340</div>
+    <div class="bfin-kpi-hint" style="color:#E84A21;">{% trans "переторжка + объём" %}</div>
   </a>
 </div>
 
@@ -239,7 +239,7 @@ a.bfin-kpi:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   </div>
 </div>
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(232,74,33,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#E84A21;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
 (function(){

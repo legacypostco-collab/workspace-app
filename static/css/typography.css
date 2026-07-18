@@ -1,0 +1,463 @@
+:root {
+  --cp-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --cp-font-display: 'Golos Text', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --cp-font-mono: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+
+  --cp-text-2xs: 11px;
+  --cp-text-xs: 12px;
+  --cp-text-sm: 13px;
+  --cp-text-md: 14px;
+  --cp-text-lg: 16px;
+  --cp-text-xl: 20px;
+  --cp-text-2xl: 24px;
+  --cp-text-3xl: 32px;
+
+  --cp-leading-tight: 1.2;
+  --cp-leading-snug: 1.35;
+  --cp-leading-normal: 1.5;
+}
+
+html,
+body {
+  font-family: var(--cp-font-body);
+  font-size: var(--cp-text-md);
+  line-height: var(--cp-leading-normal);
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.pub-title,
+.auth-title,
+.err-title,
+.seller-page-title,
+.ap-section-title,
+.op-section-title,
+.card-title,
+.top-brand,
+.notif-head,
+.welcome-text h1,
+.iv-issuer-name,
+.spec-title,
+.rl-head-title,
+.rcard-title {
+  font-family: var(--cp-font-display);
+  letter-spacing: 0;
+}
+
+code,
+pre,
+kbd,
+.mono,
+.examples-tag,
+.examples-grid,
+.search-input,
+.cat-art,
+.bo-oem,
+.qf-c-art,
+.qf-price-input,
+.qf-c-total,
+.iv-meta-value,
+.iv-ref-code,
+.iv-mono,
+.tp-table,
+.pl-ai-oem,
+.side-preview-body table,
+.sq-art,
+.sq-order-sub,
+.tk-track-num,
+.rlc-num,
+.rl-num,
+.rcard-mode-badge,
+.rcard-it-art,
+.wal-ref,
+.sr-det-time {
+  font-family: var(--cp-font-mono) !important;
+}
+
+.pub-title,
+.section-head h1 {
+  font-size: var(--cp-text-3xl);
+  line-height: var(--cp-leading-tight);
+}
+
+.auth-title,
+.ap-today-card .ap-today-val,
+.opd-hero-kpi-val,
+.iv-total-amount {
+  font-size: var(--cp-text-2xl);
+  line-height: var(--cp-leading-tight);
+}
+
+.ap-stat-value,
+.op-stat-value,
+.spec-kpi-num {
+  font-size: 26px;
+  line-height: var(--cp-leading-tight);
+}
+
+.pcard-price,
+.dashboard-rating-score,
+.kpi-value,
+.tk-total,
+.card-price,
+.oc-head-total,
+.rcard-money-val,
+.wal-head-amount,
+.opd-tile-val,
+.spec-foot-total,
+.stop-price {
+  font-family: var(--cp-font-display);
+  font-size: var(--cp-text-xl);
+  line-height: var(--cp-leading-tight);
+}
+
+.auth-logo,
+.pub-logo,
+.err-logo,
+.pcard-oem,
+.seller-topbar-chip strong,
+.ap-section-title,
+.op-section-title,
+.card-title,
+.im-title,
+.rl-head-title,
+.spec-title {
+  font-size: var(--cp-text-lg);
+  line-height: var(--cp-leading-snug);
+}
+
+.pub-subtitle,
+.auth-subtitle,
+.auth-message,
+.pcard-name,
+.ap-table,
+.op-table,
+.ap-input,
+.op-input,
+.filters input,
+.filters select,
+.side-search input,
+.input-bar textarea,
+.fm-input,
+.df-input,
+.pl-df-input,
+.sq-country,
+.sq-city,
+.sq-input,
+.app-toast {
+  font-size: var(--cp-text-md);
+  line-height: var(--cp-leading-normal);
+}
+
+.btn,
+.auth-btn,
+.err-btn,
+.filters .btn,
+.pcard-actions button,
+.ap-btn,
+.op-btn,
+.ap-tab,
+.op-role-btn,
+.act-btn,
+.act-btn.ib-btn,
+.app-confirm-cancel,
+.app-confirm-ok,
+.qf-cancel,
+.qf-submit,
+.iv-ref-copy,
+.pl-ai-start-btn {
+  font-size: var(--cp-text-sm);
+  line-height: var(--cp-leading-snug);
+}
+
+.role-tab,
+.role-toggle-side .role-tab,
+.side-history-btn,
+.sg-chip,
+.ctx-btn,
+.cat-btn-mini,
+.bo-btn,
+.sq-trigger,
+.sq-chip,
+.sq-skip,
+.wh-chip,
+.cat-back {
+  font-size: var(--cp-text-xs);
+  line-height: var(--cp-leading-snug);
+}
+
+.chip,
+.pcard-label,
+.checkbox-inline,
+.pagination,
+.auth-back,
+.auth-form label,
+.auth-form .helptext,
+.auth-form .errorlist,
+.ap-table thead th,
+.op-table thead th,
+.ap-badge,
+.op-badge,
+.ap-section-sub,
+.op-section-sub,
+.ap-today-card .ap-today-lbl,
+.seller-topbar-chip .muted,
+.dashboard-trend-badge,
+.dashboard-metric-sub,
+.dashboard-metric-hint,
+.side-section-title,
+.side-item-meta,
+.side-item-stack-meta,
+.side-section-clear,
+.side-user-role,
+.conv-bucket-label,
+.msg-author,
+.notif-mark-all,
+.notif-body,
+.settings-row-meta,
+.ctx-label,
+.sg-label,
+.qr-sub,
+.ib-section-count,
+.ib-sub,
+.ib-title,
+.ib-section-title,
+.im-block-title,
+.im-status,
+.im-features li,
+.im-hint,
+.pl-ai-name,
+.pl-ai-table,
+.pl-ai-table th,
+.pl-ai-input,
+.pl-ai-conf,
+.sq-step,
+.sq-section-meta,
+.sq-checklist-title,
+.sq-status-chip,
+.sq-incoterm,
+.sq-deadline,
+.sq-order-items,
+.atl-line2,
+.atl-actor,
+.tk-tracking,
+.tk-progress-meta,
+.sp-badge,
+.spec-mini-tag,
+.wal-head-lbl,
+.wal-txs-head,
+.opd-section-title {
+  font-size: var(--cp-text-xs) !important;
+  line-height: var(--cp-leading-snug);
+}
+
+.bell-badge,
+.pill-badge,
+.ai-badge {
+  font-size: var(--cp-text-xs) !important;
+  line-height: 1;
+}
+
+.ap-table tbody td,
+.op-table tbody td,
+.pcard-body,
+.list-row,
+.auth-bottom,
+.err-text,
+.cat-details,
+.oc-table,
+.qf-table,
+.iv-label,
+.iv-value,
+.spec-tbl,
+.as-table {
+  font-size: var(--cp-text-sm);
+  line-height: var(--cp-leading-normal);
+}
+
+.search-hero .search-title {
+  font-family: var(--cp-font-body);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.search-hero .search-lead {
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.search-box .examples-tag {
+  font-size: var(--cp-text-xs);
+  letter-spacing: 0.08em;
+}
+
+.search-box .examples-grid,
+.search-box .search-input {
+  font-size: var(--cp-text-md);
+}
+
+.act-btn.ib-btn,
+.ib-card .ib-btn.act-btn {
+  font-size: var(--cp-text-xs) !important;
+}
+
+.top-brand {
+  font-size: var(--cp-text-md);
+}
+
+.welcome-text h1 {
+  font-size: 30px;
+  line-height: var(--cp-leading-tight);
+}
+
+.admin-index #header,
+.admin-index #content,
+body[class*='change-'] #header,
+body[class*='change-'] #content {
+  font-family: var(--cp-font-body);
+}
+
+.logo .tag,
+.rfq .tag,
+.rfq .live,
+.rfq .hint,
+.brandrow .actions .pill .ct,
+.deal .badge,
+.deal .sku,
+.deal .meta,
+.deal .price .pct,
+.deal .stock,
+.footer .col.subscribe .small,
+.footer .bottom .pays span,
+.drop-hint,
+.trust-strip,
+.doc-empty-eyebrow,
+.doc-empty-hint,
+.doc-empty-tile-desc,
+.doc-slot-desc-short,
+.doc-slot-cta-eyebrow,
+.doc-slot-cta-hint,
+.pp-eyebrow,
+.pp-meta,
+.sum-lbl,
+.sec-pill,
+.match-name,
+.badge,
+.total-lbl,
+.legal-meta,
+.legal-tab,
+.cat-chip,
+.faq-row-sub,
+.doc-empty-cta,
+.doc-slot-cta-btn,
+.top-back,
+.pp-btn {
+  font-size: var(--cp-text-xs) !important;
+  line-height: var(--cp-leading-snug);
+}
+
+.rfq .body,
+.head .more,
+.footer .col.brand .contacts,
+.search-box .upload-hint,
+.total-val,
+.pp-name,
+.sum-val {
+  font-family: var(--cp-font-display);
+}
+
+.rfq .body,
+.footer .col.brand .contacts,
+.drop-hint code,
+table.lines td,
+table.lines th,
+.terms,
+.pp-meta,
+.sec-h h2 {
+  font-size: var(--cp-text-sm) !important;
+  line-height: var(--cp-leading-normal);
+}
+
+.doc-empty-title,
+.pp-name {
+  font-family: var(--cp-font-display);
+  letter-spacing: 0;
+}
+
+.pp-name {
+  font-size: var(--cp-text-3xl) !important;
+  line-height: var(--cp-leading-tight);
+}
+
+.total-val {
+  font-size: var(--cp-text-2xl) !important;
+}
+
+.sum-val {
+  font-size: var(--cp-text-xl) !important;
+}
+
+:where(body, .seller-shell, .ap-layout, .op-layout, .auth-page, .legal-content, .pub-main, .app, .page)
+  :is(
+    [style*="font-size:9px"],
+    [style*="font-size: 9px"],
+    [style*="font-size:9.5px"],
+    [style*="font-size: 9.5px"],
+    [style*="font-size:10px"],
+    [style*="font-size: 10px"],
+    [style*="font-size:10.5px"],
+    [style*="font-size: 10.5px"],
+    [style*="font-size:11px"],
+    [style*="font-size: 11px"],
+    [style*="font-size:11.5px"],
+    [style*="font-size: 11.5px"]
+  ) {
+  font-size: var(--cp-text-xs) !important;
+  line-height: var(--cp-leading-snug) !important;
+}
+
+:where(body, .seller-shell, .ap-layout, .op-layout, .auth-page, .legal-content, .pub-main, .app, .page)
+  :is(
+    [style*="font-size:12.5px"],
+    [style*="font-size: 12.5px"],
+    [style*="font-size:13.5px"],
+    [style*="font-size: 13.5px"]
+  ) {
+  font-size: var(--cp-text-sm) !important;
+  line-height: var(--cp-leading-normal) !important;
+}
+
+@media (max-width: 700px) {
+  html,
+  body {
+    font-size: var(--cp-text-md);
+  }
+
+  .pub-title,
+  .section-head h1 {
+    font-size: 28px;
+  }
+
+  .search-hero .search-title {
+    font-size: clamp(38px, 10vw, 48px);
+  }
+
+  .search-hero .search-lead {
+    font-size: var(--cp-text-md);
+  }
+}

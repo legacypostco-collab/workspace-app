@@ -22,7 +22,7 @@
   border:1px solid rgba(255,255,255,0.04);
 }
 a.neg-stat{text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;}
-a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
+a.neg-stat:hover{border-color:rgba(232,74,33,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
 .neg-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -42,7 +42,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
   font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;
 }
 .neg-section-badge--active { background:rgba(232,92,13,0.12);color:#E85C0D; }
-.neg-section-badge--done { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.neg-section-badge--done { background:rgba(232,74,33,0.12);color:#E84A21; }
 
 /* Table */
 .neg-table-wrap {
@@ -64,7 +64,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
 .neg-table tbody tr:hover { background:rgba(255,255,255,0.03); }
 
 .neg-product-name { font-weight:600; }
-.neg-oem { font-size:11px;color:#64B5F6;font-weight:600; }
+.neg-oem { font-size:11px;color:#E84A21;font-weight:600; }
 .neg-muted { color:#6A6A6A;font-size:11px; }
 .neg-amount {
   font-family:'Golos Text',sans-serif;font-weight:700;
@@ -73,9 +73,9 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
 .neg-old-price {
   text-decoration:line-through;color:#6A6A6A;font-size:11px;
 }
-.neg-new-price { color:#64B5F6; }
+.neg-new-price { color:#E84A21; }
 .neg-discount {
-  font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6;
+  font-family:'Golos Text',sans-serif;font-weight:700;color:#E84A21;
 }
 
 /* Response status */
@@ -84,8 +84,8 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
   font-weight:600;letter-spacing:0.02em;
 }
 .neg-resp--waiting { background:rgba(232,92,13,0.12);color:#E85C0D; }
-.neg-resp--counter { background:rgba(100,181,246,0.12);color:#64B5F6; }
-.neg-resp--accepted { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.neg-resp--counter { background:rgba(232,74,33,0.12);color:#E84A21; }
+.neg-resp--accepted { background:rgba(232,74,33,0.12);color:#E84A21; }
 .neg-resp--rejected { background:rgba(224,85,85,0.12);color:#E05555; }
 
 /* Buttons */
@@ -99,10 +99,10 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
 }
 .neg-btn--request:hover { background:rgba(232,92,13,0.2); }
 .neg-btn--accept {
-  background:rgba(100,181,246,0.12);color:#64B5F6;
-  border-color:rgba(100,181,246,0.25);
+  background:rgba(232,74,33,0.12);color:#E84A21;
+  border-color:rgba(232,74,33,0.25);
 }
-.neg-btn--accept:hover { background:rgba(100,181,246,0.2); }
+.neg-btn--accept:hover { background:rgba(232,74,33,0.2); }
 .neg-btn--secondary {
   background:rgba(255,255,255,0.04);color:#ECECEC;
   border-color:rgba(255,255,255,0.08);
@@ -139,7 +139,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
   </a>
   <a class="neg-stat" href="/buyer/negotiations/?status=agreed">
     <div class="neg-stat-label">{% trans "Согласованных сделок" %}</div>
-    <div class="neg-stat-val" style="color:#64B5F6;">8</div>
+    <div class="neg-stat-val" style="color:#E84A21;">8</div>
   </a>
   <a class="neg-stat" href="/buyer/negotiations/">
     <div class="neg-stat-label">{% trans "Средняя скидка" %}</div>
@@ -147,7 +147,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
   </a>
   <a class="neg-stat" href="/buyer/analytics/">
     <div class="neg-stat-label">{% trans "Экономия за месяц" %}</div>
-    <div class="neg-stat-val" style="color:#64B5F6;">$4,280</div>
+    <div class="neg-stat-val" style="color:#E84A21;">$4,280</div>
   </a>
 </div>
 
@@ -269,7 +269,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         <td class="neg-amount"><span class="neg-old-price">$1,680.00</span></td>
         <td class="neg-amount neg-new-price">$1,428.00</td>
         <td class="neg-discount">15%</td>
-        <td class="neg-amount" style="color:#64B5F6;">$252.00</td>
+        <td class="neg-amount" style="color:#E84A21;">$252.00</td>
         <td class="neg-muted">05.03.2026</td>
       </tr>
       <tr class="neg-agreed">
@@ -281,7 +281,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         <td class="neg-amount"><span class="neg-old-price">$6,300.00</span></td>
         <td class="neg-amount neg-new-price">$5,670.00</td>
         <td class="neg-discount">10%</td>
-        <td class="neg-amount" style="color:#64B5F6;">$630.00</td>
+        <td class="neg-amount" style="color:#E84A21;">$630.00</td>
         <td class="neg-muted">14.02.2026</td>
       </tr>
       <tr class="neg-agreed">
@@ -293,7 +293,7 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         <td class="neg-amount"><span class="neg-old-price">$2,450.00</span></td>
         <td class="neg-amount neg-new-price">$2,180.00</td>
         <td class="neg-discount">11%</td>
-        <td class="neg-amount" style="color:#64B5F6;">$270.00</td>
+        <td class="neg-amount" style="color:#E84A21;">$270.00</td>
         <td class="neg-muted">28.02.2026</td>
       </tr>
       <tr class="neg-agreed">
@@ -305,14 +305,14 @@ a.neg-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2
         <td class="neg-amount"><span class="neg-old-price">$21,000.00</span></td>
         <td class="neg-amount neg-new-price">$18,900.00</td>
         <td class="neg-discount">10%</td>
-        <td class="neg-amount" style="color:#64B5F6;">$2,100.00</td>
+        <td class="neg-amount" style="color:#E84A21;">$2,100.00</td>
         <td class="neg-muted">20.01.2026</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(232,74,33,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#E84A21;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
 (function(){

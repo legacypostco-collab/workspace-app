@@ -41,7 +41,7 @@
   transition:background .2s;
 }
 .qr-metric--clickable:hover {
-  background:rgba(100,181,246,0.06);
+  background:rgba(232,74,33,0.06);
 }
 .qr-metric--clickable .qr-metric-toggle {
   display:inline-block;
@@ -51,10 +51,10 @@
   transform:rotate(180deg);
 }
 .qr-metric--clickable .qr-metric-val {
-  color:#64B5F6;
+  color:#E84A21;
 }
 .qr-metric--clickable .qr-metric-hint {
-  color:#64B5F6;
+  color:#E84A21;
 }
 
 /* Timeline section */
@@ -80,17 +80,17 @@
 /* QR Generator */
 .qr-gen-select {
   width:100%;padding:10px 14px;background:#1A1A1A;
-  border:1.5px solid rgba(100,181,246,0.45);border-radius:10px;
+  border:1.5px solid rgba(232,74,33,0.45);border-radius:10px;
   color:#ECECEC;font-size:13px;font-weight:500;outline:none;margin-bottom:12px;
-  box-shadow: 0 0 0 3px rgba(100,181,246,0.08), 0 2px 8px rgba(0,0,0,0.25);
+  box-shadow: 0 0 0 3px rgba(232,74,33,0.08), 0 2px 8px rgba(0,0,0,0.25);
   transition: border-color .18s, box-shadow .18s;
 }
 .qr-gen-select:focus {
-  border-color: rgba(100,181,246,0.75);
-  box-shadow: 0 0 0 4px rgba(100,181,246,0.15), 0 2px 8px rgba(0,0,0,0.25);
+  border-color: rgba(232,74,33,0.75);
+  box-shadow: 0 0 0 4px rgba(232,74,33,0.15), 0 2px 8px rgba(0,0,0,0.25);
 }
 .qr-gen-select:hover {
-  border-color: rgba(100,181,246,0.6);
+  border-color: rgba(232,74,33,0.6);
 }
 .qr-gen-canvas-wrap {
   display:flex;justify-content:center;align-items:center;
@@ -109,18 +109,18 @@
   cursor:pointer;border:none;transition:all .18s ease;text-align:center;
 }
 .qr-btn--primary {
-  background: linear-gradient(135deg, #64B5F6 0%, #42A5F5 100%);
+  background: linear-gradient(135deg, #E84A21 0%, #42A5F5 100%);
   color: #0a0a0a;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.02em;
   padding: 10px 16px;
-  box-shadow: 0 2px 12px rgba(100,181,246,0.4), 0 1px 3px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 12px rgba(232,74,33,0.4), 0 1px 3px rgba(0,0,0,0.3);
   flex: 1.4;
 }
 .qr-btn--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7ec4f7 0%, #64B5F6 100%);
-  box-shadow: 0 4px 20px rgba(100,181,246,0.55), 0 1px 4px rgba(0,0,0,0.3);
+  background: linear-gradient(135deg, #7ec4f7 0%, #E84A21 100%);
+  box-shadow: 0 4px 20px rgba(232,74,33,0.55), 0 1px 4px rgba(0,0,0,0.3);
   transform: translateY(-1px);
 }
 .qr-btn--ghost {
@@ -145,27 +145,27 @@
 .qr-scanner-idle-icon { font-size:28px;margin-bottom:8px; }
 .qr-scanner-idle-text { font-size:12px;color:#6A6A6A; }
 .qr-scanner-corner {
-  position:absolute;width:20px;height:20px;border-color:#64B5F6;border-style:solid;border-width:0;
+  position:absolute;width:20px;height:20px;border-color:#E84A21;border-style:solid;border-width:0;
 }
 .qr-scanner-corner--tl { top:8px;left:8px;border-top-width:2px;border-left-width:2px;border-radius:2px 0 0 0; }
 .qr-scanner-corner--tr { top:8px;right:8px;border-top-width:2px;border-right-width:2px;border-radius:0 2px 0 0; }
 .qr-scanner-corner--bl { bottom:8px;left:8px;border-bottom-width:2px;border-left-width:2px;border-radius:0 0 0 2px; }
 .qr-scanner-corner--br { bottom:8px;right:8px;border-bottom-width:2px;border-right-width:2px;border-radius:0 0 2px 0; }
 .qr-scanner-result {
-  padding:10px 12px;background:rgba(100,181,246,0.08);border-radius:8px;
-  font-size:12px;color:#64B5F6;margin-bottom:10px;display:none;word-break:break-all;
+  padding:10px 12px;background:rgba(232,74,33,0.08);border-radius:8px;
+  font-size:12px;color:#E84A21;margin-bottom:10px;display:none;word-break:break-all;
 }
 .qr-manual-input {
   width:100%;padding:8px 12px;background:#1A1A1A;
   border:1px solid rgba(255,255,255,0.07);border-radius:10px;
   color:#ECECEC;font-size:13px;outline:none;margin-bottom:10px;
 }
-.qr-manual-input:focus { border-color:rgba(100,181,246,0.4); }
+.qr-manual-input:focus { border-color:rgba(232,74,33,0.4); }
 .qr-manual-input::placeholder { color:#5A5A5A; }
 
 /* Order info card (after scan) */
 .qr-order-info {
-  background:#1E1E1E;border:1px solid rgba(100,181,246,0.15);
+  background:#1E1E1E;border:1px solid rgba(232,74,33,0.15);
   border-radius:10px;padding:12px 14px;margin-bottom:10px;display:none;
 }
 .qr-order-info-id { font-size:11px;color:#8A8A8A;margin-bottom:4px; }
@@ -182,7 +182,7 @@
 }
 .qr-stage-icon {
   width:36px;height:36px;border-radius:10px;
-  background:rgba(100,181,246,0.08);display:flex;align-items:center;
+  background:rgba(232,74,33,0.08);display:flex;align-items:center;
   justify-content:center;font-size:16px;flex-shrink:0;
 }
 .qr-stage-info { flex:1; }
@@ -190,7 +190,7 @@
 .qr-stage-action { font-size:11px;color:#8A8A8A; }
 .qr-stage-type {
   font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;
-  background:rgba(100,181,246,0.1);color:#64B5F6;flex-shrink:0;
+  background:rgba(232,74,33,0.1);color:#E84A21;flex-shrink:0;
   align-self:center;
 }
 
@@ -245,7 +245,7 @@
 .qr-instr-step:last-child { border-bottom:none; }
 .qr-instr-num {
   width:24px;height:24px;border-radius:50%;
-  background:rgba(100,181,246,0.12);color:#64B5F6;
+  background:rgba(232,74,33,0.12);color:#E84A21;
   font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
 }
 .qr-instr-step-title { font-size:13px;color:#ECECEC;font-weight:600;margin-bottom:2px; }
@@ -253,7 +253,7 @@
 
 /* Clickable metric links */
 .qr-metric-link { text-decoration:none; display:block; cursor:pointer; }
-.qr-metric-link:hover > .qr-metric { background:rgba(100,181,246,0.05) !important; border-right-color:rgba(100,181,246,0.25) !important; }
+.qr-metric-link:hover > .qr-metric { background:rgba(232,74,33,0.05) !important; border-right-color:rgba(232,74,33,0.25) !important; }
 </style>
 {% endblock %}
 
@@ -271,7 +271,7 @@
     <div class="qr-metric qr-metric--clickable" id="qr-metric-active" title="{% trans 'Показать таймлайн заказов' %}">
       <div class="qr-metric-label">{% trans "Активных заказов" %}</div>
       <div class="qr-metric-val">{{ active_orders_count }}</div>
-      <div class="qr-metric-hint">{% trans "на контроле" %} <span class="qr-metric-toggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+      <div class="qr-metric-hint">{% trans "на контроле" %} <span class="qr-metric-toggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E84A21" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="6 9 12 15 18 9"/></svg></span></div>
     </div>
     <a href="/seller/qr/" class="qr-metric-link">
     <div class="qr-metric">
@@ -284,14 +284,14 @@
     <div class="qr-metric">
       <div class="qr-metric-label">{% trans "Сегодня" %}</div>
       <div class="qr-metric-val">{{ scans_today }}</div>
-      <div class="qr-metric-hint" style="color:#64B5F6;">{% trans "сканирований" %}</div>
+      <div class="qr-metric-hint" style="color:#E84A21;">{% trans "сканирований" %}</div>
     </div>
     </a>
     <a href="/seller/orders/" class="qr-metric-link">
     <div class="qr-metric">
       <div class="qr-metric-label">{% trans "Заказов с QR" %}</div>
       <div class="qr-metric-val">{{ orders_with_qr }}</div>
-      <div class="qr-metric-hint" style="color:#64B5F6;">{% trans "зарегистрировано" %}</div>
+      <div class="qr-metric-hint" style="color:#E84A21;">{% trans "зарегистрировано" %}</div>
     </div>
     </a>
   </div>
@@ -315,7 +315,7 @@
             {% if tl.order.sla_status == "breached" %}
               <span style="font-size:10px;color:#FF8C42;font-weight:600;">{{ tl.order.get_sla_status_display }}</span>
             {% elif tl.order.sla_status == "on_track" %}
-              <span style="font-size:10px;color:#64B5F6;">{{ tl.order.get_sla_status_display }}</span>
+              <span style="font-size:10px;color:#E84A21;">{{ tl.order.get_sla_status_display }}</span>
             {% else %}
               <span style="font-size:10px;color:#6A6A6A;">{{ tl.order.get_sla_status_display }}</span>
             {% endif %}
@@ -415,9 +415,9 @@
       <div class="qr-order-info" id="qr-order-info">
         <div class="qr-order-info-id" id="qr-info-id"></div>
         <div class="qr-order-info-status" id="qr-info-status"></div>
-        <div class="qr-order-info-next" id="qr-info-next" style="display:none;margin-top:4px;font-size:12px;color:#64B5F6;font-weight:600;"></div>
+        <div class="qr-order-info-next" id="qr-info-next" style="display:none;margin-top:4px;font-size:12px;color:#E84A21;font-weight:600;"></div>
         <div class="qr-order-info-meta" id="qr-info-meta"></div>
-        <a id="qr-info-kanban-link" href="{% url 'seller_sla' %}" style="display:none;margin-top:6px;font-size:11px;color:#64B5F6;text-decoration:none;">
+        <a id="qr-info-kanban-link" href="{% url 'seller_sla' %}" style="display:none;margin-top:6px;font-size:11px;color:#E84A21;text-decoration:none;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>{% trans "Открыть на канбане SLA" %}
         </a>
       </div>
@@ -521,7 +521,7 @@
       <tr>
         <td>
           <a href="{% url 'seller_order_detail' ev.order.id %}"
-             style="color:#64B5F6;text-decoration:none;">
+             style="color:#E84A21;text-decoration:none;">
             #{{ ev.order.id }}
           </a>
         </td>
@@ -823,7 +823,7 @@
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         var label = STATUS_LABELS[nextStatus] || nextStatus;
         document.getElementById('qr-info-meta').innerHTML =
-          '<span style="color:#64B5F6;font-weight:600;">✓ Заказ #' + orderId + gettext(" переведён на этап: ") + label + '</span>';
+          '<span style="color:#E84A21;font-weight:600;">✓ Заказ #' + orderId + gettext(" переведён на этап: ") + label + '</span>';
         document.getElementById('qr-info-next').textContent = '';
         confirmBtn.textContent = gettext("Подтвердить этап");
 

@@ -161,9 +161,8 @@ _BUYER_ACTIONS = [
     "generate_qc_report_pdf", "list_order_documents", "sign_document",
     # Notification preferences (durable channels)
     "notif_prefs", "notif_set_email", "notif_set_kinds", "notif_link_telegram",
-    # Auth — 2FA + API tokens (всем доступно)
+    # Auth — 2FA всем доступна
     "setup_2fa", "verify_2fa", "disable_2fa",
-    "create_api_token", "list_api_tokens", "revoke_api_token",
 ]
 
 # Seller-only: эксклюзивные действия продавца — отвечать на RFQ, грузить
@@ -540,9 +539,9 @@ def _anon_register_result() -> "ActionResult":
     views._registration_required_response(). Возвращается, когда аноним
     дёргает действие, требующее аккаунта (user-specific запрос к БД)."""
     return ActionResult(
-        text=(_('🔒 Чтобы продолжить — зарегистрируйтесь прямо здесь, в чате.\nЭто займёт 20 секунд.')),
+        text=(_('Чтобы продолжить, войдите или создайте аккаунт.\nТак мы сохраним историю запросов, проекты и статусы поставок.')),
         actions=[
-            {"action": "start_registration", "label": _('🚀 Зарегистрироваться')},
+            {"action": "start_registration", "label": _('Зарегистрироваться')},
             {"action": "start_login",        "label": _('У меня есть аккаунт')},
         ],
     )
@@ -4400,6 +4399,11 @@ def cancel_rfq(params, user, role):
     new_status = "cancelled"
     rfq.status = new_status
     rfq.save(update_fields=["status"])
+    try:
+        from .realtime import push_rfq_update
+        push_rfq_update(rfq, event="rfq_cancelled")
+    except Exception:
+        logger.exception("push rfq_cancelled failed")
     msg = _('✓ RFQ #%(rfq_id)s удалён из списка.') % {'rfq_id': rfq_id}
     if had_quotes:
         msg += _(' ⚠️ По нему были котировки — оператор получит уведомление.')
@@ -4640,6 +4644,7 @@ def get_rfq_status(params, user, role):
             cards=[{
                 "type": "spec_results",
                 "data": {
+                    "rfq_id": rfq.id,
                     "title": title,
                     "found": found_n,
                     "analogue": 0,
@@ -9062,12 +9067,14 @@ def _notify(user, *, kind: str, title: str, body: str = "", url: str = ""):
     if not user:
         return
     notif_id = None
+    created_at = ""
     try:
         from marketplace.models import Notification
         n = Notification.objects.create(
             user=user, kind=kind, title=title[:200], body=body, url=url[:400],
         )
         notif_id = n.id
+        created_at = n.created_at.isoformat() if n.created_at else ""
     except Exception:
         logger.exception("Notification create failed")
     # Realtime push (best-effort)
@@ -9079,6 +9086,7 @@ def _notify(user, *, kind: str, title: str, body: str = "", url: str = ""):
             "title": title[:200],
             "body": body,
             "url": url[:400],
+            "created_at": created_at,
         })
     except Exception:
         logger.exception("WS notify push failed")

@@ -33,7 +33,7 @@
   display:inline-block;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;
   margin-bottom:8px;
 }
-.rat-status--trusted { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.rat-status--trusted { background:rgba(232,74,33,0.12);color:#E84A21; }
 .rat-status--sandbox { background:rgba(138,138,138,0.15);color:#8A8A8A; }
 .rat-status--risky { background:rgba(255,140,66,0.12);color:#FF8C42; }
 .rat-status--rejected { background:rgba(220,80,80,0.12);color:#E05555; }
@@ -63,7 +63,7 @@
   border:1px solid rgba(255,255,255,0.04);
 }
 a.rat-metric{text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;}
-a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
+a.rat-metric:hover{border-color:rgba(232,74,33,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
 .rat-metric-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#8A8A8A;margin-bottom:6px;
@@ -74,7 +74,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
 }
 .rat-metric-hint { font-size:11px;margin-top:4px;font-weight:400; }
 .rat-trend { font-size:10px;font-weight:600; }
-.rat-trend--up { color:#64B5F6; }
+.rat-trend--up { color:#E84A21; }
 .rat-trend--down { color:#FF8C42; }
 .rat-trend--flat { color:#6A6A6A; }
 
@@ -96,7 +96,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
 .rat-warn--critical .rat-warn-icon { background:rgba(220,80,80,0.12);color:#E05555; }
 .rat-warn--warning .rat-warn-icon { background:rgba(255,140,66,0.12);color:#FF8C42; }
 .rat-warn--info .rat-warn-icon { background:rgba(138,138,138,0.1);color:#8A8A8A; }
-.rat-warn--success .rat-warn-icon { background:rgba(100,181,246,0.1);color:#64B5F6; }
+.rat-warn--success .rat-warn-icon { background:rgba(232,74,33,0.1);color:#E84A21; }
 .rat-warn-body { flex:1;min-width:0; }
 .rat-warn-heading { font-size:13px;font-weight:600;color:#ECECEC;margin-bottom:2px; }
 .rat-warn-text { font-size:11px;color:#8A8A8A;line-height:1.4; }
@@ -118,7 +118,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
   border-bottom:1px solid rgba(255,255,255,0.03);
 }
 .rat-impact { font-family:'Golos Text',sans-serif;font-weight:700; }
-.rat-impact--pos { color:#64B5F6; }
+.rat-impact--pos { color:#E84A21; }
 .rat-impact--neg { color:#E05555; }
 .rat-impact--zero { color:#6A6A6A; }
 
@@ -135,7 +135,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
   display:flex;align-items:flex-start;gap:8px;padding:6px 0;
   font-size:12px;color:#ECECEC;line-height:1.4;
 }
-.rat-tip-icon { color:#64B5F6;flex-shrink:0;margin-top:1px; }
+.rat-tip-icon { color:#E84A21;flex-shrink:0;margin-top:1px; }
 </style>
 {% endblock %}
 
@@ -157,7 +157,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
       <svg width="120" height="120" viewBox="0 0 120 120">
         <circle class="rat-circle-bg" cx="60" cy="60" r="52" />
         <circle class="rat-circle-fg" cx="60" cy="60" r="52"
-          stroke="{% if rating_score >= 80 %}#64B5F6{% elif rating_score >= 60 %}#FF8C42{% else %}#E05555{% endif %}"
+          stroke="{% if rating_score >= 80 %}#E84A21{% elif rating_score >= 60 %}#FF8C42{% else %}#E05555{% endif %}"
           stroke-dasharray="326.7"
           stroke-dashoffset="{{ rating_score|floatformat:0 }}" />
       </svg>
@@ -176,7 +176,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
         </div>
         <div style="font-size:11px;color:#6A6A6A;line-height:1.7;">
           <span style="color:#8A8A8A;">{% trans "Формула:" %}</span> <span style="color:#ECECEC;">{% trans "Внешний × 0.6 + Поведенческий × 0.4" %}</span><br>
-          <span style="color:#64B5F6;">≥ 80</span> {% trans "— Надёжный &nbsp;·&nbsp;" %} <span style="color:#FF8C42;">60–79</span> {% trans "— Песочница &nbsp;·&nbsp;" %} <span style="color:#E05555;">&lt; 60</span> {% trans "— Рисковый" %}
+          <span style="color:#E84A21;">≥ 80</span> {% trans "— Надёжный &nbsp;·&nbsp;" %} <span style="color:#FF8C42;">60–79</span> {% trans "— Песочница &nbsp;·&nbsp;" %} <span style="color:#E05555;">&lt; 60</span> {% trans "— Рисковый" %}
         </div>
       </div>
     </div>
@@ -192,7 +192,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
     </div>
     <div class="rat-bd-score">{{ external_score|floatformat:1 }}</div>
     <div class="rat-bar">
-      <div class="rat-bar-fill" style="width:{{ external_score }}%;background:#64B5F6;"></div>
+      <div class="rat-bar-fill" style="width:{{ external_score }}%;background:#E84A21;"></div>
     </div>
     <div class="rat-bd-hint">{% trans "Отзывы клиентов · качество товара · соответствие описанию · точность данных" %}</div>
   </div>
@@ -203,7 +203,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
     </div>
     <div class="rat-bd-score">{{ behavioral_score|floatformat:1 }}</div>
     <div class="rat-bar">
-      <div class="rat-bar-fill" style="width:{{ behavioral_score }}%;background:{% if behavioral_score >= 80 %}#64B5F6{% elif behavioral_score >= 60 %}#FF8C42{% else %}#E05555{% endif %};"></div>
+      <div class="rat-bar-fill" style="width:{{ behavioral_score }}%;background:{% if behavioral_score >= 80 %}#E84A21{% elif behavioral_score >= 60 %}#FF8C42{% else %}#E05555{% endif %};"></div>
     </div>
     <div class="rat-bd-hint">{% trans "SLA соблюдение · скорость ответа на RFQ · возвраты · отмены заказов" %}</div>
   </div>
@@ -247,7 +247,7 @@ a.rat-metric:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2
     <div class="rat-warn rat-warn--{{ w.level }}">
       <div class="rat-warn-body">
         <div class="rat-warn-heading">
-          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:middle;background:{% if w.level == 'critical' %}#E05555{% elif w.level == 'warning' %}#FF8C42{% elif w.level == 'success' %}#64B5F6{% else %}#6A6A6A{% endif %};"></span>{{ w.title }}
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:middle;background:{% if w.level == 'critical' %}#E05555{% elif w.level == 'warning' %}#FF8C42{% elif w.level == 'success' %}#E84A21{% else %}#6A6A6A{% endif %};"></span>{{ w.title }}
         </div>
         <div class="rat-warn-text">{{ w.text }}</div>
       </div>

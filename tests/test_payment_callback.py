@@ -5,7 +5,7 @@
   - No secret + DEBUG=False  → 503 (прод без секрета — отказ)
   - Wrong secret + prod      → 403
   - Correct secret + prod    → 200 + меняет статус заказа
-  - Секрет в query-param     → принимается
+  - Секрет в query-param     → отклоняется
   - order_not_found          → 404
 """
 import json
@@ -126,15 +126,15 @@ def test_callback_correct_secret_processes(client, order):
 
 @pytest.mark.django_db
 @override_settings(PAYMENT_CALLBACK_SECRET="correct-secret", DEBUG=False)
-def test_callback_secret_via_query_param(client, order):
-    """Секрет через ?secret= тоже принимается."""
+def test_callback_secret_via_query_param_rejected(client, order):
+    """Секрет через ?secret= больше не принимается: он утекает в журналы."""
     resp = client.post(
         CALLBACK_URL + "?secret=correct-secret",
         data=json.dumps({"order_id": order.id, "status": "paid"}),
         content_type="application/json",
     )
-    assert resp.status_code == 200
-    assert resp.json().get("ok") is True
+    assert resp.status_code == 403
+    assert resp.json().get("error") == "invalid_secret"
 
 
 # ── 6. Несуществующий заказ ────────────────────────────────────────────────

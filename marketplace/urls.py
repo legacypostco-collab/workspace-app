@@ -1,10 +1,15 @@
 from django.contrib.auth import views as auth_views
+from django.shortcuts import redirect
 from django.urls import path
 
 from . import feedback as _feedback
 from . import gdpr as _gdpr
 from . import health as _health
 from . import views
+
+
+def legacy_to_chat(request, *args, **kwargs):
+    return redirect("/chat/")
 
 urlpatterns = [
     # ── Healthchecks (k8s / nginx / Yandex MK) ─────────────────
@@ -34,13 +39,13 @@ urlpatterns = [
     path("landing/", views.landing_view, name="landing"),
     path("demo-center/", views.demo_center, name="demo_center"),
     path("demo/", views.demo_center),  # alias
-    path("directory/brands/", views.brands_directory, name="brands_directory"),
-    path("brands/", views.brands_directory),  # alias
-    path("directory/suppliers/", views.suppliers_directory, name="suppliers_directory"),
-    path("suppliers/", views.suppliers_directory),  # alias
-    path("directory/categories/", views.categories_directory, name="categories_directory"),
-    path("categories/", views.categories_directory),  # alias
-    path("comparison/", views.compare_view),  # alias for /compare/
+    path("directory/brands/", legacy_to_chat, name="brands_directory"),
+    path("brands/", legacy_to_chat),  # alias
+    path("directory/suppliers/", legacy_to_chat, name="suppliers_directory"),
+    path("suppliers/", legacy_to_chat),  # alias
+    path("directory/categories/", legacy_to_chat, name="categories_directory"),
+    path("categories/", legacy_to_chat),  # alias
+    path("comparison/", legacy_to_chat),  # alias for /compare/
     path("terms/", views.terms_view, name="terms"),
     path("privacy/", views.privacy_view, name="privacy"),
     path("cookies/", views.cookies_view, name="cookies"),
@@ -63,9 +68,9 @@ urlpatterns = [
     path("password-reset/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset")),
     path("password-reset/done/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset_done")),
     path("demo-login/", views.demo_login, name="demo_login"),
-    path("catalog/", views.catalog, name="catalog"),
-    path("rfq/", views.rfq_list, name="rfq_list"),
-    path("rfq/new/", views.rfq_new, name="rfq_new"),
+    path("catalog/", legacy_to_chat, name="catalog"),
+    path("rfq/", legacy_to_chat, name="rfq_list"),
+    path("rfq/new/", legacy_to_chat, name="rfq_new"),
     path("rfq/<int:rfq_id>/", views.rfq_detail, name="rfq_detail"),
     path("rfq/<int:rfq_id>/proposal/", views.rfq_proposal, name="rfq_proposal"),
     path("rfq/<int:rfq_id>/proposal/pdf/", views.rfq_proposal_pdf, name="rfq_proposal_pdf"),
@@ -81,15 +86,15 @@ urlpatterns = [
         views.operator_escalate_manual_oem,
         name="operator_escalate_manual_oem",
     ),
-    path("parts/<slug:slug>/", views.part_detail, name="part_detail"),
-    path("compare/", views.compare_view, name="compare"),
-    path("compare/add/<int:part_id>/", views.compare_add, name="compare_add"),
-    path("compare/remove/<int:part_id>/", views.compare_remove, name="compare_remove"),
-    path("compare/clear/", views.compare_clear, name="compare_clear"),
-    path("cart/", views.cart_view, name="cart"),
-    path("cart/add/<int:part_id>/", views.cart_add, name="cart_add"),
-    path("cart/remove/<int:part_id>/", views.cart_remove, name="cart_remove"),
-    path("checkout/", views.checkout, name="checkout"),
+    path("parts/<slug:slug>/", legacy_to_chat, name="part_detail"),
+    path("compare/", legacy_to_chat, name="compare"),
+    path("compare/add/<int:part_id>/", legacy_to_chat, name="compare_add"),
+    path("compare/remove/<int:part_id>/", legacy_to_chat, name="compare_remove"),
+    path("compare/clear/", legacy_to_chat, name="compare_clear"),
+    path("cart/", legacy_to_chat, name="cart"),
+    path("cart/add/<int:part_id>/", legacy_to_chat, name="cart_add"),
+    path("cart/remove/<int:part_id>/", legacy_to_chat, name="cart_remove"),
+    path("checkout/", legacy_to_chat, name="checkout"),
     path("dashboard/", views.dashboard, name="dashboard"),
     path("dashboard/buyer/", views.dashboard_buyer, name="dashboard_buyer"),
     path("dashboard/seller/", views.dashboard_seller, name="dashboard_seller"),

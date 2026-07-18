@@ -10,7 +10,7 @@
   <a href="/admin-panel/users/?role=buyer" class="ap-stat"><div class="ap-stat-value">{{ buyers }}</div><div class="ap-stat-label">{% trans "Покупатели" %}</div></a>
   <a href="/admin-panel/users/?role=seller" class="ap-stat"><div class="ap-stat-value">{{ sellers }}</div><div class="ap-stat-label">{% trans "Поставщики" %}</div></a>
   <a href="/admin-panel/users/?status=blocked" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ blocked }}</div><div class="ap-stat-label">{% trans "Заблокировано" %}</div></a>
-  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ new_this_week }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
+  <a href="/admin-panel/users/" class="ap-stat"><div class="ap-stat-value" style="color:#E84A21;">+{{ new_this_week }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
 </div>
 
 <form method="post" id="usersForm">
@@ -61,11 +61,11 @@
     </thead>
     <tbody>
       {% for u in users %}
-      <tr id="user-{{ u.id }}" {% if not u.is_active %}style="opacity:0.6;border-left:3px solid #E85C0D;"{% elif u.id == open_user_id %}style="background:rgba(100,181,246,0.15);border-left:3px solid #64B5F6;"{% endif %}>
+      <tr id="user-{{ u.id }}" {% if not u.is_active %}style="opacity:0.6;border-left:3px solid #E85C0D;"{% elif u.id == open_user_id %}style="background:rgba(232,74,33,0.15);border-left:3px solid #E84A21;"{% endif %}>
         <td><input type="checkbox" name="selected_users" value="{{ u.id }}" class="user-cb" onchange="updateUserBar()" {% if u.is_superuser %}disabled{% endif %}/></td>
         <td>#{{ u.id }}</td>
         <td>
-          <a href="/admin-panel/users/{{ u.id }}/" style="color:#64B5F6;text-decoration:none;">{{ u.get_full_name|default:u.username }}</a>
+          <a href="/admin-panel/users/{{ u.id }}/" style="color:#E84A21;text-decoration:none;">{{ u.get_full_name|default:u.username }}</a>
           {% if u.profile and u.profile.company_name %}
             <div style="font-size:11px;color:#919191;">{{ u.profile.company_name }}</div>
           {% endif %}
@@ -117,8 +117,8 @@
 </div>
 
 <!-- Bulk bar -->
-<div id="userBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="userSelectedCount">{% trans "0 выбрано" %}</span>
+<div id="userBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(232,74,33,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
+  <span style="font-size:13px;color:#E84A21;font-weight:600;" id="userSelectedCount">{% trans "0 выбрано" %}</span>
   <button type="button" class="ap-btn ap-btn-primary" onclick="bulkUserAction('bulk_activate')">{% trans "Активировать" %}</button>
   <button type="button" class="ap-btn ap-btn-warn" onclick="bulkUserAction('bulk_block')">{% trans "Заблокировать" %}</button>
   <button type="button" class="ap-btn ap-btn-ghost" onclick="clearUserSelection()">{% trans "Снять" %}</button>

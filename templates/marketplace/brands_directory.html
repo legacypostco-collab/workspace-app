@@ -1,14 +1,15 @@
 {% extends "marketplace/base.html" %}
-{% block title %}Справочник брендов | Consolidator Parts{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Справочник брендов" %} | Consolidator Parts{% endblock %}
 {% block content %}
 <section class="section-head">
-  <h1>Справочник брендов</h1>
-  <p class="muted">Матрица брендов по регионам и производителям компонентов</p>
+  <h1>{% trans "Справочник брендов" %}</h1>
+  <p class="muted">{% trans "Матрица брендов по регионам и производителям компонентов" %}</p>
 </section>
 
 <form method="get" class="filters panel" style="grid-template-columns: 1fr auto;">
-  <input type="text" name="q" value="{{ query }}" placeholder="Поиск бренда..." />
-  <button type="submit" class="btn">Найти</button>
+  <input type="text" name="q" value="{{ query }}" placeholder="{% trans 'Поиск бренда...' %}" />
+  <button type="submit" class="btn">{% trans "Найти" %}</button>
 </form>
 
 <div class="grid">
@@ -19,13 +20,13 @@
         {% for brand in group.brands %}
           <a class="chip" href="{% url 'catalog' %}?brand={{ brand.slug }}">{{ brand.name }} ({{ brand.parts_count }})</a>
         {% empty %}
-          <span class="muted">Нет брендов</span>
+          <span class="muted">{% trans "Нет брендов" %}</span>
         {% endfor %}
       </div>
     </section>
   {% empty %}
     <section class="panel">
-      <p class="muted">По вашему запросу бренды не найдены.</p>
+      <p class="muted">{% trans "По вашему запросу бренды не найдены." %}</p>
     </section>
   {% endfor %}
 </div>

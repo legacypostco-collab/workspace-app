@@ -100,7 +100,7 @@ class ChatView(APIView):
                     ),
                     "cards": [],
                     "actions": [
-                        {"action": "start_registration", "label": _("🚀 Зарегистрироваться")},
+                        {"action": "start_registration", "label": _("Зарегистрироваться")},
                         {"action": "start_login",        "label": _("Войти")},
                     ],
                     "contextual_actions": [], "context_refs": [],
@@ -213,16 +213,16 @@ ANON_BLOCKED_PAYMENT_ACTIONS: set[str] = {
 def _registration_required_response():
     """Карточка «зарегистрируйтесь» — для всех остальных action'ов.
 
-    Кнопки запускают chat-action `start_registration` / `start_login`
-    прямо в текущем чате (без редиректа на отдельную страницу).
+    Кнопки запускают chat-action `start_registration` / `start_login`.
+    Фронт открывает формы в модальном окне без редиректа на отдельную страницу.
     """
     return {
         "text": _(
-            "🔒 Чтобы продолжить — зарегистрируйтесь прямо здесь, в чате.\n"
-            "Это займёт 20 секунд."
+            "Чтобы продолжить, войдите или создайте аккаунт.\n"
+            "Так мы сохраним историю запросов, проекты и статусы поставок."
         ),
         "actions": [
-            {"action": "start_registration", "label": _("🚀 Зарегистрироваться")},
+            {"action": "start_registration", "label": _("Зарегистрироваться")},
             {"action": "start_login",        "label": _("У меня есть аккаунт")},
         ],
         "cards": [], "suggestions": [], "contextual_actions": [],
@@ -238,16 +238,15 @@ def _payment_requires_registration_response(action_name: str, params: dict):
     """
     return {
         "text": _(
-            "💳 Чтобы оформить оплату — нужен аккаунт.\n"
+            "Чтобы оформить оплату, нужен аккаунт.\n"
             "Это нужно для:\n"
             "• приёма и возврата средств (резерв 10%)\n"
             "• юридического оформления заказа\n"
             "• трекинга вашей доставки в личном кабинете\n\n"
-            "Регистрация в чате — 30 секунд. Все данные что вы ввели — "
-            "RFQ, выбранная котировка — сохранятся."
+            "После входа текущий запрос, RFQ и выбранная котировка сохранятся."
         ),
         "actions": [
-            {"action": "start_registration", "label": _("🚀 Создать аккаунт и оплатить"),
+            {"action": "start_registration", "label": _("Создать аккаунт и оплатить"),
              "params": {"role": "buyer", "_resume": action_name}},
             {"action": "start_login",        "label": _("У меня уже есть аккаунт"),
              "params": {"role": "buyer", "_resume": action_name}},
@@ -284,7 +283,7 @@ def _handle_start_registration(request, params):
     if result["ok"]:
         user = result["user"]
         user.backend = "django.contrib.auth.backends.ModelBackend"
-        login(request, user)
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         try:
             from .order_events import notify_operator_alert
             notify_operator_alert(user_obj=user, event="user_registered",
@@ -303,10 +302,10 @@ def _handle_start_registration(request, params):
             # Возвращаем resume-карточку: фронт сам кликнет action в чате
             return {
                 "text": (result["response"].get("text", "") + "\n\n"
-                         + _("▶ Продолжаю оформление заказа...")),
+                         + _("Продолжаю оформление заказа...")),
                 "actions": [{
                     "action": pending["action"],
-                    "label": _("▶ Продолжить"),
+                    "label": _("Продолжить"),
                     "params": pending.get("params", {}),
                 }],
                 "cards": [], "suggestions": [], "contextual_actions": [],
@@ -354,7 +353,7 @@ def _handle_seller_quick_registration(request, params):
     if not confirmed:
         return {
             "text": _(
-                "🏭 Регистрация поставщика — 2 шага.\n\n"
+                "Регистрация поставщика — 2 шага.\n\n"
                 "▸ Шаг 1 (сейчас): только аккаунт — логин, e-mail, пароль. "
                 "Это нужно, чтобы вы могли сохранять прогресс.\n"
                 "▸ Шаг 2 (после): KYB-анкета — реквизиты компании, ИНН/ОГРН, "
@@ -365,7 +364,7 @@ def _handle_seller_quick_registration(request, params):
             "cards": [{
                 "type": "form",
                 "data": {
-                    "title": _("🏭 Шаг 1 из 2 · Аккаунт поставщика"),
+                    "title": _("Шаг 1 из 2 · Аккаунт поставщика"),
                     "submit_action": "start_registration",
                     "submit_label": _("Шаг 2: к KYB-анкете →"),
                     "fields": [
@@ -397,8 +396,8 @@ def _handle_seller_quick_registration(request, params):
     if not form.is_valid():
         errs = "\n".join(f"• {f}: {e[0]}" for f, e in form.errors.items())
         return {
-            "text": _("⚠️ Не получилось создать аккаунт:\n") + errs,
-            "actions": [{"action": "start_registration", "label": _("🔄 Попробовать снова"),
+            "text": _("Не получилось создать аккаунт:\n") + errs,
+            "actions": [{"action": "start_registration", "label": _("Попробовать снова"),
                          "params": {"role": "seller"}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
@@ -408,7 +407,7 @@ def _handle_seller_quick_registration(request, params):
     UserProfile.objects.create(user=user, role="seller", language="ru",
                                 company_name="")
     user.backend = "django.contrib.auth.backends.ModelBackend"
-    login(request, user)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     try:
         from .order_events import notify_operator_alert
         notify_operator_alert(user_obj=user, event="user_registered",
@@ -416,12 +415,12 @@ def _handle_seller_quick_registration(request, params):
     except Exception:
         logger.exception("notify_operator_alert user_registered failed")
     return {
-        "text": (_("✅ Аккаунт создан · %(u)s\n"
+        "text": (_("Аккаунт создан · %(u)s\n"
                    "Сейчас откроем KYB-анкету — нужны реквизиты компании, "
                    "банк и директор. После проверки оператором (≤24ч) сможете "
                    "отвечать на RFQ и принимать заказы.") % {"u": user.username}),
         "cards": [],
-        "actions": [{"action": "reload_page", "label": _("🚀 Перейти к KYB")}],
+        "actions": [{"action": "reload_page", "label": _("Перейти к KYB")}],
         "suggestions": [], "contextual_actions": [],
         "_post_action": "reload",
     }
@@ -444,14 +443,14 @@ def _handle_switch_role_login(request, params):
         "operator": "demo_operator",
     }
     if role not in DEMO_USERNAMES:
-        return {"text": _("⚠️ Неизвестная роль: %(r)s") % {"r": role},
+        return {"text": _("Неизвестная роль: %(r)s") % {"r": role},
                 "cards": [], "actions": [], "suggestions": [], "contextual_actions": []}
     suggested_username = DEMO_USERNAMES[role]
 
     ROLE_META = {
-        "buyer":    (_("👋 Войти как Покупатель"), _("Введите логин и пароль аккаунта покупателя.")),
-        "seller":   (_("🏭 Войти как Поставщик"),  _("Введите логин и пароль аккаунта поставщика.")),
-        "operator": (_("🛡 Войти как Оператор"),   _("Введите логин и пароль операторского аккаунта.")),
+        "buyer":    (_("Войти как покупатель"), _("Введите логин и пароль аккаунта покупателя.")),
+        "seller":   (_("Войти как поставщик"),  _("Введите логин и пароль аккаунта поставщика.")),
+        "operator": (_("Войти как оператор"),   _("Введите логин и пароль операторского аккаунта.")),
     }
     title, greeting = ROLE_META[role]
     confirmed = bool(params.get("confirmed"))
@@ -462,15 +461,15 @@ def _handle_switch_role_login(request, params):
         reg_actions = []
         if role == "buyer":
             reg_actions.append({"action": "start_registration",
-                                "label": _("📝 Создать аккаунт покупателя"),
+                                "label": _("Создать аккаунт покупателя"),
                                 "params": {"role": "buyer"}})
         elif role == "seller":
             reg_actions.append({"action": "start_registration",
-                                "label": _("🏭 Создать аккаунт поставщика"),
+                                "label": _("Создать аккаунт поставщика"),
                                 "params": {"role": "seller"}})
         elif role == "operator":
             reg_actions.append({"action": "contact_operator",
-                                "label": _("📨 Запросить операторский доступ у админа"),
+                                "label": _("Запросить операторский доступ у админа"),
                                 "params": {"topic": "operator_access"}})
         return {
             "text": greeting,
@@ -493,6 +492,8 @@ def _handle_switch_role_login(request, params):
                         {"name": "password", "label": _("Пароль"),
                          "type": "password", "required": True,
                          "placeholder": _("Введите пароль")},
+                        {"name": "otp_code", "label": _("Код 2FA, если включён"),
+                         "placeholder": "000000", "required": False},
                     ],
                     "fixed_params": {"confirmed": True, "role": role},
                 },
@@ -513,9 +514,9 @@ def _handle_switch_role_login(request, params):
             raw = u.username
     if not raw:
         return {
-            "text": _("❌ Логин не указан."),
+            "text": _("Логин не указан."),
             "actions": [{"action": "switch_role_login",
-                         "label": _("🔄 Попробовать ещё раз"),
+                         "label": _("Попробовать ещё раз"),
                          "params": {"role": role}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
@@ -527,26 +528,35 @@ def _handle_switch_role_login(request, params):
             reg_btn = []
             if role == "buyer":
                 reg_btn.append({"action": "start_registration",
-                                "label": _("📝 Создать аккаунт покупателя"),
+                                "label": _("Создать аккаунт покупателя"),
                                 "params": {"role": "buyer"}})
             elif role == "seller":
                 reg_btn.append({"action": "start_registration",
-                                "label": _("🏭 Создать аккаунт поставщика"),
+                                "label": _("Создать аккаунт поставщика"),
                                 "params": {"role": "seller"}})
             return {
-                "text": _("⚠️ Аккаунт «%(u)s» не найден. Зарегистрируйтесь или укажите другой логин.") % {"u": raw},
+                "text": _("Аккаунт «%(u)s» не найден. Зарегистрируйтесь или укажите другой логин.") % {"u": raw},
                 "actions": reg_btn + [
                     {"action": "switch_role_login",
-                     "label": _("🔄 Ввести другой логин"),
+                     "label": _("Ввести другой логин"),
                      "params": {"role": role}},
                 ],
                 "cards": [], "suggestions": [], "contextual_actions": [],
             }
         return {
-            "text": _("❌ Неверный пароль для «%(u)s». Попробуйте ещё раз.") % {"u": raw},
+            "text": _("Неверный пароль для «%(u)s». Попробуйте ещё раз.") % {"u": raw},
             "actions": [{"action": "switch_role_login",
-                         "label": _("🔄 Войти снова"),
+                         "label": _("Войти снова"),
                          "params": {"role": role}}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    from .security import user_has_enabled_2fa, verify_user_2fa
+    if user_has_enabled_2fa(user) and not verify_user_2fa(user, params.get("otp_code") or ""):
+        return {
+            "text": _("Для аккаунта включена 2FA. Введите одноразовый код из приложения."),
+            "actions": [{"action": "switch_role_login",
+                         "label": _("Ввести код 2FA"),
+                         "params": {"role": role, "username": raw}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
     # Verify the user has the requested role (no privilege escalation)
@@ -554,20 +564,20 @@ def _handle_switch_role_login(request, params):
     actual_norm = "operator" if actual_role.startswith("operator") else actual_role
     if actual_norm != role:
         return {
-            "text": (_("⚠️ Аккаунт «%(u)s» имеет роль «%(actual)s», "
+            "text": (_("Аккаунт «%(u)s» имеет роль «%(actual)s», "
                        "а вы пытались войти как «%(role)s». Войдите под другим логином.")
                      % {"u": user.username, "actual": actual_norm, "role": role}),
             "actions": [{"action": "switch_role_login",
-                         "label": _("🔄 Ввести другой логин"),
+                         "label": _("Ввести другой логин"),
                          "params": {"role": role}}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
     # Очищаем старый session-override чтобы UI взял правильную роль из identity
     request.session.pop("assistant_role_override", None)
-    login(request, user)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return {
-        "text": _("✅ Вы вошли как «%(u)s». Перезагружаю кабинет...") % {"u": user.username},
-        "actions": [{"action": "reload_page", "label": _("🚀 Открыть кабинет")}],
+        "text": _("Вы вошли как «%(u)s». Перезагружаю кабинет...") % {"u": user.username},
+        "actions": [{"action": "reload_page", "label": _("Открыть кабинет")}],
         "cards": [], "suggestions": [], "contextual_actions": [],
         "_post_action": "reload",
     }
@@ -584,9 +594,9 @@ def _handle_start_login(request, params):
     role = (params.get("role") or "buyer").lower()
 
     LOGIN_META = {
-        "buyer":    (_("👋 Вход покупателя"), _("С возвращением. Введите логин или e-mail.")),
-        "seller":   (_("🏭 Вход поставщика"), _("Войдите в кабинет поставщика.")),
-        "operator": (_("🛡 Вход оператора"),  _("Войдите в операторский кабинет.")),
+        "buyer":    (_("Вход покупателя"), _("С возвращением. Введите логин или e-mail.")),
+        "seller":   (_("Вход поставщика"), _("Войдите в кабинет поставщика.")),
+        "operator": (_("Вход оператора"),  _("Войдите в операторский кабинет.")),
     }
     title, greeting = LOGIN_META.get(role, LOGIN_META["buyer"])
 
@@ -615,6 +625,8 @@ def _handle_start_login(request, params):
                          "required": True, "placeholder": "ivanov / you@company.ru"},
                         {"name": "password", "label": _("Пароль"),
                          "type": "password", "required": True},
+                        {"name": "otp_code", "label": _("Код 2FA, если включён"),
+                         "placeholder": "000000", "required": False},
                     ],
                     "fixed_params": {"confirmed": True, "role": role},
                 },
@@ -635,11 +647,18 @@ def _handle_start_login(request, params):
     user = authenticate(request, username=raw, password=pwd)
     if not user:
         return {
-            "text": _("❌ Неверный логин или пароль. Попробуйте ещё раз."),
-            "actions": [{"action": "start_login", "label": _("🔄 Войти снова")}],
+            "text": _("Неверный логин или пароль. Попробуйте ещё раз."),
+            "actions": [{"action": "start_login", "label": _("Войти снова")}],
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
-    login(request, user)
+    from .security import user_has_enabled_2fa, verify_user_2fa
+    if user_has_enabled_2fa(user) and not verify_user_2fa(user, params.get("otp_code") or ""):
+        return {
+            "text": _("Для аккаунта включена 2FA. Введите одноразовый код из приложения."),
+            "actions": [{"action": "start_login", "label": _("Ввести код 2FA")}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     # Resume pending payment action (anon → клик pay_reserve → login → resume)
     try:
         _attach_anonymous_rfqs_to_user(request, user)
@@ -648,18 +667,18 @@ def _handle_start_login(request, params):
     pending = request.session.pop("pending_action", None)
     if pending and pending.get("action"):
         return {
-            "text": _("✅ Вы вошли как «%(u)s». ▶ Продолжаю оформление заказа...") % {"u": user.username},
+            "text": _("Вы вошли как «%(u)s». Продолжаю оформление заказа...") % {"u": user.username},
             "actions": [{
                 "action": pending["action"],
-                "label": _("▶ Продолжить оформление"),
+                "label": _("Продолжить оформление"),
                 "params": pending.get("params", {}),
             }],
             "cards": [], "suggestions": [], "contextual_actions": [],
             "_post_action": "auto_resume",
         }
     return {
-        "text": _("✅ Привет, %(u)s! Перезагружу чат — увидите свои данные.") % {"u": user.username},
-        "actions": [{"action": "reload_page", "label": _("🚀 Открыть кабинет")}],
+        "text": _("Привет, %(u)s! Перезагружу чат — увидите свои данные.") % {"u": user.username},
+        "actions": [{"action": "reload_page", "label": _("Открыть кабинет")}],
         "cards": [], "suggestions": [], "contextual_actions": [],
         "_post_action": "reload",
     }
@@ -744,8 +763,8 @@ class ActionView(APIView):
                 "conversation_id": None,
                 "text": _("Вы уже авторизованы как «%(u)s». Хотите войти под другим аккаунтом?") % {"u": request.user.username},
                 "actions": [
-                    {"action": "switch_role_login", "label": _("🔄 Сменить аккаунт")},
-                    {"action": "go_home",            "label": _("🏠 На главную")},
+                    {"action": "switch_role_login", "label": _("Сменить аккаунт")},
+                    {"action": "go_home",            "label": _("На главную")},
                 ],
                 "cards": [], "suggestions": [], "contextual_actions": [],
             })
@@ -892,7 +911,7 @@ class WidgetConfigView(APIView):
                 "role": "buyer",
                 "role_override": None,
                 "user_name": _("Гость"),
-                "suggestions": SuggestView.SUGGESTIONS.get("buyer", []),
+                "suggestions": [],
                 "latest_conversation_id": None,
                 "anonymous": True,
             })
@@ -1060,32 +1079,16 @@ class KYBDocUploadView(APIView):
         f = request.FILES.get("file")
         if not f:
             return Response({"error": _("Файл не приложен")}, status=400)
-        # Базовая валидация: размер ≤10MB, разрешённые расширения
-        MAX_SIZE = 10 * 1024 * 1024
-        if (f.size or 0) > MAX_SIZE:
-            return Response({"error": _("Файл слишком большой (%(kb)s КБ, лимит 10 МБ)") % {"kb": f.size // 1024}}, status=400)
         name = f.name or "document"
-        ext = (name.rsplit(".", 1)[-1] if "." in name else "").lower()
-        if ext not in ("pdf", "png", "jpg", "jpeg", "heic"):
-            return Response({"error": _("Неподдерживаемое расширение «.%(ext)s». Используйте PDF, PNG или JPG.") % {"ext": ext}},
-                             status=400)
-        # FIX (HIGH): magic-byte валидация — защита от .exe, переименованных в .pdf.
-        # Проверяем первые байты файла на соответствие реальному формату.
         try:
-            head = f.read(12); f.seek(0)
-            valid_magic = (
-                (ext == "pdf" and head.startswith(b"%PDF"))
-                or (ext in ("png",) and head.startswith(b"\x89PNG\r\n\x1a\n"))
-                or (ext in ("jpg", "jpeg") and head[:3] == b"\xFF\xD8\xFF")
-                or (ext == "heic" and (b"ftyp" in head[:12]))
+            from marketplace.upload_security import validate_uploaded_file
+            validate_uploaded_file(
+                f,
+                allowed_ext={".pdf", ".png", ".jpg", ".jpeg", ".heic"},
+                max_bytes=10 * 1024 * 1024,
             )
-            if not valid_magic:
-                return Response({
-                    "error": _("Содержимое файла не соответствует расширению .%(ext)s. "
-                               "Возможно, файл переименован — отправьте оригинал.") % {"ext": ext}
-                }, status=400)
-        except Exception:
-            return Response({"error": _("Не удалось проверить содержимое файла.")}, status=400)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=400)
         try:
             from marketplace.models import CompanyVerification
             kyb, _created = CompanyVerification.objects.get_or_create(user=request.user)
@@ -1118,6 +1121,18 @@ class ProjectDocumentUploadView(APIView):
         f = request.FILES.get("file")
         if not f:
             return Response({"error": _("Файл не приложен")}, status=400)
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+            validate_uploaded_file(
+                f,
+                allowed_ext={
+                    ".xlsx", ".xls", ".csv", ".pdf", ".docx", ".doc",
+                    ".dwg", ".dxf", ".png", ".jpg", ".jpeg",
+                },
+                max_bytes=50 * 1024 * 1024,
+            )
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=400)
         # Простая эвристика типа по расширению
         name = f.name or "document"
         ext = (name.rsplit(".", 1)[-1] if "." in name else "").lower()
@@ -1686,10 +1701,17 @@ class DrawingUploadView(APIView):
         f = request.FILES.get("file")
         if not f:
             return Response({"ok": False, "error": "Файл не передан."}, status=400)
-        if f.size > 50 * 1024 * 1024:
-            return Response({"ok": False, "error": "Файл больше 50 МБ."}, status=400)
 
         ext = (os.path.splitext(f.name)[1] or "").lstrip(".").lower()
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+            validate_uploaded_file(
+                f,
+                allowed_ext={".pdf", ".dwg", ".dxf", ".step", ".stp", ".iges", ".igs", ".stl", ".png", ".jpg", ".jpeg"},
+                max_bytes=50 * 1024 * 1024,
+            )
+        except Exception as exc:
+            return Response({"ok": False, "error": str(exc)}, status=400)
         FMT = {"pdf": "pdf", "dwg": "dwg", "dxf": "dxf", "step": "step",
                "stp": "step", "iges": "iges", "igs": "iges", "stl": "stl",
                "png": "png", "jpg": "jpg", "jpeg": "jpg"}

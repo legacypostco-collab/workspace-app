@@ -188,7 +188,7 @@ def _form_card(values: dict | None = None, errors: dict | None = None) -> dict:
     return {
         "type": "form",
         "data": {
-            "title": _("🛒 Регистрация покупателя"),
+            "title": _("Регистрация покупателя"),
             "subtitle": _("8 полей · проверка контактов · доступ за 5 минут."),
             "submit_action": "start_registration",
             "submit_label": _("Создать аккаунт и войти →"),
@@ -263,7 +263,7 @@ def attempt_register(request, params: dict) -> dict:
     if errors:
         # ТЗ §3: «проблемы с контактами → запрос уточнений»
         return {"ok": False, "user": None, "response": {
-            "text": _("⚠️ Проверьте поля и попробуйте снова:") + "\n"
+            "text": _("Проверьте поля и попробуйте снова:") + "\n"
                     + "\n".join(f"• {f}: {m}" for f, m in errors.items()),
             "cards": [_form_card(v, errors)],
             "actions": [],
@@ -289,7 +289,7 @@ def attempt_register(request, params: dict) -> dict:
                 errors[fname if fname in v else "username"] = str(e)
                 msg_lines.append(f"• {fname}: {e}")
         return {"ok": False, "user": None, "response": {
-            "text": _("⚠️ Не получилось создать аккаунт:") + "\n" + "\n".join(msg_lines),
+            "text": _("Не получилось создать аккаунт:") + "\n" + "\n".join(msg_lines),
             "cards": [_form_card(v, errors)],
             "actions": [],
             "suggestions": [], "contextual_actions": [],
@@ -313,14 +313,14 @@ def attempt_register(request, params: dict) -> dict:
     greeting = (_(", %(company)s") % {"company": company_name}) if company_name else ""
     return {"ok": True, "user": user, "response": {
         "text": (
-            _("✅ Аккаунт создан и проверен. Добро пожаловать%(greeting)s!\n"
+            _("Аккаунт создан и проверен. Добро пожаловать%(greeting)s!\n"
               "• E-mail проверен · телефон проверен · мессенджер на связи.\n"
               "• Реквизиты компании подтянулись автоматически.\n\n"
               "Юридический адрес, банк и подписанта попросим при первой сделке "
               "(не сейчас — экономим ваше время).") % {"greeting": greeting}
         ),
         "cards": [],
-        "actions": [{"action": "reload_page", "label": _("🚀 Открыть кабинет")}],
+        "actions": [{"action": "reload_page", "label": _("Открыть кабинет")}],
         "suggestions": [_("Найди мне гусеничную цепь Komatsu"),
                          _("Покажи поставщиков с лучшим SLA")],
         "contextual_actions": [],

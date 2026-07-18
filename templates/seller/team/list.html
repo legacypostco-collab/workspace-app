@@ -10,7 +10,7 @@
   border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;white-space:nowrap;
 }
 .tm-tab:hover { color:#8A8A8A; }
-.tm-tab.active { color:#64B5F6;border-bottom-color:#64B5F6; }
+.tm-tab.active { color:#E84A21;border-bottom-color:#E84A21; }
 .tm-panel { display:none; }
 .tm-panel.active { display:block; }
 
@@ -29,7 +29,7 @@
   border:1px solid rgba(255,255,255,0.04);text-align:center;min-width:160px;
   transition:all .2s;cursor:pointer;
 }
-.tm-member:hover { border-color:rgba(100,181,246,0.2); }
+.tm-member:hover { border-color:rgba(232,74,33,0.2); }
 .tm-member-avatar {
   width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.06);
   display:flex;align-items:center;justify-content:center;margin:0 auto 8px;
@@ -54,7 +54,7 @@
   border:1px solid rgba(255,255,255,0.04);
   display:grid;grid-template-columns:40px 1fr 100px 90px 100px 80px;align-items:center;gap:12px;
 }
-.tm-list-row:hover { border-color:rgba(100,181,246,0.15); }
+.tm-list-row:hover { border-color:rgba(232,74,33,0.15); }
 .tm-list-avatar {
   width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);
   display:flex;align-items:center;justify-content:center;
@@ -102,7 +102,7 @@
   display:inline-flex;align-items:center;justify-content:center;cursor:pointer;
   transition:all .2s;font-size:11px;color:transparent;
 }
-.tm-perm-check.on { background:rgba(100,181,246,0.15);border-color:rgba(100,181,246,0.4);color:#64B5F6; }
+.tm-perm-check.on { background:rgba(232,74,33,0.15);border-color:rgba(232,74,33,0.4);color:#E84A21; }
 
 /* Chat */
 .tm-chat-container { display:grid;grid-template-columns:240px 1fr;gap:0;height:400px;background:#1A1A1A;border-radius:12px;border:1px solid rgba(255,255,255,0.04);overflow:hidden; }
@@ -112,7 +112,7 @@
   transition:background .2s;
 }
 .tm-chat-channel:hover { background:rgba(255,255,255,0.02); }
-.tm-chat-channel.active { background:rgba(100,181,246,0.06);border-left:2px solid #64B5F6; }
+.tm-chat-channel.active { background:rgba(232,74,33,0.06);border-left:2px solid #E84A21; }
 .tm-chat-ch-name { font-size:12px;font-weight:600;color:#ECECEC; }
 .tm-chat-ch-preview { font-size:10px;color:#6A6A6A;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .tm-chat-main { display:flex;flex-direction:column; }
@@ -127,7 +127,7 @@
 .tm-chat-msg-body {
   background:#111;border-radius:10px;padding:8px 12px;font-size:12px;color:#ECECEC;line-height:1.5;
 }
-.tm-chat-msg--me .tm-chat-msg-body { background:rgba(100,181,246,0.08); }
+.tm-chat-msg--me .tm-chat-msg-body { background:rgba(232,74,33,0.08); }
 .tm-chat-msg-time { font-size:9px;color:#6A6A6A;margin-top:3px; }
 .tm-chat-input {
   padding:10px 12px;border-top:1px solid rgba(255,255,255,0.06);
@@ -137,10 +137,10 @@
   flex:1;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;
   padding:8px 12px;font-size:12px;color:#ECECEC;outline:none;
 }
-.tm-chat-input input:focus { border-color:rgba(100,181,246,0.3); }
+.tm-chat-input input:focus { border-color:rgba(232,74,33,0.3); }
 .tm-chat-send {
-  padding:8px 14px;background:rgba(100,181,246,0.1);border:1px solid rgba(100,181,246,0.25);
-  border-radius:8px;font-size:12px;font-weight:600;color:#64B5F6;cursor:pointer;
+  padding:8px 14px;background:rgba(232,74,33,0.1);border:1px solid rgba(232,74,33,0.25);
+  border-radius:8px;font-size:12px;font-weight:600;color:#E84A21;cursor:pointer;
 }
 
 /* Tasks */
@@ -195,15 +195,15 @@
 .tm-rating-bar-name { color:#8A8A8A; }
 .tm-rating-bar-val { color:#ECECEC;font-weight:600; }
 .tm-rating-bar { height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden; }
-.tm-rating-bar-fill { height:100%;border-radius:3px;background:rgba(100,181,246,0.4); }
+.tm-rating-bar-fill { height:100%;border-radius:3px;background:rgba(232,74,33,0.4); }
 
 /* Btn */
 .tm-btn {
   padding:6px 14px;border-radius:7px;font-size:12px;font-weight:600;
   cursor:pointer;transition:all .2s;border:1px solid transparent;
 }
-.tm-btn--primary { background:rgba(100,181,246,0.1);border-color:rgba(100,181,246,0.25);color:#64B5F6; }
-.tm-btn--primary:hover { background:rgba(100,181,246,0.18); }
+.tm-btn--primary { background:rgba(232,74,33,0.1);border-color:rgba(232,74,33,0.25);color:#E84A21; }
+.tm-btn--primary:hover { background:rgba(232,74,33,0.18); }
 </style>
 {% endblock %}
 
@@ -678,7 +678,7 @@
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div>
         <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Название задачи *" %}</label>
-        <input id="task-title" type="text" placeholder="{% trans 'Опишите задачу кратко...' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input id="task-title" type="text" placeholder="{% trans 'Опишите задачу кратко...' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(232,74,33,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
@@ -704,7 +704,7 @@
       </div>
       <div>
         <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Дедлайн" %}</label>
-        <input id="task-due" type="text" placeholder="{% trans 'например: сегодня 18:00 или 30 апр' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input id="task-due" type="text" placeholder="{% trans 'например: сегодня 18:00 или 30 апр' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;transition:border-color .15s;" onfocus="this.style.borderColor='rgba(232,74,33,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;">
@@ -724,11 +724,11 @@
     <div style="display:flex;flex-direction:column;gap:14px;">
       <div>
         <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Email *</label>
-        <input id="invite-email" type="email" placeholder="email@company.com" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input id="invite-email" type="email" placeholder="email@company.com" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,74,33,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
         <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Имя и фамилия" %}</label>
-        <input id="invite-name" type="text" placeholder="{% trans 'Иванов Иван' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+        <input id="invite-name" type="text" placeholder="{% trans 'Иванов Иван' %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,74,33,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
       </div>
       <div>
         <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Роль" %}</label>
@@ -768,7 +768,7 @@ function toggleTask(el) {
 
 function selectMember(el, key) {
   document.querySelectorAll('.tm-member').forEach(m => m.style.borderColor = '');
-  el.style.borderColor = 'rgba(100,181,246,0.4)';
+  el.style.borderColor = 'rgba(232,74,33,0.4)';
 }
 
 function sendMsg() {
@@ -862,8 +862,8 @@ function savePermissions(btn) {
     if (label) perms.push(label.textContent.trim());
   });
   btn.textContent = gettext("✓ Сохранено");
-  btn.style.background = 'rgba(100,181,246,0.15)';
-  btn.style.color = '#64B5F6';
+  btn.style.background = 'rgba(232,74,33,0.15)';
+  btn.style.color = '#E84A21';
   btn.disabled = true;
   setTimeout(function(){
     btn.textContent = gettext("Сохранить права");

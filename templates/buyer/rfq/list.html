@@ -16,11 +16,11 @@
 
 .rfq-create-btn {
   padding:9px 20px;border-radius:10px;font-size:13px;font-weight:600;
-  background:rgba(100,181,246,0.12);color:#64B5F6;
-  border:1px solid rgba(100,181,246,0.25);cursor:pointer;transition:all .15s;
+  background:rgba(232,74,33,0.12);color:#E84A21;
+  border:1px solid rgba(232,74,33,0.25);cursor:pointer;transition:all .15s;
   text-decoration:none;
 }
-.rfq-create-btn:hover { background:rgba(100,181,246,0.22); }
+.rfq-create-btn:hover { background:rgba(232,74,33,0.22); }
 
 /* Tabs */
 .rfq-tabs {
@@ -35,7 +35,7 @@
 }
 .rfq-tab:hover { color:#919191; }
 .rfq-tab.active {
-  color:#64B5F6;border-bottom-color:#64B5F6;
+  color:#E84A21;border-bottom-color:#E84A21;
 }
 
 /* Stats row */
@@ -48,7 +48,7 @@
   transition:border-color .15s,background .15s;cursor:pointer;
 }
 a.rfq-stat { text-decoration:none; display:block; }
-a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
+a.rfq-stat:hover { border-color:rgba(232,74,33,0.35) !important; background:#2C2C2C !important; }
 .rfq-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -77,7 +77,7 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 .rfq-table tbody tr:hover { background:rgba(255,255,255,0.03); }
 
 .rfq-id {
-  font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6;
+  font-family:'Golos Text',sans-serif;font-weight:700;color:#E84A21;
 }
 .rfq-muted { color:#6A6A6A;font-size:11px; }
 .rfq-amount {
@@ -91,7 +91,7 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   font-weight:600;letter-spacing:0.02em;
 }
 .rfq-badge--waiting { background:rgba(232,92,13,0.12);color:#E85C0D; }
-.rfq-badge--quoted { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.rfq-badge--quoted { background:rgba(232,74,33,0.12);color:#E84A21; }
 .rfq-badge--ordered { background:rgba(255,255,255,0.06);color:#919191; }
 .rfq-badge--expired { background:rgba(138,138,138,0.15);color:#919191; }
 .rfq-badge--declined { background:rgba(224,85,85,0.12);color:#E05555; }
@@ -134,11 +134,11 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   </a>
   <a href="/buyer/rfq/?status=quoted" class="rfq-stat">
     <div class="rfq-stat-label">{% trans "Котировка готова" %}</div>
-    <div class="rfq-stat-val" style="color:#64B5F6;">2</div>
+    <div class="rfq-stat-val" style="color:#E84A21;">2</div>
   </a>
   <a href="/buyer/rfq/?status=ordered" class="rfq-stat">
     <div class="rfq-stat-label">{% trans "Заказ оформлен" %}</div>
-    <div class="rfq-stat-val" style="color:#64B5F6;">7</div>
+    <div class="rfq-stat-val" style="color:#E84A21;">7</div>
   </a>
 </div>
 
@@ -298,7 +298,7 @@ a.rfq-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   </div>
 </div>
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(232,74,33,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#E84A21;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
 (function(){

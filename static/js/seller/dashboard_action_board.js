@@ -164,16 +164,16 @@
       return;
     }
     const accentByKey = {
-      orders: "#7F77DD",
+      orders: "#A3A3A3",
       catalog_updates: "#1D9E75",
-      new_rfqs: "#378ADD",
+      new_rfqs: "#E84A21",
       import_errors: "#BA7517",
     };
 
     root.innerHTML = cards
       .map(function (card) {
         const key = card.key || "";
-        const accent = accentByKey[key] || "#7eaef0";
+        const accent = accentByKey[key] || "#E84A21";
         const value = card.value == null ? 0 : card.value;
         const subParts = [];
         if (key === "orders" && card.risk != null) subParts.push("SLA риск: " + String(card.risk));
@@ -248,11 +248,11 @@
     root.innerHTML =
       '<svg width="100%" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '" preserveAspectRatio="none">' +
       '<defs><linearGradient id="heroFade" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0%" stop-color="#64B5F6" stop-opacity="0.18"/>' +
-      '<stop offset="100%" stop-color="#64B5F6" stop-opacity="0"/>' +
+      '<stop offset="0%" stop-color="#E84A21" stop-opacity="0.18"/>' +
+      '<stop offset="100%" stop-color="#E84A21" stop-opacity="0"/>' +
       '</linearGradient></defs>' +
       '<path d="' + path + ' L ' + (width - padX) + ' ' + (height - padY) + ' L ' + padX + ' ' + (height - padY) + ' Z" fill="url(#heroFade)"/>' +
-      '<path d="' + path + '" fill="none" stroke="#64B5F6" stroke-width="2"/>' +
+      '<path d="' + path + '" fill="none" stroke="#E84A21" stroke-width="2"/>' +
       "</svg>";
   };
 
@@ -272,7 +272,7 @@
     const circumference = 2 * Math.PI * 42;
     const offset = circumference - (pct / 100) * circumference;
 
-    const color = "#64B5F6";
+    const color = "#E84A21";
     const ext = r.external || { value: 4.3 };
     const beh = r.behavior || { value: 4.2 };
 
@@ -306,9 +306,9 @@
       return;
     }
     const palette = {
-      production: "#7F77DD",
+      production: "#A3A3A3",
       ready_to_ship: "#1D9E75",
-      shipped: "#378ADD",
+      shipped: "#E84A21",
       delivered: "#639922",
       awaiting_reserve: "#BA7517",
     };
@@ -319,7 +319,7 @@
       .filter(function (r) { return Number(r.count || 0) > 0; })
       .map(function (row) {
         const count = Number(row.count || 0);
-        const color = palette[row.status_key] || row.color || "#7eaef0";
+        const color = palette[row.status_key] || row.color || "#E84A21";
         const width = Math.max(4, Math.round((count / safeTotal) * 100));
         return '<span class="dashboard-status-segment" style="width:' + String(width) + '%;background:' + escapeHtml(color) + '"></span>';
       })
@@ -328,7 +328,7 @@
     const legend = rows.map(function (row, i) {
       const label = row.label || row.name || "—";
       const count = Number(row.count || 0);
-      const color = palette[row.status_key] || row.color || "#7eaef0";
+      const color = palette[row.status_key] || row.color || "#E84A21";
       return (
         '<div class="dashboard-status-item">' +
         '<span class="dashboard-status-dot" style="background:' + escapeHtml(color) + '"></span>' +
@@ -380,12 +380,12 @@
 
     const grid = tickValues.map(function (_v, i) {
       const y = baseY - (chartH / ticks) * i;
-      return '<line x1="' + padL + '" y1="' + y + '" x2="' + (width - padR) + '" y2="' + y + '" stroke="#0c1f3f" stroke-dasharray="3 3" stroke-width="1" />';
+      return '<line x1="' + padL + '" y1="' + y + '" x2="' + (width - padR) + '" y2="' + y + '" stroke="#2a2a2a" stroke-dasharray="3 3" stroke-width="1" />';
     }).join("");
 
     const yAxisLabels = tickValues.map(function (v, i) {
       const y = baseY - (chartH / ticks) * i;
-      return '<text x="' + (padL - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="#93a7cb">' + escapeHtml(String(Math.round(v))) + "</text>";
+      return '<text x="' + (padL - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="#8d8d8d">' + escapeHtml(String(Math.round(v))) + "</text>";
     }).join("");
 
     const bars = data.map(function (r, i) {
@@ -396,7 +396,7 @@
       const labelX = x + barW / 2;
       return (
         '<rect data-tip-label="Выручка" data-tip-value="¥' + escapeHtml(String(v)) + 'M" x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" rx="4" ry="4" fill="' + escapeHtml(barColor) + '" opacity="0.95"></rect>' +
-        '<text x="' + labelX + '" y="' + (height - 6) + '" text-anchor="middle" font-size="11" fill="#93a7cb">' + escapeHtml(r.m || "") + "</text>"
+        '<text x="' + labelX + '" y="' + (height - 6) + '" text-anchor="middle" font-size="11" fill="#8d8d8d">' + escapeHtml(r.m || "") + "</text>"
       );
     }).join("");
 
@@ -406,7 +406,7 @@
       '<svg class="dashboard-chart-svg" width="100%" height="' + height + '" viewBox="0 0 ' + width + ' ' + height + '">' +
       grid +
       yAxisLabels +
-      '<line x1="' + padL + '" y1="' + baseY + '" x2="' + (width - padR) + '" y2="' + baseY + '" stroke="#0c1f3f" stroke-width="1" />' +
+      '<line x1="' + padL + '" y1="' + baseY + '" x2="' + (width - padR) + '" y2="' + baseY + '" stroke="#2a2a2a" stroke-width="1" />' +
       bars +
       "</svg>" +
       "</div>";
@@ -463,7 +463,7 @@
       const lines = [];
       for (let i = 0; i <= ticks; i += 1) {
         const y = baseY - (chartH / ticks) * i;
-        lines.push('<line x1="' + padL + '" y1="' + y + '" x2="' + (width - padR) + '" y2="' + y + '" stroke="#0c1f3f" stroke-dasharray="3 3" stroke-width="1" />');
+        lines.push('<line x1="' + padL + '" y1="' + y + '" x2="' + (width - padR) + '" y2="' + y + '" stroke="#2a2a2a" stroke-dasharray="3 3" stroke-width="1" />');
       }
       return lines.join("");
     })();
@@ -473,7 +473,7 @@
       for (let i = 0; i <= ticks; i += 1) {
         const v = minY + ((maxY - minY) / ticks) * i;
         const y = baseY - (chartH / ticks) * i;
-        labels.push('<text x="' + (padL - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="#93a7cb">' + escapeHtml(String(Math.round(v))) + "</text>");
+        labels.push('<text x="' + (padL - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="#8d8d8d">' + escapeHtml(String(Math.round(v))) + "</text>");
       }
       return labels.join("");
     })();
@@ -493,7 +493,7 @@
       return '<circle data-tip-label="SLA" data-tip-value="' + escapeHtml(String(p.v)) + '%" cx="' + p.x + '" cy="' + p.y + '" r="3" fill="' + escapeHtml(strokeColor) + '"></circle>';
     }).join("");
     const labels = pts.map(function (p) {
-      return '<text x="' + p.x + '" y="' + (height - 6) + '" text-anchor="middle" font-size="11" fill="#93a7cb">' + escapeHtml(p.m) + "</text>";
+      return '<text x="' + p.x + '" y="' + (height - 6) + '" text-anchor="middle" font-size="11" fill="#8d8d8d">' + escapeHtml(p.m) + "</text>";
     }).join("");
 
     root.innerHTML =
@@ -506,7 +506,7 @@
       "</linearGradient></defs>" +
       grid +
       yAxisLabels +
-      '<line x1="' + padL + '" y1="' + baseY + '" x2="' + (width - padR) + '" y2="' + baseY + '" stroke="#0c1f3f" stroke-width="1" />' +
+      '<line x1="' + padL + '" y1="' + baseY + '" x2="' + (width - padR) + '" y2="' + baseY + '" stroke="#2a2a2a" stroke-width="1" />' +
       '<path d="' + area + '" fill="url(#slaGradDark)" />' +
       '<path d="' + path + '" fill="none" stroke="' + escapeHtml(strokeColor) + '" stroke-width="2" />' +
       dots +
@@ -585,7 +585,7 @@
       "</div>";
 
     const rowsHtml = items.map(function (item) {
-      const dot = item.dot || "#378ADD";
+      const dot = item.dot || "#E84A21";
       const type = item.type || "";
       const requestType = item.request_type || "";
       const brand = item.brand || "";
@@ -597,11 +597,11 @@
       const url = item.url || "/seller/requests/";
       const typeStyle = (function () {
         if (requestType === "urgent") return { bg: "#23151d", color: "#ff9db2", dot: "#E24B4A" };
-        if (requestType === "drawing") return { bg: "#121332", color: "#bcb7ff", dot: "#7F77DD" };
-        if (requestType === "standard") return { bg: "#0a172a", color: "#a9c7f5", dot: "#378ADD" };
+        if (requestType === "drawing") return { bg: "#1f1f1f", color: "#d6d6d6", dot: "#A3A3A3" };
+        if (requestType === "standard") return { bg: "#151515", color: "#ffb08a", dot: "#E84A21" };
         if (type === "Срочный") return { bg: "#23151d", color: "#ff9db2" };
-        if (type === "По чертежу") return { bg: "#121332", color: "#bcb7ff" };
-        return { bg: "#0a172a", color: "#a9c7f5" };
+        if (type === "По чертежу") return { bg: "#1f1f1f", color: "#d6d6d6" };
+        return { bg: "#151515", color: "#ffb08a" };
       })();
       return (
         '<a class="dashboard-request-row" href="' + escapeHtml(url) + '">' +
@@ -640,7 +640,7 @@
         if (status === "success") return "#28C840";
         if (status === "warning") return "#FEBC2E";
         if (status === "danger") return "#FF5F57";
-        return "#64B5F6";
+        return "#E84A21";
       })();
       return (
         '<div class="dashboard-event-row">' +
@@ -723,11 +723,11 @@
     try { renderOrdersByStatus(payload); } catch (_e) {}
     try {
       const rev = normalizeRevenueSeries((payload && payload.revenue_series) || []);
-      renderSvgBarChart("dashboard-revenue-chart", rev, "#64B5F6");
+      renderSvgBarChart("dashboard-revenue-chart", rev, "#E84A21");
     } catch (_e) {}
     try {
       const slaSeries = normalizeSlaSeries((payload && payload.sla_series) || []);
-      renderSvgAreaChart("dashboard-sla-chart", slaSeries, "#64B5F6");
+      renderSvgAreaChart("dashboard-sla-chart", slaSeries, "#E84A21");
     } catch (_e) {}
     try { renderIncomingRequests(payload); } catch (_e) {}
     try { renderEventsFeed(payload); } catch (_e) {}

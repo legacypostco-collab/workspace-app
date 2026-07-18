@@ -40,9 +40,9 @@
     <tbody>
       {% for imp in imports %}
       <tr>
-        <td class="text-secondary"><a href="/admin-panel/imports/{{ imp.id }}/" style="color:#64B5F6;text-decoration:none;">{{ imp.created_at|date:"d.m.Y H:i" }}</a></td>
+        <td class="text-secondary"><a href="/admin-panel/imports/{{ imp.id }}/" style="color:#E84A21;text-decoration:none;">{{ imp.created_at|date:"d.m.Y H:i" }}</a></td>
         <td>
-          <a href="/admin-panel/users/{{ imp.seller_id }}/" style="color:#64B5F6;text-decoration:none;">{{ imp.seller.username }}</a>
+          <a href="/admin-panel/users/{{ imp.seller_id }}/" style="color:#E84A21;text-decoration:none;">{{ imp.seller.username }}</a>
         </td>
         <td class="text-secondary">{{ imp.filename|truncatechars:30 }}</td>
         <td>
@@ -52,7 +52,7 @@
         </td>
         <td>
           {% if imp.updated_count %}
-            <span style="color:#64B5F6;font-weight:600;">{{ imp.updated_count }}</span>
+            <span style="color:#E84A21;font-weight:600;">{{ imp.updated_count }}</span>
           {% else %}0{% endif %}
         </td>
         <td>

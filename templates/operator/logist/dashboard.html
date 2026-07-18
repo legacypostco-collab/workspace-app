@@ -238,7 +238,7 @@ function uploadCMR(btn) {
   div.className = 'cmr-upload';
   div.style.cssText = 'margin-top:10px;';
   div.innerHTML = '<input type="file" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="cmrFileSelected(this)">'
-    + '{% trans "<button onclick=\"this.previousElementSibling.click()\" style=\"padding:8px 16px;border-radius:8px;background:rgba(100,181,246,0.1);color:#64B5F6;border:1px solid rgba(100,181,246,0.2);font-size:12px;cursor:pointer;width:100%;\">📎 Выбрать файл CMR (PDF/JPG)</button>" %}';
+    + '{% trans "<button onclick=\"this.previousElementSibling.click()\" style=\"padding:8px 16px;border-radius:8px;background:rgba(232,74,33,0.1);color:#E84A21;border:1px solid rgba(232,74,33,0.2);font-size:12px;cursor:pointer;width:100%;\">📎 Выбрать файл CMR (PDF/JPG)</button>" %}';
   btn.parentElement.insertBefore(div, btn.nextSibling);
 }
 function cmrFileSelected(input) {
@@ -263,7 +263,7 @@ function updateRoute(btn) {
     + '{% trans "<option>Шанхай → Алматы → Москва</option>" %}'
     + '{% trans "<option>Гуанчжоу → Владивосток → Екатеринбург</option>" %}'
     + '</select>'
-    + '{% trans "<button onclick=\"applyRoute(this)\" style=\"padding:8px 14px;border-radius:8px;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.2);font-size:12px;cursor:pointer;white-space:nowrap;\">Применить</button>" %}';
+    + '{% trans "<button onclick=\"applyRoute(this)\" style=\"padding:8px 14px;border-radius:8px;background:rgba(232,74,33,0.12);color:#E84A21;border:1px solid rgba(232,74,33,0.2);font-size:12px;cursor:pointer;white-space:nowrap;\">Применить</button>" %}';
   btn.parentElement.insertBefore(div, btn.nextSibling);
 }
 function applyRoute(btn) {

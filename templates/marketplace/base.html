@@ -1,4 +1,4 @@
-{% load static %}
+{% load static i18n %}
 <!doctype html>
 <html lang="{{ language_code|default:'ru' }}">
   <head>
@@ -7,6 +7,7 @@
     <title>{% block title %}Consolidator Parts{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}" />
     <link rel="stylesheet" href="{% static 'marketplace/styles.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01" />
     {# Дочерние шаблоны кладут сюда meta description, OG, Schema.org JSON-LD. #}
     {% block extra_head %}{% endblock %}
   </head>
@@ -82,8 +83,8 @@
 
           {% if user.is_superuser %}
             <details class="menu-group" {% if '/admin-panel/' in request.path %}open{% endif %}>
-              <summary>Администрирование</summary>
-              <a href="{% url 'admin_panel_dashboard' %}" class="{% if '/admin-panel/' in request.path %}active{% endif %}">Панель управления</a>
+              <summary>{% trans "Администрирование" %}</summary>
+              <a href="{% url 'admin_panel_dashboard' %}" class="{% if '/admin-panel/' in request.path %}active{% endif %}">{% trans "Панель управления" %}</a>
             </details>
           {% endif %}
         </nav>
@@ -96,7 +97,9 @@
             <select name="language" class="side-lang-select" onchange="this.form.submit()">
               <option value="ru" {% if language_code == 'ru' %}selected{% endif %}>RU</option>
               <option value="en" {% if language_code == 'en' %}selected{% endif %}>EN</option>
+              <option value="es" {% if language_code == 'es' %}selected{% endif %}>ES</option>
               <option value="zh-hans" {% if language_code == 'zh' %}selected{% endif %}>中文</option>
+              <option value="ar" {% if language_code == 'ar' %}selected{% endif %}>AR</option>
             </select>
           </form>
         </div>

@@ -8,7 +8,7 @@
 <div class="ap-stats">
   <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Общий оборот" %}</div></a>
   <a href="/admin-panel/analytics/?period=month" class="ap-stat"><div class="ap-stat-value">${{ month_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "За месяц" %}</div></a>
-  <a href="/admin-panel/analytics/?period=week" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
+  <a href="/admin-panel/analytics/?period=week" class="ap-stat"><div class="ap-stat-value" style="color:#E84A21;">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
   <a href="/admin-panel/tariffs/" class="ap-stat"><div class="ap-stat-value">${{ platform_commission|floatformat:0 }}</div><div class="ap-stat-label">{% blocktrans with commission_rate=commission_rate %}Комиссия ({{ commission_rate }}%){% endblocktrans %}</div></a>
   <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ total_logistics|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Логистика" %}</div></a>
 </div>
@@ -31,7 +31,7 @@
       <div style="text-align:center;color:#5E5E5E;font-size:16px;">&darr;</div>
       <div class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;">
         <div style="width:60px;text-align:center;">
-          <div style="font-size:20px;font-weight:800;color:#64B5F6;font-family:'Golos Text',sans-serif;">{{ reserve_paid_count }}</div>
+          <div style="font-size:20px;font-weight:800;color:#E84A21;font-family:'Golos Text',sans-serif;">{{ reserve_paid_count }}</div>
         </div>
         <div style="flex:1;">
           <div style="font-size:13px;color:#ECECEC;">{% trans "Резерв оплачен" %}</div>
@@ -43,7 +43,7 @@
       <div style="text-align:center;color:#5E5E5E;font-size:16px;">&darr;</div>
       <div class="ap-card-elevated" style="display:flex;align-items:center;gap:12px;">
         <div style="width:60px;text-align:center;">
-          <div style="font-size:20px;font-weight:800;color:#64B5F6;font-family:'Golos Text',sans-serif;">{{ mid_paid_count }}</div>
+          <div style="font-size:20px;font-weight:800;color:#E84A21;font-family:'Golos Text',sans-serif;">{{ mid_paid_count }}</div>
         </div>
         <div style="flex:1;">
           <div style="font-size:13px;color:#ECECEC;">{% trans "Подтверждение оплачено" %}</div>
@@ -75,7 +75,7 @@
         <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Полностью оплачено" %}</span><span style="color:#4CAF50;">${{ fully_paid|floatformat:0 }}</span></div>
         <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Ожидают резерва" %}</span><span style="color:#E85C0D;">${{ pending_sum|floatformat:0 }}</span></div>
         <div style="display:flex;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.055);padding-top:10px;"><span style="color:#919191;">{% trans "Логистика (всего)" %}</span><span>${{ total_logistics|floatformat:0 }}</span></div>
-        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Комиссия платформы" %}</span><span style="color:#64B5F6;">${{ platform_commission|floatformat:0 }}</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#919191;">{% trans "Комиссия платформы" %}</span><span style="color:#E84A21;">${{ platform_commission|floatformat:0 }}</span></div>
       </div>
     </div>
 
@@ -115,7 +115,7 @@
     <tbody>
       {% for order in orders %}
       <tr {% if order.payment_status == 'awaiting_reserve' %}style="border-left:3px solid #E85C0D;"{% endif %}>
-        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ order.id }}</a></td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#E84A21;text-decoration:none;">ORD-{{ order.id }}</a></td>
         <td>{{ order.customer_name|truncatechars:18 }}</td>
         <td>${{ order.total_amount|floatformat:0 }}</td>
         <td>${{ order.reserve_amount|floatformat:0 }}</td>

@@ -63,7 +63,7 @@
         <tr>
           <td><input type="checkbox" name="claim_ids" value="{{ claim.id }}" class="row-cb"/></td>
           <td>#{{ claim.id }}</td>
-          <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
+          <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#E84A21;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
           <td>{{ claim.title|truncatechars:35 }}</td>
           <td>
             {% if claim.status == 'open' %}<span class="ap-badge ap-badge-orange">Open</span>

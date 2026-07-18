@@ -9,6 +9,7 @@ Endpoints:
 """
 from django.db import connection
 from django.http import JsonResponse
+from django.conf import settings
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
 
@@ -46,4 +47,8 @@ def readiness(request):
         checks["cache_error"] = str(e)[:100]
     ok = bool(checks.get("db")) and bool(checks.get("cache", True))
     status = 200 if ok else 503
-    return JsonResponse({"ok": ok, **checks}, status=status)
+    token = (getattr(settings, "HEALTHCHECK_TOKEN", "") or "").strip()
+    provided = (request.headers.get("X-Healthcheck-Token") or "").strip()
+    if token and provided == token:
+        return JsonResponse({"ok": ok, **checks}, status=status)
+    return JsonResponse({"ok": ok, "status": "ready" if ok else "unavailable"}, status=status)

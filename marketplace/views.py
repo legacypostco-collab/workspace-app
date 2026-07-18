@@ -460,6 +460,21 @@ def _webhook_payload_for_event(event: OrderEvent) -> dict:
 
 
 def _send_webhook_attempt(*, event: OrderEvent, endpoint: str, payload: dict, attempt: int) -> bool:
+    from assistant.security import safe_outbound_url
+
+    ok_url, url_reason = safe_outbound_url(endpoint)
+    if not ok_url:
+        WebhookDeliveryLog.objects.create(
+            order_event=event,
+            order=event.order,
+            endpoint=endpoint,
+            success=False,
+            attempt=attempt,
+            request_payload=payload,
+            error=f"blocked endpoint: {url_reason}",
+        )
+        return False
+
     headers = {"Content-Type": "application/json"}
     secret = getattr(settings, "WEBHOOK_SECRET", "") or ""
     if secret:
@@ -557,6 +572,14 @@ def _retry_webhook_log(log: WebhookDeliveryLog) -> bool:
         request_payload=payload,
     )
     try:
+        from assistant.security import safe_outbound_url
+
+        ok_url, url_reason = safe_outbound_url(log.endpoint)
+        if not ok_url:
+            retry_log.error = f"blocked endpoint: {url_reason}"
+            retry_log.save(update_fields=["error", "updated_at"])
+            return False
+
         req = Request(log.endpoint, data=body, headers=headers, method="POST")
         with urlopen(req, timeout=float(getattr(settings, "WEBHOOK_TIMEOUT_SEC", 2))) as resp:
             status_code = int(getattr(resp, "status", 200))
@@ -1036,11 +1059,9 @@ def _landing_context() -> dict:
             "active": date.today() <= expires_at,
             "expires_at": expires_at,
         },
-        # Бейдж-индикатор на иконке «заказы» в шапке. Лендинг видят ТОЛЬКО
-        # анонимы (залогиненных home() редиректит в /chat/), поэтому реального
-        # per-user счётчика тут быть не может — это демонстрационный индикатор.
-        # Вынесен сюда, чтобы число не было захардкожено в шаблоне (0 → скрыт).
-        "nav_badge": 3,
+        # Лендинг видят анонимы: залогиненных home() редиректит в /chat/.
+        # Поэтому персонального счётчика заказов здесь нет. 0 скрывает бейдж.
+        "nav_badge": 0,
     }
 
 
@@ -1398,7 +1419,7 @@ def register_view(request: HttpRequest) -> HttpResponse:
                 _send_verification_email(request, user)
                 return render(request, "marketplace/email_verification_sent.html", {"email": user.email})
 
-            login(request, user)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, "Регистрация завершена.")
             return redirect("dashboard")
     # GET /register/ → редирект в chat-native регистрацию.
@@ -1432,7 +1453,7 @@ def verify_email_view(request: HttpRequest, token: str) -> HttpResponse:
 
     user.is_active = True
     user.save(update_fields=["is_active"])
-    login(request, user)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     messages.success(request, "Email подтверждён! Добро пожаловать в Consolidator Parts.")
     return redirect("dashboard")
 
@@ -1466,8 +1487,18 @@ def login_view(request: HttpRequest) -> HttpResponse:
     form = LoginForm(request, data=data)
     if form.is_valid():
         user = form.get_user()
+        try:
+            from assistant.security import user_has_enabled_2fa, verify_user_2fa
+            if user_has_enabled_2fa(user) and not verify_user_2fa(user, request.POST.get("otp_code") or ""):
+                _rl_hit(request, "login", 600)
+                messages.error(request, "Для аккаунта включена 2FA. Введите одноразовый код.")
+                return redirect("/chat/?action=start_login")
+        except Exception:
+            logger.exception("2FA check failed on login")
+            messages.error(request, "Не удалось проверить 2FA. Попробуйте позже.")
+            return redirect("/chat/?action=start_login")
         _rl_reset(request, "login")
-        login(request, user)
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         next_url = (request.POST.get("next") or request.GET.get("next") or "").strip()
         if next_url and next_url.startswith("/") and not next_url.startswith("//"):
             return redirect(next_url)
@@ -1517,7 +1548,7 @@ def demo_login(request: HttpRequest) -> HttpResponse:
     user = authenticate(request, username=username, password="demo12345")
     if user is None:
         return redirect("login")
-    login(request, user)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return redirect(redirect_to)
 
 
@@ -2411,25 +2442,25 @@ def seller_qr_control(request: HttpRequest) -> HttpResponse:
             "label": _("Логистика (Зарубеж)"),
             "action": _("Сканирование QR-кода отгрузки"),
             # самолёт
-            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 19-7z"/></svg>',
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E84A21" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 19-7z"/></svg>',
         },
         "transit_rf": {
             "label": _("Логистика (РФ)"),
             "action": _("Сканирование при приёме груза"),
             # грузовик
-            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E84A21" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
         },
         "issuing": {
             "label": _("Выдача"),
             "action": _("QR-скан при получении заказа"),
             # коробка с рукой / выдача
-            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E84A21" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
         },
         "delivered": {
             "label": _("Доставлен"),
             "action": _("Подтверждение доставки"),
             # локация / точка назначения
-            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+            "svg": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E84A21" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
         },
     }
 
@@ -3753,7 +3784,7 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
     y = height - 15 * mm
 
     # Header band
-    pdf.setFillColor(colors.HexColor("#0f2f66"))
+    pdf.setFillColor(colors.HexColor("#181818"))
     pdf.roundRect(left, y - 16 * mm, right - left, 16 * mm, 4 * mm, fill=1, stroke=0)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 14)
@@ -3762,14 +3793,14 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
     pdf.drawString(left + 4 * mm, y - 13 * mm, "Commercial Proposal / Коммерческое предложение")
 
     y -= 23 * mm
-    pdf.setFillColor(colors.HexColor("#0c1530"))
+    pdf.setFillColor(colors.HexColor("#242424"))
     pdf.setFont("Helvetica-Bold", 11)
     pdf.drawString(left, y, f"KP No: {doc_no}")
     pdf.setFont("Helvetica", 9)
     pdf.drawRightString(right, y, f"Date: {rfq.created_at:%d.%m.%Y}")
 
     y -= 8 * mm
-    pdf.setFillColor(colors.HexColor("#1a2748"))
+    pdf.setFillColor(colors.HexColor("#4A4A4A"))
     pdf.roundRect(left, y - 20 * mm, right - left, 20 * mm, 2 * mm, fill=0, stroke=1)
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawString(left + 3 * mm, y - 5 * mm, "Customer")
@@ -3780,9 +3811,9 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
 
     y -= 27 * mm
     # Table header
-    pdf.setFillColor(colors.HexColor("#e9f0ff"))
+    pdf.setFillColor(colors.HexColor("#F2F2F1"))
     pdf.rect(left, y - 7 * mm, right - left, 7 * mm, fill=1, stroke=0)
-    pdf.setFillColor(colors.HexColor("#1b2d57"))
+    pdf.setFillColor(colors.HexColor("#242424"))
     pdf.setFont("Helvetica-Bold", 8)
     pdf.drawString(left + 2 * mm, y - 4.8 * mm, "#")
     pdf.drawString(left + 8 * mm, y - 4.8 * mm, "Part")
@@ -3802,7 +3833,7 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
         part_title = (row["part"].title or "")[:34]
         oem = (row["part"].oem_number or "")[:20]
         lead = f"{row['part'].production_lead_days} d"
-        pdf.setFillColor(colors.HexColor("#0f1f42"))
+        pdf.setFillColor(colors.HexColor("#343434"))
         pdf.drawString(left + 2 * mm, y, str(idx))
         pdf.drawString(left + 8 * mm, y, part_title)
         pdf.drawString(left + 88 * mm, y, oem)
@@ -3813,16 +3844,16 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
         y -= 5.2 * mm
 
     y -= 2 * mm
-    pdf.setStrokeColor(colors.HexColor("#b7c7e8"))
+    pdf.setStrokeColor(colors.HexColor("#CCCCCA"))
     pdf.line(left + 130 * mm, y, right, y)
     y -= 7 * mm
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.setFillColor(colors.HexColor("#0f2f66"))
+    pdf.setFillColor(colors.HexColor("#181818"))
     pdf.drawRightString(right, y, f"TOTAL: ${total}")
 
     y -= 10 * mm
     pdf.setFont("Helvetica", 8)
-    pdf.setFillColor(colors.HexColor("#253c72"))
+    pdf.setFillColor(colors.HexColor("#4A4A4A"))
     pdf.drawString(left, y, "Terms: Prices are valid for 3 business days. Delivery terms are confirmed at order stage.")
     y -= 4.5 * mm
     pdf.drawString(left, y, "Условия: КП действительно 3 рабочих дня. Финальные условия поставки подтверждаются при заказе.")
@@ -4255,9 +4286,11 @@ def seller_import_google_sheet(request: HttpRequest) -> HttpResponse:
     """Import from a public Google Sheets URL."""
     import re as _re
     import urllib.request as _urllib_request
+    from urllib.parse import urlparse
 
     sheet_url = (request.POST.get("sheet_url") or "").strip()
-    if "docs.google.com/spreadsheets" not in sheet_url:
+    parsed = urlparse(sheet_url)
+    if parsed.scheme != "https" or parsed.hostname != "docs.google.com":
         messages.error(request, "Нужна корректная ссылка Google Sheets.")
         return redirect("seller_product_list")
 
@@ -4269,6 +4302,17 @@ def seller_import_google_sheet(request: HttpRequest) -> HttpResponse:
 
     sheet_id = match.group(1)
     csv_export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
+    from assistant.security import safe_outbound_url
+
+    ok_url, reason = safe_outbound_url(
+        csv_export_url,
+        allowed_hosts_setting="GOOGLE_SHEETS_ALLOWED_HOSTS",
+        allow_private_setting="GOOGLE_SHEETS_ALLOW_PRIVATE_IPS",
+        allow_insecure_setting="GOOGLE_SHEETS_ALLOW_INSECURE_HTTP",
+    )
+    if not ok_url:
+        messages.error(request, f"Google-таблица заблокирована настройками безопасности: {reason}")
+        return redirect("seller_product_list")
 
     try:
         req = _urllib_request.Request(csv_export_url, headers={"User-Agent": "ConsolidatorParts/1.0"})
@@ -5063,7 +5107,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     y = height - 15 * mm
 
     # Header
-    pdf.setFillColor(colors.HexColor("#0f2f66"))
+    pdf.setFillColor(colors.HexColor("#181818"))
     pdf.roundRect(left, y - 16 * mm, right - left, 16 * mm, 4 * mm, fill=1, stroke=0)
     pdf.setFillColor(colors.white)
     pdf.setFont("Helvetica-Bold", 14)
@@ -5072,7 +5116,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     pdf.drawString(left + 4 * mm, y - 13 * mm, "Invoice / Счет на оплату")
     y -= 23 * mm
 
-    pdf.setFillColor(colors.HexColor("#0c1530"))
+    pdf.setFillColor(colors.HexColor("#242424"))
     pdf.setFont("Helvetica-Bold", 11)
     invoice_no = order.invoice_number or f"INV-{order.created_at:%Y%m%d}-{order.id}"
     pdf.drawString(left, y, f"Invoice No: {invoice_no}")
@@ -5084,7 +5128,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     pdf.drawString(left + 95 * mm, y, f"Payment: {order.get_payment_status_display()}")
 
     y -= 10 * mm
-    pdf.setStrokeColor(colors.HexColor("#1a2748"))
+    pdf.setStrokeColor(colors.HexColor("#4A4A4A"))
     pdf.roundRect(left, y - 21 * mm, right - left, 21 * mm, 2 * mm, fill=0, stroke=1)
     pdf.setFont("Helvetica-Bold", 9)
     pdf.drawString(left + 3 * mm, y - 5 * mm, "Buyer")
@@ -5095,9 +5139,9 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
 
     y -= 27 * mm
     # Items table
-    pdf.setFillColor(colors.HexColor("#e9f0ff"))
+    pdf.setFillColor(colors.HexColor("#F2F2F1"))
     pdf.rect(left, y - 7 * mm, right - left, 7 * mm, fill=1, stroke=0)
-    pdf.setFillColor(colors.HexColor("#1b2d57"))
+    pdf.setFillColor(colors.HexColor("#242424"))
     pdf.setFont("Helvetica-Bold", 8)
     pdf.drawString(left + 2 * mm, y - 4.8 * mm, "#")
     pdf.drawString(left + 8 * mm, y - 4.8 * mm, "Part")
@@ -5113,7 +5157,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
             pdf.showPage()
             y = height - 20 * mm
             pdf.setFont("Helvetica", 8)
-        pdf.setFillColor(colors.HexColor("#0f1f42"))
+        pdf.setFillColor(colors.HexColor("#343434"))
         pdf.drawString(left + 2 * mm, y, str(idx))
         pdf.drawString(left + 8 * mm, y, (item.part.title or "")[:40])
         pdf.drawString(left + 96 * mm, y, (item.part.oem_number or "")[:20])
@@ -5123,23 +5167,23 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
         y -= 5.1 * mm
 
     y -= 1 * mm
-    pdf.setStrokeColor(colors.HexColor("#b7c7e8"))
+    pdf.setStrokeColor(colors.HexColor("#CCCCCA"))
     pdf.line(left + 118 * mm, y, right, y)
     y -= 6 * mm
     pdf.setFont("Helvetica", 9)
-    pdf.setFillColor(colors.HexColor("#253c72"))
+    pdf.setFillColor(colors.HexColor("#4A4A4A"))
     pdf.drawRightString(right, y, f"Subtotal: ${subtotal}")
     y -= 5 * mm
     pdf.drawRightString(right, y, f"Logistics: ${order.logistics_cost} {order.logistics_currency} ({order.logistics_provider})")
     y -= 5 * mm
     pdf.setFont("Helvetica-Bold", 11)
-    pdf.setFillColor(colors.HexColor("#0f2f66"))
+    pdf.setFillColor(colors.HexColor("#181818"))
     pdf.drawRightString(right, y, f"TOTAL: ${order.total_amount}")
 
     # Payment schedule + QR
     y -= 11 * mm
     pdf.setFont("Helvetica-Bold", 10)
-    pdf.setFillColor(colors.HexColor("#0c1530"))
+    pdf.setFillColor(colors.HexColor("#242424"))
     pdf.drawString(left, y, "Payment Schedule / График платежей")
     y -= 6 * mm
     pdf.setFont("Helvetica", 9)
@@ -5162,7 +5206,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
 
     y -= 35 * mm
     pdf.setFont("Helvetica", 8)
-    pdf.setFillColor(colors.HexColor("#253c72"))
+    pdf.setFillColor(colors.HexColor("#4A4A4A"))
     pdf.drawString(left, y, "This invoice is generated automatically by Consolidator Parts.")
     y -= 4.5 * mm
     pdf.drawString(left, y, "Настоящий счет сформирован автоматически системой Consolidator Parts.")
@@ -5341,18 +5385,6 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
     file_url = (request.POST.get("file_url") or "").strip()
     file_obj = request.FILES.get("file_obj")
     allowed_doc_types = {key for key, _ in OrderDocument.DOC_TYPE_CHOICES}
-    blocked_extensions = {
-        ".exe",
-        ".sh",
-        ".bat",
-        ".cmd",
-        ".msi",
-        ".php",
-        ".js",
-        ".jar",
-        ".com",
-        ".scr",
-    }
     allowed_extensions = {
         ".pdf",
         ".png",
@@ -5377,16 +5409,18 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
         messages.error(request, "Добавьте файл или ссылку на документ.")
         return redirect("order_detail", order_id=order.id)
     if file_obj:
-        ext = os.path.splitext(file_obj.name or "")[1].lower()
-        if ext in blocked_extensions or ext not in allowed_extensions:
-            messages.error(request, "Тип файла не разрешен.")
+        try:
+            from marketplace.upload_security import safe_upload_name, validate_uploaded_file
+
+            ext = validate_uploaded_file(
+                file_obj,
+                allowed_ext=allowed_extensions,
+                max_bytes=int(settings.MAX_ORDER_DOCUMENT_BYTES),
+            )
+            file_obj.name = safe_upload_name(file_obj, ext)
+        except Exception as exc:
+            messages.error(request, str(exc))
             return redirect("order_detail", order_id=order.id)
-        if int(file_obj.size or 0) > int(settings.MAX_ORDER_DOCUMENT_BYTES):
-            messages.error(request, f"Файл слишком большой (макс. {settings.MAX_ORDER_DOCUMENT_BYTES} байт).")
-            return redirect("order_detail", order_id=order.id)
-        # Normalize filename for storage.
-        safe_name = slugify(os.path.splitext(file_obj.name)[0]) or "document"
-        file_obj.name = f"{safe_name}{ext}"
 
     doc = OrderDocument.objects.create(
         order=order,
@@ -5410,6 +5444,8 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
 @csrf_exempt
 @require_POST
 def payment_callback(request: HttpRequest) -> HttpResponse:
+    import hmac
+
     configured_secret = (getattr(settings, "PAYMENT_CALLBACK_SECRET", "") or "").strip()
     # SECURITY P0-2: в проде секрет ОБЯЗАТЕЛЕН. Иначе endpoint открыт всему
     # миру и позволяет менять Order.payment_status на любой заказ.
@@ -5420,13 +5456,8 @@ def payment_callback(request: HttpRequest) -> HttpResponse:
                 status=503,
             )
         # В DEBUG разрешаем без секрета — для локальной разработки.
-    provided_secret = (
-        request.headers.get("X-Payment-Secret")
-        or request.POST.get("secret")
-        or request.GET.get("secret")
-        or ""
-    ).strip()
-    if configured_secret and configured_secret != provided_secret:
+    provided_secret = (request.headers.get("X-Payment-Secret") or "").strip()
+    if configured_secret and not hmac.compare_digest(configured_secret, provided_secret):
         return JsonResponse({"ok": False, "error": "invalid_secret"}, status=403)
 
     payload: dict = {}
@@ -7168,6 +7199,15 @@ def twofa_setup(request):
             else:
                 messages.error(request, _("Неверный код. Попробуйте ещё раз."))
         elif action == "disable":
+            try:
+                import pyotp
+            except ImportError:
+                messages.error(request, "pyotp library not installed")
+                return redirect("twofa_setup")
+            code = (request.POST.get("code") or "").strip()
+            if not twofa.secret or not pyotp.TOTP(twofa.secret).verify(code, valid_window=1):
+                messages.error(request, _("Для отключения 2FA введите текущий одноразовый код."))
+                return redirect("twofa_setup")
             twofa.enabled = False
             twofa.secret = ""
             twofa.backup_codes = ""

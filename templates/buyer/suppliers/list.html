@@ -39,7 +39,7 @@
   padding:4px 10px;border-radius:8px;
   font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;
 }
-.sup-rating--high { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.sup-rating--high { background:rgba(232,74,33,0.12);color:#E84A21; }
 .sup-rating--mid { background:rgba(232,92,13,0.12);color:#E85C0D; }
 .sup-star { font-size:12px; }
 
@@ -74,8 +74,8 @@
 .sup-bar-fill {
   height:100%;border-radius:3px;transition:width .3s;
 }
-.sup-bar-fill--green { background:#64B5F6; }
-.sup-bar-fill--blue { background:#64B5F6; }
+.sup-bar-fill--green { background:#E84A21; }
+.sup-bar-fill--blue { background:#E84A21; }
 .sup-bar-fill--orange { background:#E85C0D; }
 .sup-bar-val {
   font-size:11px;color:#ECECEC;font-weight:600;width:32px;text-align:right;flex-shrink:0;
@@ -88,10 +88,10 @@
   cursor:pointer;transition:all .15s;text-align:center;text-decoration:none;
 }
 .sup-action-btn--compare {
-  background:rgba(100,181,246,0.12);color:#64B5F6;
-  border:1px solid rgba(100,181,246,0.25);
+  background:rgba(232,74,33,0.12);color:#E84A21;
+  border:1px solid rgba(232,74,33,0.25);
 }
-.sup-action-btn--compare:hover { background:rgba(100,181,246,0.2); }
+.sup-action-btn--compare:hover { background:rgba(232,74,33,0.2); }
 .sup-action-btn--history {
   background:rgba(255,255,255,0.04);color:#ECECEC;
   border:1px solid rgba(255,255,255,0.08);
@@ -169,9 +169,9 @@
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="color:#6A6A6A;"><th style="text-align:left;padding:4px 8px;">{% trans "Заказ" %}</th><th style="text-align:left;padding:4px 8px;">{% trans "Дата" %}</th><th style="text-align:right;padding:4px 8px;">{% trans "Сумма" %}</th><th style="text-align:center;padding:4px 8px;">{% trans "Статус" %}</th></tr></thead>
         <tbody>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2026-0142</td><td style="padding:6px 8px;color:#919191;">22.03.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$11,200</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,92,13,0.12);color:#E85C0D;">{% trans "В производстве" %}</span></td></tr>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2025-0891</td><td style="padding:6px 8px;color:#919191;">15.12.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$8,400</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2025-0743</td><td style="padding:6px 8px;color:#919191;">05.09.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$15,600</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2026-0142</td><td style="padding:6px 8px;color:#919191;">22.03.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$11,200</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,92,13,0.12);color:#E85C0D;">{% trans "В производстве" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2025-0891</td><td style="padding:6px 8px;color:#919191;">15.12.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$8,400</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2025-0743</td><td style="padding:6px 8px;color:#919191;">05.09.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$15,600</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -237,9 +237,9 @@
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="color:#6A6A6A;"><th style="text-align:left;padding:4px 8px;">{% trans "Заказ" %}</th><th style="text-align:left;padding:4px 8px;">{% trans "Дата" %}</th><th style="text-align:right;padding:4px 8px;">{% trans "Сумма" %}</th><th style="text-align:center;padding:4px 8px;">{% trans "Статус" %}</th></tr></thead>
         <tbody>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2026-0138</td><td style="padding:6px 8px;color:#919191;">05.03.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$4,520</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,92,13,0.12);color:#E85C0D;">{% trans "В пути" %}</span></td></tr>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2025-0820</td><td style="padding:6px 8px;color:#919191;">22.11.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$3,200</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2025-0698</td><td style="padding:6px 8px;color:#919191;">14.08.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$6,800</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2026-0138</td><td style="padding:6px 8px;color:#919191;">05.03.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$4,520</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,92,13,0.12);color:#E85C0D;">{% trans "В пути" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2025-0820</td><td style="padding:6px 8px;color:#919191;">22.11.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$3,200</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2025-0698</td><td style="padding:6px 8px;color:#919191;">14.08.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$6,800</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -305,8 +305,8 @@
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="color:#6A6A6A;"><th style="text-align:left;padding:4px 8px;">{% trans "Заказ" %}</th><th style="text-align:left;padding:4px 8px;">{% trans "Дата" %}</th><th style="text-align:right;padding:4px 8px;">{% trans "Сумма" %}</th><th style="text-align:center;padding:4px 8px;">{% trans "Статус" %}</th></tr></thead>
         <tbody>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2026-0131</td><td style="padding:6px 8px;color:#919191;">28.02.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$2,180</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,92,13,0.12);color:#E85C0D;">{% trans "На таможне" %}</span></td></tr>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2025-0755</td><td style="padding:6px 8px;color:#919191;">10.10.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$4,100</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2026-0131</td><td style="padding:6px 8px;color:#919191;">28.02.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$2,180</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,92,13,0.12);color:#E85C0D;">{% trans "На таможне" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2025-0755</td><td style="padding:6px 8px;color:#919191;">10.10.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$4,100</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -372,9 +372,9 @@
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr style="color:#6A6A6A;"><th style="text-align:left;padding:4px 8px;">{% trans "Заказ" %}</th><th style="text-align:left;padding:4px 8px;">{% trans "Дата" %}</th><th style="text-align:right;padding:4px 8px;">{% trans "Сумма" %}</th><th style="text-align:center;padding:4px 8px;">{% trans "Статус" %}</th></tr></thead>
         <tbody>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2026-0125</td><td style="padding:6px 8px;color:#919191;">14.02.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$6,300</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2025-0910</td><td style="padding:6px 8px;color:#919191;">08.01.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$12,400</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
-          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#64B5F6;font-weight:600;">ORD-2025-0801</td><td style="padding:6px 8px;color:#919191;">19.11.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$9,800</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(100,181,246,0.12);color:#64B5F6;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2026-0125</td><td style="padding:6px 8px;color:#919191;">14.02.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$6,300</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2025-0910</td><td style="padding:6px 8px;color:#919191;">08.01.2026</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$12,400</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
+          <tr style="border-top:1px solid rgba(255,255,255,0.04);"><td style="padding:6px 8px;color:#E84A21;font-weight:600;">ORD-2025-0801</td><td style="padding:6px 8px;color:#919191;">19.11.2025</td><td style="padding:6px 8px;text-align:right;font-weight:600;">$9,800</td><td style="padding:6px 8px;text-align:center;"><span style="font-size:10px;padding:2px 8px;border-radius:4px;background:rgba(232,74,33,0.12);color:#E84A21;">{% trans "Доставлен" %}</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -382,7 +382,7 @@
 
 </div>
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(232,74,33,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#E84A21;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
 (function(){
@@ -411,7 +411,7 @@
         showToast(gettext("Убран из сравнения: ") + name);
       } else {
         btn.dataset.selected = '1';
-        btn.style.background = 'rgba(100,181,246,0.3)';
+        btn.style.background = 'rgba(232,74,33,0.3)';
         btn.textContent = '\u2713 В сравнении';
         showToast(gettext("Добавлен к сравнению: ") + name);
       }

@@ -20,7 +20,7 @@
   {% endif %}
 
   <style>
-    :root { --bg:#FBF7F7; --surface:#fff; --ink:#1A1422; --ink-2:#3A2E36; --ink-3:#6B5560; --accent:#64B5F6; --line:rgba(0,0,0,0.07); --card-shadow:0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03); }
+    :root { --bg:#FBF7F7; --surface:#fff; --ink:#151515; --ink-2:#3A2E36; --ink-3:#6B5560; --accent:#E84A21; --line:rgba(0,0,0,0.07); --card-shadow:0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03); }
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:15px;line-height:1.55;}
     a{color:var(--accent);text-decoration:none;}
@@ -45,7 +45,7 @@
     .cat-header{font-family:'Golos Text',sans-serif;font-weight:700;font-size:20px;margin:32px 0 14px;color:var(--ink);}
     .cat-header:first-of-type{margin-top:0;}
     details.faq{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-bottom:10px;box-shadow:var(--card-shadow);transition:all .15s ease;}
-    details.faq[open]{border-color:rgba(100,181,246,0.35);}
+    details.faq[open]{border-color:rgba(232,74,33,0.35);}
     details.faq summary{cursor:pointer;font-weight:600;font-size:16px;color:var(--ink);list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;}
     details.faq summary::-webkit-details-marker{display:none;}
     details.faq summary::after{content:'＋';color:var(--ink-3);font-weight:400;font-size:22px;transition:transform .2s ease;}
@@ -67,13 +67,14 @@
     .cta-bottom h3{font-family:'Golos Text',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px;}
     .cta-bottom p{color:rgba(255,255,255,0.72);font-size:14px;}
     .cta-bottom a{display:inline-block;padding:12px 24px;background:var(--accent);color:#1a1a1a;border-radius:10px;font-weight:700;font-size:15px;white-space:nowrap;}
-    .cta-bottom a:hover{background:#7BC5FA;text-decoration:none;}
+    .cta-bottom a:hover{background:#FF6B3D;text-decoration:none;}
     @media (max-width:640px){
       h1{font-size:28px;}
       main{padding:24px 16px 60px;}
       .cta-bottom{flex-direction:column;text-align:center;}
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
   <header class="topbar">

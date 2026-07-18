@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import tempfile
 from pathlib import Path
 from dataclasses import dataclass
 from uuid import uuid4
@@ -26,8 +27,12 @@ def _save_bytes_to_storage(storage_path: str, content: bytes) -> str:
         return default_storage.save(storage_path, ContentFile(content))
     except PermissionError:
         # Fallback for restricted local environments: keep logic compatible with S3/default storage in production.
-        fallback_root = Path("/tmp/workspace-app-media")
-        fallback_root.mkdir(parents=True, exist_ok=True)
+        fallback_root = Path(tempfile.gettempdir()) / "workspace-app-media"
+        fallback_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:
+            fallback_root.chmod(0o700)
+        except OSError:
+            pass
         fs = FileSystemStorage(location=str(fallback_root))
         return fs.save(storage_path, ContentFile(content))
 
@@ -95,7 +100,7 @@ def read_stored_file_bytes(storage_key: str) -> bytes:
         with default_storage.open(storage_key, "rb") as fh:
             return fh.read()
     except Exception:
-        fallback_root = Path("/tmp/workspace-app-media")
+        fallback_root = Path(tempfile.gettempdir()) / "workspace-app-media"
         fallback_path = fallback_root / storage_key
         with fallback_path.open("rb") as fh:
             return fh.read()

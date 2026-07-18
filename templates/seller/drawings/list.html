@@ -24,8 +24,8 @@
 }
 .drw-metric:last-child { border-right:none; }
 .drw-metric[data-filter] { cursor:pointer;transition:background .15s,border-color .15s; }
-.drw-metric[data-filter]:hover { background:rgba(100,181,246,0.05); border-right-color:rgba(100,181,246,0.25) !important; }
-.drw-metric[data-filter].drw-metric--active { background:rgba(100,181,246,0.07);border-radius:0; }
+.drw-metric[data-filter]:hover { background:rgba(232,74,33,0.05); border-right-color:rgba(232,74,33,0.25) !important; }
+.drw-metric[data-filter].drw-metric--active { background:rgba(232,74,33,0.07);border-radius:0; }
 .drw-metric-label {
   font-size:10px;font-weight:600;color:#8A8A8A;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;
 }
@@ -44,7 +44,7 @@
   border-radius:10px;color:#ECECEC;font-size:13px;outline:none;
 }
 .drw-search::placeholder { color:#5E5E5E; }
-.drw-search:focus { border-color:rgba(100,181,246,0.35); }
+.drw-search:focus { border-color:rgba(232,74,33,0.35); }
 .drw-select {
   padding:7px 10px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.06);
   border-radius:10px;color:#ECECEC;font-size:12px;outline:none;cursor:pointer;
@@ -84,8 +84,8 @@
   width:6px;height:6px;border-radius:50%;
 }
 .drw-badge--draft .drw-badge-dot { background:#5A5A5A; }
-.drw-badge--on_review .drw-badge-dot { background:#64B5F6; }
-.drw-badge--approved .drw-badge-dot { background:#64B5F6; }
+.drw-badge--on_review .drw-badge-dot { background:#E84A21; }
+.drw-badge--approved .drw-badge-dot { background:#E84A21; }
 .drw-badge--rejected .drw-badge-dot { background:#FF8C42; }
 .drw-badge--archived .drw-badge-dot { background:#3A3A3A; }
 
@@ -107,7 +107,7 @@
   padding:4px 8px;border-radius:6px;font-size:11px;background:rgba(255,255,255,0.04);
   color:#919191;cursor:pointer;border:none;transition:background .15s,color .15s;
 }
-.drw-action-btn:hover { background:rgba(100,181,246,0.08);color:#64B5F6; }
+.drw-action-btn:hover { background:rgba(232,74,33,0.08);color:#E84A21; }
 
 /* Upload area */
 .drw-upload-area {
@@ -115,7 +115,7 @@
   margin-bottom:16px;cursor:pointer;transition:border-color .2s,background .2s;
 }
 .drw-upload-area:hover {
-  border-color:rgba(100,181,246,0.35);background:rgba(100,181,246,0.03);
+  border-color:rgba(232,74,33,0.35);background:rgba(232,74,33,0.03);
 }
 .drw-upload-icon { font-size:28px;margin-bottom:8px; }
 .drw-upload-text { font-size:13px;color:#919191; }
@@ -153,27 +153,27 @@
 .drw-modal-field textarea { resize:vertical;min-height:60px; }
 .drw-modal-field input:focus,
 .drw-modal-field select:focus,
-.drw-modal-field textarea:focus { border-color:rgba(100,181,246,0.4); }
+.drw-modal-field textarea:focus { border-color:rgba(232,74,33,0.4); }
 .drw-modal-btns { display:flex;gap:8px;justify-content:flex-end;margin-top:18px; }
 .drw-modal-btn {
   padding:8px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;border:none;
 }
 .drw-modal-btn--cancel { background:rgba(255,255,255,0.06);color:#919191; }
 .drw-modal-btn--cancel:hover { background:rgba(255,255,255,0.1); }
-.drw-modal-btn--save { background:#64B5F6;color:#111; }
+.drw-modal-btn--save { background:#E84A21;color:#111; }
 .drw-modal-btn--save:hover { background:#7ec4f7; }
 
 .drw-modal-upload-zone {
   border:2px dashed rgba(255,255,255,0.1);border-radius:10px;padding:20px;text-align:center;
   cursor:pointer;transition:border-color .2s;
 }
-.drw-modal-upload-zone:hover { border-color:rgba(100,181,246,0.4); }
+.drw-modal-upload-zone:hover { border-color:rgba(232,74,33,0.4); }
 .drw-modal-upload-zone input[type="file"] { display:none; }
-.drw-modal-file-name { font-size:12px;color:#64B5F6;margin-top:6px; }
+.drw-modal-file-name { font-size:12px;color:#E84A21;margin-top:6px; }
 
 /* ─── Row hover ─── */
-.drw-row:hover td { background:rgba(100,181,246,0.04); }
-.drw-row.active td { background:rgba(100,181,246,0.07); }
+.drw-row:hover td { background:rgba(232,74,33,0.04); }
+.drw-row.active td { background:rgba(232,74,33,0.07); }
 
 /* ─── Drawer ─── */
 .drw-drawer-overlay {
@@ -216,19 +216,19 @@
   border:1px solid rgba(255,255,255,0.05);
 }
 .drw-drawer-file-icon {
-  width:36px;height:36px;border-radius:8px;background:rgba(100,181,246,0.1);
+  width:36px;height:36px;border-radius:8px;background:rgba(232,74,33,0.1);
   display:flex;align-items:center;justify-content:center;flex-shrink:0;
-  font-size:11px;font-weight:700;color:#64B5F6;
+  font-size:11px;font-weight:700;color:#E84A21;
 }
 .drw-drawer-file-info { flex:1;min-width:0; }
 .drw-drawer-file-name { font-size:13px;color:#ECECEC;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
 .drw-drawer-file-size { font-size:11px;color:#6A6A6A;margin-top:2px; }
 .drw-drawer-file-dl {
-  padding:5px 10px;border-radius:7px;background:rgba(100,181,246,0.1);
-  color:#64B5F6;font-size:12px;font-weight:600;text-decoration:none;flex-shrink:0;
+  padding:5px 10px;border-radius:7px;background:rgba(232,74,33,0.1);
+  color:#E84A21;font-size:12px;font-weight:600;text-decoration:none;flex-shrink:0;
   border:none;cursor:pointer;
 }
-.drw-drawer-file-dl:hover { background:rgba(100,181,246,0.2); }
+.drw-drawer-file-dl:hover { background:rgba(232,74,33,0.2); }
 .drw-drawer-no-file {
   text-align:center;padding:24px;border:2px dashed rgba(255,255,255,0.06);
   border-radius:10px;color:#5A5A5A;font-size:12px;
@@ -246,7 +246,7 @@
       <div class="drw-hero-sub">{% trans "Загружай чертежи · связывай с деталями · отслеживай ревизии" %}</div>
     </div>
     <div style="display:flex;gap:6px;flex-shrink:0;">
-      <button class="btn ghost" id="drw-upload-btn" style="padding:7px 16px;font-size:13px;display:flex;align-items:center;gap:6px;color:#64B5F6;border-color:rgba(100,181,246,0.3);">
+      <button class="btn ghost" id="drw-upload-btn" style="padding:7px 16px;font-size:13px;display:flex;align-items:center;gap:6px;color:#E84A21;border-color:rgba(232,74,33,0.3);">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1.5a.5.5 0 00.5.5h11a.5.5 0 00.5-.5V12"/></svg>
         {% trans "Загрузить чертёж" %}
       </button>
@@ -272,7 +272,7 @@
     <div class="drw-metric" data-filter="approved">
       <div class="drw-metric-label">{% trans "Утверждены" %}</div>
       <div class="drw-metric-val">{{ approved }}</div>
-      <div class="drw-metric-hint" style="color:#64B5F6;">approved</div>
+      <div class="drw-metric-hint" style="color:#E84A21;">approved</div>
     </div>
     <div class="drw-metric" data-filter="rejected">
       <div class="drw-metric-label">{% trans "Отклонены" %}</div>
@@ -445,7 +445,7 @@
     document.getElementById('drw-drawer-title').textContent = d.title;
 
     // Meta grid
-    var statusColors = { draft:'#8A8A8A', on_review:'#64B5F6', approved:'#64B5F6', rejected:'#FF8C42', archived:'#5A5A5A' };
+    var statusColors = { draft:'#8A8A8A', on_review:'#E84A21', approved:'#E84A21', rejected:'#FF8C42', archived:'#5A5A5A' };
     var meta = document.getElementById('drw-drawer-meta');
     meta.innerHTML = [
       [gettext("Формат"), '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:#8A8A8A;">' + d.format + '</span>'],
@@ -548,7 +548,7 @@
 
   if (dropZone) {
     dropZone.addEventListener('click', function() { fileInput.click(); });
-    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.style.borderColor = 'rgba(100,181,246,0.5)'; });
+    dropZone.addEventListener('dragover', function(e) { e.preventDefault(); dropZone.style.borderColor = 'rgba(232,74,33,0.5)'; });
     dropZone.addEventListener('dragleave', function() { dropZone.style.borderColor = ''; });
     dropZone.addEventListener('drop', function(e) {
       e.preventDefault();

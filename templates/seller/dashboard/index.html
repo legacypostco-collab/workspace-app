@@ -9,15 +9,11 @@
   /* Override seller-content to remove padding — dashboard handles its own */
   .seller-content { padding: 0 !important; overflow: auto; }
 
-  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
-  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Medium.woff2') format('woff2');font-weight:500;font-display:swap}
-  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-SemiBold.woff2') format('woff2');font-weight:600;font-display:swap}
-  @font-face{font-family:'Geist';src:url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Bold.woff2') format('woff2');font-weight:700;font-display:swap}
 
   @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   .fi{animation:fi .45s cubic-bezier(.22,1,.36,1) both}
   .rw{transition:background .12s;cursor:pointer}
-  .rw:hover{background:rgba(100,181,246,0.04)}
+  .rw:hover{background:rgba(232,74,33,0.04)}
   .blk{position:relative;transition:opacity .2s}
   .blk.dragging{opacity:0.35}
   .blk-ctrl{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity .15s;z-index:2}
@@ -25,14 +21,14 @@
   .mc{pointer-events:none}
   *:hover>.mc{opacity:1!important;pointer-events:auto}
   .wi-row{display:flex;gap:8px;padding:7px 8px;border-radius:7px;transition:background .12s;cursor:pointer;align-items:flex-start}
-  .wi-row:hover{background:rgba(100,181,246,0.04)}
+  .wi-row:hover{background:rgba(232,74,33,0.04)}
   .wi-card{background:#242424;border:1px solid rgba(255,255,255,0.055);border-radius:10px;overflow:hidden;transition:transform .15s}
   .wi-card:hover{transform:translateY(-1px)}
   .wi-card.dragging{opacity:0.4}
   .wp-row{padding:6px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .12s;font-size:11px}
-  .wp-row:hover{background:rgba(100,181,246,0.04)}
+  .wp-row:hover{background:rgba(232,74,33,0.04)}
   .met-card{transition:border-color .15s,background .15s !important;}
-  .met-card:hover{border-color:rgba(100,181,246,0.35) !important;cursor:pointer !important;}
+  .met-card:hover{border-color:rgba(232,74,33,0.35) !important;cursor:pointer !important;}
 
   /* Currency switcher in topbar meta area */
   .dash-cur-switcher { display:flex; gap:1px; background:#2C2C2C; border-radius:7px; padding:2px; border:1px solid rgba(255,255,255,0.055); }
@@ -164,7 +160,7 @@
           const hB = (d[keyB] / maxV) * ch;
           return <g key={i}>
             <rect x={cx - gap/2 - bw} y={PAD.t + ch - hB} width={bw} height={hB} fill="rgba(58,58,58,0.4)" rx="2"/>
-            <rect x={cx + gap/2} y={PAD.t + ch - hA} width={bw} height={hA} fill={i >= data.length - 2 ? colorA : `rgba(100,181,246,${0.3+i*0.08})`} rx="2"/>
+            <rect x={cx + gap/2} y={PAD.t + ch - hA} width={bw} height={hA} fill={i >= data.length - 2 ? colorA : `rgba(232,74,33,${0.3+i*0.08})`} rx="2"/>
             <text x={cx} y={H-6} textAnchor="middle" fontSize="9" fill="#6A6A6A">{d.m}</text>
           </g>;
         })}
@@ -214,22 +210,22 @@
   const eventsBase = [
     { text: gettext('Заказ #3847 отгружен'), detail: gettext('PC800 → Полюс Золото'), time: "09:14", dot: "#28C840" },
     { text: gettext('SLA: дедлайн по #3832'), detail: gettext('Проверка качества — 4ч'), time: "08:51", dot: "#FEBC2E" },
-    { text: (c) => `Резерв ${fmtCur(322759, c)} получен`, detail: gettext('#ORD-3851 подтверждён'), time: "08:30", dot: "#64B5F6" },
-    { text: gettext('Рейтинг → 4.74'), detail: gettext('#ORD-3829 · отзыв 5★'), time: "08:12", dot: "#64B5F6" },
+    { text: (c) => `Резерв ${fmtCur(322759, c)} получен`, detail: gettext('#ORD-3851 подтверждён'), time: "08:30", dot: "#E84A21" },
+    { text: gettext('Рейтинг → 4.74'), detail: gettext('#ORD-3829 · отзыв 5★'), time: "08:12", dot: "#E84A21" },
     { text: gettext('Запрос: Норникель'), detail: (c) => `Насос по чертежу · ${fmtCur(289655, c)}`, time: "07:45", dot: "#E85C0D" },
   ];
-  const tyC = { "Срочный": "#E85C0D", "Стандартный": "#64B5F6", "По чертежу": "#7A8494" };
+  const tyC = { "Срочный": "#E85C0D", "Стандартный": "#E84A21", "По чертежу": "#7A8494" };
 
   /* ── PALETTE ── */
-  const sky = "#64B5F6";
-  const skyDim = "rgba(100,181,246,";
+  const sky = "#E84A21";
+  const skyDim = "rgba(232,74,33,";
   const ora = "#E85C0D";
   const oraDim = "rgba(232,92,13,";
   const apple = { red: "#FF5F57", yellow: "#FEBC2E", green: "#28C840", orange: "#FF9F0A" };
   const P = {
     bg: "#1A1A1A", side: "#1F1F1F", card: "#242424", el: "#2C2C2C",
     brd: "rgba(255,255,255,0.055)", sep: "rgba(255,255,255,0.035)",
-    hov: "rgba(100,181,246,0.04)",
+    hov: "rgba(232,74,33,0.04)",
     t0: "#ECECEC", t1: "#919191", t2: "#6A6A6A", t3: "#484848",
   };
 
@@ -501,7 +497,7 @@
     const circ = 2*Math.PI*34, score=4.26, off=circ-(score/5)*circ;
 
     return (
-      <div style={{ padding: "24px 36px 48px", maxWidth: 1080, margin: "0 auto", fontFamily: "Geist, Inter, -apple-system, sans-serif" }}>
+      <div style={{ padding: "24px 36px 48px", maxWidth: 1080, margin: "0 auto", fontFamily: "Inter, -apple-system, sans-serif" }}>
 
         {/* ── HEADER ROW ── */}
         <div style={{ marginBottom: 32 }}>
@@ -517,7 +513,7 @@
                   <button onClick={() => setShowBlockPicker(!showBlockPicker)} style={{
                     background: showBlockPicker ? P.el : "transparent", border: `1px solid ${P.brd}`,
                     borderRadius: 6, padding: "4px 10px", cursor: "pointer", fontSize: 11, color: P.t0,
-                    fontFamily: "Geist, Inter, sans-serif", display: "flex", alignItems: "center", gap: 4,
+                    fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 4,
                   }}>
                     <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2v8M2 6h8"/></svg>
                     {hiddenBlocks.length} скрыто
@@ -544,7 +540,7 @@
                     padding: "4px 10px", borderRadius: 5, border: "none",
                     background: period===p ? P.el : "transparent",
                     color: period===p ? P.t0 : P.t1,
-                    fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "Geist, Inter, sans-serif",
+                    fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "Inter, sans-serif",
                   }}>{p}</button>
                 ))}
               </div>
@@ -556,7 +552,7 @@
                     background: cur === k ? P.card : "transparent",
                     color: cur === k ? P.t0 : P.t2,
                     fontSize: 11, fontWeight: cur === k ? 600 : 400,
-                    cursor: "pointer", fontFamily: "Geist, Inter, sans-serif",
+                    cursor: "pointer", fontFamily: "Inter, sans-serif",
                   }}>{CURRENCIES[k].symbol} {k}</button>
                 ))}
               </div>
@@ -725,7 +721,7 @@
     };
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "Geist, Inter, -apple-system, sans-serif" }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", fontFamily: "Inter, -apple-system, sans-serif" }}>
         {/* Panel header */}
         <div style={{ padding: "14px 16px 10px", borderBottom: `1px solid ${P.brd}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 11, color: P.t1, fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" }}>{gettext('Панель')}</span>
@@ -734,7 +730,7 @@
               background: showPicker ? P.el : "transparent",
               border: showPicker ? `1px solid ${P.brd}` : "1px solid transparent",
               borderRadius: 5, padding: "3px 8px", cursor: "pointer", fontSize: 11, color: P.t0,
-              fontFamily: "Geist, Inter, sans-serif", display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
+              fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
             }}>
               <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M6 2v8M2 6h8"/></svg>
               {gettext('Виджеты')}

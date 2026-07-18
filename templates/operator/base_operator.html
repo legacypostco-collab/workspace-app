@@ -31,9 +31,9 @@
     /* Sidebar nav */
     .op-nav-link{display:flex;align-items:center;width:100%;text-decoration:none;border-radius:8px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;background:transparent;color:#919191;font-weight:400;transition:all 0.12s;cursor:pointer;}
     .op-nav-link:hover{color:#ECECEC;background:rgba(255,255,255,0.03);}
-    .op-nav-link.active{background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;}
+    .op-nav-link.active{background:rgba(232,74,33,0.06);color:#ECECEC;font-weight:600;}
     .op-nav-link.active .op-nav-indicator{display:block;}
-    .op-nav-indicator{display:none;position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#64B5F6;}
+    .op-nav-indicator{display:none;position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#E84A21;}
 
     /* Cards */
     .op-card{background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.04);padding:20px;}
@@ -58,15 +58,15 @@
 
     /* Badges */
     .op-badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;white-space:nowrap;}
-    .op-badge-blue{background:rgba(100,181,246,0.1);color:#64B5F6;}
+    .op-badge-blue{background:rgba(232,74,33,0.1);color:#E84A21;}
     .op-badge-orange{background:rgba(232,92,13,0.1);color:#E85C0D;}
     .op-badge-green{background:#2C2C2C;color:#919191;}
     .op-badge-gray{background:#2C2C2C;color:#919191;}
 
     /* Buttons */
     .op-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.12s;text-decoration:none;white-space:nowrap;}
-    .op-btn-primary{border:1px solid rgba(100,181,246,0.25);background:transparent;color:#64B5F6;}
-    .op-btn-primary:hover{background:rgba(100,181,246,0.08);}
+    .op-btn-primary{border:1px solid rgba(232,74,33,0.25);background:transparent;color:#E84A21;}
+    .op-btn-primary:hover{background:rgba(232,74,33,0.08);}
     .op-btn-warn{border:1px solid rgba(232,92,13,0.25);background:transparent;color:#E85C0D;}
     .op-btn-warn:hover{background:rgba(232,92,13,0.08);}
     .op-btn-ghost{border:1px solid rgba(255,255,255,0.06);background:transparent;color:#919191;}
@@ -76,13 +76,13 @@
     .op-tabs{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.055);padding-bottom:0;}
     .op-tab{padding:8px 16px;border:none;background:transparent;color:#919191;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.12s;}
     .op-tab:hover{color:#ECECEC;}
-    .op-tab.active{color:#64B5F6;border-bottom-color:#64B5F6;font-weight:600;}
+    .op-tab.active{color:#E84A21;border-bottom-color:#E84A21;font-weight:600;}
 
     /* Progress bar */
     .op-progress{display:flex;gap:2px;align-items:center;}
     .op-progress-step{height:4px;flex:1;border-radius:2px;background:#2C2C2C;}
     .op-progress-step.done{background:#5E5E5E;}
-    .op-progress-step.current{background:#64B5F6;}
+    .op-progress-step.current{background:#E84A21;}
 
     /* Toast */
     .op-toast-container{position:fixed;top:20px;right:20px;z-index:10000;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
@@ -93,20 +93,21 @@
 
     /* Filter selects */
     .op-select{padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#1F1F1F;color:#ECECEC;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer;outline:none;}
-    .op-select:focus{border-color:rgba(100,181,246,0.3);}
+    .op-select:focus{border-color:rgba(232,74,33,0.3);}
     .op-select option{background:#1F1F1F;color:#ECECEC;}
 
     /* Input */
     .op-input{padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:#1F1F1F;color:#ECECEC;font-size:13px;font-family:'Inter',sans-serif;outline:none;width:100%;}
-    .op-input:focus{border-color:rgba(100,181,246,0.3);}
+    .op-input:focus{border-color:rgba(232,74,33,0.3);}
     .op-input::placeholder{color:#5E5E5E;}
 
     /* Section title */
     .op-section-title{font-size:15px;font-weight:700;color:#ECECEC;font-family:'Golos Text',sans-serif;margin-bottom:12px;}
     .op-section-sub{font-size:11px;color:#5E5E5E;text-transform:uppercase;letter-spacing:0.06em;font-weight:500;margin-bottom:8px;}
     a.op-stat{text-decoration:none;display:block;transition:border-color .15s,background .15s,transform .1s;}
-    a.op-stat:hover{border-color:rgba(100,181,246,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
+    a.op-stat:hover{border-color:rgba(232,74,33,0.35)!important;background:#2C2C2C!important;transform:translateY(-1px);cursor:pointer!important;}
   </style>
+  <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01"/>
   {% block extra_css %}{% endblock %}
     <script src="{% url 'javascript-catalog' %}"></script>
     <script src="{% static 'js/cabinet-utils.js' %}"></script>
@@ -274,7 +275,7 @@
     var t = document.createElement('div');
     t.className = 'op-toast';
     t.textContent = msg;
-    t.style.borderLeft = type === 'success' ? '3px solid #4CAF50' : type === 'warn' ? '3px solid #E85C0D' : '3px solid #64B5F6';
+    t.style.borderLeft = type === 'success' ? '3px solid #4CAF50' : type === 'warn' ? '3px solid #E85C0D' : '3px solid #E84A21';
     container.appendChild(t);
     setTimeout(function() {
       t.classList.add('hiding');

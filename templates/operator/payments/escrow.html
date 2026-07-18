@@ -19,7 +19,7 @@
     <div class="op-stat-value">$18,400</div>
     <div class="op-stat-label">{% trans "Ожидает решения" %}</div>
   </div>
-  <div class="op-stat" id="esc-stat-all" onclick="filterEscrow('')" style="cursor:pointer;border-color:rgba(100,181,246,0.35);">
+  <div class="op-stat" id="esc-stat-all" onclick="filterEscrow('')" style="cursor:pointer;border-color:rgba(232,74,33,0.35);">
     <div class="op-stat-value">12</div>
     <div class="op-stat-label">{% trans "Активных счетов" %}</div>
   </div>
@@ -164,7 +164,7 @@
 var activeEscStatus = '';
 window.filterEscrow = function(status) {
   activeEscStatus = (activeEscStatus === status) ? '' : status;
-  var active = 'rgba(100,181,246,0.35)', inactive = 'rgba(255,255,255,0.04)';
+  var active = 'rgba(232,74,33,0.35)', inactive = 'rgba(255,255,255,0.04)';
   var warnActive = 'rgba(232,92,13,0.5)';
   document.getElementById('esc-stat-hold').style.borderColor = inactive;
   document.getElementById('esc-stat-dispute').style.borderColor = inactive;

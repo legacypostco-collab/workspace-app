@@ -39,7 +39,7 @@
       {% for wh in webhooks %}
       <tr>
         <td class="text-secondary">{{ wh.created_at|date:"d.m.Y H:i:s" }}</td>
-        <td><a href="/admin-panel/orders/{{ wh.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ wh.order_id }}</a></td>
+        <td><a href="/admin-panel/orders/{{ wh.order_id }}/" style="color:#E84A21;text-decoration:none;">ORD-{{ wh.order_id }}</a></td>
         <td class="text-secondary" style="font-size:11px;">{{ wh.endpoint|truncatechars:50 }}</td>
         <td>{% if wh.success %}<span class="ap-badge ap-badge-green">OK</span>{% else %}<span class="ap-badge ap-badge-orange">{% trans "Ошибка" %}</span>{% endif %}</td>
         <td class="text-secondary">{{ wh.status_code|default:"—" }}</td>
@@ -79,7 +79,7 @@
       {% for event in events %}
       <tr>
         <td class="text-secondary">{{ event.created_at|date:"d.m.Y H:i:s" }}</td>
-        <td><a href="/admin-panel/orders/{{ event.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ event.order_id }}</a></td>
+        <td><a href="/admin-panel/orders/{{ event.order_id }}/" style="color:#E84A21;text-decoration:none;">ORD-{{ event.order_id }}</a></td>
         <td>
           {% if event.event_type == 'status_changed' %}<span class="ap-badge ap-badge-blue">{% trans "Статус" %}</span>
           {% elif event.event_type == 'order_created' %}<span class="ap-badge ap-badge-green">{% trans "Создан" %}</span>

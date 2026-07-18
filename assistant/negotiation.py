@@ -24,6 +24,7 @@ from django.utils.translation import gettext as _
 from .actions import (
     ActionResult, _anon_register_result, _is_anon, _log_event, _notify, register,
 )
+from .realtime import push_rfq_update as _push_rfq_update
 
 logger = logging.getLogger(__name__)
 
@@ -334,6 +335,8 @@ def send_rfq_to_suppliers(params, user, role):
         "action": "view_rfq_quotes", "label": _("📊 Все котировки"),
         "params": {"rfq_id": rfq.id},
     })
+
+    _push_rfq_update(rfq, event="rfq_sent")
 
     return ActionResult(
         text=(
@@ -670,7 +673,7 @@ def submit_quote(params, user, role):
         # повторных клиентов), но НЕ имя. Стабилен на одного покупателя.
         import hashlib as _hl
         _seed = str(getattr(rfq, "created_by_id", None) or rfq.customer_email or rfq.id)
-        buyer_code = "B-" + _hl.md5(_seed.encode()).hexdigest()[:5].upper()
+        buyer_code = "B-" + _hl.sha256(_seed.encode()).hexdigest()[:5].upper()
         # Способ доставки (тест: морем по умолчанию; реальный выбирается при
         # оформлении заказа) + место назначения.
         ship_mode = "sea"
@@ -890,6 +893,8 @@ def submit_quote(params, user, role):
     if parent and parent.direction == "buyer_to_seller":
         parent.status = "submitted"
         parent.save(update_fields=["status"])
+
+    _push_rfq_update(rfq, event="quote_submitted", quote_id=quote.id)
 
     return ActionResult(
         text=(
@@ -1284,6 +1289,8 @@ def accept_quote(params, user, role):
                 body=_("Покупатель оформил заказ на $%(amt)s. Можно начинать.") % {"amt": f"{q.total_amount:,.2f}"},
                 url=f"/chat/?order={order.id}")
 
+    _push_rfq_update(q.rfq, event="quote_accepted", quote_id=q.id)
+
     return ActionResult(
         text=(
             _("✓ Котировка #%(qid)s принята · создан заказ #%(oid)s на $%(amt)s.\n"
@@ -1486,6 +1493,8 @@ def counter_offer(params, user, role):
                 body=_("Покупатель предлагает $%(new)s (было $%(old)s).") % {"new": f"{new_total:,.0f}", "old": f"{q.total_amount:,.0f}"},
                 url=f"/chat/?rfq={q.rfq_id}")
 
+    _push_rfq_update(q.rfq, event="counter_offer", quote_id=counter_q.id)
+
     return ActionResult(
         text=(
             _("✓ Контр-оффер #%(id)s отправлен продавцу · $%(amt)s "
@@ -1544,6 +1553,7 @@ def mark_quote_final(params, user, role):
                 title=_("🔒 Финальная котировка по RFQ #%(id)s") % {"id": q.rfq_id},
                 body=_("%(user)s: $%(amt)s. Переторжка невозможна — принять или отклонить.") % {"user": user.username, "amt": f"{q.total_amount:,.0f}"},
                 url=f"/chat/?rfq={q.rfq_id}")
+    _push_rfq_update(q.rfq, event="quote_finalized", quote_id=q.id)
     return ActionResult(
         text=_("🔒 Котировка #%(id)s зафиксирована как финальная. Покупатель может только принять или отклонить.") % {"id": q.id},
     )
@@ -1571,4 +1581,5 @@ def decline_quote(params, user, role):
                 title=_("Котировка #%(id)s отклонена") % {"id": q.id},
                 body=_("Покупатель не выбрал ваш вариант по RFQ #%(id)s.") % {"id": q.rfq_id},
                 url=f"/chat/?rfq={q.rfq_id}")
+    _push_rfq_update(q.rfq, event="quote_declined", quote_id=q.id)
     return ActionResult(text=_("✓ Котировка #%(id)s отклонена.") % {"id": q.id})

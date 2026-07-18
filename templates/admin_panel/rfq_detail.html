@@ -11,7 +11,7 @@
 <div class="ap-stats">
   <div class="ap-stat"><div class="ap-stat-value">RFQ-{{ rfq.id }}</div><div class="ap-stat-label">{% trans "Номер" %}</div></div>
   <div class="ap-stat"><div class="ap-stat-value">
-    {% if rfq.status == 'new' %}<span style="color:#64B5F6;">{{ rfq.get_status_display }}</span>
+    {% if rfq.status == 'new' %}<span style="color:#E84A21;">{{ rfq.get_status_display }}</span>
     {% elif rfq.status == 'quoted' %}<span style="color:#4CAF50;">{{ rfq.get_status_display }}</span>
     {% elif rfq.status == 'cancelled' %}<span style="color:#E85C0D;">{{ rfq.get_status_display }}</span>
     {% else %}{{ rfq.get_status_display }}{% endif %}
@@ -19,7 +19,7 @@
   <div class="ap-stat"><div class="ap-stat-value">{{ rfq.get_mode_display }}</div><div class="ap-stat-label">{% trans "Режим" %}</div></div>
   <div class="ap-stat"><div class="ap-stat-value">
     {% if rfq.urgency == 'critical' %}<span style="color:#E85C0D;">{{ rfq.get_urgency_display }}</span>
-    {% elif rfq.urgency == 'urgent' %}<span style="color:#64B5F6;">{{ rfq.get_urgency_display }}</span>
+    {% elif rfq.urgency == 'urgent' %}<span style="color:#E84A21;">{{ rfq.get_urgency_display }}</span>
     {% else %}{{ rfq.get_urgency_display }}{% endif %}
   </div><div class="ap-stat-label">{% trans "Срочность" %}</div></div>
   <div class="ap-stat"><div class="ap-stat-value">{{ items|length }}</div><div class="ap-stat-label">{% trans "Позиций" %}</div></div>
@@ -35,7 +35,7 @@
         <div><span style="color:#919191;">{% trans "Компания:" %}</span> {{ rfq.company_name|default:"—" }}</div>
         <div><span style="color:#919191;">{% trans "Аккаунт:" %}</span>
           {% if rfq.created_by %}
-            <a href="/admin-panel/users/{{ rfq.created_by.id }}/" style="color:#64B5F6;text-decoration:none;">{{ rfq.created_by.username }}</a>
+            <a href="/admin-panel/users/{{ rfq.created_by.id }}/" style="color:#E84A21;text-decoration:none;">{{ rfq.created_by.username }}</a>
           {% else %}—{% endif %}
         </div>
       </div>
@@ -48,7 +48,7 @@
         <tbody>
           {% for item in items %}
           <tr>
-            <td><span style="color:#64B5F6;">{{ item.query }}</span></td>
+            <td><span style="color:#E84A21;">{{ item.query }}</span></td>
             <td class="text-secondary">—</td>
             <td>{{ item.quantity }}</td>
             <td>

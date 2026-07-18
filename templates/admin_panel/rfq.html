@@ -10,7 +10,7 @@
   <a href="/admin-panel/rfq/?status=quoted" class="ap-stat"><div class="ap-stat-value">{{ quoted }}</div><div class="ap-stat-label">{% trans "С котировками" %}</div></a>
   <a href="/admin-panel/rfq/?status=needs_review" class="ap-stat"><div class="ap-stat-value">{{ needs_review }}</div><div class="ap-stat-label">{% trans "На проверке" %}</div></a>
   <a href="/admin-panel/rfq/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">{% trans "Отменённых" %}</div></a>
-  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_rfq }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
+  <a href="/admin-panel/rfq/" class="ap-stat"><div class="ap-stat-value" style="color:#E84A21;">+{{ week_rfq }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
   <a href="/admin-panel/analytics/" class="ap-stat"><div class="ap-stat-value">{{ conversion }}%</div><div class="ap-stat-label">{% trans "Конверсия" %}</div></a>
 </div>
 
@@ -67,7 +67,7 @@
       {% for rfq in rfqs %}
       <tr {% if rfq.urgency == 'critical' %}style="border-left:3px solid #E85C0D;"{% elif rfq.status == 'cancelled' %}style="opacity:0.5;"{% endif %}>
         <td><input type="checkbox" name="selected_rfqs" value="{{ rfq.id }}" class="rfq-cb" onchange="updateRfqBar()"/></td>
-        <td><a href="/admin-panel/rfq/{{ rfq.id }}/" style="color:#64B5F6;text-decoration:none;">RFQ-{{ rfq.id }}</a></td>
+        <td><a href="/admin-panel/rfq/{{ rfq.id }}/" style="color:#E84A21;text-decoration:none;">RFQ-{{ rfq.id }}</a></td>
         <td>{{ rfq.customer_name|truncatechars:20 }}</td>
         <td class="text-secondary">{{ rfq.company_name|default:"—" }}</td>
         <td>
@@ -77,7 +77,7 @@
         </td>
         <td>
           {% if rfq.urgency == 'critical' %}<span style="color:#E85C0D;font-weight:600;">Critical</span>
-          {% elif rfq.urgency == 'urgent' %}<span style="color:#64B5F6;">Urgent</span>
+          {% elif rfq.urgency == 'urgent' %}<span style="color:#E84A21;">Urgent</span>
           {% else %}<span class="text-secondary">Standard</span>{% endif %}
         </td>
         <td>
@@ -106,8 +106,8 @@
 </div>
 
 <!-- Bulk bar -->
-<div id="rfqBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="rfqSelectedCount">{% trans "0 выбрано" %}</span>
+<div id="rfqBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(232,74,33,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
+  <span style="font-size:13px;color:#E84A21;font-weight:600;" id="rfqSelectedCount">{% trans "0 выбрано" %}</span>
   <select class="ap-select" id="rfqBulkStatusSelect">
     {% for val, label in status_choices %}
     <option value="{{ val }}">{{ label }}</option>

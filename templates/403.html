@@ -1,6 +1,6 @@
-{% load static %}
+{% load static i18n %}
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ LANGUAGE_CODE|default:'ru' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,16 +14,17 @@
     .err-code{font-family:'Golos Text',sans-serif;font-weight:800;font-size:140px;color:#E85C0D;line-height:1;letter-spacing:-0.04em;}
     .err-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:28px;color:#ECECEC;margin-top:8px;margin-bottom:12px;}
     .err-text{color:#919191;font-size:14px;max-width:440px;line-height:1.6;margin-bottom:32px;}
-    .err-btn{padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;background:#64B5F6;color:#1A1A1A;}
-    .err-btn:hover{background:#7BC5FA;}
+    .err-btn{padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;background:#E84A21;color:#1A1A1A;}
+    .err-btn:hover{background:#FF6B3D;}
   </style>
+  <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
   <div class="err-page">
     <div class="err-code">403</div>
-    <h1 class="err-title">Доступ запрещён</h1>
-    <p class="err-text">У вас нет прав для просмотра этой страницы. Войдите в систему или вернитесь на главную.</p>
-    <a href="/" class="err-btn">← На главную</a>
+    <h1 class="err-title">{% trans "Доступ запрещён" %}</h1>
+    <p class="err-text">{% trans "У вас нет прав для просмотра этой страницы. Войдите в систему или вернитесь на главную." %}</p>
+    <a href="/" class="err-btn">← {% trans "На главную" %}</a>
   </div>
 </body>
 </html>

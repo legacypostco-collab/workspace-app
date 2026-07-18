@@ -37,7 +37,7 @@ def _stub_embedding(text: str) -> list[float]:
     if not features:
         features = [text[:64]]
     for f in features:
-        h = hashlib.md5(f.encode("utf-8", errors="ignore")).digest()
+        h = hashlib.sha256(f.encode("utf-8", errors="ignore")).digest()
         # Use first 4 bytes as int → bucket index
         idx = struct.unpack("<I", h[:4])[0] % EMBEDDING_DIMENSIONS
         # Use next 4 bytes as int → magnitude in [-1, 1]

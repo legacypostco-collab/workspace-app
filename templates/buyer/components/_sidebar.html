@@ -29,7 +29,7 @@
       <div style="position:relative;width:36px;height:36px;">
         <svg width="36" height="36" viewBox="0 0 36 36" style="transform:rotate(-90deg)">
           <circle cx="18" cy="18" r="15" fill="none" stroke="#2C2C2C" stroke-width="2.5"/>
-          <circle cx="18" cy="18" r="15" fill="none" stroke="#64B5F6" stroke-width="2.5"
+          <circle cx="18" cy="18" r="15" fill="none" stroke="#E84A21" stroke-width="2.5"
             stroke-linecap="round" stroke-dasharray="94.25" stroke-dashoffset="18.85"/>
         </svg>
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
@@ -42,7 +42,7 @@
       </div>
       <div style="text-align:right;">
         <div style="font-size:13px;font-weight:800;color:#ECECEC;font-family:'Golos Text',sans-serif;white-space:nowrap;">$2.1M</div>
-        <div style="font-size:11px;font-weight:600;color:#64B5F6;">+18.4%</div>
+        <div style="font-size:11px;font-weight:600;color:#E84A21;">+18.4%</div>
       </div>
     </div>
     <div style="display:flex;gap:1px;margin-bottom:10px;">
@@ -70,9 +70,9 @@
   <nav style="flex:1;padding:2px 12px;display:flex;flex-direction:column;gap:1px;">
     {% for item in buyer_nav_items %}
       {% if item.enabled and item.url_name %}
-        <a href="{% url item.url_name %}" data-nav-key="{{ item.key }}" class="seller-nav-link{% if buyer_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if buyer_active_nav == item.key %}background:rgba(100,181,246,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
+        <a href="{% url item.url_name %}" data-nav-key="{{ item.key }}" class="seller-nav-link{% if buyer_active_nav == item.key %} active{% endif %}" style="display:flex;align-items:center;width:100%;text-decoration:none;border-radius:10px;gap:10px;position:relative;padding:9px 12px;font-size:13px;font-family:'Inter',sans-serif;border:none;{% if buyer_active_nav == item.key %}background:rgba(232,74,33,0.06);color:#ECECEC;font-weight:600;{% else %}background:transparent;color:#919191;font-weight:400;{% endif %}">
           {% if buyer_active_nav == item.key %}
-            <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#64B5F6;"></div>
+            <div style="position:absolute;left:0;top:50%;transform:translateY(-50%);width:2.5px;height:18px;border-radius:2px;background:#E84A21;"></div>
           {% endif %}
           <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:{% if buyer_active_nav == item.key %}1{% else %}0.45{% endif %};">
             {% if item.key == "dashboard" %}

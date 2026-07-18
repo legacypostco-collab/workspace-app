@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from pathlib import Path
 from uuid import uuid4
-from xml.etree import ElementTree as ET
+from defusedxml import ElementTree as ET
 
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError

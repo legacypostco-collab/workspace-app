@@ -123,7 +123,7 @@ def _demo_external_rating(inn: str) -> dict:
         return {"score": 0.0, "bankruptcy": False, "liquidation": True,
                 "reason": _("demo: ИНН '99…' → ликвидация (тестовая ветка)"),
                 "source": "demo"}
-    h = int(hashlib.md5(inn.encode()).hexdigest(), 16)
+    h = int(hashlib.sha256(inn.encode()).hexdigest(), 16)
     score = 40 + (h % 60)  # 40-99 диапазон
     return {
         "score": float(score),

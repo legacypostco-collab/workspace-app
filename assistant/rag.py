@@ -420,7 +420,7 @@ def _stub_response(query: str, chunks) -> str:
 def _answer_cache_key(user_id, role, message: str) -> str:
     """Ключ для answer-cache: одна и та же фраза от того же юзера-роли."""
     import hashlib
-    h = hashlib.md5(message.strip().lower().encode("utf-8")).hexdigest()
+    h = hashlib.sha256(message.strip().lower().encode("utf-8")).hexdigest()
     return f"ai_answer:{user_id}:{role}:{h}"
 
 

@@ -40,6 +40,7 @@ from marketplace.models import (
     OrderItem,
     Part,
 )
+from .security import token_has_permission
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +84,11 @@ def _err(msg: str, status: int = 400, log: ErpSyncLog | None = None):
 @csrf_exempt
 @require_http_methods(["POST"])
 def sync_parts_push(request):
-    user, _ = _auth_user(request)
+    user, token = _auth_user(request)
     if not user:
         return _err("Authentication required (X-Api-Token).", 401)
+    if not token_has_permission(token, "write"):
+        return _err("Token does not allow write operations.", 403)
 
     try:
         rows = json.loads(request.body or "[]")
@@ -166,9 +169,11 @@ def sync_parts_push(request):
 @csrf_exempt
 @require_http_methods(["GET"])
 def sync_orders_pull(request):
-    user, _ = _auth_user(request)
+    user, token = _auth_user(request)
     if not user:
         return _err("Authentication required.", 401)
+    if not token_has_permission(token, "read"):
+        return _err("Token does not allow read operations.", 403)
 
     since_raw = request.GET.get("since")
     qs = (Order.objects
@@ -221,9 +226,11 @@ def sync_orders_pull(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def sync_order_ack(request, order_id):
-    user, _ = _auth_user(request)
+    user, token = _auth_user(request)
     if not user:
         return _err("Authentication required.", 401)
+    if not token_has_permission(token, "write"):
+        return _err("Token does not allow write operations.", 403)
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
@@ -274,9 +281,11 @@ ALLOWED_STATUS_VALUES = {
 @csrf_exempt
 @require_http_methods(["POST"])
 def sync_order_status(request, order_id):
-    user, _ = _auth_user(request)
+    user, token = _auth_user(request)
     if not user:
         return _err("Authentication required.", 401)
+    if not token_has_permission(token, "write"):
+        return _err("Token does not allow write operations.", 403)
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:

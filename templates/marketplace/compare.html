@@ -1,16 +1,17 @@
 {% extends "marketplace/base.html" %}
-{% block title %}Сравнение | Consolidator Parts{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Сравнение" %} | Consolidator Parts{% endblock %}
 {% block content %}
 <section class="section-head">
-  <h1>Сравнение позиций</h1>
-  <p class="muted">Сравнивай до 4 товаров по ключевым параметрам.</p>
+  <h1>{% trans "Сравнение позиций" %}</h1>
+  <p class="muted">{% trans "Сравнивай до 4 товаров по ключевым параметрам." %}</p>
 </section>
 
 {% if has_items %}
   <div class="compare-toolbar">
     <form method="post" action="{% url 'compare_clear' %}">
       {% csrf_token %}
-      <button class="btn btn-danger" type="submit">Очистить сравнение</button>
+      <button class="btn btn-danger" type="submit">{% trans "Очистить сравнение" %}</button>
     </form>
   </div>
 
@@ -18,7 +19,7 @@
     <table class="compare-table">
       <thead>
         <tr>
-          <th>Параметр</th>
+          <th>{% trans "Параметр" %}</th>
           {% for part in parts %}
             <th>
               <a href="{% url 'part_detail' part.slug %}">{{ part.title }}</a>
@@ -28,13 +29,13 @@
       </thead>
       <tbody>
         <tr>
-          <td>Фото</td>
+          <td>{% trans "Фото" %}</td>
           {% for part in parts %}
             <td><img class="compare-image" src="{{ part.image_url }}" alt="{{ part.title }}" onerror="this.onerror=null;this.src='/static/marketplace/epiroc-logo.webp';" /></td>
           {% endfor %}
         </tr>
         <tr>
-          <td>Бренд</td>
+          <td>{% trans "Бренд" %}</td>
           {% for part in parts %}
             <td>{% if part.brand %}{{ part.brand.name }}{% else %}-{% endif %}</td>
           {% endfor %}
@@ -46,43 +47,43 @@
           {% endfor %}
         </tr>
         <tr>
-          <td>Категория</td>
+          <td>{% trans "Категория" %}</td>
           {% for part in parts %}
             <td>{{ part.category.name }}</td>
           {% endfor %}
         </tr>
         <tr>
-          <td>Состояние</td>
+          <td>{% trans "Состояние" %}</td>
           {% for part in parts %}
             <td>{{ part.get_condition_display }}</td>
           {% endfor %}
         </tr>
         <tr>
-          <td>Цена</td>
+          <td>{% trans "Цена" %}</td>
           {% for part in parts %}
             <td class="price">${{ part.price }}</td>
           {% endfor %}
         </tr>
         <tr>
-          <td>В наличии</td>
+          <td>{% trans "В наличии" %}</td>
           {% for part in parts %}
-            <td>{{ part.stock_quantity }} шт</td>
+            <td>{{ part.stock_quantity }} {% trans "шт" %}</td>
           {% endfor %}
         </tr>
         <tr>
-          <td>Действие</td>
+          <td>{% trans "Действие" %}</td>
           {% for part in parts %}
             <td>
               <div class="card-actions">
                 <form method="post" action="{% url 'cart_add' part.id %}">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{% url 'compare' %}" />
-                  <button class="btn btn-secondary" type="submit">В корзину</button>
+                  <button class="btn btn-secondary" type="submit">{% trans "В корзину" %}</button>
                 </form>
                 <form method="post" action="{% url 'compare_remove' part.id %}">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{% url 'compare' %}" />
-                  <button class="btn" type="submit">Убрать</button>
+                  <button class="btn" type="submit">{% trans "Убрать" %}</button>
                 </form>
               </div>
             </td>
@@ -93,8 +94,8 @@
   </div>
 {% else %}
   <section class="panel">
-    <p class="muted">Пока нет выбранных позиций для сравнения.</p>
-    <a class="btn" href="{% url 'catalog' %}">Выбрать в каталоге</a>
+    <p class="muted">{% trans "Пока нет выбранных позиций для сравнения." %}</p>
+    <a class="btn" href="{% url 'catalog' %}">{% trans "Выбрать в каталоге" %}</a>
   </section>
 {% endif %}
 {% endblock %}

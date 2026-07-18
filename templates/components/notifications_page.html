@@ -8,7 +8,7 @@
 
   {% if items %}
     {% for n in items %}
-      <a {% if n.url %}href="{{ n.url }}"{% endif %} style="display:flex;gap:12px;padding:16px 18px;background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:12px;margin-bottom:8px;text-decoration:none;color:inherit;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(100,181,246,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.04)'">
+      <a {% if n.url %}href="{{ n.url }}"{% endif %} style="display:flex;gap:12px;padding:16px 18px;background:#242424;border:1px solid rgba(255,255,255,0.04);border-radius:12px;margin-bottom:8px;text-decoration:none;color:inherit;transition:border-color .15s;" onmouseover="this.style.borderColor='rgba(232,74,33,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.04)'">
         <div style="font-size:18px;flex-shrink:0;width:36px;text-align:center;">
           {% if n.kind == 'order' %}📦{% elif n.kind == 'rfq' %}📋{% elif n.kind == 'payment' %}💰{% elif n.kind == 'sla' %}⏱{% elif n.kind == 'claim' %}⚠️{% elif n.kind == 'system' %}🔔{% else %}ℹ️{% endif %}
         </div>

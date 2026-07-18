@@ -100,7 +100,7 @@
               <span class="chip">Stock: {{ item.matched_part.stock_quantity }}</span>
               {% if item.discount_percent or item.discount_fixed %}
                 <span class="chip" style="padding:2px 8px;font-size:11px;">
-                  {% if item.discount_percent %}<span style="color:#64B5F6;">−{{ item.discount_percent }}%</span>{% endif %}
+                  {% if item.discount_percent %}<span style="color:#E84A21;">−{{ item.discount_percent }}%</span>{% endif %}
                   {% if item.discount_percent and item.discount_amount %} / {% endif %}
                   −${{ item.discount_amount }}
                 </span>

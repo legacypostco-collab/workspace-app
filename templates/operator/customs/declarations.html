@@ -58,9 +58,9 @@
             </div>
             <div>
               <div class="op-section-sub">{% trans "Документы" %}</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('{% trans "Инвойс INV-4521" %}')">{% trans "Инвойс INV-4521" %}</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('{% trans "Упаковочный лист" %}')">{% trans "Упаковочный лист" %}</div>
-              <div style="font-size:13px;color:#64B5F6;cursor:pointer;" onclick="openDocModal('{% trans "Сертификат происхождения" %}')">{% trans "Сертификат происхождения" %}</div>
+              <div style="font-size:13px;color:#E84A21;cursor:pointer;" onclick="openDocModal('{% trans "Инвойс INV-4521" %}')">{% trans "Инвойс INV-4521" %}</div>
+              <div style="font-size:13px;color:#E84A21;cursor:pointer;" onclick="openDocModal('{% trans "Упаковочный лист" %}')">{% trans "Упаковочный лист" %}</div>
+              <div style="font-size:13px;color:#E84A21;cursor:pointer;" onclick="openDocModal('{% trans "Сертификат происхождения" %}')">{% trans "Сертификат происхождения" %}</div>
             </div>
             <div>
               <div class="op-section-sub">{% trans "Пошлины" %}</div>
@@ -164,7 +164,7 @@
 <!-- Document upload area -->
 <div class="op-card" style="margin-top:16px;">
   <div class="op-section-title">{% trans "Загрузка документов" %}</div>
-  <div id="upload-zone" style="border:2px dashed rgba(255,255,255,0.06);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('upload-input').click()" onmouseenter="this.style.borderColor='rgba(100,181,246,0.2)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
+  <div id="upload-zone" style="border:2px dashed rgba(255,255,255,0.06);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:border-color .2s;" onclick="document.getElementById('upload-input').click()" onmouseenter="this.style.borderColor='rgba(232,74,33,0.2)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.06)'">
     <input id="upload-input" type="file" multiple accept=".pdf,.jpg,.png" style="display:none;" onchange="uploadFilesSelected(this)">
     <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="#5E5E5E" stroke-width="1" stroke-linecap="round" style="margin-bottom:8px;"><path d="M8 10V3M5 5l3-3 3 3"/><path d="M2 10v2.5a1 1 0 001 1h10a1 1 0 001-1V10"/></svg>
     <div style="font-size:13px;color:#919191;">{% trans "Перетащите файлы сюда или нажмите для выбора" %}</div>
@@ -208,11 +208,11 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div>
           <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "ТН ВЭД код *" %}</label>
-          <input id="decl-tnved" type="text" placeholder="{% trans "например: 8708 99" %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <input id="decl-tnved" type="text" placeholder="{% trans "например: 8708 99" %}" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,74,33,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         </div>
         <div>
           <label style="font-size:11px;color:#919191;display:block;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">{% trans "Таможенная стоимость ($) *" %}</label>
-          <input id="decl-value" type="number" placeholder="0.00" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+          <input id="decl-value" type="number" placeholder="0.00" style="width:100%;padding:10px 12px;background:#111;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:#ECECEC;font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(232,74,33,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
         </div>
       </div>
     </div>

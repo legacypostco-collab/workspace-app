@@ -1,6 +1,6 @@
 <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
   <!-- Background dotted world grid (abstract continents) -->
-  <g fill="#1A1422" opacity="0.18">
+  <g fill="#151515" opacity="0.18">
     <!-- Europe cluster -->
     <circle cx="68" cy="38" r="1.5"/>
     <circle cx="74" cy="36" r="1.5"/>
@@ -47,17 +47,17 @@
   <circle cx="76" cy="40" r="14" fill="none" stroke="#E84A21" stroke-width="1" opacity="0.25"/>
   <circle cx="76" cy="40" r="7" fill="#E84A21"/>
   <circle cx="76" cy="40" r="3" fill="#fff"/>
-  <text x="76" y="20" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" letter-spacing="0.5">EU</text>
+  <text x="76" y="20" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#151515" text-anchor="middle" letter-spacing="0.5">EU</text>
 
   <!-- Hub: China -->
   <circle cx="134" cy="46" r="14" fill="none" stroke="#E84A21" stroke-width="1" opacity="0.25"/>
   <circle cx="134" cy="46" r="7" fill="#E84A21"/>
   <circle cx="134" cy="46" r="3" fill="#fff"/>
-  <text x="134" y="26" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" letter-spacing="0.5">CN</text>
+  <text x="134" y="26" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#151515" text-anchor="middle" letter-spacing="0.5">CN</text>
 
   <!-- Hub: UAE -->
   <circle cx="104" cy="64" r="14" fill="none" stroke="#E84A21" stroke-width="1" opacity="0.25"/>
   <circle cx="104" cy="64" r="7" fill="#E84A21"/>
   <circle cx="104" cy="64" r="3" fill="#fff"/>
-  <text x="104" y="92" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#1A1422" text-anchor="middle" letter-spacing="0.5">UAE</text>
+  <text x="104" y="92" font-family="-apple-system, Inter, sans-serif" font-size="9" font-weight="700" fill="#151515" text-anchor="middle" letter-spacing="0.5">UAE</text>
 </svg>

@@ -33,15 +33,12 @@ from django.contrib.auth import get_user_model, login
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils import timezone
-from django.utils.decorators import method_decorator
 from django.utils.translation import gettext as _
 from django.views import View
-from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
 
-@method_decorator(csrf_exempt, name="dispatch")
 class MagicLinkRequestView(View):
     """POST /api/assistant/auth/magic-link/ {email} → отправить ссылку."""
 
@@ -54,6 +51,17 @@ class MagicLinkRequestView(View):
         email = (body.get("email") or "").strip().lower()
         if not email:
             return JsonResponse({"ok": False, "error": "email required"}, status=400)
+
+        from django.core.cache import cache
+
+        ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "")
+        email_key = f"magic-link:email:{email}"
+        ip_key = f"magic-link:ip:{ip}"
+        if int(cache.get(email_key, 0) or 0) >= 3 or int(cache.get(ip_key, 0) or 0) >= 10:
+            return JsonResponse({"ok": True, "message":
+                _("Если этот email зарегистрирован, мы отправили на него ссылку.")})
+        cache.set(email_key, int(cache.get(email_key, 0) or 0) + 1, 3600)
+        cache.set(ip_key, int(cache.get(ip_key, 0) or 0) + 1, 3600)
 
         # Никогда не палим существование email — всегда 200
         from marketplace.models import MagicLinkToken
@@ -118,9 +126,16 @@ class MagicLinkConfirmView(View):
         user = ml.user
         if not user.is_active:
             return JsonResponse({"ok": False, "error": "account inactive"}, status=403)
+        from .security import user_has_enabled_2fa
+        if user_has_enabled_2fa(user):
+            return JsonResponse({
+                "ok": False,
+                "error": "2fa_required",
+                "message": _("Для этого аккаунта включена 2FA. Войдите с паролем и одноразовым кодом."),
+            }, status=403)
         # При обычном UserModel Django нужно установить backend
         user.backend = "django.contrib.auth.backends.ModelBackend"
-        login(request, user)
+        login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         ml.used_at = timezone.now()
         ml.ip_used = request.META.get("REMOTE_ADDR", "")[:64]
         ml.save(update_fields=["used_at", "ip_used"])

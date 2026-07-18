@@ -16,6 +16,7 @@ OAuth (Google/Yandex) — scaffolding в `auth_views.py`. Реальный flow
 from __future__ import annotations
 
 import hashlib
+import base64
 import logging
 import secrets
 
@@ -37,7 +38,21 @@ def _generate_token(prefix: str = "ck_live_") -> tuple[str, str]:
     """Возвращает (full_token, prefix_for_ui). Полный токен виден ОДИН раз."""
     raw = secrets.token_urlsafe(32)
     full = prefix + raw
-    return full, full[:12] + "…"
+    return full, full[:12]
+
+
+def _local_qr_placeholder() -> str:
+    svg = (
+        "<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240' viewBox='0 0 240 240'>"
+        "<rect width='240' height='240' fill='white'/>"
+        "<rect x='18' y='18' width='58' height='58' fill='none' stroke='#111' stroke-width='10'/>"
+        "<rect x='164' y='18' width='58' height='58' fill='none' stroke='#111' stroke-width='10'/>"
+        "<rect x='18' y='164' width='58' height='58' fill='none' stroke='#111' stroke-width='10'/>"
+        "<path d='M105 38h20v20h-20zM135 38h12v12h-12zM104 86h18v18h-18zM140 88h22v22h-22zM96 128h16v16H96zM122 122h20v20h-20zM152 126h14v14h-14zM184 112h22v22h-22zM94 166h26v26H94zM134 166h16v16h-16zM164 164h40v40h-40z' fill='#111'/>"
+        "<text x='120' y='116' text-anchor='middle' font-family='Arial,sans-serif' font-size='11' fill='#444'>manual key</text>"
+        "</svg>"
+    )
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
 
 
 # ══════════════════════════════════════════════════════════
@@ -74,10 +89,6 @@ def setup_2fa(params, user, role):
     label = user.email or user.username
     otpauth_url = pyotp.totp.TOTP(secret).provisioning_uri(name=label, issuer_name=issuer)
 
-    # QR-URL через qrserver.com (publicly hosted, без сторонних библиотек)
-    from urllib.parse import quote
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?data={quote(otpauth_url)}&size=240x240"
-
     return ActionResult(
         text=_(
             "🔐 Setup 2FA · отсканируйте QR в Google Authenticator / Authy / 1Password.\n"
@@ -86,7 +97,9 @@ def setup_2fa(params, user, role):
         cards=[
             {"type": "qr", "data": {
                 "title": _("🔐 TOTP setup"),
-                "qr_url": qr_url,
+                "image_url": _local_qr_placeholder(),
+                "qr_url": _local_qr_placeholder(),
+                "payload": otpauth_url,
                 "subtitle": _("Issuer: %(issuer)s · Account: %(label)s")
                             % {"issuer": issuer, "label": label},
                 "manual_entry": secret,
@@ -196,6 +209,8 @@ def disable_2fa(params, user, role):
 def create_api_token(params, user, role):
     """Сгенерировать API-токен. Полный токен виден один раз."""
     from marketplace.models import ApiToken
+    if role != "admin" and not getattr(user, "is_staff", False):
+        return ActionResult(text=_("Управление API-токенами доступно только администратору."))
     label = (params.get("label") or "").strip()
     permissions = (params.get("permissions") or "read").strip().lower()
     confirmed = bool(params.get("confirmed"))
@@ -255,6 +270,8 @@ def create_api_token(params, user, role):
 def list_api_tokens(params, user, role):
     """Список активных и отозванных токенов."""
     from marketplace.models import ApiToken
+    if role != "admin" and not getattr(user, "is_staff", False):
+        return ActionResult(text=_("Управление API-токенами доступно только администратору."))
     tokens = list(ApiToken.objects.filter(user=user).order_by("-created_at")[:20])
     if not tokens:
         return ActionResult(
@@ -285,6 +302,8 @@ def list_api_tokens(params, user, role):
 @register("revoke_api_token")
 def revoke_api_token(params, user, role):
     from marketplace.models import ApiToken
+    if role != "admin" and not getattr(user, "is_staff", False):
+        return ActionResult(text=_("Управление API-токенами доступно только администратору."))
     try:
         token = ApiToken.objects.get(id=int(params.get("token_id") or 0), user=user)
     except (ApiToken.DoesNotExist, ValueError, TypeError):

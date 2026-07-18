@@ -114,7 +114,7 @@ def _gen_oem_from_title(title: str) -> str:
     """
     import hashlib
     base = slugify(title or "").upper()[:48].strip("-")
-    h = hashlib.md5((title or "").strip().lower().encode("utf-8")).hexdigest()[:6].upper()
+    h = hashlib.sha256((title or "").strip().lower().encode("utf-8")).hexdigest()[:6].upper()
     return (f"GEN-{base}-{h}" if base else f"GEN-{h}")[:100]
 
 # Известные бренды-аналоги — реальные изготовители деталей. Поле

@@ -34,23 +34,18 @@ def send_notification_task(self, user_id: int, kind: str, title: str, body: str 
     notif = Notification.objects.create(
         user_id=user_id, kind=kind, title=title, body=body, url=url,
     )
-    # Push via Channels (graceful no-op if Channels not configured)
+    # Единый realtime fanout: чат слушает notif_user_<id>, старые страницы —
+    # user_<id>. Helper отправляет в обе группы в совместимых форматах.
     try:
-        from asgiref.sync import async_to_sync
-        from channels.layers import get_channel_layer
-        layer = get_channel_layer()
-        if layer:
-            async_to_sync(layer.group_send)(
-                f"user_{user_id}",
-                {
-                    "type": "notification.message",
-                    "data": {
-                        "id": notif.id, "kind": kind, "title": title,
-                        "body": body[:120], "url": url, "is_read": False,
-                        "created_at": notif.created_at.strftime("%d.%m %H:%M"),
-                    },
-                },
-            )
+        from assistant.consumers import push_notification_to_user
+        push_notification_to_user(user_id, {
+            "id": notif.id,
+            "kind": kind,
+            "title": title,
+            "body": body,
+            "url": url,
+            "created_at": notif.created_at.isoformat() if notif.created_at else "",
+        })
     except Exception as e:
         logger.warning(f"WebSocket push failed: {e}")
     return notif.id
@@ -138,6 +133,13 @@ def deliver_webhook_task(self, url: str, payload: dict, headers: dict = None):
     """Send webhook with retry on failure. Replaces inline delivery in views."""
     import json
     import urllib.request
+    from assistant.security import safe_outbound_url
+
+    ok_url, reason = safe_outbound_url(url)
+    if not ok_url:
+        logger.warning("Webhook delivery blocked for %s: %s", url, reason)
+        return 0
+
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),

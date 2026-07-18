@@ -9,7 +9,7 @@
   <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value">{{ active }}</div><div class="ap-stat-label">{% trans "Активных" %}</div></a>
   <a href="/admin-panel/orders/?status=completed" class="ap-stat"><div class="ap-stat-value">{{ completed }}</div><div class="ap-stat-label">{% trans "Завершённых" %}</div></a>
   <a href="/admin-panel/orders/?status=cancelled" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ cancelled }}</div><div class="ap-stat-label">{% trans "Отменённых" %}</div></a>
-  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value" style="color:#64B5F6;">+{{ week_orders }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
+  <a href="/admin-panel/orders/" class="ap-stat"><div class="ap-stat-value" style="color:#E84A21;">+{{ week_orders }}</div><div class="ap-stat-label">{% trans "За неделю" %}</div></a>
   <a href="/admin-panel/finance/" class="ap-stat"><div class="ap-stat-value">${{ week_revenue|floatformat:0 }}</div><div class="ap-stat-label">{% trans "Выручка за неделю" %}</div></a>
   <a href="/admin-panel/orders/?sla=breached" class="ap-stat ap-stat-warn"><div class="ap-stat-value">{{ problem_count }}</div><div class="ap-stat-label">{% trans "Проблемных" %}</div></a>
 </div>
@@ -73,7 +73,7 @@
       {% for order in orders %}
       <tr {% if order.sla_status == 'breached' %}style="border-left:3px solid #E85C0D;"{% elif order.status == 'cancelled' %}style="opacity:0.5;"{% endif %}>
         <td><input type="checkbox" name="selected_orders" value="{{ order.id }}" class="order-cb" onchange="updateOrderBar()"/></td>
-        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ order.id }}</a></td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#E84A21;text-decoration:none;">ORD-{{ order.id }}</a></td>
         <td>
           {{ order.customer_name|truncatechars:20 }}
           {% if order.buyer %}<div style="font-size:11px;color:#919191;">{{ order.buyer.username }}</div>{% endif %}
@@ -128,8 +128,8 @@
 </div>
 
 <!-- Bulk bar -->
-<div id="orderBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="orderSelectedCount">{% trans "0 выбрано" %}</span>
+<div id="orderBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(232,74,33,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
+  <span style="font-size:13px;color:#E84A21;font-weight:600;" id="orderSelectedCount">{% trans "0 выбрано" %}</span>
   <select class="ap-select" id="bulkStatusSelect">
     {% for val, label in status_choices %}
     <option value="{{ val }}">{{ label }}</option>

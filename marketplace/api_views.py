@@ -655,14 +655,26 @@ def api_newsletter_subscribe(request):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 @permission_classes([AllowAny])
-def api_readiness(_request):
+def api_readiness(request):
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             cursor.fetchone()
     except Exception as exc:
-        return Response({"ok": False, "database": "down", "error": exc.__class__.__name__}, status=503)
-    return Response({"ok": True, "database": "up", "time": timezone.now().isoformat()}, status=200)
+        ok = False
+        detail = exc.__class__.__name__
+    else:
+        ok = True
+        detail = ""
+
+    token = (getattr(settings, "HEALTHCHECK_TOKEN", "") or "").strip()
+    provided = (request.headers.get("X-Healthcheck-Token") or "").strip()
+    if token and provided == token:
+        payload = {"ok": ok, "checks": {"database": ok}}
+        if detail:
+            payload["error"] = detail
+        return Response(payload, status=200 if ok else 503)
+    return Response({"ok": ok, "status": "ready" if ok else "unavailable"}, status=200 if ok else 503)
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)

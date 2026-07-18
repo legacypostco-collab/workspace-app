@@ -1,16 +1,16 @@
-{% load static i18n %}<!DOCTYPE html>
-<html lang="ru">
+{% load static i18n %}{% get_current_language as CURRENT_LANG %}<!DOCTYPE html>
+<html lang="{{ CURRENT_LANG|default:'ru' }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-  <title>КП по RFQ #{{ rfq_id }} — Consolidator Parts</title>
+  <title>{% blocktrans with rfq_id=rfq_id %}КП по RFQ #{{ rfq_id }}{% endblocktrans %} — Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap" rel="stylesheet">
   <script src="{% url 'javascript-catalog' %}" defer></script>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;color:#1a1a1a;-webkit-font-smoothing:antialiased;}
-    body{background:linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);background-attachment:fixed;overflow:hidden;}
+    body{background:linear-gradient(180deg,#d7d2cc 0%,#cbb3a3 35%,#f0a59a 65%,#f4956a 100%);background-attachment:fixed;overflow:hidden;}
     body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 50% 80%, rgba(255,130,75,0.4), transparent 65%);pointer-events:none;z-index:0;}
     a{color:inherit;text-decoration:none;}
     button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;padding:0;}
@@ -87,6 +87,7 @@
       .topbar,.pp-actions{display:none !important;}
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
 <div class="app">

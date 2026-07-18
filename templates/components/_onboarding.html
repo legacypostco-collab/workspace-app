@@ -1,20 +1,20 @@
 {# Onboarding tour: shown ONCE on first cabinet visit. Skipped if localStorage flag set. #}
 {% load i18n %}
 <div id="onboarding-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;backdrop-filter:blur(3px);"></div>
-<div id="onboarding-popover" style="display:none;position:fixed;background:#242424;border:1px solid rgba(100,181,246,0.35);border-radius:14px;padding:22px;width:340px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:9999;font-family:'Inter',sans-serif;">
-  <div id="ob-step-num" style="font-size:11px;color:#64B5F6;font-weight:700;letter-spacing:0.08em;margin-bottom:6px;"></div>
+<div id="onboarding-popover" style="display:none;position:fixed;background:#242424;border:1px solid rgba(232,74,33,0.35);border-radius:14px;padding:22px;width:340px;box-shadow:0 12px 40px rgba(0,0,0,0.6);z-index:9999;font-family:'Inter',sans-serif;">
+  <div id="ob-step-num" style="font-size:11px;color:#E84A21;font-weight:700;letter-spacing:0.08em;margin-bottom:6px;"></div>
   <div id="ob-title" style="font-family:'Golos Text',sans-serif;font-weight:800;font-size:18px;color:#ECECEC;margin-bottom:8px;line-height:1.3;"></div>
   <div id="ob-text" style="font-size:13px;color:#919191;line-height:1.5;margin-bottom:18px;"></div>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
     <button onclick="obSkip()" style="background:transparent;border:none;color:#5E5E5E;font-size:12px;cursor:pointer;font-family:inherit;padding:8px 0;">{% trans "Пропустить" %}</button>
     <div style="display:flex;gap:8px;">
       <button id="ob-prev" onclick="obPrev()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#919191;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;">←</button>
-      <button id="ob-next" onclick="obNext()" style="background:#64B5F6;border:none;color:#1A1A1A;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">{% trans "Далее" %} →</button>
+      <button id="ob-next" onclick="obNext()" style="background:#E84A21;border:none;color:#1A1A1A;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">{% trans "Далее" %} →</button>
     </div>
   </div>
 </div>
 <style>
-  .ob-highlight{position:relative;z-index:9999!important;box-shadow:0 0 0 3px #64B5F6, 0 0 0 9999px rgba(0,0,0,0.7)!important;border-radius:12px!important;transition:all .2s;}
+  .ob-highlight{position:relative;z-index:9999!important;box-shadow:0 0 0 3px #E84A21, 0 0 0 9999px rgba(0,0,0,0.7)!important;border-radius:12px!important;transition:all .2s;}
 </style>
 <script>
 (function(){

@@ -44,8 +44,12 @@ def auth_meta(request):
     language_code = (translation.get_language() or "ru").lower()
     if language_code.startswith("en"):
         lang_key = "en"
+    elif language_code.startswith("es"):
+        lang_key = "es"
     elif language_code.startswith("zh"):
         lang_key = "zh"
+    elif language_code.startswith("ar"):
+        lang_key = "ar"
     else:
         lang_key = "ru"
 
@@ -118,6 +122,40 @@ def auth_meta(request):
             "register": "Register",
             "login": "Login",
         },
+        "es": {
+            "home": "Inicio",
+            "navigation": "Navegación",
+            "catalog": "Catálogo",
+            "brands": "Marcas",
+            "categories": "Categorías",
+            "compare": "Comparación",
+            "sales": "Ventas",
+            "new_rfq": "Nuevo RFQ",
+            "rfq_quotes": "RFQ y cotizaciones",
+            "demo_center": "Demo Center",
+            "cart": "Carrito",
+            "supplier": "Proveedor",
+            "seller_cabinet": "Panel del proveedor",
+            "seller_orders": "Pedidos del proveedor",
+            "operator_queue": "Cola del operador",
+            "operator_webhooks": "Registros de webhook",
+            "engineering": "Ingeniería",
+            "drawings_docs": "Planos y documentos",
+            "finance": "Finanzas",
+            "prices_discounts": "Precios y descuentos",
+            "payouts": "Pagos y retenciones",
+            "analytics": "Analítica",
+            "reports_kpi": "Informes y KPI",
+            "my_cabinet": "Mi cuenta",
+            "buyer_orders": "Pedidos del comprador",
+            "overview": "Resumen",
+            "callback": "Solicitar llamada",
+            "you_logged_as": "Sesión iniciada como",
+            "cabinet": "Cuenta",
+            "logout": "Cerrar sesión",
+            "register": "Registrarse",
+            "login": "Iniciar sesión",
+        },
         "zh": {
             "home": "首页",
             "navigation": "导航",
@@ -151,6 +189,40 @@ def auth_meta(request):
             "logout": "退出",
             "register": "注册",
             "login": "登录",
+        },
+        "ar": {
+            "home": "الرئيسية",
+            "navigation": "التنقل",
+            "catalog": "الكتالوج",
+            "brands": "العلامات",
+            "categories": "الفئات",
+            "compare": "المقارنة",
+            "sales": "المبيعات",
+            "new_rfq": "طلب RFQ جديد",
+            "rfq_quotes": "طلبات RFQ والعروض",
+            "demo_center": "Demo Center",
+            "cart": "السلة",
+            "supplier": "المورد",
+            "seller_cabinet": "لوحة المورد",
+            "seller_orders": "طلبات المورد",
+            "operator_queue": "طابور المشغل",
+            "operator_webhooks": "سجلات Webhook",
+            "engineering": "الهندسة",
+            "drawings_docs": "الرسومات والمستندات",
+            "finance": "المالية",
+            "prices_discounts": "الأسعار والخصومات",
+            "payouts": "المدفوعات والاقتطاعات",
+            "analytics": "التحليلات",
+            "reports_kpi": "التقارير وKPI",
+            "my_cabinet": "حسابي",
+            "buyer_orders": "طلبات المشتري",
+            "overview": "نظرة عامة",
+            "callback": "طلب اتصال",
+            "you_logged_as": "تم تسجيل الدخول باسم",
+            "cabinet": "الحساب",
+            "logout": "تسجيل الخروج",
+            "register": "التسجيل",
+            "login": "تسجيل الدخول",
         },
     }[lang_key]
 

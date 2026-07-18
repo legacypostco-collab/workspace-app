@@ -76,7 +76,7 @@ class AuditFixesTests(TestCase):
     # ── Аноним не видит чужие котировки ───────────────────────────
     def test_anon_view_rfq_quotes_blocked(self):
         r = execute("view_rfq_quotes", {"rfq_id": self.rfqA.id}, AnonymousUser(), "buyer")
-        self.assertIn("зарегистрир", r.text.lower())
+        self.assertTrue("войдите" in r.text.lower() or "аккаунт" in r.text.lower())
 
     # ── Протухшая котировка ───────────────────────────────────────
     def test_accept_quote_expired_blocked(self):

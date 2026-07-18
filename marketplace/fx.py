@@ -37,9 +37,20 @@ def _fetch_rates():
     try:
         import json
         import urllib.request
+        from assistant.security import safe_outbound_url
         # rates[X] = сколько X за 1 USD → инвертируем в "USD за 1 X".
+        url = "https://open.er-api.com/v6/latest/USD"
+        ok_url, reason = safe_outbound_url(
+            url,
+            allowed_hosts_setting="FX_ALLOWED_HOSTS",
+            allow_private_setting="FX_ALLOW_PRIVATE_IPS",
+            allow_insecure_setting="FX_ALLOW_INSECURE_HTTP",
+        )
+        if not ok_url:
+            logger.warning("fx: rate endpoint blocked: %s", reason)
+            return None
         req = urllib.request.Request(
-            "https://open.er-api.com/v6/latest/USD",
+            url,
             headers={"User-Agent": "consolidator-fx/1.0"})
         with urllib.request.urlopen(req, timeout=5) as r:
             data = json.loads(r.read().decode())

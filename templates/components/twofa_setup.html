@@ -16,6 +16,7 @@
       <form method="post" onsubmit="return confirm('{% trans "Точно отключить 2FA?" %}')">
         {% csrf_token %}
         <input type="hidden" name="action" value="disable">
+        <input type="text" name="code" required pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="off" style="width:96px;margin-right:8px;padding:8px 10px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;font-family:'Courier New',monospace;letter-spacing:0.12em;text-align:center;">
         <button type="submit" style="background:transparent;border:1px solid rgba(232,92,13,0.25);color:#E85C0D;padding:8px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600;">{% trans "Отключить" %}</button>
       </form>
     </div>
@@ -26,7 +27,7 @@
       <p style="color:#919191;font-size:12px;margin-bottom:12px;">{% trans "Используйте эти коды если потеряете доступ к телефону. Каждый код одноразовый." %}</p>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-family:'Courier New',monospace;font-size:13px;">
         {% for code in backup_codes %}
-          {% if code %}<div style="background:#1A1A1A;padding:8px 12px;border-radius:6px;text-align:center;color:#64B5F6;letter-spacing:0.1em;">{{ code }}</div>{% endif %}
+          {% if code %}<div style="background:#1A1A1A;padding:8px 12px;border-radius:6px;text-align:center;color:#E84A21;letter-spacing:0.1em;">{{ code }}</div>{% endif %}
         {% endfor %}
       </div>
     </div>
@@ -46,7 +47,7 @@
         <div style="flex:1;min-width:240px;">
           <p style="color:#919191;font-size:13px;line-height:1.6;margin-bottom:12px;">{% trans "Откройте приложение-аутентификатор (Google Authenticator, Authy, 1Password) и отсканируйте QR-код." %}</p>
           <p style="color:#5E5E5E;font-size:11px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.06em;">{% trans "Или введите вручную:" %}</p>
-          <div style="background:#1A1A1A;padding:8px 12px;border-radius:6px;font-family:'Courier New',monospace;font-size:13px;color:#64B5F6;letter-spacing:0.1em;word-break:break-all;">{{ twofa.secret }}</div>
+          <div style="background:#1A1A1A;padding:8px 12px;border-radius:6px;font-family:'Courier New',monospace;font-size:13px;color:#E84A21;letter-spacing:0.1em;word-break:break-all;">{{ twofa.secret }}</div>
         </div>
       </div>
 
@@ -57,7 +58,7 @@
         <div style="flex:1;max-width:200px;">
           <input type="text" name="code" required pattern="[0-9]{6}" maxlength="6" placeholder="000000" autocomplete="off" style="width:100%;padding:12px 14px;background:#1A1A1A;border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#ECECEC;font-size:18px;outline:none;font-family:'Courier New',monospace;letter-spacing:0.2em;text-align:center;">
         </div>
-        <button type="submit" style="background:#64B5F6;color:#1A1A1A;border:none;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">{% trans "Включить 2FA" %}</button>
+        <button type="submit" style="background:#E84A21;color:#1A1A1A;border:none;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">{% trans "Включить 2FA" %}</button>
       </form>
     </div>
   {% endif %}

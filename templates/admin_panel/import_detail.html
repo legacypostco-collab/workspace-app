@@ -24,7 +24,7 @@
 
 <div class="ap-card" style="margin-bottom:12px;">
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:13px;">
-    <div><span style="color:#919191;">{% trans "Поставщик:" %}</span> <a href="/admin-panel/users/{{ imp.seller_id }}/" style="color:#64B5F6;text-decoration:none;">{{ imp.seller.username }}</a></div>
+    <div><span style="color:#919191;">{% trans "Поставщик:" %}</span> <a href="/admin-panel/users/{{ imp.seller_id }}/" style="color:#E84A21;text-decoration:none;">{{ imp.seller.username }}</a></div>
     <div><span style="color:#919191;">{% trans "Файл:" %}</span> {{ imp.filename }}</div>
     <div><span style="color:#919191;">{% trans "Дата:" %}</span> {{ imp.created_at|date:"d.m.Y H:i:s" }}</div>
   </div>
@@ -75,7 +75,7 @@
       {% for part in parts %}
       <tr {% if part.admin_note %}style="border-left:3px solid #E85C0D;"{% endif %}>
         <td><input type="checkbox" name="selected_parts" value="{{ part.id }}" class="imp-cb" onchange="updateImportBar()"/></td>
-        <td><span style="color:#64B5F6;">{{ part.oem_number }}</span></td>
+        <td><span style="color:#E84A21;">{{ part.oem_number }}</span></td>
         <td>{{ part.title|truncatechars:30 }}</td>
         <td class="text-secondary">{{ part.brand.name|default:"—" }}</td>
         <td>{{ part.price }} {{ part.currency }}</td>
@@ -106,8 +106,8 @@
 </div>
 
 <!-- Bulk bar -->
-<div id="importBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(100,181,246,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
-  <span style="font-size:13px;color:#64B5F6;font-weight:600;" id="importSelectedCount">{% trans "0 выбрано" %}</span>
+<div id="importBulkBar" style="display:none;position:fixed;bottom:0;left:220px;right:0;padding:12px 28px;background:#1F1F1F;border-top:1px solid rgba(232,74,33,0.2);z-index:1000;align-items:center;gap:12px;box-shadow:0 -4px 20px rgba(0,0,0,0.4);">
+  <span style="font-size:13px;color:#E84A21;font-weight:600;" id="importSelectedCount">{% trans "0 выбрано" %}</span>
   <button type="button" class="ap-btn ap-btn-primary" onclick="bulkImportApprove()">{% trans "Одобрить выбранные" %}</button>
   <button type="button" class="ap-btn ap-btn-warn" onclick="showImportBlockModal('bulk')">{% trans "Отклонить выбранные" %}</button>
   <button type="button" class="ap-btn ap-btn-ghost" onclick="clearImportSelection()">{% trans "Снять" %}</button>

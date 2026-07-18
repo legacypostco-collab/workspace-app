@@ -39,7 +39,7 @@
   border:1px solid rgba(255,255,255,0.07);border-radius:10px;
   color:#ECECEC;font-size:13px;outline:none;
 }
-.fin-search:focus { border-color:rgba(100,181,246,0.4); }
+.fin-search:focus { border-color:rgba(232,74,33,0.4); }
 .fin-filter-btn {
   padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;
   cursor:pointer;border:1px solid rgba(255,255,255,0.07);
@@ -48,8 +48,8 @@
 }
 .fin-filter-btn:hover { background:rgba(255,255,255,0.06);color:#ECECEC; }
 .fin-filter-btn.active {
-  background:rgba(100,181,246,0.12);color:#64B5F6;
-  border-color:rgba(100,181,246,0.3);
+  background:rgba(232,74,33,0.12);color:#E84A21;
+  border-color:rgba(232,74,33,0.3);
 }
 
 /* Table */
@@ -79,11 +79,11 @@
 }
 .fin-pay-badge--awaiting_reserve { background:rgba(138,138,138,0.15);color:#8A8A8A; }
 .fin-pay-badge--reserve_paid { background:rgba(255,140,66,0.12);color:#FF8C42; }
-.fin-pay-badge--paid { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.fin-pay-badge--paid { background:rgba(232,74,33,0.12);color:#E84A21; }
 .fin-pay-badge--refund_pending { background:rgba(255,140,66,0.12);color:#FF8C42; }
 .fin-pay-badge--refunded { background:rgba(220,80,80,0.12);color:#E05555; }
-.fin-pay-badge--mid_paid { background:rgba(100,181,246,0.08);color:#7DC4F8; }
-.fin-pay-badge--customs_paid { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.fin-pay-badge--mid_paid { background:rgba(232,74,33,0.08);color:#7DC4F8; }
+.fin-pay-badge--customs_paid { background:rgba(232,74,33,0.12);color:#E84A21; }
 
 /* Scheme badge */
 .fin-scheme-badge {
@@ -91,11 +91,11 @@
   font-weight:600;letter-spacing:0.02em;
 }
 .fin-scheme--simple { background:rgba(236,236,236,0.08);color:#ECECEC; }
-.fin-scheme--staged { background:rgba(100,181,246,0.14);color:#64B5F6; }
+.fin-scheme--staged { background:rgba(232,74,33,0.14);color:#E84A21; }
 
 /* SLA badge */
 .fin-sla-badge { font-size:10px;font-weight:500; }
-.fin-sla--on_track { color:#64B5F6; }
+.fin-sla--on_track { color:#E84A21; }
 .fin-sla--at_risk { color:#8A8A8A; }
 .fin-sla--breached { color:#FF8C42; }
 
@@ -151,20 +151,20 @@
 .fin-pay-step.current::before { background:#ECECEC;box-shadow:0 0 6px rgba(236,236,236,0.4);border-color:#ECECEC; }
 .fin-pay-step-label { font-size:12px;color:#ECECEC;font-weight:500; }
 .fin-pay-step-meta { font-size:11px;color:#6A6A6A;margin-top:2px; }
-.fin-pay-step-amount { font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#64B5F6;margin-top:2px; }
+.fin-pay-step-amount { font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#E84A21;margin-top:2px; }
 
 /* Documents list */
 .fin-doc-row {
   display:flex;align-items:center;gap:10px;padding:8px 0;
   border-bottom:1px solid rgba(255,255,255,0.03);
 }
-.fin-doc-icon { color:#64B5F6;flex-shrink:0; }
+.fin-doc-icon { color:#E84A21;flex-shrink:0; }
 .fin-doc-info { flex:1;min-width:0; }
 .fin-doc-name { font-size:12px;color:#ECECEC;font-weight:500; }
 .fin-doc-type { font-size:10px;color:#6A6A6A; }
 .fin-doc-date { font-size:10px;color:#6A6A6A;flex-shrink:0; }
 .fin-doc-link {
-  font-size:11px;color:#64B5F6;text-decoration:none;flex-shrink:0;
+  font-size:11px;color:#E84A21;text-decoration:none;flex-shrink:0;
 }
 .fin-doc-link:hover { text-decoration:underline; }
 
@@ -177,12 +177,12 @@
 .fin-invoice-btn {
   display:inline-flex;align-items:center;gap:5px;
   padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;
-  background:rgba(100,181,246,0.1);color:#64B5F6;
-  border:1px solid rgba(100,181,246,0.2);
+  background:rgba(232,74,33,0.1);color:#E84A21;
+  border:1px solid rgba(232,74,33,0.2);
   text-decoration:none;transition:all .15s;
 }
 .fin-invoice-btn:hover {
-  background:rgba(100,181,246,0.18);
+  background:rgba(232,74,33,0.18);
 }
 
 /* Empty state */
@@ -192,7 +192,7 @@
 
 /* Clickable metric links */
 .fin-metric-link { text-decoration:none; display:block; cursor:pointer; }
-.fin-metric-link:hover > .fin-metric { border-color:rgba(100,181,246,0.35) !important; background:#242424 !important; }
+.fin-metric-link:hover > .fin-metric { border-color:rgba(232,74,33,0.35) !important; background:#242424 !important; }
 </style>
 {% endblock %}
 
@@ -217,8 +217,8 @@
     <a href="/seller/finance/?payment=paid" class="fin-metric-link">
     <div class="fin-metric">
       <div class="fin-metric-label">{% trans "Получено" %}</div>
-      <div class="fin-metric-val" style="color:#64B5F6;">${{ paid_revenue|floatformat:0 }}</div>
-      <div class="fin-metric-hint" style="color:#64B5F6;">{% trans "полная оплата" %}</div>
+      <div class="fin-metric-val" style="color:#E84A21;">${{ paid_revenue|floatformat:0 }}</div>
+      <div class="fin-metric-hint" style="color:#E84A21;">{% trans "полная оплата" %}</div>
     </div>
     </a>
     <a href="/seller/finance/?payment=awaiting_reserve" class="fin-metric-link">
@@ -309,7 +309,7 @@
       </td>
       <td style="text-align:center;">
         {% if row.docs_count > 0 %}
-        <span style="color:#64B5F6;">
+        <span style="color:#E84A21;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           {{ row.docs_count }}
         </span>

@@ -15,14 +15,14 @@
 .fav-stat-lbl { font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#5E5E5E;margin-top:2px; }
 .fav-stat { cursor:pointer;transition:background .12s;border-bottom:2px solid transparent;box-sizing:border-box; }
 .fav-stat:hover { background:#202020; }
-.fav-stat.active { border-bottom-color:#64B5F6; }
+.fav-stat.active { border-bottom-color:#E84A21; }
 .fav-stat.active-orange { border-bottom-color:#E85C0D; }
 
 /* Toolbar */
 .fav-toolbar { display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap; }
 .fav-search { flex:1;min-width:180px;padding:9px 14px;background:#111;border:1px solid rgba(255,255,255,0.07);border-radius:9px;color:#ECECEC;font-size:12px;outline:none; }
 .fav-search::placeholder { color:#6A6A6A; }
-.fav-search:focus { border-color:rgba(100,181,246,0.35); }
+.fav-search:focus { border-color:rgba(232,74,33,0.35); }
 .fav-select {
   padding:7px 30px 7px 11px;border-radius:8px;font-size:12px;
   border:1px solid rgba(255,255,255,0.07);background:#1A1A1A;color:#ECECEC;
@@ -30,9 +30,9 @@
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23919191' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;background-position:right 9px center;
 }
-.fav-select:focus { border-color:rgba(100,181,246,0.3); }
-.fav-btn-add { padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.25);cursor:pointer;transition:all .15s;white-space:nowrap; }
-.fav-btn-add:hover { background:rgba(100,181,246,0.2); }
+.fav-select:focus { border-color:rgba(232,74,33,0.3); }
+.fav-btn-add { padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(232,74,33,0.12);color:#E84A21;border:1px solid rgba(232,74,33,0.25);cursor:pointer;transition:all .15s;white-space:nowrap; }
+.fav-btn-add:hover { background:rgba(232,74,33,0.2); }
 
 /* Table */
 .fav-head {
@@ -46,9 +46,9 @@
   background:#1A1A1A;border:1px solid rgba(255,255,255,0.04);border-radius:10px;margin-bottom:4px;
   transition:border-color .15s;
 }
-.fav-row:hover { border-color:rgba(100,181,246,0.12); }
+.fav-row:hover { border-color:rgba(232,74,33,0.12); }
 
-.fav-oem { font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#64B5F6;letter-spacing:0.02em;cursor:pointer; }
+.fav-oem { font-family:'Golos Text',sans-serif;font-size:13px;font-weight:700;color:#E84A21;letter-spacing:0.02em;cursor:pointer; }
 .fav-oem:hover { text-decoration:underline; }
 .fav-name { font-size:12px;font-weight:600;color:#ECECEC; }
 .fav-name-sub { font-size:10px;color:#6A6A6A;margin-top:2px; }
@@ -71,10 +71,10 @@
 .fav-actions { display:flex;gap:4px; }
 .fav-act-btn {
   padding:5px 9px;border-radius:6px;font-size:11px;font-weight:600;
-  border:1px solid rgba(100,181,246,0.25);background:transparent;color:#64B5F6;
+  border:1px solid rgba(232,74,33,0.25);background:transparent;color:#E84A21;
   cursor:pointer;transition:all .15s;white-space:nowrap;
 }
-.fav-act-btn:hover { background:rgba(100,181,246,0.08); }
+.fav-act-btn:hover { background:rgba(232,74,33,0.08); }
 
 .fav-remove { width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:7px;cursor:pointer;border:1px solid transparent;background:transparent;color:#5E5E5E;transition:all .15s;padding:0; }
 .fav-remove:hover { border-color:rgba(232,92,13,0.3);color:#E85C0D;background:rgba(232,92,13,0.06); }
@@ -97,7 +97,7 @@
 
 /* Threshold badge */
 .fav-threshold { font-size:10px;color:#919191;display:flex;align-items:center;gap:4px; }
-.fav-threshold-btn { font-size:10px;color:#64B5F6;cursor:pointer;text-decoration:underline;text-decoration-style:dotted; }
+.fav-threshold-btn { font-size:10px;color:#E84A21;cursor:pointer;text-decoration:underline;text-decoration-style:dotted; }
 </style>
 {% endblock %}
 
@@ -132,7 +132,7 @@
 <div class="fav-alert">
   <span class="fav-alert-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#E85C0D" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a2 2 0 01-4 0"/><path d="M4 6.5a4 4 0 018 0c0 4 1.5 5.5 1.5 5.5H2.5S4 10.5 4 6.5z"/></svg></span>
   <span><b>{% trans "2 товара" %}</b> {% trans "достигли целевой цены" %} — RE48786 {% trans "снизился до" %} $42.80, LH-9989363 {% trans "снизился до" %} $2,840</span>
-  <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#64B5F6;cursor:pointer;font-size:16px;line-height:1;">×</button>
+  <button onclick="this.parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#E84A21;cursor:pointer;font-size:16px;line-height:1;">×</button>
 </div>
 
 <div class="fav-toolbar">
@@ -385,7 +385,7 @@
     </div>
     <div style="display:flex;gap:8px;">
       <button id="modal-cancel" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.08);color:#919191;font-size:13px;cursor:pointer;">{% trans "Отмена" %}</button>
-      <button id="modal-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.3);color:#64B5F6;font-size:13px;font-weight:600;cursor:pointer;">{% trans "Добавить" %}</button>
+      <button id="modal-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(232,74,33,0.15);border:1px solid rgba(232,74,33,0.3);color:#E84A21;font-size:13px;font-weight:600;cursor:pointer;">{% trans "Добавить" %}</button>
     </div>
   </div>
 </div>
@@ -395,24 +395,24 @@
   <div style="background:#1F1F1F;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;width:340px;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
     <div style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;margin-bottom:4px;">{% trans "Целевая цена" %}</div>
     <div style="font-size:12px;color:#6A6A6A;margin-bottom:16px;">{% trans "Уведомить, когда цена опустится ниже" %}</div>
-    <div id="thresh-oem-label" style="font-size:12px;font-weight:600;color:#64B5F6;margin-bottom:12px;"></div>
+    <div id="thresh-oem-label" style="font-size:12px;font-weight:600;color:#E84A21;margin-bottom:12px;"></div>
     <input type="text" id="thresh-value" placeholder="{% trans "Например: $44.00" %}" style="width:100%;box-sizing:border-box;padding:9px 12px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:8px;color:#ECECEC;font-size:13px;outline:none;margin-bottom:16px;" />
     <div style="display:flex;gap:8px;">
       <button id="thresh-cancel" style="flex:1;padding:10px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.08);color:#919191;font-size:13px;cursor:pointer;">{% trans "Отмена" %}</button>
-      <button id="thresh-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(100,181,246,0.15);border:1px solid rgba(100,181,246,0.3);color:#64B5F6;font-size:13px;font-weight:600;cursor:pointer;">{% trans "Сохранить" %}</button>
+      <button id="thresh-confirm" style="flex:1;padding:10px;border-radius:8px;background:rgba(232,74,33,0.15);border:1px solid rgba(232,74,33,0.3);color:#E84A21;font-size:13px;font-weight:600;cursor:pointer;">{% trans "Сохранить" %}</button>
     </div>
   </div>
 </div>
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(232,74,33,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#E84A21;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
 (function(){
   function showToast(msg, color) {
     var t = document.getElementById('toast');
     t.textContent = msg;
-    t.style.color = color || '#64B5F6';
-    t.style.borderColor = (color || '#64B5F6').replace(')',',0.3)').replace('rgb','rgba');
+    t.style.color = color || '#E84A21';
+    t.style.borderColor = (color || '#E84A21').replace(')',',0.3)').replace('rgb','rgba');
     t.style.transform = 'translateY(0)';
     t.style.opacity = '1';
     setTimeout(function(){ t.style.transform = 'translateY(80px)'; t.style.opacity = '0'; }, 3000);

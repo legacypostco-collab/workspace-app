@@ -24,7 +24,7 @@
   transition:border-color .15s,background .15s;cursor:pointer;
 }
 a.ord-stat { text-decoration:none; display:block; }
-a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
+a.ord-stat:hover { border-color:rgba(232,74,33,0.35) !important; background:#2C2C2C !important; }
 .ord-stat-label {
   font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;
   color:#919191;margin-bottom:6px;
@@ -44,7 +44,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   color:#ECECEC;font-size:13px;outline:none;
 }
 .ord-search::placeholder { color:#6A6A6A; }
-.ord-search:focus { border-color:rgba(100,181,246,0.4); }
+.ord-search:focus { border-color:rgba(232,74,33,0.4); }
 .ord-select {
   padding:8px 12px;background:#111;
   border:1px solid rgba(255,255,255,0.07);border-radius:10px;
@@ -74,7 +74,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 .ord-table tbody tr:hover { background:rgba(255,255,255,0.03); }
 
 .ord-id {
-  font-family:'Golos Text',sans-serif;font-weight:700;color:#64B5F6;
+  font-family:'Golos Text',sans-serif;font-weight:700;color:#E84A21;
 }
 .ord-muted { color:#6A6A6A;font-size:11px; }
 .ord-amount {
@@ -88,7 +88,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   font-weight:600;letter-spacing:0.02em;
 }
 .ord-badge--production { background:rgba(232,92,13,0.12);color:#E85C0D; }
-.ord-badge--transit { background:rgba(100,181,246,0.12);color:#64B5F6; }
+.ord-badge--transit { background:rgba(232,74,33,0.12);color:#E84A21; }
 .ord-badge--customs { background:rgba(138,138,138,0.15);color:#919191; }
 .ord-badge--delivered { background:rgba(255,255,255,0.06);color:#919191; }
 .ord-badge--cancelled { background:rgba(224,85,85,0.12);color:#E05555; }
@@ -111,11 +111,11 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
 }
 .ord-detail-btn:hover { background:rgba(255,255,255,0.08); }
 .ord-detail-row td { padding:0 !important; background:#111; }
-.ord-detail-inner { padding:16px 20px;border-bottom:2px solid rgba(100,181,246,0.15); }
+.ord-detail-inner { padding:16px 20px;border-bottom:2px solid rgba(232,74,33,0.15); }
 .ord-detail-timeline { display:flex;gap:0;margin-bottom:14px;align-items:center;flex-wrap:wrap;gap:4px; }
 .ord-tl-step { display:flex;align-items:center;gap:6px;font-size:11px; }
-.ord-tl-dot { width:8px;height:8px;border-radius:50%;background:#64B5F6;flex-shrink:0; }
-.ord-tl-dot--done { background:#64B5F6; }
+.ord-tl-dot { width:8px;height:8px;border-radius:50%;background:#E84A21;flex-shrink:0; }
+.ord-tl-dot--done { background:#E84A21; }
 .ord-tl-dot--active { background:#E85C0D; }
 .ord-tl-dot--future { background:#333; }
 .ord-tl-line { width:20px;height:1px;background:rgba(255,255,255,0.1); }
@@ -150,7 +150,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   </a>
   <a href="/buyer/orders/?status=delivered" class="ord-stat">
     <div class="ord-stat-label">{% trans "Доставлено" %}</div>
-    <div class="ord-stat-val" style="color:#64B5F6;">16</div>
+    <div class="ord-stat-val" style="color:#E84A21;">16</div>
   </a>
   <a href="/buyer/finance/" class="ord-stat">
     <div class="ord-stat-label">{% trans "Общая сумма" %}</div>
@@ -383,7 +383,7 @@ a.ord-stat:hover { border-color:rgba(100,181,246,0.35) !important; background:#2
   </table>
 </div>
 
-<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(100,181,246,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#64B5F6;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
+<div id="toast" style="position:fixed;bottom:24px;right:24px;background:#1A1A1A;border:1px solid rgba(232,74,33,0.3);border-radius:10px;padding:12px 18px;font-size:13px;color:#E84A21;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,0.4);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;"></div>
 
 <script>
 (function(){

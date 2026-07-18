@@ -75,7 +75,7 @@
           {% if tl.order.sla_status == "breached" %}
             <span style="font-size:10px;color:#FF8C42;">{{ tl.order.get_sla_status_display }}</span>
           {% elif tl.order.sla_status == "on_track" %}
-            <span style="font-size:10px;color:#64B5F6;">{{ tl.order.get_sla_status_display }}</span>
+            <span style="font-size:10px;color:#E84A21;">{{ tl.order.get_sla_status_display }}</span>
           {% else %}
             <span style="font-size:10px;color:#6A6A6A;">{{ tl.order.get_sla_status_display }}</span>
           {% endif %}
@@ -103,7 +103,7 @@
 {# ─── KPI метрики ─── #}
 <style>
 .sla-kpi-link { text-decoration:none; display:block; cursor:pointer; }
-.sla-kpi-link:hover > div { border-color:rgba(100,181,246,0.35) !important; background:#2C2C2C !important; }
+.sla-kpi-link:hover > div { border-color:rgba(232,74,33,0.35) !important; background:#2C2C2C !important; }
 </style>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
   <a href="/seller/orders/" class="sla-kpi-link">
@@ -162,7 +162,7 @@
           <div style="width:110px;font-size:11px;color:#919191;text-align:right;flex-shrink:0;">{{ col.label }}</div>
           <div style="flex:1;height:18px;background:#1A1A1A;border-radius:4px;overflow:hidden;">
             {% if col.count %}
-              <div style="height:100%;width:{% widthratio col.count orders_total 100 %}%;background:#64B5F6;border-radius:4px;"></div>
+              <div style="height:100%;width:{% widthratio col.count orders_total 100 %}%;background:#E84A21;border-radius:4px;"></div>
             {% endif %}
           </div>
           <div style="width:20px;font-size:12px;font-weight:700;color:#ECECEC;text-align:center;">{{ col.count }}</div>
@@ -370,7 +370,7 @@ function kanbanDrop(e, col) {
                     if (codes.length > 0) {
                       qrManual.value = codes[0].rawValue;
                       qrResult.textContent = 'QR: ' + codes[0].rawValue;
-                      qrResult.style.color = '#64B5F6';
+                      qrResult.style.color = '#E84A21';
                       stopQR();
                     }
                   }).catch(function() {});
@@ -559,8 +559,8 @@ function kanbanDrop(e, col) {
 }
 .kanban-confirm-stage {
   display: inline-block; margin-top: 4px; padding: 3px 12px;
-  background: rgba(100,181,246,0.1); border: 1px solid rgba(100,181,246,0.25);
-  border-radius: 6px; font-size: 13px; font-weight: 700; color: #64B5F6;
+  background: rgba(232,74,33,0.1); border: 1px solid rgba(232,74,33,0.25);
+  border-radius: 6px; font-size: 13px; font-weight: 700; color: #E84A21;
 }
 .kanban-confirm-meta {
   text-align: left; margin: 12px 0 8px;
@@ -578,16 +578,16 @@ function kanbanDrop(e, col) {
   cursor: pointer; transition: border-color .2s, background .2s;
 }
 .kanban-confirm-upload-label:hover {
-  border-color: rgba(100,181,246,0.4); background: rgba(100,181,246,0.04);
+  border-color: rgba(232,74,33,0.4); background: rgba(232,74,33,0.04);
 }
 .kanban-confirm-upload-label--filled {
-  border-color: rgba(100,181,246,0.5); background: rgba(100,181,246,0.06);
+  border-color: rgba(232,74,33,0.5); background: rgba(232,74,33,0.06);
 }
 .kanban-confirm-upload-icon { font-size: 20px; }
 .kanban-confirm-upload-text { font-size: 13px; font-weight: 600; color: #919191; }
 .kanban-confirm-upload-hint { font-size: 10px; color: #484848; }
 .kanban-confirm-upload-name {
-  margin-top: 6px; font-size: 12px; color: #64B5F6; text-align: center;
+  margin-top: 6px; font-size: 12px; color: #E84A21; text-align: center;
   word-break: break-all;
 }
 .kanban-confirm-qr { margin: 12px 0 8px; }
@@ -597,7 +597,7 @@ function kanbanDrop(e, col) {
   cursor: pointer; transition: border-color .2s, background .2s;
 }
 .kanban-confirm-qr-toggle:hover {
-  border-color: rgba(100,181,246,0.4); background: rgba(100,181,246,0.04);
+  border-color: rgba(232,74,33,0.4); background: rgba(232,74,33,0.04);
 }
 .kanban-confirm-qr-area { margin-top: 10px; }
 .kanban-confirm-qr-result {
@@ -628,7 +628,7 @@ function kanbanDrop(e, col) {
   opacity: 0.35;
 }
 .sla-block--over {
-  outline: 2px dashed rgba(100,181,246,0.35);
+  outline: 2px dashed rgba(232,74,33,0.35);
   outline-offset: 5px;
   border-radius: 14px;
 }
@@ -680,8 +680,8 @@ function kanbanDrop(e, col) {
   transition: border-color .2s;
 }
 .kanban-col--over {
-  border-color: #64B5F6;
-  background: rgba(100,181,246,0.03);
+  border-color: #E84A21;
+  background: rgba(232,74,33,0.03);
 }
 .kanban-col-head {
   display: flex;
@@ -722,7 +722,7 @@ function kanbanDrop(e, col) {
   transition: border-color .15s, transform .1s;
 }
 .kanban-card:hover {
-  border-color: rgba(100,181,246,0.3);
+  border-color: rgba(232,74,33,0.3);
 }
 .kanban-card:active {
   cursor: grabbing;

@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="op-stats">
-  <a class="op-stat" href="/operator/manager/negotiations/" id="neg-stat-all" style="border-color:rgba(100,181,246,0.35);">
+  <a class="op-stat" href="/operator/manager/negotiations/" id="neg-stat-all" style="border-color:rgba(232,74,33,0.35);">
     <div class="op-stat-value">18</div>
     <div class="op-stat-label">{% trans "В воронке" %}</div>
   </a>
@@ -64,7 +64,7 @@
     <div style="background:#1F1F1F;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
       <div style="font-size:11px;color:#6A6A6A;margin-bottom:4px;">{% trans "Хронология" %}</div>
       <div style="font-size:12px;color:#919191;line-height:1.8;">
-        <span style="color:#64B5F6;">22.03</span> {% trans "Покупатель запросил -7% →" %} <span style="color:#64B5F6;">22.03</span> {% trans "Поставщик предложил -3% →" %} <span style="color:#64B5F6;">23.03</span> {% trans "Покупатель настаивает -7% →" %} <span style="color:#E85C0D;">24.03</span> {% trans "Поставщик поднял до -4% ·" %} <strong style="color:#ECECEC;">{% trans "Тишина 4 дня" %}</strong>
+        <span style="color:#E84A21;">22.03</span> {% trans "Покупатель запросил -7% →" %} <span style="color:#E84A21;">22.03</span> {% trans "Поставщик предложил -3% →" %} <span style="color:#E84A21;">23.03</span> {% trans "Покупатель настаивает -7% →" %} <span style="color:#E85C0D;">24.03</span> {% trans "Поставщик поднял до -4% ·" %} <strong style="color:#ECECEC;">{% trans "Тишина 4 дня" %}</strong>
       </div>
     </div>
 
@@ -190,7 +190,7 @@
         <td style="font-weight:700;">$8 200</td>
         <td>1</td>
         <td style="color:#E85C0D;">-5%</td>
-        <td style="color:#64B5F6;">-3%</td>
+        <td style="color:#E84A21;">-3%</td>
         <td><span class="op-badge op-badge-blue">{% trans "В процессе" %}</span></td>
       </tr>
       <tr>
@@ -200,7 +200,7 @@
         <td style="font-weight:700;">$4 500</td>
         <td>2</td>
         <td style="color:#E85C0D;">-8%</td>
-        <td style="color:#64B5F6;">-6%</td>
+        <td style="color:#E84A21;">-6%</td>
         <td><span class="op-badge op-badge-blue">{% trans "В процессе" %}</span></td>
       </tr>
       <tr>
@@ -230,7 +230,7 @@
         <td style="font-weight:700;">$6 800</td>
         <td>2</td>
         <td style="color:#E85C0D;">-7%</td>
-        <td style="color:#64B5F6;">-5%</td>
+        <td style="color:#E84A21;">-5%</td>
         <td><span class="op-badge op-badge-blue">{% trans "В процессе" %}</span></td>
       </tr>
     </tbody>
@@ -287,7 +287,7 @@
         <td>Fleet Corp</td>
         <td>Parts Direct</td>
         <td style="font-weight:700;">$9 400</td>
-        <td style="color:#64B5F6;">-5%</td>
+        <td style="color:#E84A21;">-5%</td>
         <td>2</td>
         <td style="color:#919191;">25.03</td>
       </tr>
@@ -296,7 +296,7 @@
         <td>Mining Solutions</td>
         <td>CAT Parts KZ</td>
         <td style="font-weight:700;">$18 600</td>
-        <td style="color:#64B5F6;">-3%</td>
+        <td style="color:#E84A21;">-3%</td>
         <td>1</td>
         <td style="color:#919191;">24.03</td>
       </tr>
@@ -305,7 +305,7 @@
         <td>Global Mining</td>
         <td>Volvo Parts</td>
         <td style="font-weight:700;">$5 200</td>
-        <td style="color:#64B5F6;">-6%</td>
+        <td style="color:#E84A21;">-6%</td>
         <td>3</td>
         <td style="color:#919191;">22.03</td>
       </tr>
@@ -314,7 +314,7 @@
         <td>Agro Solutions</td>
         <td>Diesel Parts</td>
         <td style="font-weight:700;">$12 000</td>
-        <td style="color:#64B5F6;">-4%</td>
+        <td style="color:#E84A21;">-4%</td>
         <td>2</td>
         <td style="color:#919191;">20.03</td>
       </tr>
@@ -323,7 +323,7 @@
         <td>Transport Ltd</td>
         <td>Komatsu Direct</td>
         <td style="font-weight:700;">$8 900</td>
-        <td style="color:#64B5F6;">-7%</td>
+        <td style="color:#E84A21;">-7%</td>
         <td>3</td>
         <td style="color:#919191;">18.03</td>
       </tr>
@@ -336,12 +336,12 @@
   .dl-tab:hover{color:#ECECEC;background:rgba(255,255,255,0.03);}
   .dl-tab.active{background:#242424;color:#ECECEC;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
   .dl-btn{padding:8px 16px;border-radius:8px;border:none;font-size:12px;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;transition:all 0.15s;}
-  .dl-btn--primary{background:#4568F3;color:#fff;}
-  .dl-btn--primary:hover{background:#3a5ad9;}
+  .dl-btn--primary{background:#E84A21;color:#fff;}
+  .dl-btn--primary:hover{background:#C73D17;}
   .dl-btn--secondary{background:transparent;color:#919191;border:1px solid rgba(255,255,255,0.08);}
   .dl-btn--secondary:hover{color:#ECECEC;border-color:rgba(255,255,255,0.15);}
-  .dl-btn--accent{background:rgba(100,181,246,0.12);color:#64B5F6;border:1px solid rgba(100,181,246,0.2);}
-  .dl-btn--accent:hover{background:rgba(100,181,246,0.2);}
+  .dl-btn--accent{background:rgba(232,74,33,0.12);color:#E84A21;border:1px solid rgba(232,74,33,0.2);}
+  .dl-btn--accent:hover{background:rgba(232,74,33,0.2);}
   .op-badge-yellow{background:rgba(255,193,7,0.12);color:#FFC107;}
 </style>
 
@@ -353,7 +353,7 @@ function dlTab(tab) {
   document.querySelectorAll('.dl-tab').forEach(function(t){
     if (t.getAttribute('onclick') === "dlTab('" + tab + "')") t.classList.add('active');
   });
-  var inactive = 'rgba(255,255,255,0.04)', blue = 'rgba(100,181,246,0.35)', warn = 'rgba(232,92,13,0.5)';
+  var inactive = 'rgba(255,255,255,0.04)', blue = 'rgba(232,74,33,0.35)', warn = 'rgba(232,92,13,0.5)';
   ['neg-stat-active','neg-stat-risk','neg-stat-lost','neg-stat-conv'].forEach(function(id){
     var el = document.getElementById(id);
     if (el) el.style.borderColor = inactive;
@@ -377,7 +377,7 @@ function dealAction(btn, action) {
   btn.style.opacity = '0.5';
   btn.style.pointerEvents = 'none';
   btn.textContent = '✓ ' + (labels[action] || '{% trans 'Выполнено' %}');
-  btn.style.color = '#64B5F6';
+  btn.style.color = '#E84A21';
   opToast(labels[action] || '{% trans 'Действие выполнено' %}');
 }
 

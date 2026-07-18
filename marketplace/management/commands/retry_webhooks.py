@@ -5,6 +5,7 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from assistant.security import safe_outbound_url
 from marketplace.models import WebhookDeliveryLog
 
 
@@ -50,6 +51,13 @@ class Command(BaseCommand):
                 request_payload=payload,
             )
             try:
+                ok_url, reason = safe_outbound_url(endpoint)
+                if not ok_url:
+                    retry_log.error = f"blocked endpoint: {reason}"
+                    retry_log.save(update_fields=["error", "updated_at"])
+                    fail_count += 1
+                    continue
+
                 req = Request(endpoint, data=body, headers=headers, method="POST")
                 with urlopen(req, timeout=timeout) as resp:
                     status_code = int(getattr(resp, "status", 200))

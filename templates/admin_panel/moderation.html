@@ -33,11 +33,11 @@
   <div style="display:flex;flex-direction:column;gap:8px;">
     {% for profile in sandbox_suppliers %}
     <div class="ap-card-elevated" style="display:flex;align-items:center;gap:16px;">
-      <div style="width:36px;height:36px;border-radius:10px;background:#2C2C2C;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#64B5F6;flex-shrink:0;">
+      <div style="width:36px;height:36px;border-radius:10px;background:#2C2C2C;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#E84A21;flex-shrink:0;">
         {{ profile.user.username|make_list|first|upper }}
       </div>
       <div style="flex:1;">
-        <a href="/admin-panel/users/{{ profile.user.id }}/" style="font-size:13px;font-weight:600;color:#64B5F6;text-decoration:none;">{{ profile.user.get_full_name|default:profile.user.username }}</a>
+        <a href="/admin-panel/users/{{ profile.user.id }}/" style="font-size:13px;font-weight:600;color:#E84A21;text-decoration:none;">{{ profile.user.get_full_name|default:profile.user.username }}</a>
         <div style="font-size:11px;color:#919191;">{% blocktrans with profile_company_name_default_profile_user_email=profile.company_name|default:profile.user.email profile_user_date_joined_date_d_m_Y=profile.user.date_joined|date:"d.m.Y" %}{{ profile.company_name|default:profile.user.email }} · Рег. {{ profile.user.date_joined|date:"d.m.Y" }}{% endblocktrans %}</div>
       </div>
       <form method="post" style="display:flex;gap:6px;">
@@ -66,10 +66,10 @@
     <tbody>
       {% for part in blocked_parts %}
       <tr>
-        <td><span style="color:#64B5F6;">{{ part.oem_number }}</span></td>
+        <td><span style="color:#E84A21;">{{ part.oem_number }}</span></td>
         <td>{{ part.title|truncatechars:30 }}</td>
         <td class="text-secondary">{{ part.brand.name|default:"—" }}</td>
-        <td class="text-secondary">{% if part.seller %}<a href="/admin-panel/users/{{ part.seller.id }}/" style="color:#64B5F6;text-decoration:none;">{{ part.seller.username }}</a>{% else %}—{% endif %}</td>
+        <td class="text-secondary">{% if part.seller %}<a href="/admin-panel/users/{{ part.seller.id }}/" style="color:#E84A21;text-decoration:none;">{{ part.seller.username }}</a>{% else %}—{% endif %}</td>
         <td class="text-secondary" style="font-size:11px;">{{ part.admin_note|default:"—"|truncatechars:30 }}</td>
         <td>
           <form method="post" style="display:inline;">
@@ -96,7 +96,7 @@
     <tbody>
       {% for claim in open_claims %}
       <tr>
-        <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
+        <td><a href="/admin-panel/orders/{{ claim.order_id }}/" style="color:#E84A21;text-decoration:none;">ORD-{{ claim.order_id }}</a></td>
         <td>{{ claim.title|truncatechars:35 }}</td>
         <td><span class="ap-badge ap-badge-orange">{{ claim.get_status_display }}</span></td>
         <td class="text-secondary">{{ claim.created_at|date:"d.m.Y" }}</td>
@@ -127,7 +127,7 @@
     <tbody>
       {% for order in sla_breached %}
       <tr>
-        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#64B5F6;text-decoration:none;">ORD-{{ order.id }}</a></td>
+        <td><a href="/admin-panel/orders/{{ order.id }}/" style="color:#E84A21;text-decoration:none;">ORD-{{ order.id }}</a></td>
         <td>{{ order.customer_name|truncatechars:20 }}</td>
         <td><span class="ap-badge ap-badge-blue">{{ order.get_status_display }}</span></td>
         <td><span style="color:#E85C0D;font-weight:600;">{{ order.sla_breaches_count }}</span></td>
@@ -161,7 +161,7 @@
       <tbody>
         {% for part in recent_moderated %}
         <tr>
-          <td><span style="color:#64B5F6;">{{ part.oem_number }}</span></td>
+          <td><span style="color:#E84A21;">{{ part.oem_number }}</span></td>
           <td class="text-secondary">{{ part.seller.username|default:"—" }}</td>
           <td>
             {% if part.availability_status == 'active' %}<span class="ap-badge ap-badge-green">{% trans "Одобрена" %}</span>
@@ -184,7 +184,7 @@
       <tbody>
         {% for event in recent_supplier_events %}
         <tr>
-          <td><a href="/admin-panel/users/{{ event.supplier_id }}/" style="color:#64B5F6;text-decoration:none;">{{ event.supplier.username }}</a></td>
+          <td><a href="/admin-panel/users/{{ event.supplier_id }}/" style="color:#E84A21;text-decoration:none;">{{ event.supplier.username }}</a></td>
           <td class="text-secondary" style="font-size:11px;">{{ event.reason|truncatechars:50 }}</td>
           <td class="text-secondary">{{ event.created_at|date:"d.m H:i" }}</td>
         </tr>

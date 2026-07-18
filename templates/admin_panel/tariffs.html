@@ -31,7 +31,7 @@
       <input type="hidden" name="tab" value="plans"/>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
         {% for plan in tariff_plans %}
-        <div class="ap-card-elevated" style="display:flex;flex-direction:column;{% if plan.id == 'professional' %}border-color:rgba(100,181,246,0.2);{% endif %}">
+        <div class="ap-card-elevated" style="display:flex;flex-direction:column;{% if plan.id == 'professional' %}border-color:rgba(232,74,33,0.2);{% endif %}">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
             <span style="font-size:16px;font-weight:700;font-family:'Golos Text',sans-serif;">{{ plan.name }}</span>
             {% if plan.id == 'professional' %}<span class="ap-badge ap-badge-blue">{% trans "Популярный" %}</span>{% endif %}

@@ -266,6 +266,7 @@ LANGUAGE_CODE = "ru-ru"
 LANGUAGES = [
     ("ru", "Русский"),
     ("en", "English"),
+    ("es", "Español"),
     ("zh-hans", "中文"),
     ("ar", "العربية"),
 ]
@@ -282,6 +283,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 SERVE_MEDIA = _env_bool("SERVE_MEDIA", DEBUG)
+QR_SECRET = _env("QR_SECRET", "")
+HEALTHCHECK_TOKEN = _env("HEALTHCHECK_TOKEN", "")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login/"
@@ -582,6 +585,18 @@ WEBHOOK_ENDPOINTS = os.getenv("WEBHOOK_ENDPOINTS", "").strip()
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "").strip()
 WEBHOOK_TIMEOUT_SEC = float(os.getenv("WEBHOOK_TIMEOUT_SEC", "2"))
 WEBHOOK_RETRY_MAX_ATTEMPTS = int(os.getenv("WEBHOOK_RETRY_MAX_ATTEMPTS", "5"))
+WEBHOOK_ALLOWED_HOSTS = os.getenv("WEBHOOK_ALLOWED_HOSTS", "").strip()
+WEBHOOK_ALLOW_PRIVATE_IPS = _env_bool("WEBHOOK_ALLOW_PRIVATE_IPS", False)
+WEBHOOK_ALLOW_INSECURE_HTTP = _env_bool("WEBHOOK_ALLOW_INSECURE_HTTP", False)
+LOGISTICS_ALLOWED_HOSTS = os.getenv("LOGISTICS_ALLOWED_HOSTS", "").strip()
+LOGISTICS_ALLOW_PRIVATE_IPS = _env_bool("LOGISTICS_ALLOW_PRIVATE_IPS", False)
+LOGISTICS_ALLOW_INSECURE_HTTP = _env_bool("LOGISTICS_ALLOW_INSECURE_HTTP", False)
+FX_ALLOWED_HOSTS = os.getenv("FX_ALLOWED_HOSTS", "open.er-api.com").strip()
+FX_ALLOW_PRIVATE_IPS = _env_bool("FX_ALLOW_PRIVATE_IPS", False)
+FX_ALLOW_INSECURE_HTTP = _env_bool("FX_ALLOW_INSECURE_HTTP", False)
+GOOGLE_SHEETS_ALLOWED_HOSTS = os.getenv("GOOGLE_SHEETS_ALLOWED_HOSTS", "docs.google.com").strip()
+GOOGLE_SHEETS_ALLOW_PRIVATE_IPS = _env_bool("GOOGLE_SHEETS_ALLOW_PRIVATE_IPS", False)
+GOOGLE_SHEETS_ALLOW_INSECURE_HTTP = _env_bool("GOOGLE_SHEETS_ALLOW_INSECURE_HTTP", False)
 PAYMENT_CALLBACK_SECRET = os.getenv("PAYMENT_CALLBACK_SECRET", "").strip()
 
 MAX_IMPORT_FILE_BYTES = int(os.getenv("MAX_IMPORT_FILE_BYTES", str(2 * 1024 * 1024)))

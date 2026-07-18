@@ -5,21 +5,21 @@
 {% block extra_css %}
 <style>
 .mvp-page { padding: 32px 40px; }
-.mvp-title { font-size: 28px; font-weight: 800; color: #192A4D; margin: 0 0 24px; letter-spacing: -0.02em; }
+.mvp-title { font-size: 28px; font-weight: 800; color: #181818; margin: 0 0 24px; letter-spacing: -0.02em; }
 .mvp-table-wrap { background: #fff; border: 1px solid rgba(25,42,77,0.08); border-radius: 16px; overflow: hidden; }
 .mvp-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-.mvp-table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 700; color: #8896A8; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(25,42,77,0.08); background: #FAFBFD; }
-.mvp-table td { padding: 14px 16px; font-size: 14px; color: #415080; border-bottom: 1px solid rgba(25,42,77,0.04); }
+.mvp-table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 700; color: #8d8d8d; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid rgba(25,42,77,0.08); background: #fbfbfb; }
+.mvp-table td { padding: 14px 16px; font-size: 14px; color: #4a4a4a; border-bottom: 1px solid rgba(25,42,77,0.04); }
 .mvp-table tr:last-child td { border-bottom: none; }
-.mvp-table tr:hover td { background: #F8FAFF; }
+.mvp-table tr:hover td { background: #f8f8f7; }
 .mvp-badge { display: inline-block; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; }
 .mvp-badge--green { background: #E8F8EA; color: #1B8C2A; }
 .mvp-badge--yellow { background: #FFF8E1; color: #B8860B; }
-.mvp-badge--blue { background: #EEF2FF; color: #4568F3; }
-.mvp-badge--gray { background: #F2F4F8; color: #6B7A99; }
-.mvp-empty { text-align: center; padding: 64px 24px; color: #8896A8; font-size: 15px; }
+.mvp-badge--blue { background: #FFEFEA; color: #E84A21; }
+.mvp-badge--gray { background: #f2f2f1; color: #6e6e6e; }
+.mvp-empty { text-align: center; padding: 64px 24px; color: #8d8d8d; font-size: 15px; }
 .mvp-empty svg { display: block; margin: 0 auto 16px; }
-.mvp-id { font-weight: 600; color: #192A4D; }
+.mvp-id { font-weight: 600; color: #181818; }
 </style>
 {% endblock %}
 
@@ -66,7 +66,7 @@
   </div>
   {% else %}
   <div class="mvp-empty">
-    <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><path d="M6 32h36M10 32V18l8-8h12l8 8v14" stroke="#C5CEE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="32" r="4" stroke="#C5CEE0" stroke-width="2"/><circle cx="32" cy="32" r="4" stroke="#C5CEE0" stroke-width="2"/></svg>
+    <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><path d="M6 32h36M10 32V18l8-8h12l8 8v14" stroke="#cfcfce" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="32" r="4" stroke="#cfcfce" stroke-width="2"/><circle cx="32" cy="32" r="4" stroke="#cfcfce" stroke-width="2"/></svg>
     No shipments yet. Logistics tracking will appear here once orders are shipped.
   </div>
   {% endif %}

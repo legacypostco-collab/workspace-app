@@ -80,7 +80,7 @@
             {% for buyer in top_buyers %}
             <tr>
               <td class="text-secondary">{{ forloop.counter }}</td>
-              <td><a href="/admin-panel/users/{{ buyer.id }}/" style="color:#64B5F6;text-decoration:none;">{{ buyer.get_full_name|default:buyer.username }}</a></td>
+              <td><a href="/admin-panel/users/{{ buyer.id }}/" style="color:#E84A21;text-decoration:none;">{{ buyer.get_full_name|default:buyer.username }}</a></td>
               <td>{{ buyer.order_count }}</td>
               <td>${{ buyer.total_spent|floatformat:0 }}</td>
             </tr>
@@ -98,7 +98,7 @@
             {% for seller in top_sellers %}
             <tr>
               <td class="text-secondary">{{ forloop.counter }}</td>
-              <td><a href="/admin-panel/users/{{ seller.id }}/" style="color:#64B5F6;text-decoration:none;">{{ seller.get_full_name|default:seller.username }}</a></td>
+              <td><a href="/admin-panel/users/{{ seller.id }}/" style="color:#E84A21;text-decoration:none;">{{ seller.get_full_name|default:seller.username }}</a></td>
               <td>{{ seller.parts_count }}</td>
             </tr>
             {% empty %}

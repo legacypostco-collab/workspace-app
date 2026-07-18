@@ -961,6 +961,7 @@ class DrawingsAccessTests(TestCase):
         self.assertIn("wm=", r.json()["file_url"])
 
 
+@override_settings(QR_SECRET="test-qr-secret")
 class QRScanTests(TestCase):
     """ТЗ §6.2: QR-scan endpoint."""
 
@@ -987,9 +988,9 @@ class QRScanTests(TestCase):
     def test_decode_rejects_tampered_code(self):
         from .qr_scan import decode_qr_code
         # Manipulated hash
-        self.assertIsNone(decode_qr_code(f"ORD-{self.order.id}-deadbeef"))
+        self.assertIsNone(decode_qr_code(f"ORD-{self.order.id}-{'d' * 32}"))
         # Random ID with bad hash
-        self.assertIsNone(decode_qr_code("ORD-99999-deadbeef"))
+        self.assertIsNone(decode_qr_code(f"ORD-99999-{'d' * 32}"))
 
     def test_get_endpoint_returns_html_page(self):
         from django.test import Client
@@ -999,9 +1000,8 @@ class QRScanTests(TestCase):
         code = encode_qr_code(self.order.id)
         r = c.get(f"/api/assistant/qr/scan/{code}/")
         self.assertEqual(r.status_code, 200)
-        self.assertIn(b"<form", r.content)
-        # Кнопка SHIPPED должна быть видна (status=ready_to_ship)
-        self.assertIn(b"shipped", r.content)
+        self.assertNotIn(b"<form", r.content)
+        self.assertNotIn(b"b@x.t", r.content)
 
     def test_post_shipped_changes_status(self):
         from django.test import Client
@@ -1010,6 +1010,7 @@ class QRScanTests(TestCase):
 
         from .qr_scan import encode_qr_code
         c = Client()
+        c.force_login(self.buyer)
         code = encode_qr_code(self.order.id)
         r = c.post(f"/api/assistant/qr/scan/{code}/", {"action": "shipped"})
         self.assertEqual(r.status_code, 200)
@@ -1027,6 +1028,7 @@ class QRScanTests(TestCase):
 
         from .qr_scan import encode_qr_code
         c = Client()
+        c.force_login(self.buyer)
         code = encode_qr_code(self.order.id)
         # Пытаемся 'received' но статус ready_to_ship — нужно delivered
         r = c.post(f"/api/assistant/qr/scan/{code}/", {"action": "received"})
@@ -1037,7 +1039,7 @@ class QRScanTests(TestCase):
     def test_invalid_code_returns_error(self):
         from django.test import Client
         c = Client()
-        r = c.get("/api/assistant/qr/scan/ORD-99999-baadbaad/")
+        r = c.get(f"/api/assistant/qr/scan/ORD-99999-{'b' * 32}/")
         self.assertEqual(r.status_code, 400)
 
 
@@ -2192,6 +2194,59 @@ class DurableChannelsTests(TestCase):
         self.assertTrue(r["email"])
         self.assertFalse(r["telegram"])
 
+    def test_realtime_notification_fanout_hits_chat_and_legacy_groups(self):
+        from unittest.mock import patch
+
+        from .consumers import push_notification_to_user
+
+        calls = []
+
+        class Layer:
+            async def group_send(self, group, event):
+                calls.append((group, event))
+
+        with patch("assistant.consumers.get_channel_layer", return_value=Layer()):
+            push_notification_to_user(self.user.id, {
+                "id": 42,
+                "kind": "order",
+                "title": "New order",
+                "body": "Body",
+                "url": "/chat/",
+                "created_at": "2026-07-18T10:00:00+00:00",
+            })
+
+        self.assertEqual(calls[0][0], f"notif_user_{self.user.id}")
+        self.assertEqual(calls[0][1]["type"], "notify")
+        self.assertEqual(calls[0][1]["payload"]["id"], 42)
+        self.assertEqual(calls[1][0], f"user_{self.user.id}")
+        self.assertEqual(calls[1][1]["type"], "notification.message")
+        self.assertEqual(calls[1][1]["data"]["id"], 42)
+
+    def test_rfq_update_push_hits_chat_group_without_notification_payload(self):
+        from unittest.mock import patch
+
+        from .consumers import push_rfq_update_to_user
+
+        calls = []
+
+        class Layer:
+            async def group_send(self, group, event):
+                calls.append((group, event))
+
+        with patch("assistant.consumers.get_channel_layer", return_value=Layer()):
+            push_rfq_update_to_user(
+                self.user.id,
+                rfq_id=7,
+                event="quote_submitted",
+                quote_id=9,
+            )
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(calls[0][0], f"notif_user_{self.user.id}")
+        self.assertEqual(calls[0][1]["type"], "rfq_update")
+        self.assertEqual(calls[0][1]["rfq_id"], 7)
+        self.assertEqual(calls[0][1]["quote_id"], 9)
+
     def test_notify_creates_db_row_and_sends_email(self):
         from django.core import mail
 
@@ -2543,7 +2598,7 @@ class AuthFlowTests(TestCase):
 
         from .auth_actions import create_api_token
         r = create_api_token({"label": "CI", "permissions": "read,write",
-                                "confirmed": True}, self.user, "buyer")
+                                "confirmed": True}, self.user, "admin")
         # Полный токен в card.draft.rows
         rows = r.cards[0]["data"]["rows"]
         full_row = next((row for row in rows if row["label"] == "Полный токен"), None)
@@ -2557,8 +2612,8 @@ class AuthFlowTests(TestCase):
     def test_list_api_tokens_shows_prefix_only(self):
         from .auth_actions import create_api_token, list_api_tokens
         create_api_token({"label": "Ext", "permissions": "read",
-                            "confirmed": True}, self.user, "buyer")
-        r = list_api_tokens({}, self.user, "buyer")
+                            "confirmed": True}, self.user, "admin")
+        r = list_api_tokens({}, self.user, "admin")
         items = r.cards[0]["data"]["items"]
         self.assertEqual(len(items), 1)
         self.assertIn("Ext", items[0]["title"])
@@ -2570,10 +2625,10 @@ class AuthFlowTests(TestCase):
 
         from .auth_actions import create_api_token, revoke_api_token
         create_api_token({"label": "T", "permissions": "read",
-                            "confirmed": True}, self.user, "buyer")
+                            "confirmed": True}, self.user, "admin")
         token = ApiToken.objects.get(user=self.user, label="T")
         r = revoke_api_token({"token_id": token.id, "confirmed": True},
-                              self.user, "buyer")
+                              self.user, "admin")
         self.assertIn("отозван", r.text)
         token.refresh_from_db()
         self.assertFalse(token.is_active)

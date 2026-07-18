@@ -1,26 +1,27 @@
 {% extends "marketplace/base.html" %}
-{% block title %}Checkout | Consolidator Parts{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Оформление заказа" %} | Consolidator Parts{% endblock %}
 {% block content %}
 <section class="section-head">
-  <h1>Оформление заказа</h1>
+  <h1>{% trans "Оформление заказа" %}</h1>
 </section>
 
 <div class="checkout-layout">
   <div class="card card-form panel">
-    <h2>Данные клиента</h2>
+    <h2>{% trans "Данные клиента" %}</h2>
     <form method="post">
       {% csrf_token %}
       {{ form.as_p }}
-      <button type="submit" class="btn">Подтвердить заказ</button>
+      <button type="submit" class="btn">{% trans "Подтвердить заказ" %}</button>
     </form>
   </div>
   <div class="card panel card-form">
-    <h2>Состав заказа</h2>
+    <h2>{% trans "Состав заказа" %}</h2>
     {% for row in rows %}
       <p>{{ row.part.title }} × {{ row.quantity }} = ${{ row.line_total }}</p>
     {% endfor %}
     <hr />
-    <p><strong>Итого: ${{ total }}</strong></p>
+    <p><strong>{% trans "Итого" %}: ${{ total }}</strong></p>
   </div>
 </div>
 {% endblock %}

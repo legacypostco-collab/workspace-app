@@ -141,6 +141,19 @@ def _request_external(provider: str, payload: dict) -> dict:
     if api_key:
         req_headers["Authorization"] = f"Bearer {api_key}"
 
+    from assistant.security import safe_outbound_url
+
+    ok_url, reason = safe_outbound_url(
+        api_url,
+        allowed_hosts_setting="LOGISTICS_ALLOWED_HOSTS",
+        allow_private_setting="LOGISTICS_ALLOW_PRIVATE_IPS",
+        allow_insecure_setting="LOGISTICS_ALLOW_INSECURE_HTTP",
+    )
+    if not ok_url:
+        if strict_mode:
+            return {"ok": False, "provider": normalized_provider, "error": f"blocked logistics endpoint: {reason}"}
+        return _fallback_logistics_estimate(payload, warning=f"{normalized_provider} endpoint blocked: {reason}")
+
     req = Request(api_url, data=body, headers=req_headers, method="POST")
     try:
         with urlopen(req, timeout=timeout_sec) as resp:

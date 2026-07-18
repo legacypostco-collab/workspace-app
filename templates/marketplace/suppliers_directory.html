@@ -1,19 +1,20 @@
 {% extends "marketplace/base.html" %}
-{% block title %}Каталог поставщиков | Consolidator Parts{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Каталог поставщиков" %} | Consolidator Parts{% endblock %}
 {% block content %}
 <section class="section-head">
-  <h1>Каталог поставщиков</h1>
-  <p class="muted">Активные поставщики, прошедшие верификацию KYB</p>
+  <h1>{% trans "Каталог поставщиков" %}</h1>
+  <p class="muted">{% trans "Активные поставщики, прошедшие верификацию KYB" %}</p>
 </section>
 
 <form method="get" class="filters panel" style="grid-template-columns: 1fr auto;">
-  <input type="text" name="q" value="{{ query }}" placeholder="Название компании или продавца..." />
-  <button type="submit" class="btn">Найти</button>
+  <input type="text" name="q" value="{{ query }}" placeholder="{% trans 'Название компании или продавца...' %}" />
+  <button type="submit" class="btn">{% trans "Найти" %}</button>
 </form>
 
 <div class="grid">
   <section class="panel">
-    <h2>Поставщики <span class="muted">({{ sellers|length }})</span></h2>
+    <h2>{% trans "Поставщики" %} <span class="muted">({{ sellers|length }})</span></h2>
     <div class="chips">
       {% for s in sellers %}
         <a class="chip" href="{% url 'catalog' %}?seller={{ s.id }}">
@@ -21,7 +22,7 @@
           ({{ s.parts_count }})
         </a>
       {% empty %}
-        <span class="muted">Нет активных поставщиков{% if query %} по запросу «{{ query }}»{% endif %}.</span>
+        <span class="muted">{% if query %}{% blocktrans with query=query %}Нет активных поставщиков по запросу «{{ query }}».{% endblocktrans %}{% else %}{% trans "Нет активных поставщиков." %}{% endif %}</span>
       {% endfor %}
     </div>
   </section>

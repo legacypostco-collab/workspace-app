@@ -16,10 +16,10 @@
       </div>
     </div>
   {% elif kyb.status == 'pending' %}
-    <div style="background:rgba(100,181,246,0.08);border:1px solid rgba(100,181,246,0.25);border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
+    <div style="background:rgba(232,74,33,0.08);border:1px solid rgba(232,74,33,0.25);border-radius:12px;padding:14px 18px;margin-bottom:24px;display:flex;align-items:center;gap:12px;">
       <div style="font-size:24px;">⏳</div>
       <div>
-        <div style="font-weight:700;color:#64B5F6;">{% trans "На проверке" %}</div>
+        <div style="font-weight:700;color:#E84A21;">{% trans "На проверке" %}</div>
         <div style="color:#919191;font-size:12px;margin-top:3px;">{% trans "Документы получены, ожидайте решения" %}</div>
       </div>
     </div>
@@ -97,7 +97,7 @@
         {% if kyb.doc_passport %}<div style="font-size:11px;color:#66BB6A;margin-top:4px;">✓ {% trans "Загружен" %}</div>{% endif %}
       </div>
     </div>
-    <button type="submit" style="background:#64B5F6;color:#1A1A1A;border:none;padding:11px 24px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">{% trans "Отправить на проверку" %}</button>
+    <button type="submit" style="background:#E84A21;color:#1A1A1A;border:none;padding:11px 24px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">{% trans "Отправить на проверку" %}</button>
     {% else %}
     <p style="color:#5E5E5E;text-align:center;padding:20px;">{% trans "Документы уже отправлены или верифицированы." %}</p>
     {% endif %}

@@ -30,6 +30,16 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Frontend/E2E dependencies
+node_modules/
+e2e/node_modules/
+e2e/.lighthouseci/
+
+# Local audit/test artifacts
+reports/
+Тестовые данные/
+Test data/
+
 # Translation helper scripts (one-shot, not part of project)
 apply_*.py
 fill_po*.py

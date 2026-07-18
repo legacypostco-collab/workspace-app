@@ -191,7 +191,7 @@
     });
     var detail = document.createElement('tr');
     detail.className = 'row-detail-expanded';
-    detail.innerHTML = '<td colspan="' + tds.length + '" style="padding:12px 16px;background:rgba(100,181,246,0.03);border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:20px;flex-wrap:wrap;">' + items.join('') + '</div></td>';
+    detail.innerHTML = '<td colspan="' + tds.length + '" style="padding:12px 16px;background:rgba(232,74,33,0.03);border-bottom:1px solid rgba(255,255,255,0.04);"><div style="display:flex;gap:20px;flex-wrap:wrap;">' + items.join('') + '</div></td>';
     tr.classList.add('row-detail-active');
     tr.parentElement.insertBefore(detail, tr.nextSibling);
   };

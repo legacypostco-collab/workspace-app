@@ -62,6 +62,209 @@
     'Antwerp, Belgium', 'Istanbul, Turkey',
   ];
   const SUGGEST_BY_SOURCE = { sea: SUGGEST_SEA, air: SUGGEST_AIR, city: SUGGEST_CITY };
+
+  function initAuthModal(){
+    const modal = document.getElementById('authModal');
+    const body = document.getElementById('authModalBody');
+    const title = document.getElementById('authModalTitle');
+    const kicker = document.getElementById('authModalKicker');
+    const closeBtn = document.getElementById('authModalClose');
+    let wizard = null;
+    if (!modal || !body || !title || !closeBtn) return null;
+    const esc = (v) => String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+    const cleanTitle = (v) => String(v || '').replace(/^[\uD800-\uDBFF][\uDC00-\uDFFF]\s*/, '').trim();
+    const openShell = (action) => {
+      kicker.textContent = action === 'start_registration' ? 'Регистрация' : 'Аккаунт';
+      title.textContent = action === 'start_registration' ? 'Создание аккаунта' : 'Вход';
+      body.innerHTML = '<p class="auth-message">Загрузка...</p>';
+      modal.hidden = false;
+      document.body.classList.add('auth-lock');
+    };
+    const renderRoleChoice = () => {
+      wizard = null;
+      kicker.textContent = 'Регистрация';
+      title.textContent = 'Выберите роль';
+      body.innerHTML = '<p class="auth-message">Сначала выберите, как вы будете работать в системе. От этого зависит анкета и доступные разделы.</p>'
+        + '<div class="auth-role-grid">'
+        + '<button type="button" class="auth-role-card" data-modal-action="start_registration" data-modal-params="{&quot;role&quot;:&quot;buyer&quot;}"><span class="auth-role-title">Покупатель</span><span class="auth-role-text">Ищу запчасти, отправляю заявки, сравниваю цены и контролирую поставки.</span></button>'
+        + '<button type="button" class="auth-role-card" data-modal-action="start_registration" data-modal-params="{&quot;role&quot;:&quot;seller&quot;}"><span class="auth-role-title">Поставщик</span><span class="auth-role-text">Публикую прайс-листы, получаю запросы и отвечаю на котировки покупателей.</span></button>'
+        + '</div>'
+        + actionsHtml([{action:'start_login', label:'У меня уже есть аккаунт', params:{}}]);
+    };
+    const close = () => {
+      modal.hidden = true;
+      wizard = null;
+      document.body.classList.remove('auth-lock');
+    };
+    const fieldHtml = (f) => {
+      const type = f.type || 'text';
+      const tag = type === 'textarea' ? 'textarea' : (type === 'select' ? 'select' : 'input');
+      let cls = tag === 'textarea' ? 'auth-textarea' : (tag === 'select' ? 'auth-select' : 'auth-input');
+      if (f.error) cls += ' is-error';
+      const required = f.required ? ' required' : '';
+      const min = f.minlength ? ` minlength="${esc(f.minlength)}"` : '';
+      const placeholder = f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : '';
+      const value = f.value == null ? '' : String(f.value);
+      let control = '';
+      if (tag === 'select') {
+        const opts = (f.options || []).map((o) => {
+          const val = Array.isArray(o) ? o[0] : (o.value != null ? o.value : o);
+          const lab = Array.isArray(o) ? o[1] : (o.label != null ? o.label : o);
+          return `<option value="${esc(val)}"${String(val) === value ? ' selected' : ''}>${esc(lab)}</option>`;
+        }).join('');
+        control = `<select class="${cls}" name="${esc(f.name)}"${required}>${opts}</select>`;
+      } else if (tag === 'textarea') {
+        control = `<textarea class="${cls}" name="${esc(f.name)}"${required}${placeholder}>${esc(value)}</textarea>`;
+      } else {
+        control = `<input class="${cls}" type="${esc(type)}" name="${esc(f.name)}" value="${esc(value)}"${required}${min}${placeholder} autocomplete="${type === 'password' ? 'current-password' : 'on'}">`;
+      }
+      return `<label class="auth-field"><span class="auth-label">${esc(f.label || f.name)}${f.required ? ' <span class="auth-required">*</span>' : ''}</span>${control}${f.help || f.hint ? `<span class="auth-help">${esc(f.help || f.hint)}</span>` : ''}${f.error ? `<span class="auth-error">${esc(f.error)}</span>` : ''}</label>`;
+    };
+    const actionsHtml = (actions) => {
+      if (!actions || !actions.length) return '';
+      return `<div class="auth-actions">${actions.map((a) => `<button type="button" class="auth-link-btn" data-modal-action="${esc(a.action || '')}" data-modal-params="${esc(JSON.stringify(a.params || {}))}">${esc(a.label || a.action || '')}</button>`).join('')}</div>`;
+    };
+    const splitSteps = (fields) => {
+      const byName = {};
+      fields.forEach((f) => { byName[f.name] = f; });
+      const pick = (names) => names.map((n) => byName[n]).filter(Boolean);
+      return [
+        {title:'Компания', note:'Укажите страну и регистрационный номер. Это нужно для проверки реквизитов.', fields:pick(['country','tax_id'])},
+        {title:'Контакты', note:'Кто будет получать расчеты и уточнения по заявкам.', fields:pick(['contact_name','position','email','phone_e164'])},
+        {title:'Связь', note:'Куда оператору и поставщикам отправлять быстрые уточнения.', fields:pick(['messenger_kind','messenger_handle'])},
+        {title:'Техника', note:'Коротко опишите парк техники, чтобы подбор запчастей был точнее.', fields:pick(['equipment_fleet'])},
+        {title:'Доступ', note:'Создайте логин и пароль для входа в личный кабинет.', fields:pick(['username','password1','password2'])},
+      ].filter((s) => s.fields.length);
+    };
+    const firstErrorStep = (steps) => {
+      for (let i = 0; i < steps.length; i += 1) {
+        if (steps[i].fields.some((f) => !!f.error)) return i;
+      }
+      return 0;
+    };
+    const collect = (form) => {
+      const values = {};
+      let bad = false;
+      form.querySelectorAll('input,select,textarea').forEach((inp) => {
+        if (inp.required && !String(inp.value || '').trim()) {
+          inp.classList.add('is-error');
+          bad = true;
+        } else {
+          inp.classList.remove('is-error');
+        }
+        values[inp.name] = String(inp.value || '').trim();
+      });
+      return {values, bad};
+    };
+    const renderWizard = () => {
+      if (!wizard) return;
+      const step = wizard.steps[wizard.index];
+      const progress = wizard.steps.map((_, i) => `<span class="auth-step ${i < wizard.index ? 'is-done' : (i === wizard.index ? 'is-active' : '')}"></span>`).join('');
+      const fields = step.fields.map((f) => fieldHtml({...f, value:wizard.values[f.name] != null ? wizard.values[f.name] : f.value})).join('');
+      const last = wizard.index === wizard.steps.length - 1;
+      body.innerHTML = `<div class="auth-steps">${progress}</div><form class="auth-form auth-wizard-form" data-action="${esc(wizard.action)}" data-fixed="${esc(JSON.stringify(wizard.fixed))}"><div><h3 class="auth-step-title">${esc(step.title)}</h3><p class="auth-step-note">${esc(step.note)}</p></div>${fields}<div class="auth-step-actions">${wizard.index ? '<button class="auth-secondary" type="button" data-wizard-back>Назад</button>' : ''}<button class="auth-submit" type="button" data-wizard-next>${last ? esc(wizard.submitLabel) : 'Далее'}</button></div></form>${actionsHtml(wizard.actions)}`;
+    };
+    const render = (action, data) => {
+      const formCard = (data.cards || []).find((c) => c && c.type === 'form' && c.data);
+      const msg = data.text ? `<p class="auth-message">${esc(data.text)}</p>` : '';
+      if (!formCard) {
+        wizard = null;
+        body.innerHTML = msg + actionsHtml(data.actions || []);
+        if (data._post_action === 'reload') setTimeout(() => { window.location.href = '/chat/'; }, 700);
+        return;
+      }
+      const d = formCard.data;
+      const fixedObj = d.fixed_params || {};
+      title.textContent = cleanTitle(d.title) || (action === 'start_registration' ? 'Создание аккаунта' : 'Вход');
+      const useWizard = (d.submit_action || action) === 'start_registration' && (fixedObj.role || 'buyer') === 'buyer' && (d.fields || []).length > 5;
+      if (useWizard) {
+        const steps = splitSteps(d.fields || []);
+        wizard = {action:d.submit_action || action, fixed:fixedObj, values:{}, steps, index:firstErrorStep(steps), submitLabel:d.submit_label || 'Создать аккаунт', actions:data.actions || []};
+        (d.fields || []).forEach((f) => { if (f.value != null) wizard.values[f.name] = String(f.value); });
+        renderWizard();
+        return;
+      }
+      wizard = null;
+      body.innerHTML = msg + `<form class="auth-form" data-action="${esc(d.submit_action || action)}" data-fixed="${esc(JSON.stringify(fixedObj))}">${d.subtitle || d.intent ? `<p class="auth-message">${esc(d.subtitle || d.intent)}</p>` : ''}${(d.fields || []).map(fieldHtml).join('')}<button class="auth-submit" type="submit">${esc(d.submit_label || 'Продолжить')}</button></form>${actionsHtml(data.actions || [])}`;
+    };
+    const call = async (action, params) => {
+      openShell(action);
+      params = params || {};
+      if (action === 'start_registration' && !params.role) {
+        renderRoleChoice();
+        return;
+      }
+      try {
+        const r = await fetch('/api/assistant/action/', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
+          credentials:'same-origin',
+          body:JSON.stringify({action, params:params || {}}),
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || r.statusText);
+        render(action, data);
+        if (data._post_action === 'reload' || (data.actions || []).some((a) => a.action === 'reload_page')) {
+          setTimeout(() => { window.location.href = '/chat/'; }, 650);
+        }
+      } catch (e) {
+        body.innerHTML = '<p class="auth-message">Не получилось открыть форму. Попробуйте еще раз.</p>';
+      }
+    };
+    closeBtn.addEventListener('click', close);
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
+    body.addEventListener('submit', (e) => {
+      const form = e.target.closest('.auth-form');
+      if (!form || form.classList.contains('auth-wizard-form')) return;
+      e.preventDefault();
+      const params = JSON.parse(form.dataset.fixed || '{}');
+      const got = collect(form);
+      if (got.bad) return;
+      Object.assign(params, got.values);
+      const submit = form.querySelector('.auth-submit');
+      if (submit) { submit.disabled = true; submit.textContent = '...'; }
+      call(form.dataset.action, params);
+    });
+    body.addEventListener('click', (e) => {
+      const modalAction = e.target.closest('[data-modal-action]');
+      if (modalAction) {
+        let p = {};
+        try { p = JSON.parse(modalAction.dataset.modalParams || '{}'); } catch (_) {}
+        call(modalAction.dataset.modalAction, p);
+        return;
+      }
+      const next = e.target.closest('[data-wizard-next]');
+      const back = e.target.closest('[data-wizard-back]');
+      if (!wizard || (!next && !back)) return;
+      const form = body.querySelector('.auth-wizard-form');
+      if (back) {
+        if (form) Object.assign(wizard.values, collect(form).values);
+        wizard.index = Math.max(0, wizard.index - 1);
+        renderWizard();
+        return;
+      }
+      if (!form) return;
+      const got = collect(form);
+      if (got.bad) return;
+      Object.assign(wizard.values, got.values);
+      if (wizard.index < wizard.steps.length - 1) {
+        wizard.index += 1;
+        renderWizard();
+        return;
+      }
+      next.disabled = true;
+      next.textContent = '...';
+      call(wizard.action, {...wizard.fixed, ...wizard.values});
+    });
+    return {open:call};
+  }
+  window.authModal = null;
+  document.addEventListener('DOMContentLoaded', () => { window.authModal = initAuthModal(); });
+
   // Координаты портов (по городу порта) — для сортировки по РЕАЛЬНОМУ гео-
   // расстоянию от склада. Ключ — код порта (UN/LOCODE морпорта или IATA
   // аэропорта). Юзер указал склад в Шэньяне → ближайший морпорт Далянь
@@ -1666,19 +1869,92 @@
       const title = (payload && payload.title) || tr('card.notification');
       const body  = (payload && payload.body)  || '';
       const url   = (payload && payload.url)   || '';
-      t.style.cssText = 'pointer-events:auto;background:#1d2330;color:#fff;padding:10px 14px;border-radius:10px;border:1px solid rgba(100,181,246,0.35);box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:340px;font-size:13px;line-height:1.4;cursor:pointer;';
+      t.style.cssText = 'pointer-events:auto;background:#1d2330;color:#fff;padding:10px 14px;border-radius:10px;border:1px solid rgba(232,74,33,0.35);box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:340px;font-size:13px;line-height:1.4;cursor:pointer;';
       t.innerHTML = '<div style="font-weight:600;margin-bottom:2px;">🔔 ' + esc(title) + '</div>' + (body ? '<div style="opacity:.85;">' + esc(body) + '</div>' : '');
       if (url) t.addEventListener('click', () => { try { location.href = url; } catch(e){} });
       host.appendChild(t);
       setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 5000);
-      // Bump bell badge + prepend to dropdown if user already opened it
-      bumpBellBadge(+1);
-      prependNotifItem(payload);
+      // Счётчик увеличиваем только для настоящих Notification из базы.
+      // Синтетические live-события order_update/operator_alert показывают toast,
+      // но не должны раздувать unread badge и title вкладки.
+      if (payload && payload.id) {
+        bumpBellBadge(+1);
+        prependNotifItem(payload);
+      }
     } catch (e) { console.error('notif toast', e); }
+  }
+
+  function rfqIdFromPayload(payload) {
+    const direct = payload && (payload.rfq_id || payload.rfqId);
+    if (direct) return String(direct);
+    const url = String((payload && payload.url) || '');
+    const m = url.match(/[?&]rfq=(\d+)/) || url.match(/\/rfq\/(\d+)\b/);
+    return m ? m[1] : '';
+  }
+
+  function attrSelectorValue(value) {
+    const s = String(value || '');
+    if (window.CSS && typeof window.CSS.escape === 'function') return window.CSS.escape(s);
+    return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
+  function visibleRfqSelector(rfqId) {
+    return `[data-live-rfq-id="${attrSelectorValue(rfqId)}"]`;
+  }
+
+  function hasVisibleRfq(rfqId) {
+    return !!(rfqId && document.querySelector(visibleRfqSelector(rfqId)));
+  }
+
+  async function refreshVisibleRfq(rfqId) {
+    rfqId = String(rfqId || '').trim();
+    if (!rfqId || !hasVisibleRfq(rfqId)) return false;
+    refreshVisibleRfq._busy = refreshVisibleRfq._busy || {};
+    if (refreshVisibleRfq._busy[rfqId]) return false;
+    refreshVisibleRfq._busy[rfqId] = true;
+    try {
+      const resp = await api('/api/assistant/action/', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversation_id: state.convId,
+          action: 'get_rfq_status',
+          params: {rfq_id: Number(rfqId), silent: true},
+        }),
+        retryNetwork: true,
+      });
+      let targetMsg = null;
+      document.querySelectorAll('.msg').forEach(msg => {
+        if (msg.querySelector(visibleRfqSelector(rfqId))) targetMsg = msg;
+      });
+      if (!targetMsg) return false;
+
+      const cardsEl = targetMsg.querySelector('.msg-cards');
+      const actionsEl = targetMsg.querySelector('.msg-actions');
+      const ctxEl = targetMsg.querySelector('.msg-ctx-actions');
+      const suggEl = targetMsg.querySelector('.msg-suggestions');
+      if (cardsEl) cardsEl.innerHTML = renderCards(resp.cards || [], {fromServer: true});
+      if (actionsEl) actionsEl.innerHTML = renderActions(resp.actions || []);
+      if (ctxEl) ctxEl.innerHTML = renderContextualActions(ensureHomeNav(resp.contextual_actions || []));
+      if (suggEl) suggEl.innerHTML = renderSuggestions(resp.no_suggestions ? [] : ensureSuggestions(resp.suggestions || []));
+      return true;
+    } catch (e) {
+      console.warn('refreshVisibleRfq failed', e);
+      return false;
+    } finally {
+      setTimeout(() => { delete refreshVisibleRfq._busy[rfqId]; }, 800);
+    }
   }
 
   // ── Notification bell + dropdown ──────────────────────────────
   const notif = { items: [], unread: 0, loaded: false, open: false, byKind: {} };
+  const pageTitleBase = document.title || 'Consolidator Parts';
+
+  function setTabBadge(n) {
+    const count = Math.max(0, n|0);
+    document.title = count > 0
+      ? '(' + (count > 99 ? '99+' : String(count)) + ') ' + pageTitleBase
+      : pageTitleBase;
+  }
 
   // Какой kind уведомления «требует действия» в каком разделе (пилюле).
   // Бейдж на пилюле = сумма непрочитанных уведомлений сопоставленных kind'ов.
@@ -1710,6 +1986,7 @@
 
   function setBellBadge(n) {
     notif.unread = Math.max(0, n|0);
+    setTabBadge(notif.unread);
     const el = document.getElementById('bellBadge');
     if (!el) return;
     if (notif.unread > 0) {
@@ -3724,7 +4001,7 @@
                <div class="rlc-amt">$${fmtAmt(r.amount)}</div>
                ${r.items_count ? `<div class="rlc-items">${esc(r.items_count)} поз</div>` : ''}
              </div>` : '';
-        return `<div class="rl-row-wrap">
+        return `<div class="rl-row-wrap"${isOrder ? '' : ` data-live-rfq-id="${esc(String(r.id || ''))}"`}>
           <button type="button" class="rl-card-row ${toneClass}"
               data-action="${openAction}" data-params='${openParams}' data-label="Открыть ${esc(r.number)}">
             <div class="rlc-stripe"></div>
@@ -4098,7 +4375,7 @@
     // распределений (статусы, месяцы, поставщики).
     bar_chart(d) {
       const items = d.items || [];
-      const color = d.color || '#64B5F6';
+      const color = d.color || '#E84A21';
       if (!items.length) return '';
       const maxV = Math.max(1, ...items.map(i => Number(i.value) || 0));
       const barW = 100;  // % от контейнера
@@ -4398,10 +4675,12 @@
       // Котировка (d.qf) рендерится этим же рендером: добавляем класс qf-card,
       // дата-атрибуты RFQ, кастомные подписи KPI и подвал-форму с кнопкой.
       const _kpiL = d.kpi_labels || ['Found', 'Analogue', 'Not found'];
+      const _liveRfqId = String(d.rfq_id || (d.qf && d.qf.rfq_id) || '');
+      const _liveAttrs = _liveRfqId ? ` data-live-rfq-id="${esc(_liveRfqId)}"` : '';
       const _qfAttrs = d.qf
         ? ` data-rfq-id="${esc(String(d.qf.rfq_id || ''))}" data-parent-quote-id="${esc(String(d.qf.parent_quote_id || ''))}" data-direction="${esc(String(d.qf.direction || 'seller_to_buyer'))}"`
         : '';
-      return `<div class="card spec${d.qf ? ' qf-card' : ''}"${_qfAttrs}>
+      return `<div class="card spec${d.qf ? ' qf-card' : ''}"${_qfAttrs}${_liveAttrs}>
         <div class="spec-head">
           <div class="spec-head-row">
             <div class="spec-title">${esc(d.title || tr('card.match_results'))} ${modeBadge}</div>
@@ -5218,6 +5497,7 @@
   });
 
   function renderSuggestions(suggestions) {
+    if (!window.IS_AUTHENTICATED) return '';
     if (!suggestions || !suggestions.length) return '';
     // Поддерживаем два формата:
     //   1. String  → text-chip (отправляется как сообщение → /chat/ → Claude).
@@ -6030,6 +6310,11 @@
           addMessage('assistant', '⚠️ ' + d.message);
         } else if (d.type === 'notification') {
           showNotifToast(d.payload || {});
+          const rfqId = rfqIdFromPayload(d.payload || {});
+          if (rfqId && (d.payload || {}).kind === 'rfq') refreshVisibleRfq(rfqId);
+        } else if (d.type === 'rfq_update') {
+          if (d.rfq_id) refreshVisibleRfq(d.rfq_id);
+          loadConvList();
         } else if (d.type === 'order_update') {
           // Live-обновление: если seller/buyer/operator сейчас в shipment-
           // чате этого ORD — перезагружаем conv (там уже свежее системное
@@ -6433,6 +6718,10 @@
   window.quickAction = async (action, params) => {
     params = params || {};
     params._label = params._label || action;
+    if ((action === 'start_login' || action === 'start_registration') && window.authModal && typeof window.authModal.open === 'function') {
+      window.authModal.open(action, params);
+      return;
+    }
     // Повторная отправка сообщения после обрыва канала (кнопка «Повторить» под чат-ошибкой).
     if (action === '__resend_chat') {
       try { const _i = $('input') || $('heroInput'); if (_i) { _i.value = params.text || ''; send(!!($('heroInput') && !$('input'))); } } catch (_) {}
@@ -6646,6 +6935,7 @@
   // Дефолтные подсказки, если backend не вернул свои — чтобы блок suggestions
   // никогда не был пустым в конце ответа.
   function ensureSuggestions(sugs) {
+    if (!window.IS_AUTHENTICATED) return [];
     if (Array.isArray(sugs) && sugs.length) return sugs;
     const role = String(window.__pillRole || 'buyer');
     // Подсказки по бизнес-логике роли (прямые action'ы — не зависят от ИИ-роутинга).
@@ -7162,8 +7452,8 @@
   // Sidebar conversations + projects
   // ══════════════════════════════════════════════════════════
   const DOT_BG = {
-    green:'#22c55e', orange:'#f97316', blue:'#3b82f6',
-    purple:'#a855f7', red:'#ef4444', gray:'#9ca3af',
+    green:'#22c55e', orange:'#f97316', blue:'#E84A21',
+    purple:'#8d8d8d', red:'#ef4444', gray:'#9ca3af',
   };
 
   async function loadConvList(attempt = 0) {
@@ -7197,7 +7487,7 @@
       console.warn('loadConvList failed', err);
       if (wrap) {
         wrap.innerHTML =
-          '<div class="conv-error">⚠️ Не удалось загрузить список. '
+          '<div class="side-state">Не удалось загрузить список. '
           + '<button type="button" class="conv-retry">Повторить</button></div>';
         const btn = wrap.querySelector('.conv-retry');
         if (btn) btn.addEventListener('click', () => loadConvList());
@@ -7789,7 +8079,7 @@
       + '.pm-x{border:none;background:rgba(0,0,0,.06);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:16px}'
       + '.pm-sec{font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.5;margin:14px 0 6px;font-weight:600}'
       + '.pm-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid rgba(0,0,0,.09);border-radius:10px;margin-bottom:6px;background:#fff}'
-      + '.pm-row.dragover{border-color:#2563eb;background:rgba(37,99,235,.07)}'
+      + '.pm-row.dragover{border-color:#E84A21;background:rgba(232,74,33,.07)}'
       + '.pm-grip{opacity:.35;cursor:grab;font-size:13px;user-select:none}'
       + '.pm-emoji{font-size:15px;width:20px;text-align:center}'
       + '.pm-lbl{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
@@ -7797,19 +8087,19 @@
       + '.pm-badge{min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:#e0245e;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}'
       + '.pm-act{border:none;background:rgba(0,0,0,.06);border-radius:7px;min-width:28px;height:28px;cursor:pointer;font-size:13px;padding:0 7px}'
       + '.pm-act:hover{background:rgba(0,0,0,.12)}.pm-act.danger:hover{background:rgba(220,38,38,.16)}'
-      + '.pm-act.pin{background:rgba(37,99,235,.1)}.pm-act.pin:hover{background:rgba(37,99,235,.2)}'
+      + '.pm-act.pin{background:rgba(232,74,33,.1)}.pm-act.pin:hover{background:rgba(232,74,33,.2)}'
       + '.pm-search{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid rgba(0,0,0,.16);border-radius:9px;margin-bottom:8px;font:inherit}'
       + '.pm-form{border:1px dashed rgba(0,0,0,.22);border-radius:10px;padding:11px;margin-top:8px;display:grid;gap:8px}'
       + '.pm-form input,.pm-form select{padding:8px 10px;border:1px solid rgba(0,0,0,.16);border-radius:8px;font:inherit;width:100%;box-sizing:border-box}'
       + '.pm-frow{display:flex;gap:8px}.pm-frow .pm-emoji-in{flex:0 0 64px}'
       + '.pm-confirm{color:#dc2626;font-size:12px;margin-right:2px}'
       + '.pm-empty{opacity:.4;font-size:13px;padding:6px 2px}'
-      + '.pm-addbtn{border:none;background:#2563eb;color:#fff;border-radius:9px;padding:9px 14px;cursor:pointer;font:inherit;font-weight:600}'
+      + '.pm-addbtn{border:none;background:#E84A21;color:#fff;border-radius:9px;padding:9px 14px;cursor:pointer;font:inherit;font-weight:600}'
       + '.pm-reset{border:1px solid rgba(0,0,0,.14);background:#fff;color:#1a1a1a;cursor:pointer;font:inherit;font-size:13px;font-weight:600;border-radius:9px;margin-top:6px;padding:9px 14px;width:100%}'
       + '.pm-reset:hover{background:rgba(0,0,0,.04)}'
       + '.pm-hint{font-size:12px;opacity:.6;line-height:1.4;margin:2px 0 8px}'
-      + '.pm-row.pm-missing{border-color:rgba(37,99,235,.4);background:rgba(37,99,235,.05)}'
-      + '.pm-missing .pm-act.pin{min-width:auto;font-weight:600;color:#2563eb}'
+      + '.pm-row.pm-missing{border-color:rgba(232,74,33,.4);background:rgba(232,74,33,.05)}'
+      + '.pm-missing .pm-act.pin{min-width:auto;font-weight:600;color:#E84A21}'
       + '.pill-undo{position:fixed;left:50%;bottom:22px;transform:translate(-50%,16px);z-index:100001;'
       + 'display:flex;align-items:center;gap:14px;background:#1f2937;color:#fff;padding:11px 14px 11px 16px;'
       + 'border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transition:opacity .2s,transform .2s;'
@@ -7981,26 +8271,36 @@
   async function loadProjects() {
     const el = $('projectsList');
     if (!el) return;
+    if (!window.IS_AUTHENTICATED) {
+      el.innerHTML = `<div class="side-state">Войдите, чтобы видеть проекты</div>`;
+      return;
+    }
     try {
       const data = await api('/api/assistant/projects/');
       const list = data.projects || [];
       if (!list.length) {
-        el.innerHTML = `<div class="side-item" style="color:rgba(0,0,0,0.4);">Нет проектов</div>`;
+        el.innerHTML = `<div class="side-state">Проектов пока нет</div>`;
         return;
       }
       el.innerHTML = list.map(p => {
         const dot = DOT_BG[p.dot_color] || DOT_BG.green;
         const pidStr = String(p.id).replace(/'/g, "&#39;");
         const nameStr = String(p.name || '').replace(/'/g, "&#39;").replace(/"/g, '&quot;');
-        return `<a href="/chat/project/${esc(p.id)}/" class="side-item side-item-proj" data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}" style="text-decoration:none;">
+        const chatsCount = Number(p.chats || 0);
+        const chatsLabel = chatsCount === 1 ? '1 чат' : `${chatsCount} чатов`;
+        return `<a href="/chat/project/${esc(p.id)}/" class="side-project-row side-item-proj" data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}">
           <span class="side-item-dot" style="background:${dot};"></span>
-          <span class="side-item-text">${esc(p.name)}</span>
-          <span class="side-item-meta">${esc(p.chats || 0)}</span>
-          <button class="side-item-del" type="button" title="Удалить проект" aria-label="Удалить" onclick="event.preventDefault();event.stopPropagation();window.__deleteProject&amp;&amp;window.__deleteProject('${pidStr}','${nameStr}');return false;">×</button>
+          <span class="side-project-main">
+            <span class="side-project-title">${esc(p.name)}</span>
+            <span class="side-project-meta">${esc(chatsLabel)}</span>
+          </span>
+          <span class="side-project-actions">
+            <button class="side-item-del" type="button" title="Удалить проект" aria-label="Удалить" onclick="event.preventDefault();event.stopPropagation();window.__deleteProject&amp;&amp;window.__deleteProject('${pidStr}','${nameStr}');return false;">×</button>
+          </span>
         </a>`;
       }).join('');
     } catch(e){
-      // leave demo items as fallback
+      el.innerHTML = `<div class="side-state">Не удалось загрузить проекты</div>`;
     }
   }
 
@@ -8015,15 +8315,15 @@
       + '.uip-box{background:#fff;color:#1a1a1a;width:min(92vw,420px);border-radius:14px;padding:18px;box-shadow:0 14px 44px rgba(0,0,0,.38);animation:uippop .14s ease}'
       + '@keyframes uippop{from{transform:translateY(6px) scale(.98);opacity:.6}to{transform:none;opacity:1}}'
       + '.uip-title{font-weight:700;font-size:16px;margin-bottom:4px}'
-      + '.uip-note{font-size:12.5px;line-height:1.5;color:#374151;background:rgba(37,99,235,.06);border:1px solid rgba(37,99,235,.14);border-radius:9px;padding:9px 11px;margin:8px 0 2px}'
+      + '.uip-note{font-size:12.5px;line-height:1.5;color:#374151;background:rgba(232,74,33,.06);border:1px solid rgba(232,74,33,.14);border-radius:9px;padding:9px 11px;margin:8px 0 2px}'
       + 'body.dark-mode .uip-note{color:#cbd5e1;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}'
       + '.uip-label{font-size:12px;opacity:.6;margin:6px 0 4px}'
       + '.uip-input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;border:1px solid rgba(0,0,0,.18);background:#fff;color:#1a1a1a;font:inherit;outline:none;margin-top:6px}'
-      + '.uip-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}'
+      + '.uip-input:focus{border-color:#E84A21;box-shadow:0 0 0 3px rgba(232,74,33,.15)}'
       + '.uip-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}'
       + '.uip-btn{padding:9px 18px;border-radius:9px;border:none;font:inherit;cursor:pointer}'
       + '.uip-cancel{background:rgba(0,0,0,.07);color:#1a1a1a}.uip-cancel:hover{background:rgba(0,0,0,.12)}'
-      + '.uip-ok{background:#2563eb;color:#fff}.uip-ok:hover{opacity:.92}'
+      + '.uip-ok{background:#E84A21;color:#fff}.uip-ok:hover{opacity:.92}'
       // ── dark-mode: был белый модал/инпут (белое-на-белом) ──
       + 'body.dark-mode .uip-box{background:#1f1f1f;color:#f0f0f0}'
       + 'body.dark-mode .uip-input{background:#2a2a2a;color:#f0f0f0;border-color:rgba(255,255,255,.18)}'
@@ -8191,9 +8491,9 @@
     const f = filter.toLowerCase();
     const list = state.convs.filter(c => !f || (c.title||'').toLowerCase().includes(f));
     const clearBtn = $('clearHistoryBtn');
-    if (clearBtn) clearBtn.style.display = (state.convs && state.convs.length) ? '' : 'none';
+    if (clearBtn) clearBtn.hidden = !list.length;
     if (!list.length) {
-      $('convList').innerHTML = '<div class="side-item-stack"><div class="side-item-stack-meta">' + tr('Нет чатов') + '</div></div>';
+      $('convList').innerHTML = '<div class="side-state">' + tr('Нет чатов') + '</div>';
       return;
     }
     const now = new Date();

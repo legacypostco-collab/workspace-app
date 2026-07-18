@@ -162,7 +162,7 @@
   var activeStatus = '';
   window.filterPayQueue = function(status) {
     activeStatus = (activeStatus === status) ? '' : status;
-    var active = 'rgba(100,181,246,0.35)', inactive = 'rgba(255,255,255,0.04)';
+    var active = 'rgba(232,74,33,0.35)', inactive = 'rgba(255,255,255,0.04)';
     document.querySelectorAll('[id^="pay-stat-"]').forEach(function(el){
       el.style.borderColor = inactive; el.style.background = '';
     });

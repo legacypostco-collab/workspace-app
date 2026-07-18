@@ -90,7 +90,7 @@ def referral_program(params, user, role):
     import hashlib
     # Детерминированный код на основе user_id + username
     seed = f"{user.id}:{user.username}".encode()
-    code = "REF-" + hashlib.md5(seed).hexdigest()[:8].upper()
+    code = "REF-" + hashlib.sha256(seed).hexdigest()[:8].upper()
     link = f"https://consolidator.parts/?ref={code}"
 
     # Реальная статистика будет когда подключим UTM-tracking. Пока — заглушка.

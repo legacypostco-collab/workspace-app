@@ -5,7 +5,7 @@
 {% block extra_css %}
 <style>
 .stat-card-link { text-decoration:none; display:block; cursor:pointer; }
-.stat-card-link:hover > div { border-color:rgba(100,181,246,0.35) !important; background:rgba(100,181,246,0.04) !important; }
+.stat-card-link:hover > div { border-color:rgba(232,74,33,0.35) !important; background:rgba(232,74,33,0.04) !important; }
 </style>
 {% endblock %}
 
@@ -22,7 +22,7 @@
     </div>
     <div style="display:flex;gap:6px;flex-shrink:0;">
       <a class="btn ghost" href="{% url 'seller_price_export' %}" style="padding:5px 10px;font-size:12px;">{% trans "Выгрузить прайс" %}</a>
-      <a class="btn ghost" href="{% url 'seller_bulk_upload' %}" style="padding:5px 12px;font-size:12px;display:flex;align-items:center;gap:5px;color:#64B5F6;border-color:rgba(100,181,246,0.3);">
+      <a class="btn ghost" href="{% url 'seller_bulk_upload' %}" style="padding:5px 12px;font-size:12px;display:flex;align-items:center;gap:5px;color:#E84A21;border-color:rgba(232,74,33,0.3);">
         <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 11V3M5 6l3-3 3 3"/><path d="M2 12v1.5a.5.5 0 00.5.5h11a.5.5 0 00.5-.5V12"/></svg>
         {% trans "Загрузить прайс" %}
       </a>
@@ -37,7 +37,7 @@
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Всего позиций" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_total }}</div>
-      <div style="font-size:10px;color:#64B5F6;margin-top:4px;">{% trans "в каталоге" %}</div>
+      <div style="font-size:10px;color:#E84A21;margin-top:4px;">{% trans "в каталоге" %}</div>
     </div>
     </a>
 
@@ -45,7 +45,7 @@
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);border-bottom:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Активных" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ parts_active_count|default:0 }}</div>
-      <div style="font-size:10px;color:#64B5F6;margin-top:4px;">ready</div>
+      <div style="font-size:10px;color:#E84A21;margin-top:4px;">ready</div>
     </div>
     </a>
 
@@ -80,7 +80,7 @@
     <div style="padding:10px 16px;border-right:1px solid rgba(255,255,255,0.045);">
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Заказы по позициям" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">{{ seller_orders_count|default:0 }}</div>
-      <div style="font-size:10px;color:#64B5F6;margin-top:4px;">{% trans "активных" %}</div>
+      <div style="font-size:10px;color:#E84A21;margin-top:4px;">{% trans "активных" %}</div>
     </div>
     </a>
 
@@ -97,7 +97,7 @@
       <div style="font-size:10px;font-weight:600;color:#484848;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">{% trans "Конверсия RFQ" %}</div>
       <div style="font-family:'Golos Text',sans-serif;font-size:22px;font-weight:800;color:#ECECEC;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1;">68%</div>
       <div style="height:2px;background:#2C2C2C;border-radius:2px;overflow:hidden;margin-top:6px;">
-        <div style="height:100%;width:68%;background:#64B5F6;border-radius:2px;"></div>
+        <div style="height:100%;width:68%;background:#E84A21;border-radius:2px;"></div>
       </div>
     </div>
     </a>
@@ -125,7 +125,7 @@
     <div style="display:grid;gap:16px;">
       <!-- Step 1 info -->
       <div style="padding:16px 18px;background:#2C2C2C;border-radius:10px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64B5F6;margin-bottom:8px;">{% trans "Шаг 1" %}</div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#E84A21;margin-bottom:8px;">{% trans "Шаг 1" %}</div>
         <h3 style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:700;color:#ECECEC;margin:0 0 10px;">{% trans "Файл прайса" %}</h3>
         <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 6px;">
           {% trans "Обязательные колонки: PartNumber, WarehouseAddress и хотя бы одна цена — Price_FOB_SEA или Price_FOB_AIR." %}
@@ -147,8 +147,8 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
           <div>
             <label for="{{ bulk_form.file.id_for_label }}" style="margin-bottom:6px;">{{ bulk_form.file.label }}</label>
-            <div style="position:relative;border:2px dashed rgba(255,255,255,0.12);border-radius:10px;padding:20px 16px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;background:rgba(255,255,255,0.02);" onmouseover="this.style.borderColor='#64B5F6';this.style.background='rgba(100,181,246,0.04)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.background='rgba(255,255,255,0.02)'" onclick="this.querySelector('input').click()">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#64B5F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:8px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div style="position:relative;border:2px dashed rgba(255,255,255,0.12);border-radius:10px;padding:20px 16px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;background:rgba(255,255,255,0.02);" onmouseover="this.style.borderColor='#E84A21';this.style.background='rgba(232,74,33,0.04)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.12)';this.style.background='rgba(255,255,255,0.02)'" onclick="this.querySelector('input').click()">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E84A21" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:8px;"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               <div id="file-label" style="font-size:14px;font-weight:600;color:#ECECEC;margin-bottom:4px;">{% trans "Выберите файл прайса" %}</div>
               <div style="font-size:12px;color:#6A6A6A;">{% trans "Перетащите или нажмите · .csv, .xlsx" %}</div>
               <input type="file" name="file" id="{{ bulk_form.file.id_for_label }}" accept=".csv,.xlsx,.xls" style="position:absolute;inset:0;opacity:0;cursor:pointer;" onchange="document.getElementById('file-label').textContent=this.files[0]?.name||'Выберите файл прайса'" />
@@ -166,7 +166,7 @@
           {% if bulk_form.default_stock.help_text %}<p style="font-size:12px;color:#6A6A6A;margin:6px 0 0;line-height:1.5;">{{ bulk_form.default_stock.help_text }}</p>{% endif %}
         </div>
         <div style="display:flex;align-items:center;gap:10px;padding-top:4px;">
-          <button class="btn ghost" type="submit" name="import_mode" value="preview" id="bulk-upload-preview-btn" style="color:#64B5F6;border-color:rgba(100,181,246,0.3);">{% trans "Проверить файл" %}</button>
+          <button class="btn ghost" type="submit" name="import_mode" value="preview" id="bulk-upload-preview-btn" style="color:#E84A21;border-color:rgba(232,74,33,0.3);">{% trans "Проверить файл" %}</button>
           <button class="btn ghost" type="submit" name="import_mode" value="apply" id="bulk-upload-btn">{% trans "Быстрый импорт (без preview)" %}</button>
         </div>
         <p style="font-size:12px;color:#484848;line-height:1.5;margin:0;">{% trans "Рекомендуемый сценарий: сначала «Проверить файл», затем подтвердить mapping и запустить импорт." %}</p>
@@ -181,7 +181,7 @@
     <div style="display:grid;gap:14px;align-content:start;">
       {% if latest_successful_import %}
         <div style="padding:16px 18px;background:#2C2C2C;border-radius:10px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64B5F6;margin-bottom:8px;">{% trans "Последний результат" %}</div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#E84A21;margin-bottom:8px;">{% trans "Последний результат" %}</div>
           <h3 style="font-family:'Golos Text',sans-serif;font-size:14px;font-weight:700;color:#ECECEC;margin:0 0 8px;">{{ latest_successful_import.created_at|date:"Y-m-d H:i" }}</h3>
           <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 4px;">
             {% trans "Источник:" %}
@@ -196,7 +196,7 @@
             </strong>
           </p>
           <p style="font-size:13px;color:#919191;line-height:1.6;margin:0 0 10px;">
-            {% trans "Строк:" %} <strong style="color:#ECECEC;">{{ latest_successful_import.total_rows|default:latest_successful_import.rows_total }}</strong> {% trans "· Успешно:" %} <strong style="color:#64B5F6;">{{ latest_successful_import.valid_rows }}</strong> {% trans "· Ошибок:" %} <strong style="color:#FEBC2E;">{{ latest_successful_import.error_rows }}</strong>
+            {% trans "Строк:" %} <strong style="color:#ECECEC;">{{ latest_successful_import.total_rows|default:latest_successful_import.rows_total }}</strong> {% trans "· Успешно:" %} <strong style="color:#E84A21;">{{ latest_successful_import.valid_rows }}</strong> {% trans "· Ошибок:" %} <strong style="color:#FEBC2E;">{{ latest_successful_import.error_rows }}</strong>
           </p>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <a class="chip" href="{% url 'seller_import_result' latest_successful_import.id %}" style="padding:5px 10px;">{% trans "Открыть результат" %}</a>
@@ -210,7 +210,7 @@
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#6A6A6A;margin-bottom:10px;">{% trans "Способы интеграции" %}</div>
 
       <!-- CSV / XLSX -->
-      <div style="padding:14px 16px;background:#2C2C2C;border-radius:10px;cursor:pointer;transition:border-color .15s;border:1px solid rgba(255,255,255,0.055);" onmouseover="this.style.borderColor='rgba(100,181,246,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.055)'">
+      <div style="padding:14px 16px;background:#2C2C2C;border-radius:10px;cursor:pointer;transition:border-color .15s;border:1px solid rgba(255,255,255,0.055);" onmouseover="this.style.borderColor='rgba(232,74,33,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.055)'">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
           <div style="width:36px;height:36px;border-radius:8px;background:var(--s-el);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -224,7 +224,7 @@
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;color:#ECECEC;">{% trans "CSV / XLSX файл" %}</div>
-            <div style="font-size:11px;color:#64B5F6;margin-top:2px;">{% trans "Активно" %}</div>
+            <div style="font-size:11px;color:#E84A21;margin-top:2px;">{% trans "Активно" %}</div>
           </div>
         </div>
         <p style="font-size:12px;color:#919191;line-height:1.5;margin:0;">{% trans "Загрузи файл прайса напрямую. Поддерживаем .csv, .xlsx. Автоматический маппинг колонок с preview." %}</p>
@@ -243,7 +243,7 @@
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;color:#ECECEC;">Google Sheets</div>
-            <div style="font-size:11px;color:#64B5F6;margin-top:2px;">{% trans "Активно" %}</div>
+            <div style="font-size:11px;color:#E84A21;margin-top:2px;">{% trans "Активно" %}</div>
           </div>
         </div>
         <p style="font-size:12px;color:#919191;line-height:1.5;margin:0 0 10px;">{% trans "Подключи Google-таблицу — цены будут синхронизироваться автоматически по расписанию." %}</p>
@@ -264,14 +264,14 @@
           {% csrf_token %}
           <input type="url" name="sheet_url" placeholder="{% trans 'Вставьте ссылку на Google-таблицу...' %}" required
             style="flex:1;padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:#1A1A1A;color:#ECECEC;font-size:12px;font-family:inherit;outline:none;"
-            onfocus="this.style.borderColor='rgba(100,181,246,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
+            onfocus="this.style.borderColor='rgba(232,74,33,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
           <button type="submit" style="padding:7px 16px;border-radius:8px;border:1px solid rgba(52,168,83,0.3);background:rgba(52,168,83,0.1);color:#34A853;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:all .15s;"
             onmouseover="this.style.background='rgba(52,168,83,0.18)'" onmouseout="this.style.background='rgba(52,168,83,0.1)'">{% trans "Подключить" %}</button>
         </form>
       </div>
 
       <!-- API -->
-      <div style="padding:14px 16px;background:#242424;border-radius:10px;cursor:pointer;transition:border-color .15s;border:1px solid rgba(255,255,255,0.055);" onmouseover="this.style.borderColor='rgba(100,181,246,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.055)'">
+      <div style="padding:14px 16px;background:#242424;border-radius:10px;cursor:pointer;transition:border-color .15s;border:1px solid rgba(255,255,255,0.055);" onmouseover="this.style.borderColor='rgba(232,74,33,0.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.055)'">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
           <div style="width:36px;height:36px;border-radius:8px;background:var(--s-el);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
             <!-- API icon -->
@@ -299,7 +299,7 @@
             <h3>{% trans "Таблица загружена" %}</h3>
             <p class="muted">
               Preview #{{ active_preview.id }} {% trans "• Статус:" %} <strong>{{ active_preview.status }}</strong>
-              {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" rel="noopener noreferrer" style="color:#64B5F6;">{% trans "Открыть таблицу" %}</a>{% endif %}
+              {% if active_preview.source_url %} • <a href="{{ active_preview.source_url }}" target="_blank" rel="noopener noreferrer" style="color:#E84A21;">{% trans "Открыть таблицу" %}</a>{% endif %}
             </p>
           {% else %}
             <div class="upload-step-label">{% trans "Шаг 2" %}</div>
@@ -460,7 +460,7 @@
 <style>
 .cat-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
 .cat-filter{padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:#1A1A1A;color:#ECECEC;font-size:12px;font-family:inherit;outline:none;min-width:140px;}
-.cat-filter:focus{border-color:rgba(100,181,246,0.4);}
+.cat-filter:focus{border-color:rgba(232,74,33,0.4);}
 .cat-search{flex:1;min-width:180px;max-width:300px;}
 .cat-count{font-size:12px;color:#5E5E5E;margin-left:auto;}
 
@@ -474,21 +474,21 @@
 
 .cat-edit-cell{background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 6px;color:#ECECEC;font-size:12px;font-family:inherit;width:80px;text-align:right;outline:none;transition:all .15s;}
 .cat-edit-cell:hover{border-color:rgba(255,255,255,0.1);}
-.cat-edit-cell:focus{border-color:rgba(100,181,246,0.5);background:#1A1A1A;}
+.cat-edit-cell:focus{border-color:rgba(232,74,33,0.5);background:#1A1A1A;}
 .cat-edit-cell.saved{animation:catSaved .6s ease-out;}
 @keyframes catSaved{0%{background:rgba(40,200,64,0.15);}100%{background:transparent;}}
 
 .cat-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;white-space:nowrap;}
-.cat-badge-ok{background:rgba(100,181,246,0.08);color:#64B5F6;}
+.cat-badge-ok{background:rgba(232,74,33,0.08);color:#E84A21;}
 .cat-badge-warn{background:rgba(232,92,13,0.08);color:#E85C0D;}
 .cat-badge-gray{background:rgba(255,255,255,0.04);color:#919191;}
 .cat-badge-green{background:rgba(40,200,64,0.08);color:#28C840;}
 
-.cat-check{width:14px;height:14px;accent-color:#64B5F6;cursor:pointer;}
+.cat-check{width:14px;height:14px;accent-color:#E84A21;cursor:pointer;}
 
-.cat-bulk-bar{display:none;align-items:center;gap:12px;padding:10px 16px;background:#242424;border-radius:10px;border:1px solid rgba(100,181,246,0.15);margin-bottom:12px;flex-wrap:wrap;}
+.cat-bulk-bar{display:none;align-items:center;gap:12px;padding:10px 16px;background:#242424;border-radius:10px;border:1px solid rgba(232,74,33,0.15);margin-bottom:12px;flex-wrap:wrap;}
 .cat-bulk-bar.show{display:flex;}
-.cat-bulk-count{font-size:12px;font-weight:600;color:#64B5F6;}
+.cat-bulk-count{font-size:12px;font-weight:600;color:#E84A21;}
 .cat-bulk-btn{padding:5px 14px;border-radius:7px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:#919191;font-size:11px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .12s;}
 .cat-bulk-btn:hover{color:#ECECEC;background:rgba(255,255,255,0.04);}
 .cat-bulk-btn--warn{border-color:rgba(232,92,13,0.2);color:#E85C0D;}
@@ -497,7 +497,7 @@
 .cat-pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:16px;}
 .cat-pager a,.cat-pager span{padding:6px 14px;border-radius:8px;font-size:12px;text-decoration:none;color:#919191;border:1px solid rgba(255,255,255,0.06);}
 .cat-pager a:hover{color:#ECECEC;background:rgba(255,255,255,0.04);}
-.cat-pager .active{color:#64B5F6;border-color:rgba(100,181,246,0.25);background:rgba(100,181,246,0.06);}
+.cat-pager .active{color:#E84A21;border-color:rgba(232,74,33,0.25);background:rgba(232,74,33,0.06);}
 </style>
 
 <div style="background:#242424;border-radius:14px;border:1px solid rgba(255,255,255,0.04);padding:16px 18px;">
@@ -519,7 +519,7 @@
         <option value="blocked" {% if status_filter == "blocked" %}selected{% endif %}>Blocked</option>
       </select>
       {% if query or brand_filter or status_filter %}
-        <a href="{% url 'seller_product_list' %}" style="font-size:11px;color:#64B5F6;text-decoration:none;">{% trans "Сбросить" %}</a>
+        <a href="{% url 'seller_product_list' %}" style="font-size:11px;color:#E84A21;text-decoration:none;">{% trans "Сбросить" %}</a>
       {% endif %}
       <span class="cat-count">{{ parts.paginator.count }} {% trans "позиций" %}</span>
     </div>

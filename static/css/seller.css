@@ -11,13 +11,13 @@
   --s-el: #2C2C2C;
   --s-brd: rgba(255,255,255,0.055);
   --s-sep: rgba(255,255,255,0.035);
-  --s-hov: rgba(100,181,246,0.04);
+  --s-hov: rgba(232,74,33,0.04);
   --s-t0: #ECECEC;
   --s-t1: #919191;
   --s-t2: #6A6A6A;
   --s-t3: #484848;
-  --s-sky: #64B5F6;
-  --s-sky-dim: rgba(100,181,246,0.12);
+  --s-sky: #E84A21;
+  --s-sky-dim: rgba(232,74,33,0.12);
   --s-ora: #E85C0D;
   --s-green: #28C840;
   --s-yellow: #FEBC2E;
@@ -48,7 +48,7 @@ body.seller-shell {
 
 /* Nav link hover for Django sidebar */
 .seller-nav-link { transition: all 0.15s ease; }
-.seller-nav-link:hover { background: rgba(100,181,246,0.04) !important; color: #ECECEC !important; }
+.seller-nav-link:hover { background: rgba(232,74,33,0.04) !important; color: #ECECEC !important; }
 
 /* ══════════════════════════════════════════════
    TOPBAR
@@ -73,8 +73,8 @@ body.seller-shell {
   margin-bottom: 4px;
   font-size: 12px;
 }
-.seller-breadcrumbs a { color: #64B5F6; text-decoration: none; cursor: pointer; }
-.seller-breadcrumbs a:hover { color: #90CAF9; text-decoration: underline; }
+.seller-breadcrumbs a { color: #E84A21; text-decoration: none; cursor: pointer; }
+.seller-breadcrumbs a:hover { color: #FFB08A; text-decoration: underline; }
 .seller-breadcrumbs span { color: var(--s-t2); }
 .seller-breadcrumb-sep { color: #484848; font-size: 14px; }
 .seller-nav-arrows {
@@ -83,10 +83,10 @@ body.seller-shell {
 .seller-nav-arrow {
   display: flex; align-items: center; justify-content: center;
   width: 28px; height: 28px; border-radius: 6px;
-  color: #64B5F6; text-decoration: none;
+  color: #E84A21; text-decoration: none;
   transition: color .15s, background .15s;
 }
-.seller-nav-arrow:hover { color: #90CAF9; background: rgba(100,181,246,0.1); }
+.seller-nav-arrow:hover { color: #FFB08A; background: rgba(232,74,33,0.1); }
 
 .seller-page-title {
   margin: 0;
@@ -355,7 +355,7 @@ select {
   outline: none;
 }
 input:focus, select:focus, textarea:focus {
-  border-color: rgba(100,181,246,0.35);
+  border-color: rgba(232,74,33,0.35);
 }
 input::placeholder { color: var(--s-t3); }
 

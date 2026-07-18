@@ -112,8 +112,8 @@
 
   // ── Sidebar data loading ─────────────────────────────────
   const DOT_BG = {
-    green:'#22c55e', orange:'#f97316', blue:'#3b82f6',
-    purple:'#a855f7', red:'#ef4444', gray:'#9ca3af',
+    green:'#22c55e', orange:'#f97316', blue:'#E84A21',
+    purple:'#8d8d8d', red:'#ef4444', gray:'#9ca3af',
   };
 
   async function loadSidebarProjects() {
@@ -203,7 +203,7 @@
     const h = el.querySelector('h2') || el;
     const oc = h.style.color;
     h.style.transition = 'color .25s';
-    h.style.color = '#2563eb';
+    h.style.color = '#E84A21';
     setTimeout(() => { h.style.color = oc; }, 1000);
   };
 
@@ -224,7 +224,7 @@
       + field('description', 'Описание', info.description, 'Кратко о проекте')
       + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">'
       + '<button type="button" class="__ps-cancel" style="padding:9px 16px;border-radius:9px;border:none;background:rgba(0,0,0,.07);font:inherit;cursor:pointer">Отмена</button>'
-      + '<button type="button" class="__ps-save" style="padding:9px 18px;border-radius:9px;border:none;background:#2563eb;color:#fff;font:inherit;cursor:pointer">Сохранить</button>'
+      + '<button type="button" class="__ps-save" style="padding:9px 18px;border-radius:9px;border:none;background:#E84A21;color:#fff;font:inherit;cursor:pointer">Сохранить</button>'
       + '</div></div>';
     const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -306,7 +306,7 @@
           <span style="font-size:22px">📄</span>
           <span style="flex:1;min-width:0">
             <span style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</span>
-            <span style="display:block;font-size:12px;opacity:.55">${esc(d.doctype_label || '')}${d.size_kb ? ' · ' + esc(String(d.size_kb)) + ' КБ' : ''}<span class="__df-oemtag" style="color:#2563eb;font-weight:600">${d.oem ? ' · 🔗 ' + esc(d.oem) : ''}</span></span>
+            <span style="display:block;font-size:12px;opacity:.55">${esc(d.doctype_label || '')}${d.size_kb ? ' · ' + esc(String(d.size_kb)) + ' КБ' : ''}<span class="__df-oemtag" style="color:#E84A21;font-weight:600">${d.oem ? ' · 🔗 ' + esc(d.oem) : ''}</span></span>
           </span>
           <a href="/api/assistant/projects/${PID}/documents/${d.id}/file/" target="_blank" rel="noopener" style="opacity:.6;font-size:13px;text-decoration:none;color:inherit;white-space:nowrap">Открыть ›</a>
         </div>
@@ -328,7 +328,7 @@
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
           <span style="font-size:22px">${slot.icon || '📁'}</span>
           <span style="font-weight:700;font-size:17px;flex:1">${esc(slot.label || 'Документы')} <span style="opacity:.5;font-weight:500">· ${docs.length}</span></span>
-          <button type="button" class="__df-add" style="padding:7px 13px;border-radius:9px;border:none;background:#2563eb;color:#fff;font:inherit;cursor:pointer">+ Добавить</button>
+          <button type="button" class="__df-add" style="padding:7px 13px;border-radius:9px;border:none;background:#E84A21;color:#fff;font:inherit;cursor:pointer">+ Добавить</button>
           <button type="button" class="__df-close" style="padding:7px 11px;border-radius:9px;border:none;background:rgba(0,0,0,.08);font:inherit;cursor:pointer">✕</button>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;overflow:auto">${cards}</div>

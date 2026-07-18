@@ -14,10 +14,48 @@ logger = logging.getLogger(__name__)
 
 
 def push_notification_to_user(user_id: int, payload: dict):
-    """Sync helper — отправляет нотификацию по WS всем сессиям пользователя.
+    """Sync helper — отправляет уведомление во все realtime-каналы пользователя.
 
-    Channel group: notif_user_<id>. Если channel-layer не настроен (нет
-    in-memory или Redis), функция тихо игнорирует — основной flow не сломается.
+    Сейчас в проекте есть две WebSocket-ветки:
+      • /ws/assistant/      → group notif_user_<id>, формат {"type":"notification","payload":...}
+      • /ws/notifications/  → group user_<id>, формат {"type":"notification","data":...}
+
+    База Notification остаётся источником правды, а этот helper только
+    доставляет live-дубликат в открытые вкладки. Если channel-layer не
+    настроен, функция тихо игнорирует — основной flow не ломается.
+    """
+    try:
+        from asgiref.sync import async_to_sync
+        layer = get_channel_layer()
+        if not layer:
+            return
+        legacy_data = {
+            "id": payload.get("id"),
+            "kind": payload.get("kind"),
+            "title": payload.get("title"),
+            "body": (payload.get("body") or "")[:120],
+            "url": payload.get("url") or "",
+            "is_read": False,
+            "created_at": payload.get("created_at") or "",
+        }
+        async_to_sync(layer.group_send)(
+            f"notif_user_{user_id}",
+            {"type": "notify", "payload": payload},
+        )
+        async_to_sync(layer.group_send)(
+            f"user_{user_id}",
+            {"type": "notification.message", "data": legacy_data},
+        )
+    except Exception:
+        logger.exception("push_notification_to_user failed")
+
+
+def push_rfq_update_to_user(user_id: int, *, rfq_id: int, event: str = "rfq_update",
+                            quote_id: int | None = None):
+    """Live-событие изменения RFQ/котировки для открытого chat-first UI.
+
+    Это не уведомление и не увеличивает unread-счётчик. Фронт использует его
+    только чтобы перерисовать открытую карточку/список RFQ без F5.
     """
     try:
         from asgiref.sync import async_to_sync
@@ -26,10 +64,15 @@ def push_notification_to_user(user_id: int, payload: dict):
             return
         async_to_sync(layer.group_send)(
             f"notif_user_{user_id}",
-            {"type": "notify", "payload": payload},
+            {
+                "type": "rfq_update",
+                "rfq_id": rfq_id,
+                "event": event,
+                "quote_id": quote_id,
+            },
         )
     except Exception:
-        logger.exception("push_notification_to_user failed")
+        logger.exception("push_rfq_update_to_user failed")
 
 
 class AssistantConsumer(AsyncWebsocketConsumer):
@@ -105,6 +148,15 @@ class AssistantConsumer(AsyncWebsocketConsumer):
             "rfq_id": event.get("rfq_id"),
             "order_id": event.get("order_id"),
             "claim_id": event.get("claim_id"),
+        })
+
+    async def rfq_update(self, event):
+        """Изменение RFQ/котировки — фронт обновит открытую RFQ-карточку."""
+        await self.send_json({
+            "type": "rfq_update",
+            "event": event.get("event"),
+            "rfq_id": event.get("rfq_id"),
+            "quote_id": event.get("quote_id"),
         })
 
     async def receive(self, text_data=None, bytes_data=None):
