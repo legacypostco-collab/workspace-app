@@ -1517,6 +1517,17 @@ def op_kyb_approve(params, user, role):
     except Exception:
         logger.exception("assign_operator on KYB approve failed for user %s", kyb.user_id)
 
+    try:
+        from marketplace.models import UserRole
+        UserRole.objects.update_or_create(
+            user=kyb.user,
+            role="seller",
+            operator_role="",
+            defaults={"is_enabled": True},
+        )
+    except Exception:
+        logger.exception("enable seller role on KYB approve failed for user %s", kyb.user_id)
+
     # ТЗ §1: после verify сразу обновляем external_score из Kontur/СПАРК
     # → bankruptcy_flag/liquidation_flag → status может сразу стать rejected
     rating_info = None

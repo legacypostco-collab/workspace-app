@@ -14,6 +14,7 @@ from .models import (
     RFQItem,
     SupplierRatingEvent,
     UserProfile,
+    UserRole,
     WebhookDeliveryLog,
 )
 
@@ -235,6 +236,13 @@ class UserProfileAdmin(admin.ModelAdmin):
             request,
             f"Шаблоны применены: {updated}. Пропущено: {skipped}.",
         )
+
+
+@admin.register(UserRole)
+class UserRoleAdmin(admin.ModelAdmin):
+    list_display = ("user", "role", "operator_role", "is_enabled", "updated_at")
+    list_filter = ("role", "operator_role", "is_enabled")
+    search_fields = ("user__username", "user__email", "user__first_name", "user__last_name")
 
 
 @admin.register(SupplierRatingEvent)

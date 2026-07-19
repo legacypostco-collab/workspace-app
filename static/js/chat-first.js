@@ -7495,7 +7495,7 @@
     }
   }
 
-  // ── Role toggle (Покупатель / Поставщик / Оператор) ───────
+  // ── Role toggle (Покупатель / Продавец / Оператор) ───────
   const ROLE_TABS = ['buyer', 'seller', 'operator'];
 
   function paintRoleToggle(activeRole) {
@@ -7504,8 +7504,8 @@
     });
   }
 
-  // PIVOT 2026-05-27: role-toggle = смена аккаунта через chat-форму с паролем.
-  // Каждая роль = отдельный аккаунт, переключение = логин с паролем.
+  // Для авторизованного пользователя переключаем только выданные роли.
+  // Для гостя выбор продавца/оператора открывает вход или регистрацию.
   async function setRole(newRole) {
     try { setConvId(null); } catch (_) {}
     try { showWelcome(); } catch (_) {}
@@ -7522,6 +7522,11 @@
   document.addEventListener('click', (e) => {
     const tab = e.target.closest('#roleToggle .role-tab');
     if (!tab) return;
+    if (tab.dataset.addRole) {
+      try { window.quickAction('add_account_role', {}); }
+      catch (err) { console.warn('add_account_role failed', err); }
+      return;
+    }
     const newRole = tab.dataset.role;
     if (!ROLE_TABS.includes(newRole)) return;
     // ── Анонимный режим: продавец / оператор — отдельные сущности,

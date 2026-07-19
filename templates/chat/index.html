@@ -298,6 +298,8 @@
     .role-tab{flex:1;padding:6px 8px;background:transparent;border:none;border-radius:8px;color:rgba(0,0,0,0.6);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.12s;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;}
     .role-tab:hover{color:#1a1a1a;}
     .role-tab.active{background:#fff;color:#1a1a1a;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04);}
+    .role-tab.role-tab-add{flex:0 0 30px;font-size:18px;line-height:1;color:rgba(0,0,0,0.55);}
+    .role-tab.role-tab-add:hover{background:rgba(255,255,255,0.72);color:#1a1a1a;}
     /* Sidebar variant: на всю ширину */
     .role-toggle-side{margin:0 0 12px 0;}
     .role-toggle-side .role-tab{padding:7px 4px;font-size:11px;letter-spacing:-0.01em;}
@@ -3065,6 +3067,7 @@
     body.dark-mode .role-tab{color:rgba(255,255,255,0.55);}
     body.dark-mode .role-tab:hover{color:#fff;}
     body.dark-mode .role-tab.active{background:#2a2a2a;color:#ffffff;}
+    body.dark-mode .role-tab.role-tab-add:hover{background:rgba(255,255,255,0.10);color:#ffffff;}
     body.dark-mode .side-new-btn{background:#ffffff;color:#1a1a1a;}
     body.dark-mode .side-new-btn:hover{background:#e5e5e5;}
     body.dark-mode .side-search input{background:#181818;color:#fff;border-color:rgba(255,255,255,0.08);}
@@ -4040,9 +4043,10 @@
     <div class="side-inner">
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
         {% if user.is_authenticated %}
-          <button type="button" class="role-tab active" data-role="{{ auth_base_role }}" role="tab">
-            {% if auth_base_role == 'seller' %}{% trans "Продавец" %}{% elif auth_base_role == 'operator' %}{% trans "Оператор" %}{% else %}{% trans "Покупатель" %}{% endif %}
-          </button>
+          {% for tab in auth_role_tabs %}
+            <button type="button" class="role-tab{% if tab.role == auth_base_role %} active{% endif %}" data-role="{{ tab.role }}" role="tab">{{ tab.label }}</button>
+          {% endfor %}
+          <button type="button" class="role-tab role-tab-add" data-add-role="1" aria-label="{% trans 'Добавить роль' %}" title="{% trans 'Добавить роль' %}">+</button>
         {% else %}
           <button type="button" class="role-tab{% if auth_base_role == 'buyer' %} active{% endif %}" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
           <button type="button" class="role-tab{% if auth_base_role == 'seller' %} active{% endif %}" data-role="seller"   role="tab">{% trans "Продавец" %}</button>

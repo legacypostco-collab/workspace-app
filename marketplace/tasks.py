@@ -76,7 +76,7 @@ def send_pending_email_notifications():
             body_lines.append(f"• [{n.get_kind_display()}] {n.title}")
             if n.body:
                 body_lines.append(f"  {n.body[:120]}")
-        body_lines.append(f"\nView all: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else ''}/notifications/")
+        body_lines.append(f"\nView all: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else ''}/chat/#notifications")
         try:
             send_email_task.delay(subject, "\n".join(body_lines), [user.email])
             sent += 1

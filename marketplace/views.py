@@ -413,9 +413,11 @@ def _profile_for(user: User | None):
 def _has_order_access(user: User, order: Order, role: str | None) -> bool:
     if user.is_superuser:
         return True
+    if order.buyer_id == user.id:
+        return True
     if role == "seller":
         return order.items.filter(part__seller=user).exists()
-    return order.buyer_id == user.id
+    return False
 
 
 def _allowed_regions_set(user: User) -> set[str]:
@@ -3607,9 +3609,7 @@ def rfq_new(request: HttpRequest) -> HttpResponse:
 def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
     # Chat-first redirect: the legacy admin-style page is being phased out.
     # Anyone landing on /rfq/<id>/ now goes to the new Slack-like view.
-    # ?classic=1 keeps the old form available for back-office editing.
-    if request.GET.get("classic") != "1":
-        return redirect("chat_rfq", rfq_id=rfq_id)
+    return redirect("chat_rfq", rfq_id=rfq_id)
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part__brand", "items__matched_part__category"), id=rfq_id)
     role = _role_for(request.user)
     if role != "seller" and rfq.created_by_id != request.user.id:
@@ -3638,9 +3638,7 @@ def rfq_detail(request: HttpRequest, rfq_id: int) -> HttpResponse:
 @login_required
 def rfq_proposal(request: HttpRequest, rfq_id: int) -> HttpResponse:
     # Chat-first redirect: legacy КП page is replaced by /chat/proposal/<id>/.
-    # ?classic=1 escape hatch for ops/back-office.
-    if request.GET.get("classic") != "1":
-        return redirect("chat_proposal", rfq_id=rfq_id)
+    return redirect("chat_proposal", rfq_id=rfq_id)
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part"), id=rfq_id)
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
@@ -3879,10 +3877,12 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
 @login_required
 def rfq_checkout(request: HttpRequest, rfq_id: int) -> HttpResponse:
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part"), id=rfq_id)
+    if request.method == "GET" and not (request.user.is_staff or request.user.is_superuser):
+        return redirect("chat_rfq", rfq_id=rfq.id)
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
         messages.error(request, "Оформление из RFQ доступно только buyer.")
-        return redirect("rfq_detail", rfq_id=rfq.id)
+        return redirect("chat_rfq", rfq_id=rfq.id)
     # Анон-RFQ (created_by_id is None) — только админу, иначе IDOR
     if rfq.created_by_id is None:
         if not request.user.is_superuser:
@@ -3895,7 +3895,7 @@ def rfq_checkout(request: HttpRequest, rfq_id: int) -> HttpResponse:
     rows, total = _rfq_rows(rfq)
     if not rows:
         messages.error(request, "В RFQ нет доступных позиций для заказа.")
-        return redirect("rfq_detail", rfq_id=rfq.id)
+        return redirect("chat_rfq", rfq_id=rfq.id)
 
     initial = {
         "customer_name": rfq.customer_name,
@@ -5004,7 +5004,7 @@ def order_detail(request: HttpRequest, order_id: int) -> HttpResponse:
 
     if not _has_order_access(request.user, order, role):
         messages.error(request, "Нет доступа к заказу.")
-        return redirect("dashboard")
+        return redirect("chat")
 
     _recalc_order_sla(order)
     is_buyer = order.buyer_id == request.user.id
@@ -5036,7 +5036,7 @@ def order_invoice(request: HttpRequest, order_id: int) -> HttpResponse:
 
     if not _has_order_access(request.user, order, role):
         messages.error(request, "Нет доступа к инвойсу этого заказа.")
-        return redirect("dashboard")
+        return redirect("chat")
 
     _log_order_event(
         order,
@@ -5070,7 +5070,7 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     role = _role_for(request.user)
     if not _has_order_access(request.user, order, role):
         messages.error(request, "Нет доступа к инвойсу этого заказа.")
-        return redirect("dashboard")
+        return redirect("chat")
 
     _log_order_event(
         order,
@@ -7080,7 +7080,7 @@ def kyb_view(request):
             user=request.user, kind="system",
             title=_("KYB документы отправлены на проверку"),
             body=_("Мы рассмотрим ваши документы в течение 1-2 рабочих дней."),
-            url="/kyb/",
+            url="/chat/?action=kyb_status",
         )
         messages.success(request, _("Документы отправлены на проверку"))
         return redirect("kyb")
@@ -7192,7 +7192,7 @@ def twofa_setup(request):
                     user=request.user, kind="system",
                     title=_("Двухфакторная аутентификация включена"),
                     body=_("Сохраните резервные коды в безопасном месте."),
-                    url="/2fa/",
+                    url="/chat/#settings",
                 )
                 messages.success(request, _("2FA включена. Сохраните резервные коды!"))
                 return redirect("twofa_setup")
@@ -7289,10 +7289,12 @@ def chat_first_view(request):
     # (ветки {% else %} / default-фильтры) — ровно как было, ничего лишнего.
     if request.user.is_authenticated:
         try:
-            from assistant.permissions import detect_user_role
+            from assistant.permissions import detect_user_role, user_allowed_role_tabs
             initial_role = detect_user_role(request.user, request=request) or "buyer"
+            role_tabs = user_allowed_role_tabs(request.user)
         except Exception:
             initial_role = "buyer"
+            role_tabs = [{"role": "buyer", "label": "Покупатель"}]
         base_role = ("operator" if (initial_role.startswith("operator") or initial_role == "admin")
                      else ("seller" if initial_role == "seller" else "buyer"))
         # Дублируем ru-строки welcome только для первого кадра; дальше JS-i18n синхронит.
@@ -7346,6 +7348,7 @@ def chat_first_view(request):
         ctx.update({
             "auth_role": initial_role,
             "auth_base_role": base_role,
+            "auth_role_tabs": role_tabs,
             "auth_welcome_title_key": _wt_key,
             "auth_welcome_title": _wt,
             "auth_welcome_subtitle": _SUB[base_role],

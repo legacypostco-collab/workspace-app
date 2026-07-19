@@ -1190,6 +1190,38 @@ class UserProfile(models.Model):
         return f"{self.user.username} ({self.role})"
 
 
+class UserRole(models.Model):
+    ROLE_CHOICES = UserProfile.ROLE_CHOICES
+    OPERATOR_ROLE_CHOICES = UserProfile.OPERATOR_ROLE_CHOICES
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="roles")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    operator_role = models.CharField(
+        max_length=20,
+        choices=OPERATOR_ROLE_CHOICES,
+        blank=True,
+        default="",
+    )
+    is_enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "role", "operator_role"],
+                name="uniq_user_role_operator_role",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["user", "role", "is_enabled"]),
+        ]
+
+    def __str__(self) -> str:
+        suffix = f"_{self.operator_role}" if self.role == "operator" and self.operator_role else ""
+        return f"{self.user.username}: {self.role}{suffix}"
+
+
 class SupplierRatingEvent(models.Model):
     EVENT_CHOICES = [
         ("rfq_response", "RFQ Response"),

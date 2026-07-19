@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 logger = logging.getLogger(__name__)
 
 from .models import Conversation, Feedback, Message
-from .permissions import detect_user_role
+from .permissions import detect_user_role, user_allowed_role_tabs
 from .rag import execute_action, process_query_sync
 from .serializers import (
     ChatRequestSerializer,
@@ -447,6 +447,31 @@ def _handle_switch_role_login(request, params):
                 "cards": [], "actions": [], "suggestions": [], "contextual_actions": []}
     suggested_username = DEMO_USERNAMES[role]
 
+    if request.user.is_authenticated:
+        from .permissions import _override_allowed
+        current_role = detect_user_role(request.user, request=request)
+        current_norm = "operator" if current_role.startswith("operator") else current_role
+        if current_norm == role:
+            return {
+                "text": _("Эта роль уже активна."),
+                "actions": [], "cards": [], "suggestions": [], "contextual_actions": [],
+            }
+        if _override_allowed(request.user, role):
+            real_role = detect_user_role(request.user)
+            real_norm = "operator" if real_role.startswith("operator") else real_role
+            if real_norm == role:
+                request.session.pop("assistant_role_override", None)
+            else:
+                request.session["assistant_role_override"] = role
+            request.session.modified = True
+            return {
+                "text": _("Переключаю кабинет..."),
+                "actions": [{"action": "reload_page", "label": _("Открыть кабинет")}],
+                "cards": [], "suggestions": [], "contextual_actions": [],
+                "_post_action": "reload",
+            }
+        return _handle_add_account_role(request, {"role": role})
+
     ROLE_META = {
         "buyer":    (_("Войти как покупатель"), _("Введите логин и пароль аккаунта покупателя.")),
         "seller":   (_("Войти как поставщик"),  _("Введите логин и пароль аккаунта поставщика.")),
@@ -478,8 +503,8 @@ def _handle_switch_role_login(request, params):
                 "data": {
                     "title": title,
                     "intent": _(
-                        "Каждая роль = отдельный аккаунт. Текущая сессия будет переключена. "
-                        "Если аккаунта нет — создайте его кнопкой ниже формы."
+                        "Войдите в аккаунт с нужной ролью. Если вы уже внутри своего аккаунта, "
+                        "дополнительную роль можно добавить через кнопку «+» рядом с переключателем."
                     ),
                     "submit_action": "switch_role_login",
                     "submit_label": _("Войти →"),
@@ -580,6 +605,184 @@ def _handle_switch_role_login(request, params):
         "actions": [{"action": "reload_page", "label": _("Открыть кабинет")}],
         "cards": [], "suggestions": [], "contextual_actions": [],
         "_post_action": "reload",
+    }
+
+
+def _profile_for_role_extension(user):
+    from marketplace.models import UserProfile
+
+    profile = getattr(user, "userprofile", None) or getattr(user, "profile", None)
+    if not profile:
+        profile = UserProfile.objects.create(user=user, role="buyer", language="ru")
+    return profile
+
+
+def _set_if_present(obj, attr, params, key=None):
+    key = key or attr
+    if key in params:
+        value = (params.get(key) or "").strip()
+        if value:
+            setattr(obj, attr, value)
+
+
+def _handle_add_account_role(request, params):
+    """Add a second business role to the current account.
+
+    Buyer role is enabled immediately. Seller role creates a disabled role and
+    a KYB draft; an operator enables it after verification.
+    """
+    if not request.user.is_authenticated:
+        return _registration_required_response()
+
+    from .permissions import ROLE_LABELS, user_allowed_role_tabs
+
+    role = (params.get("role") or "").lower().strip()
+    current_roles = {tab["role"] for tab in user_allowed_role_tabs(request.user)}
+    available = [r for r in ("buyer", "seller") if r not in current_roles]
+
+    if not role:
+        actions = [
+            {"action": "add_account_role", "label": _("Добавить роль: %(role)s") % {"role": ROLE_LABELS[r]},
+             "params": {"role": r}}
+            for r in available
+        ]
+        actions.append({"action": "contact_operator",
+                        "label": _("Запросить операторский доступ"),
+                        "params": {"topic": "operator_access"}})
+        if not available:
+            return {
+                "text": _("На этом аккаунте уже подключены все роли, которые можно добавить самостоятельно. Операторский доступ выдаёт администратор."),
+                "actions": actions[-1:], "cards": [], "suggestions": [], "contextual_actions": [],
+            }
+        return {
+            "text": _("Выберите, какую роль добавить к текущему аккаунту. Переключатель вверху покажет новую роль только после её выдачи."),
+            "actions": actions, "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+
+    if role == "operator":
+        return {
+            "text": _("Операторскую роль нельзя подключить самостоятельно. Её выдаёт администратор после назначения зоны ответственности."),
+            "actions": [{"action": "contact_operator",
+                         "label": _("Запросить операторский доступ"),
+                         "params": {"topic": "operator_access"}}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+        }
+    if role not in ("buyer", "seller"):
+        return {"text": _("Неизвестная роль: %(r)s") % {"r": role},
+                "cards": [], "actions": [], "suggestions": [], "contextual_actions": []}
+    if role in current_roles:
+        request.session["assistant_role_override"] = role
+        request.session.modified = True
+        return {
+            "text": _("Эта роль уже подключена. Переключаю кабинет..."),
+            "actions": [{"action": "reload_page", "label": _("Открыть кабинет")}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+            "_post_action": "reload",
+        }
+
+    confirmed = bool(params.get("confirmed"))
+    if role == "buyer":
+        if not confirmed:
+            return {
+                "text": _("Добавим роль покупателя к текущему аккаунту. После сохранения она сразу появится в переключателе."),
+                "cards": [{
+                    "type": "form",
+                    "data": {
+                        "title": _("Данные покупателя"),
+                        "submit_action": "add_account_role",
+                        "submit_label": _("Добавить роль покупателя"),
+                        "fields": [
+                            {"name": "company_name", "label": _("Компания"), "required": True},
+                            {"name": "country", "label": _("Страна"), "placeholder": "RU", "required": False},
+                            {"name": "tax_id", "label": _("ИНН / Tax ID"), "required": False},
+                            {"name": "contact_name", "label": _("Контактное лицо"), "required": True},
+                            {"name": "position", "label": _("Должность"), "required": False},
+                            {"name": "phone_e164", "label": _("Телефон"), "placeholder": "+7...", "required": False},
+                            {"name": "equipment_fleet", "label": _("Парк техники"), "type": "textarea", "required": False},
+                        ],
+                        "fixed_params": {"confirmed": True, "role": "buyer"},
+                    },
+                }],
+                "actions": [], "suggestions": [], "contextual_actions": [],
+            }
+        from marketplace.models import UserRole
+
+        profile = _profile_for_role_extension(request.user)
+        for field in ("company_name", "country", "tax_id", "contact_name", "position", "phone_e164", "equipment_fleet"):
+            _set_if_present(profile, field, params)
+        profile.save()
+        UserRole.objects.update_or_create(
+            user=request.user,
+            role="buyer",
+            operator_role="",
+            defaults={"is_enabled": True},
+        )
+        request.session["assistant_role_override"] = "buyer"
+        request.session.modified = True
+        return {
+            "text": _("Роль покупателя добавлена. Переключаю кабинет..."),
+            "actions": [{"action": "reload_page", "label": _("Открыть кабинет покупателя")}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
+            "_post_action": "reload",
+        }
+
+    if not confirmed:
+        return {
+            "text": _("Добавим роль поставщика к текущему аккаунту. Сразу после заявки роль появится у оператора на проверке, а в переключателе включится после одобрения."),
+            "cards": [{
+                "type": "form",
+                "data": {
+                    "title": _("Заявка на роль поставщика"),
+                    "submit_action": "add_account_role",
+                    "submit_label": _("Отправить заявку"),
+                    "fields": [
+                        {"name": "legal_name", "label": _("Юридическое название"), "required": True},
+                        {"name": "inn", "label": _("ИНН / Tax ID"), "required": True},
+                        {"name": "country", "label": _("Страна регистрации"), "placeholder": "RU", "required": False},
+                        {"name": "legal_address", "label": _("Юридический адрес"), "type": "textarea", "required": False},
+                        {"name": "contact_name", "label": _("Контактное лицо"), "required": True},
+                        {"name": "phone", "label": _("Телефон"), "placeholder": "+7...", "required": False},
+                        {"name": "website", "label": _("Сайт"), "required": False},
+                        {"name": "categories", "label": _("Бренды и категории"), "type": "textarea", "required": False},
+                    ],
+                    "fixed_params": {"confirmed": True, "role": "seller"},
+                },
+            }],
+            "actions": [], "suggestions": [], "contextual_actions": [],
+        }
+
+    from django.utils import timezone
+    from marketplace.models import CompanyVerification, UserRole
+
+    profile = _profile_for_role_extension(request.user)
+    _set_if_present(profile, "company_name", params, "legal_name")
+    _set_if_present(profile, "tax_id", params, "inn")
+    _set_if_present(profile, "contact_name", params)
+    _set_if_present(profile, "phone_e164", params, "phone")
+    profile.save()
+
+    kyb, _created = CompanyVerification.objects.get_or_create(user=request.user)
+    for field in ("legal_name", "inn", "country", "legal_address", "phone", "website", "categories"):
+        _set_if_present(kyb, field, params)
+    _set_if_present(kyb, "director_name", params, "contact_name")
+    if kyb.status == "none":
+        kyb.status = "pending"
+        kyb.submitted_at = timezone.now()
+    kyb.save()
+
+    UserRole.objects.update_or_create(
+        user=request.user,
+        role="seller",
+        operator_role="",
+        defaults={"is_enabled": False},
+    )
+    return {
+        "text": _("Заявка на роль поставщика отправлена. До одобрения оператором роль не будет доступна в переключателе."),
+        "actions": [
+            {"action": "kyb_status", "label": _("Проверить статус")},
+            {"action": "upload_kyb_doc", "label": _("Загрузить документы")},
+        ],
+        "cards": [], "suggestions": [], "contextual_actions": [],
     }
 
 
@@ -749,11 +952,14 @@ class ActionView(APIView):
             return Response({"conversation_id": None, **result})
 
         # ── Authenticated flow ──────────────────────────────
-        # Special-case: switch_role_login (нужен request для login/session).
+        # Special-case: account/session actions need request for login/session.
         # Это смена аккаунта через chat-форму с паролем (вместо JS-prompt).
         if action == "switch_role_login":
             return Response({"conversation_id": None,
                              **_handle_switch_role_login(request, params)})
+        if action == "add_account_role":
+            return Response({"conversation_id": None,
+                             **_handle_add_account_role(request, params)})
 
         # start_login / start_registration для уже аутентифицированного пользователя:
         # это устаревшие кнопки из stale-сообщений или случайный повторный клик.
@@ -922,6 +1128,7 @@ class WidgetConfigView(APIView):
         return Response({
             "role": role,
             "role_override": (request.session.get("assistant_role_override") if hasattr(request, "session") else None),
+            "roles": user_allowed_role_tabs(request.user),
             "user_name": request.user.get_full_name() or request.user.username,
             "suggestions": SuggestView.SUGGESTIONS.get(role, SuggestView.SUGGESTIONS["buyer"]),
             "latest_conversation_id": str(latest.id) if latest else None,
@@ -955,7 +1162,7 @@ class RoleSwitchView(APIView):
 
     def post(self, request):
         from django.contrib.auth import authenticate, login, get_user_model
-        from .permissions import _normalize_override
+        from .permissions import _normalize_override, _override_allowed
 
         if not request.user.is_authenticated:
             return Response({"role": "buyer", "override": None, "anonymous": True})
@@ -967,16 +1174,25 @@ class RoleSwitchView(APIView):
             return Response({"error": f"unsupported role '{raw}'"}, status=400)
 
         # Уже в этой роли — ничего не делаем
-        current_role = detect_user_role(request.user)
+        current_role = detect_user_role(request.user, request=request)
         current_normalized = "operator" if current_role.startswith("operator") else current_role
         if current_normalized == norm:
             return Response({"role": current_role, "override": None, "no_change": True})
 
-        # Operator → operator-сабролей (logist/customs/payment/manager) — это
-        # UI-detail, не смена аккаунта. Разрешаем без пароля.
-        from .permissions import _override_allowed
-        if current_normalized == "operator" and norm == "operator":
-            return Response({"role": current_role, "override": None, "no_change": True})
+        if _override_allowed(request.user, norm):
+            real_role = detect_user_role(request.user)
+            real_normalized = "operator" if real_role.startswith("operator") else real_role
+            if real_normalized == norm:
+                request.session.pop("assistant_role_override", None)
+            else:
+                request.session["assistant_role_override"] = norm
+            request.session.modified = True
+            return Response({
+                "role": detect_user_role(request.user, request=request),
+                "override": request.session.get("assistant_role_override"),
+                "switched": True,
+                "same_account": True,
+            })
 
         target_username = self._DEMO_ROLE_TO_USERNAME[norm]
         if not password:

@@ -24,7 +24,7 @@ from django.utils import translation
 # Legacy cabinet → chat-first redirect.
 #
 # Старые кабинеты (/dashboard, /buyer/*, /seller/*, /operator/*,
-# /admin_panel/*) — deprecated. Единственный UI = /chat/.
+# /admin_panel/*, /admin-panel/*) — deprecated. Единственный UI = /chat/.
 # Этот middleware ловит залогиненных пользователей на этих путях и
 # редиректит на /chat/. URL'ы пока остаются в urls.py (для обратной
 # совместимости со ссылками в email-уведомлениях и старых redirect'ах),
@@ -48,10 +48,40 @@ _LEGACY_PREFIXES = (
     "/admin_panel",
 )
 
+_LEGACY_STAFF_PREFIXES = (
+    "/admin-panel",
+)
+
 _LEGACY_WHITELIST = (
     "/admin/",                  # Django admin (отдельный staff-UI)
     "/seller/onboarding/",      # KYB flow ещё может ссылать туда
     "/admin_panel/api/",        # JSON API для интеграций
+)
+
+_LEGACY_EXACT_REDIRECTS = {
+    "/notifications/": "/chat/#notifications",
+    "/notifications": "/chat/#notifications",
+    "/kyb/": "/chat/?action=kyb_status",
+    "/kyb": "/chat/?action=kyb_status",
+    "/team/": "/chat/?action=seller_team",
+    "/team": "/chat/?action=seller_team",
+    "/2fa/": "/chat/#settings",
+    "/2fa": "/chat/#settings",
+}
+
+_AUTHENTICATED_CHAT_REDIRECTS = {
+    "/demo-center/": "/chat/",
+    "/demo-center": "/chat/",
+    "/demo/": "/chat/",
+    "/demo": "/chat/",
+    "/reports/kpi/": "/chat/?action=analytics",
+    "/reports/kpi": "/chat/?action=analytics",
+}
+
+_AUTHENTICATED_CHAT_PREFIXES = (
+    "/password_reset",
+    "/password-reset",
+    "/reset/",
 )
 
 
@@ -65,10 +95,26 @@ class LegacyCabinetRedirectMiddleware:
 
     def __call__(self, request):
         path = request.path_info or ""
+        user = getattr(request, "user", None)
+        is_auth = bool(getattr(user, "is_authenticated", False))
+        is_staff = bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
         # Whitelist первым делом — пускаем без редиректа
         for w in _LEGACY_WHITELIST:
             if path.startswith(w):
                 return self.get_response(request)
+        if path in _LEGACY_EXACT_REDIRECTS:
+            return HttpResponseRedirect(_LEGACY_EXACT_REDIRECTS[path])
+        if is_auth:
+            if path in _AUTHENTICATED_CHAT_REDIRECTS:
+                return HttpResponseRedirect(_AUTHENTICATED_CHAT_REDIRECTS[path])
+            for p in _AUTHENTICATED_CHAT_PREFIXES:
+                if path == p or path.startswith(p):
+                    return HttpResponseRedirect("/chat/")
+        for p in _LEGACY_STAFF_PREFIXES:
+            if path == p or path.startswith(p + "/"):
+                if is_staff:
+                    return self.get_response(request)
+                return HttpResponseRedirect("/chat/")
         # Любой матч legacy-префикса → редирект на /chat/
         for p in _LEGACY_PREFIXES:
             if path == p or path.startswith(p + "/"):
