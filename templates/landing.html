@@ -654,7 +654,7 @@
   #main-content > .grad:first-child::before{
     content: '';
     position: absolute; inset: 0;
-    background-image: url('{% static 'marketplace/landing/hero-1.jpg' %}');
+    background-image: url('{% static 'marketplace/landing/hero-generic-day.jpg' %}');
     background-size: cover;
     background-position: center 68%;
     z-index: 0;
@@ -662,7 +662,7 @@
     pointer-events: none;
   }
   body.dark-mode #main-content > .grad:first-child::before{
-    background-image: url('{% static 'marketplace/landing/hero-1-night.jpg' %}');
+    background-image: url('{% static 'marketplace/landing/hero-generic-night.jpg' %}');
     opacity: 1;
   }
 
@@ -3963,13 +3963,13 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   </div>
   <div class="wh-grid">
     <div class="wh-cell">
-      <img loading="eager" decoding="async" fetchpriority="high" class="bg-photo" src="{% static 'marketplace/landing/hero-2.jpg' %}" alt="" role="presentation">
+      <img loading="eager" decoding="async" fetchpriority="high" class="bg-photo" src="{% static 'marketplace/landing/warehouse-transit-generic.jpg' %}" alt="" role="presentation">
       <div class="label">{% trans "Транзитный склад" %}</div>
       <div class="num">7 {% trans "млн" %}<small>{% trans "позиций" %}</small></div>
       <div class="desc">{% trans "Сеть транзитных хабов в" %} <b>{% trans "7 странах" %}</b> · {% trans "консолидация грузов · отслеживание на каждом этапе доставки." %}</div>
     </div>
     <div class="wh-cell">
-      <img loading="lazy" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/hero-3.jpg' %}" alt="" role="presentation">
+      <img loading="lazy" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/warehouse-inventory-generic.jpg' %}" alt="" role="presentation">
       <div class="label">{% trans "Проверенные позиции" %}</div>
       <div class="num">2 {% trans "млн" %}<small>SKU</small></div>
       <div class="desc">{% blocktrans %}2 миллиона проверенных позиций <b>по лучшим ценам</b> от крупных трейдеров и производителей.{% endblocktrans %}</div>
