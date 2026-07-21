@@ -43,7 +43,7 @@ services:
       DEBUG_MODE: ${DEBUG_MODE:-True}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
-      - "8001:8001"
+      - "127.0.0.1:8001:8001"
     depends_on:
       db:
         condition: service_healthy
