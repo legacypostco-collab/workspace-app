@@ -49,7 +49,7 @@
        тёплый radial-подсвет. Не на body, чтобы исключить баги
        background-attachment:fixed при overflow:hidden и composite-слоях. */
     body{
-      background:#d7d2cc;
+      background:#a8b8d8;
       overflow:hidden;
       position:relative;
     }
@@ -59,7 +59,7 @@
       inset:0;
       background:
         radial-gradient(ellipse 70% 55% at 50% 80%, rgba(255,130,75,0.5), transparent 65%),
-        linear-gradient(180deg,#d7d2cc 0%,#cbb3a3 35%,#f0a59a 65%,#f4956a 100%);
+        linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);
       pointer-events:none;
       z-index:0;
     }
@@ -2972,7 +2972,15 @@
     .working-text{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;display:inline-block;min-width:140px;transition:opacity .2s;}
 
     @media(max-width:600px){
-      .topbar{padding:12px 14px;}
+      .topbar{padding:12px 14px;gap:8px;}
+      .top-brand{font-size:0;gap:0;}
+      .top-brand-logo{width:26px;height:26px;}
+      .top-right{gap:5px;}
+      .top-right > .top-icon:not(.top-theme){
+        padding:6px 8px!important;
+        font-size:12px!important;
+        white-space:nowrap;
+      }
       .welcome{padding:64px 16px 28px;gap:22px;}
       .welcome-logo{width:88px;height:88px;}
       .welcome-text h1{font-size:24px;}
