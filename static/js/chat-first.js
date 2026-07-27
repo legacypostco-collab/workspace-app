@@ -21,6 +21,10 @@
     try { return new URLSearchParams(window.location.search).has('q'); }
     catch (e) { return false; }
   })();
+  const _PUBLIC_WORKSPACE = (() => {
+    try { return new URLSearchParams(window.location.search).get('workspace') === '1'; }
+    catch (e) { return false; }
+  })();
 
   // Подсказки для smart-вопросов pricelist (warehouse_address/sea_port/
   // air_port). Browser-side datalist фильтрует по введённым символам —
@@ -70,6 +74,8 @@
     const kicker = document.getElementById('authModalKicker');
     const closeBtn = document.getElementById('authModalClose');
     let wizard = null;
+    let requestNumber = 0;
+    let requestController = null;
     if (!modal || !body || !title || !closeBtn) return null;
     const esc = (v) => String(v == null ? '' : v)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
@@ -95,7 +101,12 @@
         + actionsHtml([{action:'start_login', label:'У меня уже есть аккаунт', params:{}}]);
     };
     const close = () => {
+      requestNumber += 1;
+      if (requestController) requestController.abort();
+      requestController = null;
       modal.hidden = true;
+      modal.classList.remove('auth-loading');
+      modal.removeAttribute('aria-busy');
       wizard = null;
       document.body.classList.remove('auth-lock');
     };
@@ -108,6 +119,7 @@
       const min = f.minlength ? ` minlength="${esc(f.minlength)}"` : '';
       const placeholder = f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : '';
       const value = f.value == null ? '' : String(f.value);
+      const autocomplete = f.autocomplete || (type === 'password' ? 'current-password' : 'on');
       let control = '';
       if (tag === 'select') {
         const opts = (f.options || []).map((o) => {
@@ -119,7 +131,7 @@
       } else if (tag === 'textarea') {
         control = `<textarea class="${cls}" name="${esc(f.name)}"${required}${placeholder}>${esc(value)}</textarea>`;
       } else {
-        control = `<input class="${cls}" type="${esc(type)}" name="${esc(f.name)}" value="${esc(value)}"${required}${min}${placeholder} autocomplete="${type === 'password' ? 'current-password' : 'on'}">`;
+        control = `<input class="${cls}" type="${esc(type)}" name="${esc(f.name)}" value="${esc(value)}"${required}${min}${placeholder} autocomplete="${esc(autocomplete)}">`;
       }
       return `<label class="auth-field"><span class="auth-label">${esc(f.label || f.name)}${f.required ? ' <span class="auth-required">*</span>' : ''}</span>${control}${f.help || f.hint ? `<span class="auth-help">${esc(f.help || f.hint)}</span>` : ''}${f.error ? `<span class="auth-error">${esc(f.error)}</span>` : ''}</label>`;
     };
@@ -173,7 +185,6 @@
       if (!formCard) {
         wizard = null;
         body.innerHTML = msg + actionsHtml(data.actions || []);
-        if (data._post_action === 'reload') setTimeout(() => { window.location.href = '/chat/'; }, 700);
         return;
       }
       const d = formCard.data;
@@ -191,27 +202,50 @@
       body.innerHTML = msg + `<form class="auth-form" data-action="${esc(d.submit_action || action)}" data-fixed="${esc(JSON.stringify(fixedObj))}">${d.subtitle || d.intent ? `<p class="auth-message">${esc(d.subtitle || d.intent)}</p>` : ''}${(d.fields || []).map(fieldHtml).join('')}<button class="auth-submit" type="submit">${esc(d.submit_label || 'Продолжить')}</button></form>${actionsHtml(data.actions || [])}`;
     };
     const call = async (action, params) => {
-      openShell(action);
+      const wasHidden = modal.hidden;
+      if (wasHidden) openShell(action);
       params = params || {};
       if (action === 'start_registration' && !params.role) {
         renderRoleChoice();
         return;
       }
+      const currentRequest = ++requestNumber;
+      if (requestController) requestController.abort();
+      requestController = window.AbortController ? new AbortController() : null;
+      modal.classList.add('auth-loading');
+      modal.setAttribute('aria-busy', 'true');
+      body.querySelector('.auth-request-error')?.remove();
       try {
         const r = await fetch('/api/assistant/action/', {
           method:'POST',
           headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
           credentials:'same-origin',
           body:JSON.stringify({action, params:params || {}}),
+          ...(requestController ? {signal:requestController.signal} : {}),
         });
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || r.statusText);
+        if (currentRequest !== requestNumber) return;
         render(action, data);
         if (data._post_action === 'reload' || (data.actions || []).some((a) => a.action === 'reload_page')) {
           setTimeout(() => { window.location.href = '/chat/'; }, 650);
         }
       } catch (e) {
-        body.innerHTML = '<p class="auth-message">Не получилось открыть форму. Попробуйте еще раз.</p>';
+        if (currentRequest !== requestNumber || (e && e.name === 'AbortError')) return;
+        const error = document.createElement('p');
+        error.className = 'auth-request-error';
+        error.textContent = 'Не удалось связаться с сервером. Проверьте соединение и повторите.';
+        body.prepend(error);
+        body.querySelectorAll('button:disabled').forEach((button) => {
+          button.disabled = false;
+          if (button.dataset.idleLabel) button.textContent = button.dataset.idleLabel;
+        });
+      } finally {
+        if (currentRequest === requestNumber) {
+          modal.classList.remove('auth-loading');
+          modal.removeAttribute('aria-busy');
+          requestController = null;
+        }
       }
     };
     closeBtn.addEventListener('click', close);
@@ -226,7 +260,11 @@
       if (got.bad) return;
       Object.assign(params, got.values);
       const submit = form.querySelector('.auth-submit');
-      if (submit) { submit.disabled = true; submit.textContent = '...'; }
+      if (submit) {
+        submit.dataset.idleLabel = submit.textContent;
+        submit.disabled = true;
+        submit.textContent = 'Входим...';
+      }
       call(form.dataset.action, params);
     });
     body.addEventListener('click', (e) => {
@@ -257,7 +295,8 @@
         return;
       }
       next.disabled = true;
-      next.textContent = '...';
+      next.dataset.idleLabel = next.textContent;
+      next.textContent = 'Создаём аккаунт...';
       call(wizard.action, {...wizard.fixed, ...wizard.values});
     });
     return {open:call};
@@ -1642,6 +1681,28 @@
     try { return sessionStorage.getItem(CONV_KEY); } catch(e) { return null; }
   }
 
+  async function createConversation() {
+    if (!window.IS_AUTHENTICATED) return null;
+    const conv = await api('/api/assistant/conversations/', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    setConvId(conv.id);
+    return conv.id;
+  }
+
+  async function ensureConversation() {
+    if (state.convId || !window.IS_AUTHENTICATED) return state.convId;
+    const id = await createConversation();
+    if (id) {
+      _abandonStream();
+      if (state.ws) { try { state.ws.close(); } catch (_) {} }
+      connectWS();
+      loadConvList();
+    }
+    return id;
+  }
+
   // ── Helpers ──────────────────────────────────────────────
   const $ = id => document.getElementById(id);
   const csrf = () => document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*=\s*([^;]*).*$)|^.*$/, '$1');
@@ -2049,6 +2110,13 @@
   }
 
   async function loadNotifications() {
+    if (!window.IS_AUTHENTICATED) {
+      notif.items = [];
+      notif.loaded = true;
+      notif.byKind = {};
+      setBellBadge(0);
+      return;
+    }
     const list = document.getElementById('notifList');
     if (list && !notif.loaded) {
       // Loading skeleton — пока ждём ответ. Раньше: пустой блок без feedback.
@@ -2196,12 +2264,11 @@
     // Desktop: persisted preference, or open if user has history
     const saved = localStorage.getItem(SB_KEY);
     let open;
-    if (saved === '1') open = true;
+    if (_PUBLIC_WORKSPACE && !window.IS_AUTHENTICATED) open = true;
+    else if (saved === '1') open = true;
     else if (saved === '0') open = false;
-    // Нет явной настройки (новый визит / переход с главной): по умолчанию
-    // РАЗВЁРНУТ — чтобы был виден переключатель ролей Покупатель/Продавец/Оператор
-    // и было понятно, как войти как продавец. Исключение — вход через поиск с
-    // главной (/chat/?q=...): там нужно место под результаты, оставляем по истории.
+    // Нет явной настройки: на рабочем столе меню развёрнуто. При входе через
+    // поиск с главной оставляем больше места под результаты.
     else open = _ENTRY_SEARCH ? hasHistory : true;
     $('sidebar').classList.toggle('open', open);
   }
@@ -2225,28 +2292,46 @@
     // в эту conv (priority storedConv), а не выкидывал на welcome.
     try { sessionStorage.removeItem('cf_on_welcome'); } catch(_){}
   }
-  function showWelcome() {
+  function showWelcome(options={}) {
     document.documentElement.classList.remove('cf-restoring'); // показываем welcome — анти-мелькание больше не нужно
     $('welcomeStage').classList.remove('hidden');
     $('convStage').classList.add('hidden');
-    $('streamInner').innerHTML = '';
+    if (options.clear) $('streamInner').innerHTML = '';
+    const resume = $('resumeConversation');
+    if (resume) resume.hidden = !state.convId || !!options.clear;
     // Sticky welcome — при F5 остаёмся на welcome, не падаем в priority-3.
     // Снимается в openConv() когда юзер явно открывает conv.
     try { sessionStorage.setItem('cf_on_welcome', '1'); } catch(_){}
-    // URL → чистый /chat/, без ?conv= и без ?new=1
+    // Убираем служебные параметры. Для публичного просмотра сохраняем
+    // стабильный адрес гостевого рабочего стола.
     try {
-      if (window.location.search) history.replaceState({}, '', '/chat/');
+      if (window.location.search) {
+        history.replaceState(
+          {},
+          '',
+          _PUBLIC_WORKSPACE && !window.IS_AUTHENTICATED
+            ? '/chat/?workspace=1'
+            : '/chat/',
+        );
+      }
     } catch(_){}
   }
 
   // 🏠 Home — возврат к welcome stage, сохраняем conversation
   window.goHome = () => {
-    showWelcome();
+    showWelcome({clear: false});
     // Скрыть notif/settings панели если открыты
     const np = document.getElementById('notifPanel');
     if (np) np.setAttribute('hidden', '');
     const sp = document.getElementById('settingsPanel');
     if (sp) sp.setAttribute('hidden', '');
+  };
+
+  window.resumeActiveConversation = () => {
+    if (!state.convId) return;
+    showConv();
+    const resume = $('resumeConversation');
+    if (resume) resume.hidden = true;
   };
 
   // ══════════════════════════════════════════════════════════
@@ -6430,7 +6515,7 @@
       const r = await api('/api/assistant/chat/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, message: text}),
-        retryNetwork: true, timeoutMs: 30000,
+        retryNetwork: false, timeoutMs: 30000,
       });
       removeTyping();
       setConvId(r.conversation_id);
@@ -6493,6 +6578,12 @@
     const inp = fromHero ? $('heroInput') : $('input');
     const text = inp.value.trim();
     if (!text || state.streaming) return;
+    try {
+      await ensureConversation();
+    } catch (e) {
+      addMessage('assistant', tr('Не удалось создать новый диалог. Проверьте соединение и повторите.'));
+      return;
+    }
 
     const intent = pickIntent(text);
     state._intent = intent;
@@ -6526,15 +6617,9 @@
         const r = await api('/api/assistant/chat/', {
           method:'POST',
           body: JSON.stringify({conversation_id: state.convId, message: text}),
-          // Этот POST — ПЕРВИЧНАЯ отправка (WS не поднялся), а не recovery: ответа
-          // в БД ещё нет, ретрай обрыва канала здесь корректен (до 3 попыток с
-          // backoff внутри api()) — иначе на нестабильном РФ-канале мгновенно
-          // вылетала бы карточка «Соединение прервалось». ВНИМАНИЕ: чат-текст МОЖЕТ
-          // мутировать (create_rfq материализует RFQ прямо из текста), поэтому
-          // ретрай тут безопасен лишь до первого успешного ответа сервера — обрыв
-          // на этапе fetch означает, что пайплайн ещё не отработал. 30с под
-          // медленный AI-ответ через релей (8с-дефолт его бы рубил).
-          retryNetwork: true,
+          // Текст может создать RFQ или заказ. Автоматически повторять такой
+          // запрос после сетевого обрыва нельзя: сервер мог уже выполнить его.
+          retryNetwork: false,
           timeoutMs: 30000,
         });
         removeTyping();
@@ -6568,11 +6653,13 @@
     }
   }
 
-  // Hero button: send if input has text, else voice
+  // С текстом отправляем запрос. Пустая кнопка включает голос у вошедшего
+  // пользователя, а в гостевом режиме возвращает фокус в строку поиска.
   window.heroAction = () => {
     const text = $('heroInput').value.trim();
     if (text) send(true);
-    else toggleVoice();
+    else if (window.IS_AUTHENTICATED) toggleVoice();
+    else $('heroInput').focus();
   };
 
   // Update hero button icon based on input
@@ -6584,7 +6671,9 @@
       btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
     } else {
       btn.classList.remove('send');
-      btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>';
+      btn.innerHTML = window.IS_AUTHENTICATED
+        ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>'
+        : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
     }
   }
 
@@ -6784,6 +6873,15 @@
       inp.click();
       return;
     }
+    if (window.IS_AUTHENTICATED
+        && !['switch_role_login', 'add_account_role', 'start_login', 'start_registration'].includes(action)) {
+      try {
+        await ensureConversation();
+      } catch (e) {
+        addMessage('assistant', tr('Не удалось создать новый диалог. Проверьте соединение и повторите.'));
+        return;
+      }
+    }
     // Source element для visual feedback. Ищем ближайший clickable element от
     // event.target — НЕ currentTarget (currentTarget = document когда listener
     // делегирован, у document нет dataset, что приводило к TypeError).
@@ -6877,7 +6975,7 @@
         if (isAuthAction) {
           try { localStorage.removeItem('cf_active_conv'); } catch(_) {}
           try { sessionStorage.removeItem('cf_active_conv'); } catch(_) {}
-          setTimeout(() => { window.location.href = '/chat/?new=1'; }, 900);
+          setTimeout(() => { window.location.href = '/chat/?workspace=1'; }, 900);
         } else {
           setTimeout(() => window.location.reload(), 900);
         }
@@ -6913,23 +7011,10 @@
     }
   };
 
-  // Добавить «← Назад» и «🏠 Главная» в contextual_actions если нет своей навигации.
-  // Helper для quickAction и WS-handler. Кнопки всегда в конце каждого ответа.
+  // Серверные контекстные действия сохраняем как есть. Постоянная навигация
+  // находится в верхней панели и не дублируется под каждым ответом.
   function ensureHomeNav(ctxActs) {
-    ctxActs = Array.isArray(ctxActs) ? [...ctxActs] : [];
-    const hasBack = ctxActs.some(a =>
-      a.action === 'go_back'
-      || (a.label || '').includes('Назад')
-      || (a.label || '').startsWith('←')
-    );
-    const hasHome = ctxActs.some(a =>
-      a.action === 'go_home'
-      || (a.label || '').includes('Главная')
-      || (a.label || '').startsWith('🏠')
-    );
-    if (!hasBack) ctxActs.push({action: 'go_back', label: '← ' + tr('Назад')});
-    if (!hasHome) ctxActs.push({action: 'go_home', label: '🏠 ' + tr('Главная')});
-    return ctxActs;
+    return Array.isArray(ctxActs) ? [...ctxActs] : [];
   }
 
   // Дефолтные подсказки, если backend не вернул свои — чтобы блок suggestions
@@ -6937,27 +7022,16 @@
   function ensureSuggestions(sugs) {
     if (!window.IS_AUTHENTICATED) return [];
     if (Array.isArray(sugs) && sugs.length) return sugs;
-    const role = String(window.__pillRole || 'buyer');
-    // Подсказки по бизнес-логике роли (прямые action'ы — не зависят от ИИ-роутинга).
-    if (role === 'seller') {
-      // Уникальные AI-инсайты, которых НЕТ в основном меню: рыночный спрос,
-      // рейтинг, скорость по SLA. Помогают зарабатывать больше и расти.
-      return [{label: tr('📊 Спрос на рынке'), action: 'get_demand_report', params: {}},
-              {label: tr('⭐ Мой рейтинг'), action: 'seller_rating', params: {}},
-              {label: tr('⚡ Моя скорость'), action: 'get_sla_report', params: {}}];
-    }
-    // Оператор (вкл. суб-роли operator_logist/customs/payment/manager):
-    // оркестратор сделок — очередь, SLA, рекламации, аналитика. RFQ поднимает
-    // покупатель, поэтому «Создать RFQ» оператору здесь не предлагаем.
-    if (/^operator/.test(role)) {
-      return [{label: 'Очередь сделок', action: 'op_queue',         params: {}},
-              {label: 'Нарушения SLA',  action: 'op_sla_breach',    params: {}},
-              {label: 'Рекламации',     action: 'get_claims',       params: {}},
-              {label: 'Аналитика',      action: 'op_analytics_hub', params: {}}];
-    }
-    // Покупатель: заказы → создать RFQ → аналитика → поставщики.
-    return [{label: 'Покажи мои заказы', action: 'get_orders', params: {}},
-            'Создать RFQ', 'Аналитика за месяц', 'Список поставщиков'];
+    const role = String((state.config && state.config.role) || window.__pillRole || 'buyer');
+    const commands = (state.config && state.config.commands)
+      || (window.__roleCommands && window.__roleCommands[role])
+      || (window.__roleCommands && window.__roleCommands.buyer)
+      || [];
+    return commands.slice(0, 4).map(command => ({
+      label: command.label,
+      action: command.action,
+      params: command.params || {},
+    }));
   }
   // Special action handler: go_home — без round-trip к серверу
   // + reload_page (после регистрации/логина в чате — перезагрузка).
@@ -6991,8 +7065,7 @@
 
   // Auto-trigger action from URL: /chat/?action=start_registration&role=seller
   // Удобно для CTA с лендинга: "Стать поставщиком" → сразу форма регистрации в чате.
-  (function autoTriggerFromUrl() {
-    const p = new URLSearchParams(window.location.search);
+  async function consumeUrlIntent(p) {
     // Ссылка-приглашение в команду компании: /chat/?join_team=<token>
     const joinTeam = p.get('join_team');
     if (joinTeam) {
@@ -7040,16 +7113,32 @@
     const q = p.get('q');
     if (q && q.trim()) {
       history.replaceState(null, '', window.location.pathname);
-      setTimeout(() => {
-        try {
-          const inp = $('heroInput');
-          if (inp) { inp.value = q; if (typeof updateHeroIcon === 'function') updateHeroIcon(); }
-          send(true);
-        } catch (e) { console.warn('q search trigger failed', e); }
-      }, 450);
+      try {
+        const inp = $('heroInput');
+        if (inp) { inp.value = q; if (typeof updateHeroIcon === 'function') updateHeroIcon(); }
+        await send(true);
+      } catch (e) { console.warn('q search trigger failed', e); }
       return;
     }
-    const a = p.get('action');
+    const topic = p.get('topic');
+    if (topic) {
+      history.replaceState(null, '', window.location.pathname);
+      const topicActions = {faq: 'kb_faq', contacts: 'support_home'};
+      await window.quickAction(topicActions[topic] || 'support_home', {topic});
+      return;
+    }
+    const standaloneRole = p.get('role');
+    if (standaloneRole && !p.get('run') && !p.get('action')) {
+      history.replaceState(null, '', window.location.pathname);
+      if (!window.IS_AUTHENTICATED) {
+        const action = standaloneRole === 'seller' ? 'start_registration' : 'start_login';
+        await window.quickAction(action, {role: standaloneRole});
+      } else {
+        await setRole(standaloneRole);
+      }
+      return;
+    }
+    const a = p.get('run') || p.get('action');
     if (!a) return;
     // Очищаем query чтобы при перезагрузке action не запускался повторно.
     const cleanUrl = window.location.pathname;
@@ -7058,15 +7147,13 @@
     // (period, project, role, и т.д. — для get_analytics, KPI-карточек и пр.)
     const params = {};
     for (const [k, v] of p.entries()) {
-      if (k === 'action' || k === 'conv') continue;
+      if (k === 'action' || k === 'run' || k === 'conv' || k === 'new') continue;
       const n = parseInt(v, 10);
       params[k] = (String(n) === v && !isNaN(n)) ? n : v;
     }
-    // Подождём пока инициализируется UI и quickAction
-    setTimeout(() => {
-      try { window.quickAction(a, params); } catch (e) { console.warn('auto-trigger failed', e); }
-    }, 400);
-  })();
+    try { await window.quickAction(a, params); }
+    catch (e) { console.warn('auto-trigger failed', e); }
+  }
 
   // Перехват «assistant ответил с _post_action=reload» — для случая, когда
   // фронт получил это поле в data, но action рендерится как кнопка.
@@ -7461,6 +7548,11 @@
     // Раньше: пустая ловля catch — юзер вообще не понимал что произошло
     // (тихая ошибка вместо «нет связи»).
     const wrap = document.getElementById('convList');
+    if (!window.IS_AUTHENTICATED) {
+      state.convs = [];
+      if (wrap) wrap.innerHTML = '';
+      return;
+    }
     if (wrap && (!state.convs || !state.convs.length)) {
       // Loading skeleton (3 серых полоски). Показываем только если списка
       // ещё нет (не моргаем при перерисовке после ответа сервера).
@@ -7508,7 +7600,7 @@
   // Для гостя выбор продавца/оператора открывает вход или регистрацию.
   async function setRole(newRole) {
     try { setConvId(null); } catch (_) {}
-    try { showWelcome(); } catch (_) {}
+    try { showWelcome({clear: true}); } catch (_) {}
     _abandonStream();   // бросаем in-flight стрим: иначе onclose даст ложный recovery
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     try {
@@ -7529,30 +7621,9 @@
     }
     const newRole = tab.dataset.role;
     if (!ROLE_TABS.includes(newRole)) return;
-    // ── Анонимный режим: продавец / оператор — отдельные сущности,
-    // отдельные кабинеты, отдельные входы. На каждый клик чистим
-    // историю чата (новый «conversation»), чтобы flows не наслаивались.
+    // Ролевые вкладки выводятся только авторизованному пользователю.
+    // Этот guard оставлен на случай старого кэшированного HTML.
     if (!window.IS_AUTHENTICATED) {
-      paintRoleToggle(newRole);
-      try { window.newChat(); } catch (_) {}
-      // Дополнительно очищаем поток, т.к. quickAction добавляет в конец.
-      try {
-        const stream = document.getElementById('streamInner');
-        if (stream) stream.innerHTML = '';
-      } catch (_) {}
-      if (newRole === 'seller') {
-        // Поставщик — регистрация (форма + KYB после)
-        setTimeout(() => { try { window.quickAction('start_registration', {role: 'seller'}); }
-          catch (err) { console.warn('seller flow failed', err); } }, 50);
-        return;
-      }
-      if (newRole === 'operator') {
-        // Оператор — только вход, регистрации нет (заводит админ)
-        setTimeout(() => { try { window.quickAction('start_login', {role: 'operator'}); }
-          catch (err) { console.warn('operator flow failed', err); } }, 50);
-        return;
-      }
-      // Покупатель — welcome с pills уже отрисован newChat()
       return;
     }
     if (state.config && state.config.role === newRole) return;
@@ -7573,15 +7644,14 @@
         {tkey:'pill.support',       emoji:'🎧', action:'support_home',       params:{}},
       ],
     },
-    // Гость (аноним): исходные 2 пилюли главной — «Мои заказы» и «Открытые RFQ».
-    // Совпадают со статичным fallback в index.html (no-JS) — нет «прыжка» состава
-    // при загрузке. Клик у анонима ведёт на логин (заказов/RFQ ещё нет).
+    // Публичный просмотр: только полезные действия без личных данных и записей.
     guest: {
-      titleKey: 'welcome.h1',
-      subKey:   'welcome.buyer.subtitle',
+      titleKey: 'welcome.guest.title',
+      subKey:   'welcome.guest.subtitle',
       pills: [
-        {tkey: 'pill.my_orders', sub: 'купил, едет',   emoji: '📦', action: 'get_orders',     params: {}},
-        {tkey: 'pill.open_rfq',  sub: 'жду котировок', emoji: '📋', action: 'get_rfq_status', params: {}},
+        {tkey:'pill.find_part',         emoji:'🔍', action:'search_parts',      params:{}},
+        {tkey:'pill.compare_suppliers', emoji:'🏭', action:'compare_suppliers', params:{}},
+        {tkey:'pill.knowledge',         emoji:'📚', action:'kb_search',         params:{}},
       ],
     },
     seller: {
@@ -7693,8 +7763,17 @@
     operator_manager: 'KAM', operator_logist: 'Логист',
     operator_customs: 'Таможня', operator_payment: 'Платежи', admin: 'Администратор',
   };
-  // admin использует тот же welcome/пилюли что и operator
-  ROLE_WELCOME.admin = ROLE_WELCOME.operator;
+  // Серверный реестр — единственный источник состава команд. Локальные
+  // массивы выше остаются только безопасным fallback для старого HTML.
+  Object.entries(window.__roleCommands || {}).forEach(([role, commands]) => {
+    if (!ROLE_WELCOME[role]) return;
+    ROLE_WELCOME[role].pills = (commands || []).map(command => ({
+      emoji: command.icon || '•',
+      label: command.label,
+      action: command.action,
+      params: command.params || {},
+    }));
+  });
   // v2: после объединения «🔥 Срочное» → «📋 Мои сделки» сбрасываем старый
   // сохранённый порядок пилюль (иначе «Мои сделки» уезжает в конец списка).
   const PILL_KEY = (role) => `pillPrefs:v3:${role}`;
@@ -7716,7 +7795,7 @@
   function _normPill(b, srcRole) {
     return {
       id: pillId(b.action, b.params),
-      emoji: b.emoji || '•',
+      emoji: b.emoji || b.icon || '•',
       text: (b.label != null ? b.label : (b.tkey ? tr(b.tkey) : b.action)),
       sub: (b.sub != null ? b.sub : (b.subKey ? tr(b.subKey) : '')),
       action: b.action, params: b.params || {}, srcRole: srcRole || null,
@@ -7774,8 +7853,7 @@
 
   function applyRoleWelcome(role) {
     _ensurePillCSS();
-    // Гость (аноним) на дефолтном экране покупателя → урезанный guest-набор.
-    // Вкладки «Продавец»/«Оператор» по-прежнему показывают превью своих кабинетов.
+    // Гость на публичном экране получает отдельный безопасный набор действий.
     if (!window.IS_AUTHENTICATED && (role === 'buyer' || !role)) role = 'guest';
     const cfg = ROLE_WELCOME[role] || ROLE_WELCOME.buyer;
     const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
@@ -7810,6 +7888,172 @@
     if (window.__pillRole) applyRoleWelcome(window.__pillRole);
     if (document.getElementById('pm-overlay')) renderPillMaster();
   }
+
+  function activeRoleCommands() {
+    const role = String((state.config && state.config.role) || window.__pillRole || 'buyer');
+    return (state.config && state.config.commands)
+      || (window.__roleCommands && window.__roleCommands[role])
+      || (window.__roleCommands && window.__roleCommands.buyer)
+      || [];
+  }
+
+  let __paletteCommands = [];
+  let __paletteAnchor = null;
+
+  function renderCommandPalette(query='') {
+    const list = $('commandPaletteList');
+    if (!list) return;
+    const normalized = String(query || '').trim().toLocaleLowerCase();
+    const commands = __paletteCommands.filter(command =>
+      !normalized
+      || String(command.label || '').toLocaleLowerCase().includes(normalized)
+      || String(command.action || '').toLocaleLowerCase().includes(normalized)
+    );
+    if (!commands.length) {
+      list.innerHTML = `<div class="command-empty">${esc(tr('Команды не найдены'))}</div>`;
+      return;
+    }
+    list.innerHTML = commands.map((command, index) => `
+      <button class="command-item" type="button" data-command-index="${index}">
+        <span class="command-item-icon" aria-hidden="true">${esc(command.icon || '•')}</span>
+        <span>${esc(command.label || command.action)}</span>
+      </button>
+    `).join('');
+    list.querySelectorAll('.command-item').forEach(button => {
+      button.addEventListener('click', () => {
+        const command = commands[Number(button.dataset.commandIndex)];
+        if (!command) return;
+        window.closeCommandPalette();
+        quickAction(command.action, {
+          ...(command.params || {}),
+          _label: command.label || command.action,
+        });
+      });
+    });
+  }
+
+  function positionCommandPalette() {
+    const popover = $('commandPalette');
+    const anchor = __paletteAnchor;
+    if (!popover || popover.hidden || !anchor || !document.contains(anchor)) return;
+
+    const edge = 12;
+    const gap = 8;
+    const width = Math.min(340, window.innerWidth - edge * 2);
+    const anchorRect = anchor.getBoundingClientRect();
+    const dialog = popover.querySelector('.command-dialog');
+    const desiredHeight = Math.min(
+      dialog ? dialog.scrollHeight : 460,
+      460,
+      window.innerHeight - edge * 2
+    );
+    const roomBelow = window.innerHeight - anchorRect.bottom - gap - edge;
+    const roomAbove = anchorRect.top - gap - edge;
+    const openBelow = roomBelow >= Math.min(desiredHeight, 240) || roomBelow >= roomAbove;
+    const availableHeight = Math.max(120, openBelow ? roomBelow : roomAbove);
+    const visibleHeight = Math.min(desiredHeight, availableHeight);
+    const alignFromLeft = anchorRect.left < window.innerWidth / 2;
+    const rawLeft = alignFromLeft ? anchorRect.left : anchorRect.right - width;
+    const left = Math.min(
+      Math.max(edge, rawLeft),
+      Math.max(edge, window.innerWidth - width - edge)
+    );
+    const top = openBelow
+      ? anchorRect.bottom + gap
+      : Math.max(edge, anchorRect.top - gap - visibleHeight);
+
+    popover.style.width = `${width}px`;
+    popover.style.maxHeight = `${availableHeight}px`;
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    popover.dataset.placement = openBelow ? 'bottom' : 'top';
+  }
+
+  window.openCommandPalette = (trigger=null, initialQuery='') => {
+    const popover = $('commandPalette');
+    const search = $('commandPaletteSearch');
+    if (!popover || !search) return;
+    if (typeof trigger === 'string') {
+      initialQuery = trigger;
+      trigger = null;
+    }
+    const anchor = trigger instanceof Element
+      ? trigger
+      : ($('inputCommands') || $('topCommands'));
+    if (!anchor) return;
+    if (!popover.hidden && __paletteAnchor === anchor) {
+      window.closeCommandPalette();
+      return;
+    }
+    if (__paletteAnchor && __paletteAnchor !== anchor) {
+      __paletteAnchor.setAttribute('aria-expanded', 'false');
+    }
+    __paletteAnchor = anchor;
+    __paletteCommands = activeRoleCommands();
+    search.value = initialQuery;
+    renderCommandPalette(initialQuery);
+    popover.hidden = false;
+    anchor.setAttribute('aria-expanded', 'true');
+    positionCommandPalette();
+    requestAnimationFrame(() => {
+      positionCommandPalette();
+      search.focus({preventScroll: true});
+    });
+  };
+
+  window.closeCommandPalette = () => {
+    const popover = $('commandPalette');
+    if (popover) popover.hidden = true;
+    if (__paletteAnchor) __paletteAnchor.setAttribute('aria-expanded', 'false');
+    __paletteAnchor = null;
+  };
+
+  document.addEventListener('click', event => {
+    const popover = $('commandPalette');
+    if (!popover || popover.hidden) return;
+    if (popover.contains(event.target)) return;
+    if (__paletteAnchor && __paletteAnchor.contains(event.target)) return;
+    window.closeCommandPalette();
+  });
+  document.addEventListener('input', event => {
+    if (event.target && event.target.id === 'commandPaletteSearch') {
+      renderCommandPalette(event.target.value);
+      positionCommandPalette();
+    }
+  });
+  document.addEventListener('keydown', event => {
+    const popover = $('commandPalette');
+    if (event.key === 'Escape' && popover && !popover.hidden) {
+      event.preventDefault();
+      const anchor = __paletteAnchor;
+      window.closeCommandPalette();
+      if (anchor) anchor.focus();
+      return;
+    }
+    if (popover && !popover.hidden && event.target && event.target.id === 'commandPaletteSearch') {
+      if (event.key === 'Enter') {
+        const first = $('commandPaletteList')?.querySelector('.command-item');
+        if (first) { event.preventDefault(); first.click(); }
+      } else if (event.key === 'ArrowDown') {
+        const first = $('commandPaletteList')?.querySelector('.command-item');
+        if (first) { event.preventDefault(); first.focus(); }
+      }
+      return;
+    }
+    const item = event.target && event.target.closest
+      ? event.target.closest('.command-item')
+      : null;
+    if (popover && !popover.hidden && item && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+      const items = [...$('commandPaletteList').querySelectorAll('.command-item')];
+      const index = items.indexOf(item);
+      const next = event.key === 'ArrowDown' ? items[index + 1] : items[index - 1];
+      event.preventDefault();
+      if (next) next.focus();
+      else if (event.key === 'ArrowUp') $('commandPaletteSearch')?.focus();
+    }
+  });
+  window.addEventListener('resize', positionCommandPalette);
+  document.addEventListener('scroll', positionCommandPalette, true);
 
   // --- iOS-стиль: долгое нажатие → режим правки (×) + перетаскивание для порядка ---
   let __pillEditing = false, __lpTimer = null, __lpStart = null, __dragPill = null, __dragging = false;
@@ -8854,56 +9098,25 @@
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     try {
       const data = await api('/api/assistant/conversations/' + id + '/');
-      // Дедуп идентичных action+response пар. Если юзер кликал «Депозит» /
-      // «Обновить» N раз → в БД N action'ов + N откликов с одинаковыми cards.
-      // Рендерим ТОЛЬКО последнюю пару (свежий timestamp), скрываем все
-      // более ранние action-сообщения и их одинаковые ответы.
       const allMessages = data.messages || [];
-
-      // Fingerprint assistant по cards (text может содержать меняющийся timestamp)
-      const respFp = (m) => {
-        if (m.role !== 'assistant') return null;
-        const cardsKey = (m.cards || []).map(c => {
-          const d = (c && c.data) || {};
-          return (c.type || '') + '|' + (d.title || '');
-        }).join('~');
-        return cardsKey || null;
-      };
-      // Fingerprint action по action-name + params
-      const actFp = (m) => {
-        if (m.role !== 'action') return null;
-        try {
-          const a = (m.actions || [])[0] || {};
-          const aName = a.action || '';
-          if (!aName) return null;
-          const p = a.params || {};
-          // только значимые ключи (не сериализуем сложные объекты)
-          const pKey = Object.keys(p).filter(k => !k.startsWith('_')).sort()
-            .map(k => k + '=' + p[k]).join('&');
-          return aName + '?' + pKey;
-        } catch(_) { return null; }
-      };
-
-      // Найдём индексы ПОСЛЕДНЕГО occurrence для action и для response
-      const lastActIdx = new Map();
-      const lastRespIdx = new Map();
-      allMessages.forEach((m, i) => {
-        const af = actFp(m);
-        if (af) lastActIdx.set(af, i);
-        const rf = respFp(m);
-        if (rf) lastRespIdx.set(rf, i);
-      });
-
+      // Сервер уже защищает действия от двойного клика. Историю отображаем
+      // полностью: одинаковые по виду карточки могут относиться к разным
+      // моментам, состояниям и осознанным повторным запросам пользователя.
       const seen = new Set();
-      allMessages.forEach((m, i) => {
+      allMessages.forEach(m => {
         const mid = m.id || m.message_id;
         if (mid && seen.has(mid)) return;
         if (mid) seen.add(mid);
-        const af = actFp(m);
-        if (af && lastActIdx.get(af) !== i) return;   // не последний action
-        const rf = respFp(m);
-        if (rf && lastRespIdx.get(rf) !== i) return;  // не последний response
-        addMessage(m.role, m.content, m.cards, m.actions, m.context_refs);
+        addMessage(
+          m.role,
+          m.content,
+          m.cards,
+          m.actions,
+          m.context_refs,
+          m.id || m.message_id || null,
+          m.suggestions || [],
+          m.contextual_actions || [],
+        );
       });
     } catch(e){}
     // Контент разговора отрисован — только теперь снимаем спиннер/анти-мелькание,
@@ -8914,13 +9127,18 @@
     if (isMobile()) toggleSidebar(false);
   };
 
-  window.newChat = () => {
-    setConvId(null);
-    showWelcome();
-    _abandonStream();   // бросаем in-flight стрим: иначе onclose даст ложный recovery
+  window.newChat = async () => {
+    _abandonStream();
     if (state.ws) { try { state.ws.close(); } catch(e){} }
+    setConvId(null);
+    showWelcome({clear: true});
+    try {
+      await createConversation();
+    } catch (e) {
+      addMessage('assistant', tr('Не удалось создать новый диалог. Проверьте соединение и повторите.'));
+    }
     connectWS();
-    renderConvList();
+    await loadConvList();
     if (isMobile()) toggleSidebar(false);
     setTimeout(() => $('heroInput').focus(), 100);
   };
@@ -11557,8 +11775,10 @@
       const name = state.config.user_name || 'User';
       const initial = name[0].toUpperCase();
       $('sideUserName').textContent = name;
-      $('sideUserRole').textContent = (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
-      $('sideAvatar').textContent = initial;
+      $('sideUserRole').textContent = state.config.anonymous
+        ? tr('guest.mode')
+        : (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
+      if (!state.config.anonymous) $('sideAvatar').textContent = initial;
       { const _ta = $('topAvatar'); if (_ta) _ta.textContent = initial; }
       // Активная вкладка role-toggle
       const r = state.config.role || 'buyer';
@@ -11586,86 +11806,54 @@
       }, 50000);
     }
 
-    // Conversation resolution priority — симметричная sticky-логика:
-    //   • Был на welcome → F5 → welcome (sessionStorage.cf_on_welcome=1)
-    //   • Был в conv     → F5 → та же conv (sessionStorage.cf_active_conv=ID)
-    // Через закрытие вкладки sessionStorage очищается → следующий init
-    // показывает welcome.
+    // Сначала восстанавливаем экран, затем выполняем URL-намерение. Раньше
+    // action/q запускались отдельным таймером до завершения init, поэтому
+    // команда могла попасть в последний старый диалог.
     try {
       const params = new URLSearchParams(window.location.search);
       const urlConv = params.get('conv');
       const storedConv = getStoredConvId();
       const validIds = new Set((state.convs || []).map(c => c.id));
-      // ?new=1 — принудительно welcome-screen, не загружать последний conv
-      // (с landing «массовый поиск» приходим именно с этим флагом).
       const forceNew = params.get('new') === '1';
-      // FIX: «sticky welcome» — если юзер оказался на welcome (через ?new=1),
-      // запоминаем это в sessionStorage. При F5/Cmd+Shift+R остаёмся на
-      // welcome, не падая в priority-3 (last conv).
+      const workspaceOnly = params.get('workspace') === '1';
+      const hasIntent = Boolean(
+        params.get('q') || params.get('run') || params.get('action')
+        || params.get('topic') || params.get('join_team')
+        || params.get('invite_customer') || params.get('ref')
+      );
       const stickyWelcome = (() => {
         try { return sessionStorage.getItem('cf_on_welcome') === '1'; }
         catch(_) { return false; }
       })();
       let target = null;
       if (forceNew) {
-        // forceNew=1 (после смены роли / клик welcome) → чистим, ставим sticky welcome
-        try { sessionStorage.removeItem('cf_active_conv'); } catch(_){}
-        try { localStorage.removeItem('cf_active_conv'); } catch(_){}
-        try { sessionStorage.setItem('cf_on_welcome', '1'); } catch(_){}
-        history.replaceState({}, '', '/chat/');
+        await window.newChat();
       } else if (urlConv && validIds.has(urlConv)) {
         target = urlConv;
         try { sessionStorage.removeItem('cf_on_welcome'); } catch(_){}
+      } else if (workspaceOnly && storedConv && validIds.has(storedConv)) {
+        target = storedConv;
+      } else if (hasIntent) {
+        // Прямой сценарий без conv всегда начинается отдельно от последней
+        // переписки. Для гостя БД-диалог не создаётся.
+        await window.newChat();
       } else if (stickyWelcome) {
-        // Был на главной → при F5 остаёмся на главной (а не уходим в last conv).
         target = null;
       } else if (storedConv && validIds.has(storedConv)) {
-        // F5 в conv → возвращаемся в эту же conv.
         target = storedConv;
       } else if (state.convs && state.convs.length) {
-        // Свежее открытие вкладки без storedConv — fallback на последнюю conv.
-        // Если хотите всегда welcome — закройте вкладку и откройте заново
-        // ИЛИ кликните «+ Новый чат».
         target = state.convs[0].id;
       }
       if (target) {
         await window.openConv(target);
-        // Если есть ?run=<action> — выполняем после загрузки conv
-        const runAction = params.get('run');
-        if (runAction) {
-          const actionParams = {};
-          for (const [k, v] of params.entries()) {
-            if (k === 'run' || k === 'conv') continue;
-            // Числовые значения (rfq_id, order_id, quote_id) парсим в int
-            const n = parseInt(v, 10);
-            actionParams[k] = (String(n) === v && !isNaN(n)) ? n : v;
-          }
-          setTimeout(() => quickAction(runAction, actionParams), 150);
-          // Очистим url чтобы при F5 не повторялось
-          history.replaceState({}, '', '/chat/');
-        }
-        return;
+        if (workspaceOnly) goHome();
       }
-      // Сюда дошли = разговор не восстанавливаем, остаёмся на welcome → раскрываем
-      // его (анти-мелькание было нужно только на время попытки восстановления).
       document.documentElement.classList.remove('cf-restoring');
-      // Welcome stage — но если ?run= задан, тоже выполняем
-      const runAction = params.get('run');
-      if (runAction) {
-        connectWS();
-        const actionParams = {};
-        for (const [k, v] of params.entries()) {
-          if (k === 'run') continue;
-          const n = parseInt(v, 10);
-          actionParams[k] = (String(n) === v && !isNaN(n)) ? n : v;
-        }
-        setTimeout(() => quickAction(runAction, actionParams), 200);
-        history.replaceState({}, '', '/chat/');
-        updateHeroIcon();
-        return;
-      }
+      if (!state.ws || state.ws.readyState >= 2) connectWS();
+      if (hasIntent || params.get('role')) await consumeUrlIntent(params);
+      if (workspaceOnly) history.replaceState({}, '', '/chat/');
     } catch(e){ console.warn('conv resolve failed', e); document.documentElement.classList.remove('cf-restoring'); }
-    connectWS();
+    if (!state.ws || state.ws.readyState >= 2) connectWS();
     setTimeout(() => $('heroInput').focus(), 200);
     updateHeroIcon();
   }

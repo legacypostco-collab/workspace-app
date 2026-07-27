@@ -61,10 +61,10 @@ _LEGACY_WHITELIST = (
 _LEGACY_EXACT_REDIRECTS = {
     "/notifications/": "/chat/#notifications",
     "/notifications": "/chat/#notifications",
-    "/kyb/": "/chat/?action=kyb_status",
-    "/kyb": "/chat/?action=kyb_status",
-    "/team/": "/chat/?action=seller_team",
-    "/team": "/chat/?action=seller_team",
+    "/kyb/": "/chat/?new=1&run=kyb_status",
+    "/kyb": "/chat/?new=1&run=kyb_status",
+    "/team/": "/chat/?new=1&run=seller_team",
+    "/team": "/chat/?new=1&run=seller_team",
     "/2fa/": "/chat/#settings",
     "/2fa": "/chat/#settings",
 }
@@ -74,8 +74,8 @@ _AUTHENTICATED_CHAT_REDIRECTS = {
     "/demo-center": "/chat/",
     "/demo/": "/chat/",
     "/demo": "/chat/",
-    "/reports/kpi/": "/chat/?action=analytics",
-    "/reports/kpi": "/chat/?action=analytics",
+    "/reports/kpi/": "/chat/?new=1&run=get_analytics",
+    "/reports/kpi": "/chat/?new=1&run=get_analytics",
 }
 
 _AUTHENTICATED_CHAT_PREFIXES = (

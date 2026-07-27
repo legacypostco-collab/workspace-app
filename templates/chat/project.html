@@ -419,11 +419,11 @@
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
       <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}" style="display:flex;gap:4px;padding:4px;background:rgba(0,0,0,0.04);border-radius:10px;margin-bottom:12px;">
-        <a href="/chat/" class="role-tab" data-role="buyer" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:-0.01em;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{% trans "Покупатель" %}</a>
-        <a href="/chat/" class="role-tab" data-role="seller" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:-0.01em;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{% trans "Продавец" %}</a>
-        <a href="/chat/" class="role-tab" data-role="operator" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:-0.01em;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{% trans "Оператор" %}</a>
+        {% for tab in role_tabs %}
+        <a href="/chat/?workspace=1&amp;role={{ tab.role }}" class="role-tab{% if active_role == tab.role %} active{% endif %}" data-role="{{ tab.role }}" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:0;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{{ tab.label }}</a>
+        {% endfor %}
       </div>
-      <a class="side-new-btn" href="/chat/" style="text-decoration:none;text-align:left;">
+      <a class="side-new-btn" href="/chat/?new=1" style="text-decoration:none;text-align:left;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
         {% trans "Новый чат" %}
       </a>
@@ -431,7 +431,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" placeholder="{% trans 'Поиск чатов и проектов' %}">
       </div>
-      <a href="/chat/?action=recent_activity" class="side-search" style="text-decoration:none;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.5);border-radius:10px;color:#1a1a1a;font-size:13px;margin-bottom:18px;">
+      <a href="/chat/?new=1&amp;run=recent_activity" class="side-search" style="text-decoration:none;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.5);border-radius:10px;color:#1a1a1a;font-size:13px;margin-bottom:18px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         {% trans "История действий" %}
       </a>
@@ -479,7 +479,7 @@
         Consolidator Parts
       </a>
       <div class="top-right" style="margin-left:auto;display:flex;align-items:center;gap:6px;">
-        <a href="/chat/" class="top-home" title="{% trans 'Главный экран чата' %}" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.65);display:flex;align-items:center;justify-content:center;color:#1a1a1a;text-decoration:none;border:1px solid rgba(0,0,0,0.06);">
+        <a href="/chat/?workspace=1" class="top-home" title="{% trans 'Рабочий стол' %}" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.65);display:flex;align-items:center;justify-content:center;color:#1a1a1a;text-decoration:none;border:1px solid rgba(0,0,0,0.06);">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2z"/></svg>
         </a>
         <!-- Theme toggle (light/dark) — синхронизирован с /chat/ через localStorage cf_dark_mode -->

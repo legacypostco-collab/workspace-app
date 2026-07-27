@@ -7280,7 +7280,19 @@ def chat_first_view(request):
                                         ensure_ascii=False)
     except Exception:
         pass
-    ctx = {"role_actions_json": role_actions_json}
+    role_commands_json = "{}"
+    try:
+        from assistant.commands import commands_for_all_roles
+        role_commands_json = _json.dumps(
+            commands_for_all_roles(),
+            ensure_ascii=False,
+        )
+    except Exception:
+        pass
+    ctx = {
+        "role_actions_json": role_actions_json,
+        "role_commands_json": role_commands_json,
+    }
     # Анти-мелькание ТОЛЬКО для залогиненного: серверно отдаём его роль/идентичность/
     # welcome, чтобы первый кадр при F5 был уже его кабинетом, а не дефолтным (buyer)
     # экраном. На проде 600КБ chat-first.js + widget-config грузятся ~1-2с — всё это
@@ -7295,56 +7307,41 @@ def chat_first_view(request):
         except Exception:
             initial_role = "buyer"
             role_tabs = [{"role": "buyer", "label": "Покупатель"}]
-        base_role = ("operator" if (initial_role.startswith("operator") or initial_role == "admin")
-                     else ("seller" if initial_role == "seller" else "buyer"))
+        base_role = (
+            "admin" if initial_role == "admin"
+            else "operator" if initial_role.startswith("operator")
+            else "seller" if initial_role == "seller"
+            else "buyer"
+        )
         # Дублируем ru-строки welcome только для первого кадра; дальше JS-i18n синхронит.
         _WELCOME = {
             "buyer": ("welcome.buyer.title", "Какую запчасть найти?"),
             "seller": ("welcome.seller.title", "Что в работе сегодня?"),
             "operator": ("welcome.operator.title", "Что в работе на платформе?"),
+            "admin": ("welcome.admin.title", "Управление платформой"),
         }
         _SUB = {
             "buyer": "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.",
             "seller": "Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.",
             "operator": "Вы — <strong>дирижёр всей сделки</strong>: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи.",
+            "admin": "Контролируйте пользователей, каталог, модерацию и показатели платформы из одного рабочего окна.",
         }
         _wt_key, _wt = _WELCOME[base_role]
         uname = (request.user.get_full_name() or request.user.username or "").strip()
-        # Пилюли роли — серверно, чтобы у залогиненного welcome был сразу С пилюлями
-        # (иначе ~1-2с видна «пустая» главная до загрузки JS). ДЕРЖАТЬ В СИНХРОНЕ с
-        # ROLE_WELCOME в static/js/chat-first.js (тот же набор/порядок/emoji/action).
-        # Подписи — ru из i18n.js (pill.*). params (для onclick) → JSON.
+        # Команды роли приходят из единого серверного реестра. Тот же набор
+        # используется в первом HTML-кадре, welcome-экране и меню команд.
         import json as _json2
         _e = _json2.dumps  # короткий алиас для params → JSON
-        _PILLS = {
-            "buyer": [("📦", "Мои сделки", "get_my_deals", {}), ("👤", "Мой менеджер", "my_kam", {}),
-                      ("📐", "Чертежи", "seller_drawings", {}), ("💰", "Депозит", "get_balance", {}),
-                      ("🎯", "Auto-discount", "get_buyer_discount", {}), ("🎧", "Поддержка", "support_home", {})],
-            "seller": [("🔥", "Срочное", "seller_inbox", {}), ("📤", "Загрузить прайс", "upload_pricelist", {}),
-                       ("📦", "Мои товары", "seller_warehouses", {}), ("📐", "Чертежи", "seller_drawings", {}),
-                       ("💰", "Депозит", "get_balance", {}), ("🛡", "Верификация", "start_onboarding", {}),
-                       ("📊", "Аналитика", "seller_analytics_hub", {}), ("🎧", "Поддержка", "support_home", {})],
-            "operator": [("🎛", "Сводка", "op_dashboard", {}), ("📋", "Очередь заказов", "op_queue", {}),
-                         ("⏱", "SLA-нарушения", "op_sla_breach", {}), ("💰", "Платежи / Эскроу", "op_payments_dashboard", {}),
-                         ("🛂", "Таможня", "op_customs_dashboard", {}), ("🚚", "Логистика", "op_logistics_stats", {}),
-                         ("🏭", "Мои поставщики", "op_my_suppliers", {}), ("🛡", "KYB поставщиков", "op_kyb_queue", {}),
-                         ("🧾", "Рекламации", "get_claims", {}), ("📂", "Мои диалоги", "op_my_user_chats", {}),
-                         ("📐", "Чертежи", "op_drawings_by_part", {}), ("📊", "Аналитика", "op_analytics_hub", {}),
-                         ("🎧", "Поддержка", "support_home", {})],
-            "operator_manager": [("👥", "Заказчики", "seller_customers", {}), ("📋", "Мои сделки", "kam_deals", {}),
-                                 ("💰", "Начисления", "my_accruals", {}), ("📨", "Пригласить", "invite_customer", {}),
-                                 ("📊", "Аналитика", "op_analytics_hub", {}), ("📂", "Мои диалоги", "op_my_user_chats", {}),
-                                 ("🎧", "Поддержка", "support_home", {})],
-            "operator_logist": [("🚚", "Логистика", "op_logistics_stats", {}), ("🎛", "Сводка", "op_dashboard", {}),
-                                ("📋", "Очередь заказов", "op_queue", {"filter": "open"}), ("⏱", "SLA-нарушения", "op_sla_breach", {})],
-            "operator_customs": [("🛂", "Сводка таможни", "op_customs_dashboard", {}), ("🔎", "ТН ВЭД", "op_hs_lookup", {}),
-                                 ("🚫", "Санкции", "op_sanctions_check", {}), ("📋", "На таможне", "op_queue", {"filter": "open"})],
-            "operator_payment": [("💰", "Эскроу", "op_payments_dashboard", {}), ("💳", "Аналитика", "op_payments_stats", {}),
-                                 ("⏳", "Ожидают резерва", "op_queue", {"filter": "awaiting_reserve"}),
-                                 ("💸", "Возвраты", "op_queue", {"filter": "refund"})],
-        }
-        _plist = _PILLS.get(initial_role) or _PILLS.get(base_role) or _PILLS["buyer"]
-        auth_pills = [{"emoji": e, "label": l, "action": a, "params": _e(p)} for (e, l, a, p) in _plist]
+        from assistant.commands import commands_for_role
+        auth_pills = [
+            {
+                "emoji": command["icon"],
+                "label": command["label"],
+                "action": command["action"],
+                "params": _e(command["params"]),
+            }
+            for command in commands_for_role(initial_role)
+        ]
         ctx.update({
             "auth_role": initial_role,
             "auth_base_role": base_role,
@@ -7381,7 +7378,18 @@ def invite_redirect(request, code):
 @login_required
 def chat_project_view(request, project_id):
     """Project detail page within chat-first layout."""
-    response = render(request, "chat/project.html", {"project_id": project_id})
+    from assistant.permissions import detect_user_role, user_allowed_role_tabs
+
+    active_role = detect_user_role(request.user, request=request)
+    active_role_tab = (
+        "operator" if active_role.startswith("operator") or active_role == "admin"
+        else active_role
+    )
+    response = render(request, "chat/project.html", {
+        "project_id": project_id,
+        "active_role": active_role_tab,
+        "role_tabs": user_allowed_role_tabs(request.user),
+    })
     # Anti-cache: страница активно меняется (тема/уведомления/JS-bundle)
     response["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response["Pragma"] = "no-cache"

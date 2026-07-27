@@ -460,6 +460,8 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None,
             cards=cached.get("cards") or [],
             actions=cached.get("actions") or [],
             context_refs=cached.get("context_refs") or [],
+            contextual_actions=cached.get("contextual_actions") or [],
+            suggestions=cached.get("suggestions") or [],
             tokens_used=0,  # из кэша = $0
         )
         logger.info("AI answer-cache HIT (saved ~%s tokens)",
@@ -491,6 +493,8 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None,
                 cards=cards,
                 actions=actions,
                 context_refs=[],
+                contextual_actions=list(getattr(result, "contextual_actions", []) or []),
+                suggestions=list(getattr(result, "suggestions", []) or []),
                 tokens_used=0,
             )
             if not conversation.title:
@@ -514,7 +518,7 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None,
         assistant_msg = Message.objects.create(
             conversation=conversation, role=Message.Role.ASSISTANT,
             content=_m["text"], cards=[], actions=_m["actions"],
-            context_refs=[], tokens_used=0,
+            context_refs=[], suggestions=_m["suggestions"], tokens_used=0,
         )
         return {
             "text": _m["text"], "cards": [], "actions": _m["actions"],
@@ -678,8 +682,8 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
                         "text": prev_assistant.content,
                         "cards": prev_assistant.cards or [],
                         "actions": prev_assistant.actions or [],
-                        "contextual_actions": [],
-                        "suggestions": [],
+                        "contextual_actions": prev_assistant.contextual_actions or [],
+                        "suggestions": prev_assistant.suggestions or [],
                         "message_id": str(prev_assistant.id),
                         "_debounced": True,
                     }
@@ -704,6 +708,8 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
         content=result.text,
         cards=result.cards,
         actions=result.actions,
+        contextual_actions=list(getattr(result, "contextual_actions", []) or []),
+        suggestions=list(getattr(result, "suggestions", []) or []),
     )
 
     if not conversation.title:
@@ -843,6 +849,8 @@ def process_query_stream(conversation: Conversation, user_message: str, ui_lang:
                 cards=cards,
                 actions=actions,
                 context_refs=[],
+                contextual_actions=ctx_actions,
+                suggestions=suggestions,
                 tokens_used=0,
             )
             if not conversation.title:
@@ -863,7 +871,7 @@ def process_query_stream(conversation: Conversation, user_message: str, ui_lang:
         Message.objects.create(
             conversation=conversation, role=Message.Role.ASSISTANT,
             content=_m["text"], cards=[], actions=_m["actions"],
-            context_refs=[], tokens_used=0,
+            context_refs=[], suggestions=_m["suggestions"], tokens_used=0,
         )
         yield {"type": "done", "tokens": 0, "refs": []}
         return

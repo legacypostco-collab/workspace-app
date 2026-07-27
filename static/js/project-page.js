@@ -567,12 +567,12 @@
       });
       if (!r.ok && r.status !== 204) {
         // Если endpoint не поддерживает bulk DELETE — открываем /chat/ где есть UI
-        window.location.href = '/chat/?action=clear_history';
+        window.location.href = '/chat/?new=1&run=clear_history';
         return;
       }
       await loadSidebarConvs();
     } catch(err) {
-      window.location.href = '/chat/?action=clear_history';
+      window.location.href = '/chat/?new=1&run=clear_history';
     }
   };
 
@@ -992,7 +992,7 @@
       };
       const ML = MODE_LABEL[lang] || MODE_LABEL.ru;
       const tagText = r.tag ? (ML[r.tag.toUpperCase()] || r.tag) : '';
-      return `<div class="rfq" onclick="window.location.href='/chat/?action=get_rfq_status'" style="cursor:pointer" title="Открыть RFQ в чате">
+      return `<div class="rfq" onclick="window.location.href='/chat/?new=1&run=get_rfq_status'" style="cursor:pointer" title="Открыть RFQ в чате">
         <span class="rfq-num">${esc(r.number)}</span>
         <div class="rfq-info">
           <div class="rfq-title">${esc(r.title)}${tagText ? ` <span class="rfq-tag rfq-tag-${esc((r.tag||'').toLowerCase())}">${esc(tagText)}</span>` : ''}</div>
@@ -1011,7 +1011,7 @@
       const stages = o.stages || [];
       const stageBars = stages.map(s => `<div class="po-stage ${s ? 'done' : ''}"></div>`).join('');
       const statusClass = o.status_color === 'green' ? 'green' : '';
-      return `<div class="po" onclick="window.location.href='/chat/?action=get_orders'" style="cursor:pointer" title="Открыть заказы в чате">
+      return `<div class="po" onclick="window.location.href='/chat/?new=1&run=get_orders'" style="cursor:pointer" title="Открыть заказы в чате">
         <div class="po-row1">
           <span class="po-num">${esc(o.number)}</span>
           <span class="po-title">${esc(o.title)}</span>
@@ -1071,7 +1071,7 @@
 
     return `
       <div class="crumbs">
-        <a href="/chat/">Проекты</a>
+        <a href="/chat/?workspace=1">Проекты</a>
         <span class="crumbs-sep">/</span>
         <span>${esc(p.name)}</span>
       </div>
@@ -1140,7 +1140,7 @@
       $('projectContent').innerHTML = `<div style="text-align:center;padding:60px 20px;color:rgba(0,0,0,0.6);">
         <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Не удалось загрузить проект</div>
         <div style="font-size:13px;">${esc(e.message)}</div>
-        <a href="/chat/" style="display:inline-block;margin-top:16px;padding:8px 16px;background:rgba(255,255,255,0.6);border-radius:8px;color:#1a1a1a;font-weight:600;text-decoration:none;">← Назад в чаты</a>
+        <a href="/chat/?workspace=1" style="display:inline-block;margin-top:16px;padding:8px 16px;background:rgba(255,255,255,0.6);border-radius:8px;color:#1a1a1a;font-weight:600;text-decoration:none;">← Назад в чаты</a>
       </div>`;
     }
   }

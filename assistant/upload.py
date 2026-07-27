@@ -6,14 +6,16 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import io
 import os
 import re
 
+from django.core.cache import cache
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -288,10 +290,30 @@ class UploadSpecView(APIView):
     Возвращает тот же формат, что и обычный chat-ответ (text, cards, actions).
     """
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     parser_classes = [MultiPartParser]
 
     def post(self, request):
+        is_authenticated = bool(request.user and request.user.is_authenticated)
+        if not is_authenticated:
+            forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+            remote = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "")
+            fingerprint = hashlib.sha256((remote or "unknown").encode("utf-8")).hexdigest()[:24]
+            rate_key = f"anon_spec_upload:{fingerprint}"
+            if cache.add(rate_key, 1, timeout=3600):
+                upload_count = 1
+            else:
+                try:
+                    upload_count = cache.incr(rate_key)
+                except ValueError:
+                    cache.set(rate_key, 1, timeout=3600)
+                    upload_count = 1
+            if upload_count > 10:
+                return Response(
+                    {"error": _("Лимит гостевых загрузок исчерпан. Войдите или повторите позже.")},
+                    status=429,
+                )
+
         upload = request.FILES.get("file")
         if not upload:
             return Response({"error": "file is required"}, status=400)
@@ -333,19 +355,21 @@ class UploadSpecView(APIView):
                 status=400,
             )
 
-        conv_id = request.data.get("conversation_id")
+        conv_id = request.data.get("conversation_id") if is_authenticated else None
         if conv_id:
             conv = get_object_or_404(
                 Conversation, id=conv_id, user=request.user, is_active=True
             )
-        else:
+        elif is_authenticated:
             conv = Conversation.objects.create(
                 user=request.user, role=detect_user_role(request.user)
             )
+        else:
+            conv = None
 
         if not articles:
             return Response({
-                "conversation_id": str(conv.id),
+                "conversation_id": str(conv.id) if conv else None,
                 "filename": upload.name,
                 "articles_found": 0,
                 "text": (
@@ -361,7 +385,11 @@ class UploadSpecView(APIView):
         # Прокидываем найденные артикулы в search_parts (multi-article path)
         try:
             result = execute_action(
-                conv, "search_parts", {"articles": articles}, request.user
+                conv,
+                "search_parts",
+                {"articles": articles},
+                request.user,
+                role=(detect_user_role(request.user) if is_authenticated else "buyer"),
             )
         except Exception as exc:  # pragma: no cover
             return Response({"error": str(exc)}, status=500)
@@ -374,7 +402,7 @@ class UploadSpecView(APIView):
         result["text"] = prefix + result_text
 
         return Response({
-            "conversation_id": str(conv.id),
+            "conversation_id": str(conv.id) if conv else None,
             "filename": upload.name,
             "articles_found": len(articles),
             "articles": articles[:50],

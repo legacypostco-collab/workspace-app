@@ -1420,8 +1420,8 @@ class ConversationCategorizationTests(TestCase):
         self.assertEqual(admin_conv.category, "admin")
         self.assertEqual(purchase_conv.category, "purchase")
 
-    def test_action_view_reuses_admin_conv_across_clicks(self):
-        """E2E: 2 разных admin pill'a → 1 conv в БД."""
+    def test_action_view_starts_a_fresh_conv_without_conversation_id(self):
+        """Два независимых клика вне открытого чата создают два диалога."""
         from rest_framework.test import APIClient
 
         from .models import Conversation
@@ -1436,7 +1436,7 @@ class ConversationCategorizationTests(TestCase):
             "action": "seller_team", "params": {"_label": "👥 Команда"},
         }, format="json")
         admin_convs = Conversation.objects.filter(user=self.user, category="admin")
-        self.assertEqual(admin_convs.count(), 1, "Должен быть ровно один admin conv")
+        self.assertEqual(admin_convs.count(), 2)
 
 
 class ExternalRatingTests(TestCase):

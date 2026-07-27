@@ -163,7 +163,7 @@ def detect_user_role(user, *, request=None, override: str | None = None) -> str:
 
     if not user or not user.is_authenticated:
         return "buyer"
-    if user.is_superuser:
+    if user.is_superuser or user.is_staff:
         return "admin"
 
     profile = getattr(user, "userprofile", None) or getattr(user, "profile", None)

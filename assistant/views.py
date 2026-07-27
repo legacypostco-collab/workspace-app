@@ -1,4 +1,5 @@
 import logging
+import time
 
 from django.db.models import Q as _Q
 from django.http import Http404
@@ -11,6 +12,70 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
+
+_PENDING_2FA_SESSION_KEY = "assistant_pending_2fa_login"
+_PENDING_2FA_TTL_SECONDS = 5 * 60
+_PENDING_2FA_MAX_ATTEMPTS = 5
+
+
+def _begin_pending_2fa(request, user, *, flow, role):
+    request.session[_PENDING_2FA_SESSION_KEY] = {
+        "user_id": user.pk,
+        "auth_hash": user.get_session_auth_hash(),
+        "flow": flow,
+        "role": role,
+        "created_at": int(time.time()),
+        "attempts": 0,
+    }
+    request.session.modified = True
+
+
+def _pending_2fa_user(request, *, flow, role):
+    from django.contrib.auth import get_user_model
+    from django.utils.crypto import constant_time_compare
+
+    pending = request.session.get(_PENDING_2FA_SESSION_KEY)
+    if not isinstance(pending, dict):
+        return None
+    valid_context = pending.get("flow") == flow and pending.get("role") == role
+    fresh = int(time.time()) - int(pending.get("created_at") or 0) <= _PENDING_2FA_TTL_SECONDS
+    attempts_ok = int(pending.get("attempts") or 0) < _PENDING_2FA_MAX_ATTEMPTS
+    user = get_user_model().objects.filter(
+        pk=pending.get("user_id"),
+        is_active=True,
+    ).first()
+    auth_hash_ok = bool(
+        user
+        and constant_time_compare(
+            pending.get("auth_hash") or "",
+            user.get_session_auth_hash(),
+        )
+    )
+    if not (valid_context and fresh and attempts_ok and auth_hash_ok):
+        request.session.pop(_PENDING_2FA_SESSION_KEY, None)
+        request.session.modified = True
+        return None
+    return user
+
+
+def _record_pending_2fa_failure(request):
+    pending = request.session.get(_PENDING_2FA_SESSION_KEY)
+    if not isinstance(pending, dict):
+        return 0
+    attempts = int(pending.get("attempts") or 0) + 1
+    remaining = max(0, _PENDING_2FA_MAX_ATTEMPTS - attempts)
+    if remaining:
+        pending["attempts"] = attempts
+        request.session[_PENDING_2FA_SESSION_KEY] = pending
+    else:
+        request.session.pop(_PENDING_2FA_SESSION_KEY, None)
+    request.session.modified = True
+    return remaining
+
+
+def _clear_pending_2fa(request):
+    request.session.pop(_PENDING_2FA_SESSION_KEY, None)
+    request.session.modified = True
 
 from .models import Conversation, Feedback, Message
 from .permissions import detect_user_role, user_allowed_role_tabs
@@ -33,11 +98,23 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [AllowAny]  # anon → пустой список (без 401 в консоли)
 
+    def get_permissions(self):
+        # Гостю нужен только пустой список для первичного рендера. Создавать,
+        # читать по id, менять или удалять диалоги может лишь владелец.
+        if self.action == "list":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
     def get_queryset(self):
         # Anon: пустой queryset (UI покажет «Нет проектов / Недавнее пусто»)
         if not self.request.user.is_authenticated:
             return Conversation.objects.none()
-        return Conversation.objects.filter(user=self.request.user, is_active=True)
+        role = detect_user_role(self.request.user, request=self.request)
+        return Conversation.objects.filter(
+            user=self.request.user,
+            role=role,
+            is_active=True,
+        )
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -95,8 +172,8 @@ class ChatView(APIView):
                         "Я не понял запрос. Попробуйте:\n"
                         "• Вставьте список артикулов (по одному на строке)\n"
                         "• Загрузите файл (.xlsx/.pdf) с позициями\n"
-                        "• Нажмите «Создать RFQ» или «Открытые RFQ»\n\n"
-                        "Если хотите вести историю чата — зарегистрируйтесь."
+                        "• Откройте поиск запчастей или базу знаний\n\n"
+                        "Для сохранения заявки и истории понадобится аккаунт."
                     ),
                     "cards": [],
                     "actions": [
@@ -120,6 +197,12 @@ class ChatView(APIView):
                     "suggestions": [], "message_id": None,
                 }})
             if action_name not in ANON_ALLOWED_ACTIONS:
+                if action_name in ANON_RESUMABLE_ACTIONS:
+                    request.session["pending_action"] = {
+                        "action": action_name,
+                        "params": params,
+                    }
+                    request.session.modified = True
                 resp = _registration_required_response()
                 return Response({"conversation_id": None, **{
                     "response": resp.get("text", ""),
@@ -145,13 +228,19 @@ class ChatView(APIView):
             })
 
         # ── Authenticated flow (как раньше) ──
+        current_role = detect_user_role(request.user, request=request)
         if conv_id:
             conv = get_object_or_404(
-                Conversation, id=conv_id, user=request.user, is_active=True
+                Conversation,
+                id=conv_id,
+                user=request.user,
+                role=current_role,
+                is_active=True,
             )
         else:
             conv = Conversation.objects.create(
-                user=request.user, role=detect_user_role(request.user, request=request)
+                user=request.user,
+                role=current_role,
             )
 
         try:
@@ -173,29 +262,19 @@ class ChatView(APIView):
 
 
 # Whitelist actions, разрешённых анонимному гостю.
-# PIVOT 2026-05-28: покупатель может работать без регистрации
-# до момента оплаты резерва. Регистрация триггерится при pay_reserve
-# (и других денежных действиях) — там просим email/телефон/пароль.
+# Гость может изучать публичный каталог и справочные возможности, но не
+# создавать сущности и не читать данные по идентификаторам чужих сделок.
+# Это публичный просмотр, а не анонимный кабинет.
 ANON_ALLOWED_ACTIONS: set[str] = {
     # Auth-actions
     "start_registration", "start_login",
-    # Discovery — поиск, база знаний, аналитика товаров
+    # Публичные данные каталога и справочные расчёты
     "search_parts", "kb_search",
     "compare_products", "compare_suppliers", "top_suppliers",
-    "buyer_best_offers", "buyer_offer_compare",
     "calc_part_logistics",
-    # Аналитика спецификации (upload xlsx → AI-маппинг)
+    # Аналитика загруженной спецификации без сохранения сделки
     "analyze_spec", "upload_parts_list",
-    # RFQ flow — создать запрос, получить котировки, посмотреть
-    "create_rfq", "get_rfq_status", "view_rfq_quotes", "view_quote",
-    "compare_quotes", "ask_about_rfq",
-    "generate_proposal",
-    # Accept quote (только preview-фаза, confirmed=False).
-    # Phase 2 (confirmed=True → создаёт Order → требует payment) блокируется
-    # внутри handler'а в _block_anon_payment().
-    "accept_quote",
-    # Comms / help
-    "ask_operator", "go_home",
+    "go_home",
 }
 
 # Actions требующие денег / payment intent — для anon триггерим registration.
@@ -207,6 +286,10 @@ ANON_BLOCKED_PAYMENT_ACTIONS: set[str] = {
     # должен получить контекстный close «создать аккаунт и оплатить» + resume
     # после регистрации, а не обобщённую карточку.
     "quick_order",
+}
+
+ANON_RESUMABLE_ACTIONS: set[str] = {
+    "create_rfq",
 }
 
 
@@ -299,10 +382,15 @@ def _handle_start_registration(request, params):
         # Resume pending action (если до регистрации юзер нажал pay_reserve)
         pending = request.session.pop("pending_action", None)
         if pending and pending.get("action"):
+            continuing = (
+                _("Продолжаю создание заявки...")
+                if pending["action"] == "create_rfq"
+                else _("Продолжаю оформление заказа...")
+            )
             # Возвращаем resume-карточку: фронт сам кликнет action в чате
             return {
                 "text": (result["response"].get("text", "") + "\n\n"
-                         + _("Продолжаю оформление заказа...")),
+                         + continuing),
                 "actions": [{
                     "action": pending["action"],
                     "label": _("Продолжить"),
@@ -430,22 +518,16 @@ def _handle_switch_role_login(request, params):
     """Переключение на аккаунт другой роли через chat-форму с паролем.
 
     Двухфазный flow (как start_login):
-      Phase 1: возвращает form-карточку с editable username (prefilled demo_<role>) + password
+      Phase 1: возвращает form-карточку с логином и паролем
       Phase 2: authenticate + проверка что user.role совпадает + login + reload_page
 
     Если аккаунта с такой ролью нет — предлагается зарегистрировать
     (кроме операторских — операторов заводит только админ).
     """
     role = (params.get("role") or "").lower()
-    DEMO_USERNAMES = {
-        "buyer":    "demo_buyer",
-        "seller":   "demo_seller",
-        "operator": "demo_operator",
-    }
-    if role not in DEMO_USERNAMES:
+    if role not in {"buyer", "seller", "operator"}:
         return {"text": _("Неизвестная роль: %(r)s") % {"r": role},
                 "cards": [], "actions": [], "suggestions": [], "contextual_actions": []}
-    suggested_username = DEMO_USERNAMES[role]
 
     if request.user.is_authenticated:
         from .permissions import _override_allowed
@@ -480,9 +562,7 @@ def _handle_switch_role_login(request, params):
     title, greeting = ROLE_META[role]
     confirmed = bool(params.get("confirmed"))
 
-    if not confirmed:
-        # Регистрационная кнопка — buyer/seller сами создают аккаунт,
-        # operator заводит только админ.
+    def _registration_actions():
         reg_actions = []
         if role == "buyer":
             reg_actions.append({"action": "start_registration",
@@ -496,8 +576,11 @@ def _handle_switch_role_login(request, params):
             reg_actions.append({"action": "contact_operator",
                                 "label": _("Запросить операторский доступ у админа"),
                                 "params": {"topic": "operator_access"}})
+        return reg_actions
+
+    def _password_form(message, *, username="", password_error=""):
         return {
-            "text": greeting,
+            "text": message,
             "cards": [{
                 "type": "form",
                 "data": {
@@ -510,93 +593,112 @@ def _handle_switch_role_login(request, params):
                     "submit_label": _("Войти →"),
                     "fields": [
                         {"name": "username", "label": _("Логин или e-mail"),
-                         "value": suggested_username,
+                         "value": username,
                          "placeholder": "ivanov / you@company.ru",
-                         "required": True,
-                         "hint": _("Подставлен demo-аккаунт. Если у вас свой — замените.")},
+                         "required": True},
                         {"name": "password", "label": _("Пароль"),
                          "type": "password", "required": True,
-                         "placeholder": _("Введите пароль")},
-                        {"name": "otp_code", "label": _("Код 2FA, если включён"),
-                         "placeholder": "000000", "required": False},
+                         "placeholder": _("Введите пароль"),
+                         "error": password_error},
                     ],
                     "fixed_params": {"confirmed": True, "role": role},
                 },
             }],
-            "actions": reg_actions,
+            "actions": _registration_actions(),
             "suggestions": [], "contextual_actions": [],
         }
 
-    # Phase 2: проверка пароля + login
+    def _otp_form(message, *, otp_error=""):
+        return {
+            "text": message,
+            "cards": [{
+                "type": "form",
+                "data": {
+                    "title": _("Подтверждение входа"),
+                    "submit_action": "switch_role_login",
+                    "submit_label": _("Подтвердить"),
+                    "fields": [{
+                        "name": "otp_code",
+                        "label": _("Одноразовый код"),
+                        "placeholder": "000000",
+                        "required": True,
+                        "autocomplete": "one-time-code",
+                        "error": otp_error,
+                    }],
+                    "fixed_params": {
+                        "confirmed": True,
+                        "two_factor": True,
+                        "role": role,
+                    },
+                },
+            }],
+            "actions": [{
+                "action": "switch_role_login",
+                "label": _("Вернуться к вводу пароля"),
+                "params": {"role": role},
+            }],
+            "suggestions": [], "contextual_actions": [],
+        }
+
+    if not confirmed:
+        _clear_pending_2fa(request)
+        return _password_form(greeting)
+
     from django.contrib.auth import authenticate, get_user_model, login
-    raw = (params.get("username") or "").strip()
-    pwd = params.get("password") or ""
-    U = get_user_model()
-    # Разрешаем вход по e-mail
-    if "@" in raw:
-        u = U.objects.filter(email__iexact=raw).first()
-        if u:
-            raw = u.username
-    if not raw:
-        return {
-            "text": _("Логин не указан."),
-            "actions": [{"action": "switch_role_login",
-                         "label": _("Попробовать ещё раз"),
-                         "params": {"role": role}}],
-            "cards": [], "suggestions": [], "contextual_actions": [],
-        }
-    user = authenticate(request, username=raw, password=pwd)
-    if not user:
-        # Различаем «нет аккаунта» vs «неверный пароль»
-        exists = U.objects.filter(username=raw).exists()
-        if not exists:
-            reg_btn = []
-            if role == "buyer":
-                reg_btn.append({"action": "start_registration",
-                                "label": _("Создать аккаунт покупателя"),
-                                "params": {"role": "buyer"}})
-            elif role == "seller":
-                reg_btn.append({"action": "start_registration",
-                                "label": _("Создать аккаунт поставщика"),
-                                "params": {"role": "seller"}})
-            return {
-                "text": _("Аккаунт «%(u)s» не найден. Зарегистрируйтесь или укажите другой логин.") % {"u": raw},
-                "actions": reg_btn + [
-                    {"action": "switch_role_login",
-                     "label": _("Ввести другой логин"),
-                     "params": {"role": role}},
-                ],
-                "cards": [], "suggestions": [], "contextual_actions": [],
-            }
-        return {
-            "text": _("Неверный пароль для «%(u)s». Попробуйте ещё раз.") % {"u": raw},
-            "actions": [{"action": "switch_role_login",
-                         "label": _("Войти снова"),
-                         "params": {"role": role}}],
-            "cards": [], "suggestions": [], "contextual_actions": [],
-        }
     from .security import user_has_enabled_2fa, verify_user_2fa
-    if user_has_enabled_2fa(user) and not verify_user_2fa(user, params.get("otp_code") or ""):
-        return {
-            "text": _("Для аккаунта включена 2FA. Введите одноразовый код из приложения."),
-            "actions": [{"action": "switch_role_login",
-                         "label": _("Ввести код 2FA"),
-                         "params": {"role": role, "username": raw}}],
-            "cards": [], "suggestions": [], "contextual_actions": [],
-        }
-    # Verify the user has the requested role (no privilege escalation)
-    actual_role = detect_user_role(user)
-    actual_norm = "operator" if actual_role.startswith("operator") else actual_role
-    if actual_norm != role:
-        return {
-            "text": (_("Аккаунт «%(u)s» имеет роль «%(actual)s», "
-                       "а вы пытались войти как «%(role)s». Войдите под другим логином.")
-                     % {"u": user.username, "actual": actual_norm, "role": role}),
-            "actions": [{"action": "switch_role_login",
-                         "label": _("Ввести другой логин"),
-                         "params": {"role": role}}],
-            "cards": [], "suggestions": [], "contextual_actions": [],
-        }
+
+    if params.get("two_factor"):
+        user = _pending_2fa_user(request, flow="switch_role_login", role=role)
+        if not user:
+            return _password_form(
+                _("Время подтверждения истекло. Введите логин и пароль ещё раз."),
+                username="",
+            )
+        if not verify_user_2fa(user, params.get("otp_code") or ""):
+            remaining = _record_pending_2fa_failure(request)
+            if not remaining:
+                return _password_form(
+                    _("Слишком много неверных кодов. Введите логин и пароль ещё раз."),
+                    username="",
+                )
+            return _otp_form(
+                _("Введите код из приложения-аутентификатора или резервный код."),
+                otp_error=_("Неверный код. Осталось попыток: %(n)s") % {"n": remaining},
+            )
+        _clear_pending_2fa(request)
+    else:
+        raw = (params.get("username") or "").strip()
+        pwd = params.get("password") or ""
+        U = get_user_model()
+        if "@" in raw:
+            u = U.objects.filter(email__iexact=raw).first()
+            if u:
+                raw = u.username
+        if not raw:
+            return _password_form(_("Укажите логин или e-mail."), username="")
+        user = authenticate(request, username=raw, password=pwd)
+        if not user:
+            _clear_pending_2fa(request)
+            return _password_form(
+                _("Не удалось войти. Проверьте введённые данные."),
+                username=(params.get("username") or "").strip(),
+                password_error=_("Неверный логин или пароль."),
+            )
+        # Сначала проверяем роль, затем раскрываем наличие второго фактора.
+        actual_role = detect_user_role(user)
+        actual_norm = "operator" if actual_role.startswith("operator") else actual_role
+        if actual_norm != role:
+            return _password_form(
+                _("Этот аккаунт не имеет выбранной роли."),
+                username=(params.get("username") or "").strip(),
+                password_error=_("Выберите аккаунт с ролью «%(role)s».") % {"role": role},
+            )
+        if user_has_enabled_2fa(user):
+            _begin_pending_2fa(request, user, flow="switch_role_login", role=role)
+            return _otp_form(
+                _("Для аккаунта включена двухфакторная защита. Введите код из приложения-аутентификатора."),
+            )
+
     # Очищаем старый session-override чтобы UI взял правильную роль из identity
     request.session.pop("assistant_role_override", None)
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
@@ -803,7 +905,7 @@ def _handle_start_login(request, params):
     }
     title, greeting = LOGIN_META.get(role, LOGIN_META["buyer"])
 
-    if not confirmed:
+    def _login_actions():
         actions = []
         if role == "operator":
             # Оператора заводит только админ — никакой self-регистрации.
@@ -815,8 +917,11 @@ def _handle_start_login(request, params):
         else:
             actions.append({"action": "start_registration",
                              "label": _("Создать новый аккаунт")})
+        return actions
+
+    def _login_form_response(message, *, username="", password_error=""):
         return {
-            "text": greeting,
+            "text": message,
             "cards": [{
                 "type": "form",
                 "data": {
@@ -825,42 +930,95 @@ def _handle_start_login(request, params):
                     "submit_label": _("Войти →"),
                     "fields": [
                         {"name": "username", "label": _("Логин или e-mail"),
-                         "required": True, "placeholder": "ivanov / you@company.ru"},
+                         "required": True, "placeholder": "ivanov / you@company.ru",
+                         "value": username},
                         {"name": "password", "label": _("Пароль"),
-                         "type": "password", "required": True},
-                        {"name": "otp_code", "label": _("Код 2FA, если включён"),
-                         "placeholder": "000000", "required": False},
+                         "type": "password", "required": True,
+                         "error": password_error},
                     ],
                     "fixed_params": {"confirmed": True, "role": role},
                 },
             }],
-            "actions": actions,
+            "actions": _login_actions(),
             "suggestions": [], "contextual_actions": [],
         }
 
+    def _otp_form_response(message, *, otp_error=""):
+        return {
+            "text": message,
+            "cards": [{
+                "type": "form",
+                "data": {
+                    "title": _("Подтверждение входа"),
+                    "submit_action": "start_login",
+                    "submit_label": _("Подтвердить"),
+                    "fields": [
+                        {"name": "otp_code", "label": _("Одноразовый код"),
+                         "placeholder": "000000", "required": True,
+                         "autocomplete": "one-time-code", "error": otp_error},
+                    ],
+                    "fixed_params": {
+                        "confirmed": True,
+                        "two_factor": True,
+                        "role": role,
+                    },
+                },
+            }],
+            "actions": [{
+                "action": "start_login",
+                "label": _("Вернуться к вводу пароля"),
+                "params": {"role": role},
+            }],
+            "suggestions": [], "contextual_actions": [],
+        }
+
+    if not confirmed:
+        _clear_pending_2fa(request)
+        return _login_form_response(greeting)
+
     from django.contrib.auth import authenticate, get_user_model, login
-    raw = (params.get("username") or "").strip()
-    pwd = params.get("password") or ""
-    U = get_user_model()
-    # Разрешаем вход по e-mail
-    if "@" in raw:
-        u = U.objects.filter(email__iexact=raw).first()
-        if u:
-            raw = u.username
-    user = authenticate(request, username=raw, password=pwd)
-    if not user:
-        return {
-            "text": _("Неверный логин или пароль. Попробуйте ещё раз."),
-            "actions": [{"action": "start_login", "label": _("Войти снова")}],
-            "cards": [], "suggestions": [], "contextual_actions": [],
-        }
     from .security import user_has_enabled_2fa, verify_user_2fa
-    if user_has_enabled_2fa(user) and not verify_user_2fa(user, params.get("otp_code") or ""):
-        return {
-            "text": _("Для аккаунта включена 2FA. Введите одноразовый код из приложения."),
-            "actions": [{"action": "start_login", "label": _("Ввести код 2FA")}],
-            "cards": [], "suggestions": [], "contextual_actions": [],
-        }
+
+    if params.get("two_factor"):
+        user = _pending_2fa_user(request, flow="start_login", role=role)
+        if not user:
+            return _login_form_response(
+                _("Время подтверждения истекло. Введите логин и пароль ещё раз."),
+            )
+        if not verify_user_2fa(user, params.get("otp_code") or ""):
+            remaining = _record_pending_2fa_failure(request)
+            if not remaining:
+                return _login_form_response(
+                    _("Слишком много неверных кодов. Введите логин и пароль ещё раз."),
+                )
+            return _otp_form_response(
+                _("Введите код из приложения-аутентификатора или резервный код."),
+                otp_error=_("Неверный код. Осталось попыток: %(n)s") % {"n": remaining},
+            )
+        _clear_pending_2fa(request)
+    else:
+        raw = (params.get("username") or "").strip()
+        pwd = params.get("password") or ""
+        U = get_user_model()
+        # Разрешаем вход по e-mail
+        if "@" in raw:
+            u = U.objects.filter(email__iexact=raw).first()
+            if u:
+                raw = u.username
+        user = authenticate(request, username=raw, password=pwd)
+        if not user:
+            _clear_pending_2fa(request)
+            return _login_form_response(
+                _("Не удалось войти. Проверьте введённые данные."),
+                username=(params.get("username") or "").strip(),
+                password_error=_("Неверный логин или пароль."),
+            )
+        if user_has_enabled_2fa(user):
+            _begin_pending_2fa(request, user, flow="start_login", role=role)
+            return _otp_form_response(
+                _("Для аккаунта включена двухфакторная защита. Введите код из приложения-аутентификатора."),
+            )
+
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     # Resume pending payment action (anon → клик pay_reserve → login → resume)
     try:
@@ -869,8 +1027,13 @@ def _handle_start_login(request, params):
         logger.exception("attach anonymous RFQs failed on login")
     pending = request.session.pop("pending_action", None)
     if pending and pending.get("action"):
+        continuing = (
+            _("Продолжаю создание заявки...")
+            if pending["action"] == "create_rfq"
+            else _("Продолжаю оформление заказа...")
+        )
         return {
-            "text": _("Вы вошли как «%(u)s». Продолжаю оформление заказа...") % {"u": user.username},
+            "text": _("Вы вошли как «%(u)s».") % {"u": user.username} + " " + continuing,
             "actions": [{
                 "action": pending["action"],
                 "label": _("Продолжить оформление"),
@@ -940,6 +1103,12 @@ class ActionView(APIView):
                 return Response({"conversation_id": None,
                                   **_payment_requires_registration_response(action, params)})
             if action not in ANON_ALLOWED_ACTIONS:
+                if action in ANON_RESUMABLE_ACTIONS:
+                    request.session["pending_action"] = {
+                        "action": action,
+                        "params": params,
+                    }
+                    request.session.modified = True
                 return Response({"conversation_id": None,
                                   **_registration_required_response()})
             # Прочие whitelisted — выполняем как обычный buyer
@@ -977,17 +1146,27 @@ class ActionView(APIView):
 
         conv_id = request.data.get("conversation_id")
 
-        from .conv_category import category_for_action, find_or_create_conv, title_for_action
+        from .conv_category import category_for_action, title_for_action
         label = (params.get("_label") or "").strip() or action
+        current_role = detect_user_role(request.user, request=request)
 
         if conv_id:
-            conv = get_object_or_404(Conversation, id=conv_id, user=request.user, is_active=True)
+            conv = get_object_or_404(
+                Conversation,
+                id=conv_id,
+                user=request.user,
+                role=current_role,
+                is_active=True,
+            )
         else:
-            # Reuse существующий conv той же категории (admin/purchase/support/general)
-            # вместо плодить новый на каждый клик пилюли.
-            role = detect_user_role(request.user, request=request)
-            conv = find_or_create_conv(
-                request.user, action_name=action, role=role, action_label=label,
+            # Явное действие вне открытого диалога начинает новый диалог.
+            # Повторное использование "похожего" чата делало кнопку
+            # «Новый чат» фиктивной и смешивало независимые сценарии.
+            conv = Conversation.objects.create(
+                user=request.user,
+                role=current_role,
+                category=category_for_action(action),
+                title=title_for_action(action, label)[:200],
             )
 
         # Динамически обновляем title по текущему action: «Верификация · Шаг 2/5»
@@ -1003,7 +1182,6 @@ class ActionView(APIView):
         try:
             # role от текущего UI-toggle, не от сохранённой в conversation —
             # юзер мог переключить роль и теперь видит другую сторону.
-            current_role = detect_user_role(request.user, request=request)
             result = execute_action(
                 conv, action, {**params, "_request": request}, request.user, role=current_role,
             )
@@ -1112,18 +1290,23 @@ class WidgetConfigView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
+        from .commands import commands_for_role
+
         if not request.user.is_authenticated:
             return Response({
                 "role": "buyer",
                 "role_override": None,
                 "user_name": _("Гость"),
                 "suggestions": [],
+                "commands": commands_for_role("guest", anonymous=True),
                 "latest_conversation_id": None,
                 "anonymous": True,
             })
         role = detect_user_role(request.user, request=request)
         latest = Conversation.objects.filter(
-            user=request.user, is_active=True
+            user=request.user,
+            role=role,
+            is_active=True,
         ).order_by("-updated_at").first()
         return Response({
             "role": role,
@@ -1131,49 +1314,34 @@ class WidgetConfigView(APIView):
             "roles": user_allowed_role_tabs(request.user),
             "user_name": request.user.get_full_name() or request.user.username,
             "suggestions": SuggestView.SUGGESTIONS.get(role, SuggestView.SUGGESTIONS["buyer"]),
+            "commands": commands_for_role(role),
             "latest_conversation_id": str(latest.id) if latest else None,
         })
 
 
 class RoleSwitchView(APIView):
-    """POST /api/assistant/role/  body: {"role": "buyer"|"seller"|"operator", "password": "..."}
+    """POST /api/assistant/role/  body: {"role": "buyer"|"seller"|"operator"}
 
-    PIVOT 2026-05-27: переключение ролей теперь = смена аккаунта.
-    Каждая роль = отдельный пользователь. Чтобы переключиться, нужно
-    ввести пароль аккаунта, владеющего этой ролью.
-
-    Для демо-юзеров маппинг username:
-      buyer    → demo_buyer
-      seller   → demo_seller
-      operator → demo_operator
+    Переключает только роли, уже выданные текущему пользователю. Новая роль
+    оформляется отдельным потоком `add_account_role`; чужой аккаунт и его
+    пароль этот endpoint не принимает.
 
     Anonymous: всегда отвечает `buyer` (без 403) — гость не может
     переключиться на seller/operator, это требует регистрации.
     """
     permission_classes = [AllowAny]
 
-    # Демо-мэппинг роли на username. В проде заменить на per-user mapping
-    # (один пользователь может иметь несколько аккаунтов под разными ролями).
-    _DEMO_ROLE_TO_USERNAME = {
-        "buyer":    "demo_buyer",
-        "seller":   "demo_seller",
-        "operator": "demo_operator",
-    }
-
     def post(self, request):
-        from django.contrib.auth import authenticate, login, get_user_model
         from .permissions import _normalize_override, _override_allowed
 
         if not request.user.is_authenticated:
             return Response({"role": "buyer", "override": None, "anonymous": True})
 
         raw = request.data.get("role")
-        password = request.data.get("password") or ""
         norm = _normalize_override(raw)
-        if not norm or norm not in self._DEMO_ROLE_TO_USERNAME:
+        if not norm or norm not in {"buyer", "seller", "operator"}:
             return Response({"error": f"unsupported role '{raw}'"}, status=400)
 
-        # Уже в этой роли — ничего не делаем
         current_role = detect_user_role(request.user, request=request)
         current_normalized = "operator" if current_role.startswith("operator") else current_role
         if current_normalized == norm:
@@ -1194,34 +1362,11 @@ class RoleSwitchView(APIView):
                 "same_account": True,
             })
 
-        target_username = self._DEMO_ROLE_TO_USERNAME[norm]
-        if not password:
-            # Без пароля — возвращаем "требуется пароль" + куда отправлять следующий запрос
-            return Response({
-                "password_required": True,
-                "target_username": target_username,
-                "target_role": norm,
-            }, status=401)
-
-        # Проверяем пароль через стандартный authenticate
-        target_user = authenticate(request, username=target_username, password=password)
-        if not target_user:
-            return Response({
-                "error": _("Неверный пароль"),
-                "target_username": target_username,
-                "target_role": norm,
-            }, status=403)
-
-        # Очищаем role-override (он больше не используется)
-        request.session.pop("assistant_role_override", None)
-        # Logout + login as target
-        login(request, target_user)
-        request.session.modified = True
         return Response({
-            "role": detect_user_role(target_user),
-            "username": target_user.username,
-            "switched": True,
-        })
+            "error": _("Эта роль не подключена к вашему аккаунту."),
+            "target_role": norm,
+            "action": "add_account_role",
+        }, status=403)
 
 
 # ── Projects API ────────────────────────────────────────────

@@ -26,7 +26,7 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ["id", "role", "content", "cards", "actions", "context_refs",
-                  "tokens_used", "created_at"]
+                  "contextual_actions", "suggestions", "tokens_used", "created_at"]
         read_only_fields = fields
 
 

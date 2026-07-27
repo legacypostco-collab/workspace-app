@@ -153,6 +153,8 @@
     .side-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;color:rgba(0,0,0,0.75);font-size:13px;cursor:pointer;}
     .side-item:hover{background:rgba(0,0,0,0.05);color:#1a1a1a;}
     .side-item.active{background:rgba(0,0,0,0.08);color:#1a1a1a;font-weight:600;}
+    .guest-side-action{width:100%;text-align:left;font:inherit;}
+    .guest-side-action svg{flex:0 0 auto;color:rgba(0,0,0,0.58);}
     .side-item-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
     .side-item-text{flex:1;min-width:0;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
     .side-item-meta{font-size:11px;color:rgba(0,0,0,0.65);flex-shrink:0;}
@@ -250,6 +252,7 @@
     body.dark-mode .side-item-stack-meta{color:rgba(255,255,255,0.7);}
     body.dark-mode .side-item,body.dark-mode .side-item-stack-title{color:#e8e8e8;}
     body.dark-mode .side-item:hover,body.dark-mode .side-item-stack:hover{background:rgba(255,255,255,0.05);}
+    body.dark-mode .guest-side-action svg{color:rgba(255,255,255,0.58);}
     body.dark-mode .side-item-stack.active{background:rgba(255,255,255,0.08);}
     body.dark-mode .side-search input,body.dark-mode .side-new-btn{background:rgba(255,255,255,0.06);color:#e8e8e8;border-color:rgba(255,255,255,0.08);}
     body.dark-mode .side-foot{border-top-color:rgba(255,255,255,0.08);}
@@ -316,6 +319,10 @@
     .top-home:hover{background:rgba(255,255,255,0.78);}
     body.dark-mode .top-home{background:rgba(255,255,255,0.06);color:#e8e8e8;}
     body.dark-mode .top-home:hover{background:rgba(255,255,255,0.1);}
+    .resume-conversation{display:inline-flex;align-items:center;gap:8px;margin:2px auto 18px;padding:9px 14px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:rgba(255,255,255,0.56);color:#1a1a1a;font-size:13px;font-weight:700;}
+    .resume-conversation:hover{background:rgba(255,255,255,0.82);}
+    .resume-conversation[hidden]{display:none;}
+    body.dark-mode .resume-conversation{border-color:rgba(255,255,255,0.14);background:rgba(255,255,255,0.07);color:#f3f3f3;}
 
     /* ── Notification bell ── */
     .top-bell{position:relative;width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;}
@@ -1460,7 +1467,7 @@
 
     /* Auth modal: login/registration without inserting forms into chat stream */
     body.auth-lock{overflow:hidden;}
-    .auth-modal{position:fixed;inset:0;z-index:30000;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,10,10,0.52);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+    .auth-modal{position:fixed;inset:0;z-index:30000;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:clamp(28px,8vh,76px) 24px 24px;background:rgba(10,10,10,0.52);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
     .auth-modal[hidden]{display:none;}
     .auth-dialog{width:min(560px,100%);max-height:min(760px,calc(100vh - 48px));display:flex;flex-direction:column;overflow:hidden;background:rgba(255,255,255,0.96);border:1px solid rgba(0,0,0,0.10);border-radius:24px;box-shadow:0 28px 90px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.80);}
     .auth-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding:22px 24px 14px;border-bottom:1px solid rgba(0,0,0,0.08);}
@@ -1484,6 +1491,8 @@
     .auth-submit{min-height:46px;margin-top:4px;border:none;border-radius:999px;background:#181818;color:#fff;padding:0 20px;font-weight:800;}
     .auth-submit:hover{background:#000;}
     .auth-submit:disabled{opacity:.58;cursor:progress;}
+    .auth-loading .auth-body button{pointer-events:none;}
+    .auth-request-error{margin:0 0 14px;padding:10px 12px;border:1px solid rgba(194,65,12,0.20);border-radius:10px;background:rgba(194,65,12,0.07);color:#a7350d;font-size:13px;line-height:1.4;font-weight:700;}
     .auth-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
     .auth-link-btn{min-height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);background:rgba(0,0,0,0.05);color:#181818;font-size:13px;font-weight:700;}
     .auth-link-btn:hover{background:rgba(0,0,0,0.10);}
@@ -1501,7 +1510,30 @@
     .auth-role-card:hover{background:rgba(232,74,33,0.08);border-color:rgba(232,74,33,0.35);transform:translateY(-1px);}
     .auth-role-title{display:block;margin-bottom:8px;font-size:17px;line-height:1.2;font-weight:800;}
     .auth-role-text{display:block;color:rgba(0,0,0,0.60);font-size:13px;line-height:1.42;}
-    @media(max-width:640px){.auth-modal{padding:10px;align-items:flex-end;}.auth-dialog{max-height:calc(100vh - 20px);border-radius:22px;}.auth-head{padding:18px 18px 12px;}.auth-body{padding:16px 18px 20px;}.auth-title{font-size:23px;}.auth-role-grid{grid-template-columns:1fr;}.auth-role-card{min-height:118px;}}
+    @media(max-width:640px){.auth-modal{padding:10px;align-items:flex-end;overflow:hidden;}.auth-dialog{max-height:calc(100vh - 20px);border-radius:22px;}.auth-head{padding:18px 18px 12px;}.auth-body{padding:16px 18px 20px;}.auth-title{font-size:23px;}.auth-role-grid{grid-template-columns:1fr;}.auth-role-card{min-height:118px;}}
+
+    /* Компактный список команд, привязанный к кнопке вызова */
+    .command-popover{position:fixed;z-index:29990;width:min(340px,calc(100vw - 24px));max-height:min(460px,calc(100vh - 24px));}
+    .command-popover[hidden]{display:none;}
+    .command-dialog{width:100%;max-height:inherit;display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(0,0,0,0.11);border-radius:8px;background:rgba(255,255,255,0.98);box-shadow:0 12px 32px rgba(0,0,0,0.18);}
+    .command-search-wrap{position:relative;padding:10px;border-bottom:1px solid rgba(0,0,0,0.07);}
+    .command-search-wrap svg{position:absolute;left:22px;top:50%;transform:translateY(-50%);color:rgba(0,0,0,0.42);pointer-events:none;}
+    .command-search{width:100%;height:38px;padding:0 11px 0 36px;border:1px solid rgba(0,0,0,0.10);border-radius:7px;background:rgba(0,0,0,0.035);color:#1a1a1a;font:inherit;font-size:13px;outline:none;}
+    .command-search:focus{border-color:rgba(232,74,33,0.42);background:#fff;box-shadow:0 0 0 3px rgba(232,74,33,0.08);}
+    .command-list{display:flex;flex-direction:column;gap:2px;overflow:auto;padding:6px;}
+    .command-item{width:100%;min-height:42px;display:flex;align-items:center;gap:10px;padding:7px 10px;text-align:left;border:0;border-radius:6px;background:transparent;color:inherit;font-size:13px;font-weight:650;}
+    .command-item:hover,.command-item:focus-visible{background:rgba(232,74,33,0.08);outline:none;}
+    .command-item-icon{width:25px;height:25px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 25px;border-radius:6px;background:rgba(0,0,0,0.05);font-size:15px;}
+    .command-empty{padding:20px 12px;text-align:center;color:rgba(0,0,0,0.54);font-size:13px;}
+    body.dark-mode .command-dialog{border-color:rgba(255,255,255,0.12);background:rgba(25,25,27,0.98);color:#f4f4f4;box-shadow:0 14px 36px rgba(0,0,0,0.46);}
+    body.dark-mode .command-search-wrap{border-color:rgba(255,255,255,0.08);}
+    body.dark-mode .command-search-wrap svg{color:rgba(255,255,255,0.44);}
+    body.dark-mode .command-search{border-color:rgba(255,255,255,0.10);background:rgba(255,255,255,0.05);color:#f4f4f4;}
+    body.dark-mode .command-search:focus{border-color:rgba(255,112,76,0.42);background:rgba(255,255,255,0.07);}
+    body.dark-mode .command-item-icon{background:rgba(255,255,255,0.08);}
+    body.dark-mode .command-item:hover,body.dark-mode .command-item:focus-visible{background:rgba(232,74,33,0.14);}
+    body.dark-mode .command-empty{color:rgba(255,255,255,0.54);}
+    @media(max-width:640px){.command-popover{width:calc(100vw - 24px);max-height:min(420px,calc(100vh - 24px));}}
 
     /* ── Order timeline (shipment-чат: прогресс сделки) ── */
     .tl-card{padding:16px 18px;}
@@ -3784,6 +3816,7 @@
     body.dark-mode .auth-input:focus,body.dark-mode .auth-select:focus,body.dark-mode .auth-textarea:focus{background:rgba(255,255,255,0.12);border-color:rgba(255,107,61,0.60);}
     body.dark-mode .auth-submit{background:#fff;color:#181818;}
     body.dark-mode .auth-submit:hover{background:#f3f3f3;}
+    body.dark-mode .auth-request-error{border-color:rgba(255,112,76,0.26);background:rgba(232,74,33,0.14);color:#ffae98;}
     body.dark-mode #dndOverlay .dnd-box{background:#1f1f1f;border-color:rgba(255,255,255,0.30);color:#f0f0f0;}
     body.dark-mode .working{background:rgba(255,255,255,0.06);}
     body.dark-mode .sq-chip{background:rgba(255,255,255,0.08);color:#f0f0f0;border-color:rgba(255,255,255,0.16);}
@@ -4041,7 +4074,7 @@
 <script>
   // Mirror to body once parsed
   if (document.documentElement.classList.contains('dark-mode-pre')) document.body.classList.add('dark-mode');
-  // Auth flag для chat-first.js (anon → "Продавец" tab открывает регистрацию)
+  // Auth flag для chat-first.js: гостю доступны только публичные действия.
   window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
 </script>
 <div class="app">
@@ -4049,26 +4082,24 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
-      <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
-        {% if user.is_authenticated %}
+      {% if user.is_authenticated %}
+        <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
           {% for tab in auth_role_tabs %}
             <button type="button" class="role-tab{% if tab.role == auth_base_role %} active{% endif %}" data-role="{{ tab.role }}" role="tab">{{ tab.label }}</button>
           {% endfor %}
           <button type="button" class="role-tab role-tab-add" data-add-role="1" aria-label="{% trans 'Добавить роль' %}" title="{% trans 'Добавить роль' %}">+</button>
-        {% else %}
-          <button type="button" class="role-tab{% if auth_base_role == 'buyer' %} active{% endif %}" data-role="buyer"    role="tab">{% trans "Покупатель" %}</button>
-          <button type="button" class="role-tab{% if auth_base_role == 'seller' %} active{% endif %}" data-role="seller"   role="tab">{% trans "Продавец" %}</button>
-          <button type="button" class="role-tab{% if auth_base_role == 'operator' %} active{% endif %}" data-role="operator" role="tab">{% trans "Оператор" %}</button>
-        {% endif %}
-      </div>
+        </div>
+      {% endif %}
       <button class="side-new-btn" onclick="newChat()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
         {% trans "Новый чат" %}
       </button>
-      <div class="side-search">
+      {% if user.is_authenticated %}
+        <div class="side-search">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" id="convSearch" placeholder="{% trans 'Поиск чатов и проектов' %}" oninput="filterConvs(this.value)">
-      </div>
+        </div>
+      {% endif %}
 
       {# История действий — sidebar pill, ведёт в action recent_activity. #}
       {% if user.is_authenticated %}
@@ -4079,7 +4110,8 @@
       </button>
       {% endif %}
 
-      <div class="side-list">
+      {% if user.is_authenticated %}
+        <div class="side-list">
         <!-- Projects -->
         <div class="side-section" id="sideProjects">
           <div class="side-section-head">
@@ -4103,14 +4135,43 @@
             <div class="side-state">{% trans "Загрузка..." %}</div>
           </div>
         </div>
-      </div>
+        </div>
+      {% else %}
+        <div class="side-list side-list-guest">
+          <div class="side-section">
+            <div class="side-section-head">
+              <span class="side-section-title">{% trans "Действия" %}</span>
+            </div>
+            <button class="side-item guest-side-action" type="button"
+                    data-action="search_parts" data-params="{}" data-label="{% trans 'Найти запчасть' %}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <span class="side-item-text">{% trans "Найти запчасть" %}</span>
+            </button>
+            <button class="side-item guest-side-action" type="button"
+                    data-action="compare_suppliers" data-params="{}" data-label="{% trans 'Сравнить поставщиков' %}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 21h18"/><path d="M6 21V8l6-5 6 5v13"/><path d="M9 21v-6h6v6"/></svg>
+              <span class="side-item-text">{% trans "Сравнить поставщиков" %}</span>
+            </button>
+            <button class="side-item guest-side-action" type="button"
+                    data-action="kb_search" data-params="{}" data-label="{% trans 'База знаний' %}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4v15.5"/><path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 0 4 19.5"/></svg>
+              <span class="side-item-text">{% trans "База знаний" %}</span>
+            </button>
+            <button class="side-item guest-side-action" type="button"
+                    data-action="create_rfq" data-params="{}" data-label="{% trans 'Создать заявку' %}">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15h6"/><path d="M12 12v6"/></svg>
+              <span class="side-item-text">{% trans "Создать заявку" %}</span>
+            </button>
+          </div>
+        </div>
+      {% endif %}
 
       <div class="side-foot">
-        <div class="side-avatar" id="sideAvatar">{{ auth_user_initial|default:"M" }}</div>
+        <div class="side-avatar" id="sideAvatar">{% if user.is_authenticated %}{{ auth_user_initial|default:"M" }}{% else %}<img src="{% static 'brand/logo-icon-white.svg' %}" alt="" width="18" height="18">{% endif %}</div>
         <div class="side-user">
           {% trans "Пользователь" as default_user_name %}
-          <div class="side-user-name" id="sideUserName">{{ auth_user_name|default:default_user_name }}</div>
-          <div class="side-user-role" id="sideUserRole">{{ auth_user_role_label|default:"—" }}</div>
+          <div class="side-user-name" id="sideUserName">{% if user.is_authenticated %}{{ auth_user_name|default:default_user_name }}{% else %}{% trans "Гость" %}{% endif %}</div>
+          <div class="side-user-role" id="sideUserRole">{% if user.is_authenticated %}{{ auth_user_role_label|default:"—" }}{% else %}{% trans "Публичный просмотр" %}{% endif %}</div>
         </div>
         <button class="side-settings" onclick="toggleSettingsPanel()" title="{% trans 'Настройки' %}" aria-label="{% trans 'Настройки' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008.51 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8.51a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V2a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H22a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
@@ -4124,10 +4185,12 @@
           <button class="settings-close" onclick="toggleSettingsPanel(false)"
                   aria-label="{% trans 'Закрыть' %}" data-i18n-aria-label="settings.close">×</button>
         </div>
-        <label class="settings-row">
+        {% if user.is_authenticated %}
+          <label class="settings-row">
           <span>🔔 <span data-i18n="settings.notifications">{% trans "Звук уведомлений" %}</span></span>
           <input type="checkbox" id="settingNotifSound" onchange="onSettingChange('sound', this.checked)">
-        </label>
+          </label>
+        {% endif %}
         <label class="settings-row">
           <span>🌙 <span data-i18n="topbar.theme_dark">{% trans "Тёмная тема" %}</span></span>
           <input type="checkbox" id="settingDarkMode" onchange="onSettingChange('dark', this.checked)">
@@ -4141,6 +4204,13 @@
             <option value="ar">العربية</option>
           </select>
         </div>
+        {# ── Account block ── #}
+        <div class="settings-sep"></div>
+        <a class="settings-row" href="/" style="text-decoration:none;color:inherit;">
+          <span>🌐 <span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
+          <span class="settings-row-meta">consolidator.parts</span>
+        </a>
+        {% if user.is_authenticated %}
         {# ── Команда компании (руководитель приглашает сотрудников) ── #}
         <button type="button" class="settings-row"
                 onclick="toggleSettingsPanel(false); window.quickAction && window.quickAction('seller_team', {});"
@@ -4148,12 +4218,6 @@
           <span>👥 <span data-i18n="settings.team">{% trans "Команда компании" %}</span></span>
           <span style="opacity:0.5;font-size:11px;">→</span>
         </button>
-        {# ── Account block ── #}
-        <div class="settings-sep"></div>
-        <a class="settings-row" href="/" style="text-decoration:none;color:inherit;">
-          <span>🌐 <span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
-          <span class="settings-row-meta">consolidator.parts</span>
-        </a>
         {# ── Пригласить (реферал/бонус для всех ролей) — на месте бывшего «Скачать данные» ── #}
         <button type="button" class="settings-row"
                 onclick="toggleSettingsPanel(false); window.quickAction && window.quickAction('invite_customer', {});"
@@ -4189,6 +4253,7 @@
             <span class="settings-row-meta">{{ user.username }}</span>
           </button>
         </form>
+        {% endif %}
       </div>
     </div>
   </aside>
@@ -4245,11 +4310,17 @@
         Consolidator Parts
       </a>
       <div class="top-right">
-        <!-- 🏠 Home — возврат к welcome stage чата (не путать с /). -->
+        <!-- Рабочий стол чата: не закрывает и не очищает текущий диалог. -->
         <button class="top-home" id="topHome" onclick="goHome()"
-                title="{% trans 'Главный экран чата' %}"
-                aria-label="{% trans 'Главный экран чата' %}">
+                title="{% trans 'Рабочий стол' %}"
+                aria-label="{% trans 'Рабочий стол' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2z"/></svg>
+        </button>
+        <button class="top-home" id="topCommands" type="button"
+                onclick="openCommandPalette(this)"
+                aria-haspopup="dialog" aria-expanded="false"
+                title="{% trans 'Команды' %}" aria-label="{% trans 'Команды' %}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         </button>
         {# «Классический режим» (старые кабинеты) убран — единственный UI = /chat/ #}
         <!-- Theme toggle (light/dark) -->
@@ -4276,6 +4347,7 @@
                   style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-weight:700;color:#fff;background:#1a1a1a;border:none;border-radius:8px;">{% trans "Регистрация" %}</button>
         {% endif %}
       </div>
+      {% if user.is_authenticated %}
       <!-- Notification dropdown panel -->
       <div class="notif-panel" id="notifPanel" hidden>
         <div class="notif-head">
@@ -4286,6 +4358,7 @@
           <div class="notif-empty">{% trans "Загрузка…" %}</div>
         </div>
       </div>
+      {% endif %}
     </div>
 
     <!-- Welcome state -->
@@ -4298,10 +4371,15 @@
         <h1 id="welcomeTitle" data-i18n="{{ auth_welcome_title_key }}">{{ auth_welcome_title }}</h1>
         <p id="welcomeSubtitle">{{ auth_welcome_subtitle|safe }}</p>
         {% else %}
-        <h1 id="welcomeTitle" data-i18n="welcome.h1">{% trans "Какую запчасть найти?" %}</h1>
-        <p id="welcomeSubtitle" data-i18n="welcome.p">{% trans "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от" %} <strong>{% trans "200+ поставщиков" %}</strong>.</p>
+        <h1 id="welcomeTitle" data-i18n="welcome.guest.title">{% trans "Какую запчасть найти?" %}</h1>
+        <p id="welcomeSubtitle" data-i18n="welcome.guest.subtitle">{% trans "Введите артикул, название или загрузите спецификацию. Поиск и сравнение доступны без регистрации; аккаунт понадобится для сохранения заявки и оформления заказа." %}</p>
         {% endif %}
       </div>
+      <button class="resume-conversation" id="resumeConversation" type="button" hidden
+              onclick="resumeActiveConversation()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        {% trans "Вернуться к диалогу" %}
+      </button>
 
       <div class="hero-input" id="heroInputCard">
         <div class="hero-textwrap">
@@ -4311,9 +4389,11 @@
           <button class="tool" title="{% trans 'Прикрепить файл (Excel, PDF)' %}" onclick="document.getElementById('fileInput').click()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
           </button>
+          {% if user.is_authenticated %}
           <button class="tool" title="{% trans 'Фото детали' %}" onclick="document.getElementById('photoInput').click()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           </button>
+          {% endif %}
           <button class="tool" title="{% trans 'Поиск' %}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </button>
@@ -4326,15 +4406,16 @@
 
       <div class="drop-hint">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        <span>{% trans "перетащите" %} <code>.xlsx</code>, <code>.pdf</code> {% trans "или фото прямо сюда" %}</span>
+        <span>{% trans "перетащите" %} <code>.xlsx</code>, <code>.pdf</code>{% if user.is_authenticated %} {% trans "или фото прямо сюда" %}{% endif %}</span>
       </div>
 
       <div class="pills{% if not auth_pills %} wp-guest{% endif %}" id="welcomePills">
         {% if auth_pills %}{# Залогиненный: пилюли его роли серверно (совпадают с ROLE_WELCOME в JS) — нет «пустой» главной до JS. #}
         {% for p in auth_pills %}<button class="pill" type="button" onclick='quickAction("{{ p.action }}", {{ p.params|safe }})'><span class="pill-del" aria-label="{% trans 'Убрать' %}" title="{% trans 'Убрать' %}">×</span><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>{% endfor %}<button class="pill-add" type="button" aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль' %}" onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>
         {% else %}{# Аноним: статичный fallback (в т.ч. для no-JS). #}
-        <button class="pill" onclick="quickAction('get_orders', {})" title="{% trans 'Купил — едет' %}">📦 {% trans "Мои заказы" %} <span class="pill-sub">{% trans "купил, едет" %}</span></button>
-        <button class="pill" onclick="quickAction('get_rfq_status', {})" title="{% trans 'Жду котировок от поставщиков' %}">📋 {% trans "Открытые RFQ" %} <span class="pill-sub">{% trans "жду котировок" %}</span></button>
+        <button class="pill" onclick="quickAction('search_parts', {})">🔍 {% trans "Найти запчасть" %}</button>
+        <button class="pill" onclick="quickAction('compare_suppliers', {})">🏭 {% trans "Сравнить поставщиков" %}</button>
+        <button class="pill" onclick="quickAction('kb_search', {})">📚 {% trans "База знаний" %}</button>
         {% endif %}
       </div>
     </div>
@@ -4346,19 +4427,31 @@
       </div>
       <div class="input-dock">
         <div class="input-dock-inner">
-          <div class="input-bar">
-            <textarea id="input" rows="1" placeholder="{% trans 'Напишите сообщение...' %}" onkeydown="onKey(event, false)"></textarea>
-            <div class="input-bar-tools">
-              <button class="tool" title="{% trans 'Прикрепить' %}" onclick="document.getElementById('fileInput').click()">
+  <div class="input-bar">
+    <textarea id="input" rows="1" placeholder="{% trans 'Напишите сообщение...' %}" onkeydown="onKey(event, false)"></textarea>
+    <div class="input-bar-tools">
+      <button class="tool" id="inputCommands" type="button" title="{% trans 'Команды' %}" aria-label="{% trans 'Команды' %}" aria-haspopup="dialog" aria-expanded="false" onclick="openCommandPalette(this)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+          <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+        </svg>
+      </button>
+      <button class="tool" title="{% trans 'Прикрепить' %}" onclick="document.getElementById('fileInput').click()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
               </button>
+              {% if user.is_authenticated %}
               <button class="tool" title="{% trans 'Фото' %}" onclick="document.getElementById('photoInput').click()">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
               </button>
+              {% endif %}
               <div class="tool-spacer"></div>
+              {% if user.is_authenticated %}
               <button class="tool" onclick="toggleVoice()" title="{% trans 'Голос' %}">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg>
               </button>
+              {% endif %}
               <button class="hero-mic send" id="sendBtn" onclick="send(false)" title="{% trans 'Отправить' %}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
               </button>
@@ -4405,6 +4498,20 @@
 
 <script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
+<script id="role-commands-data" type="application/json">{{ role_commands_json|safe }}</script>
+<script>try{window.__roleCommands=JSON.parse(document.getElementById('role-commands-data').textContent)||{};}catch(e){window.__roleCommands={};}</script>
+
+<div class="command-popover" id="commandPalette" hidden role="dialog" aria-label="{% trans 'Команды' %}">
+  <div class="command-dialog">
+    <div class="command-search-wrap">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input class="command-search" id="commandPaletteSearch" type="search"
+             autocomplete="off" placeholder="{% trans 'Найти команду' %}"
+             aria-label="{% trans 'Найти команду' %}">
+    </div>
+    <div class="command-list" id="commandPaletteList"></div>
+  </div>
+</div>
 
 <div class="auth-modal" id="authModal" hidden role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
   <div class="auth-dialog">

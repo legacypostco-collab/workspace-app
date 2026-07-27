@@ -142,6 +142,9 @@
       'toast.language_changed': 'Язык обновлён',
 
       // Welcome screen by role
+      'guest.mode':              'Публичный просмотр',
+      'welcome.guest.title':     'Найдите запчасть или сравните предложения',
+      'welcome.guest.subtitle':  'Введите артикул, название или загрузите спецификацию. Поиск и сравнение доступны без регистрации; аккаунт понадобится для сохранения заявки и оформления заказа.',
       'welcome.buyer.title':    'Какую запчасть найти?',
       'welcome.buyer.subtitle': 'Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.',
       'welcome.seller.title':   'Что в работе сегодня?',
@@ -160,6 +163,9 @@
       'welcome.admin.subtitle': 'GMV, пользователи, модерация — управление всей площадкой.',
 
       // Quick-action pills (без эмодзи — эмодзи добавляется в JS)
+      'pill.find_part':       'Найти запчасть',
+      'pill.compare_suppliers':'Сравнить поставщиков',
+      'pill.knowledge':       'База знаний',
       'pill.my_orders':       'Мои сделки',
       'pill.open_rfq':        'Открытые RFQ',
       'pill.deposit':         'Депозит',
@@ -398,6 +404,9 @@
       'toast.sent': 'Sent',
       'toast.language_changed': 'Language updated',
 
+      'guest.mode':              'Public preview',
+      'welcome.guest.title':     'Find a part or compare offers',
+      'welcome.guest.subtitle':  'Enter a part number or name, or upload a specification. Search and comparison are available without registration; an account is required to save a request and place an order.',
       'welcome.buyer.title':    'Which part do you need?',
       'welcome.buyer.subtitle': 'Upload an Excel spec, drag a photo or describe in words — I’ll gather offers from <strong>200+ suppliers</strong>.',
       'welcome.seller.title':   'What’s on the agenda today?',
@@ -415,6 +424,9 @@
       'welcome.admin.title':    'Platform',
       'welcome.admin.subtitle': 'GMV, users, moderation — full marketplace control.',
 
+      'pill.find_part':       'Find a part',
+      'pill.compare_suppliers':'Compare suppliers',
+      'pill.knowledge':       'Knowledge base',
       'pill.my_orders':       'My deals',
       'pill.open_rfq':        'Open RFQs',
       'pill.deposit':         'Deposit',
@@ -660,6 +672,9 @@
       'toast.sent': '已发送',
       'toast.language_changed': '语言已更新',
 
+      'guest.mode':              '公开预览',
+      'welcome.guest.title':     '查找零件或比较报价',
+      'welcome.guest.subtitle':  '输入零件号或名称，或上传规格文件。无需注册即可搜索和比较；保存询价和下单时需要账户。',
       'welcome.buyer.title':    '需要哪个零件？',
       'welcome.buyer.subtitle': '上传 Excel 规格、拖入照片或文字描述 — 我会汇总来自 <strong>200+ 家供应商</strong> 的报价。',
       'welcome.seller.title':   '今天有什么任务？',
@@ -677,6 +692,9 @@
       'welcome.admin.title':    '平台',
       'welcome.admin.subtitle': 'GMV、用户、审核 — 整体市场管理。',
 
+      'pill.find_part':       '查找零件',
+      'pill.compare_suppliers':'比较供应商',
+      'pill.knowledge':       '知识库',
       'pill.my_orders':       '我的交易',
       'pill.open_rfq':        '未结询价',
       'pill.deposit':         '押金',
@@ -915,6 +933,9 @@
       'toast.sent': 'تم الإرسال',
       'toast.language_changed': 'تم تحديث اللغة',
 
+      'guest.mode':              'معاينة عامة',
+      'welcome.guest.title':     'ابحث عن قطعة أو قارن العروض',
+      'welcome.guest.subtitle':  'أدخل رقم القطعة أو اسمها، أو ارفع ملف المواصفات. البحث والمقارنة متاحان دون تسجيل؛ يلزم حساب لحفظ الطلب وإتمام الشراء.',
       'welcome.buyer.title':    'ما القطعة التي تبحث عنها؟',
       'welcome.buyer.subtitle': 'ارفع مواصفات Excel، أو اسحب صورة قطعة، أو صف بالكلمات — سأجمع عروضاً من <strong>200+ مورّد</strong>.',
       'welcome.seller.title':   'ما المهام لليوم؟',
@@ -932,6 +953,9 @@
       'welcome.admin.title':    'المنصّة',
       'welcome.admin.subtitle': 'GMV، المستخدمون، الإشراف — التحكم الكامل بالمنصّة.',
 
+      'pill.find_part':       'البحث عن قطعة',
+      'pill.compare_suppliers':'مقارنة الموردين',
+      'pill.knowledge':       'قاعدة المعرفة',
       'pill.my_orders':       'صفقاتي',
       'pill.open_rfq':        'استفسارات مفتوحة',
       'pill.deposit':         'وديعة',
@@ -1170,6 +1194,9 @@
       'toast.sent': 'Enviado',
       'toast.language_changed': 'Idioma actualizado',
 
+      'guest.mode':              'Vista pública',
+      'welcome.guest.title':     'Busca una pieza o compara ofertas',
+      'welcome.guest.subtitle':  'Introduce el número o nombre de la pieza, o sube una especificación. La búsqueda y comparación están disponibles sin registro; necesitarás una cuenta para guardar la solicitud y realizar el pedido.',
       'welcome.buyer.title':    '¿Qué pieza buscas?',
       'welcome.buyer.subtitle': 'Sube una especificación en Excel, arrastra una foto o descríbelo — buscaré ofertas de <strong>200+ proveedores</strong>.',
       'welcome.seller.title':   '¿Qué hay para hoy?',
@@ -1187,6 +1214,9 @@
       'welcome.admin.title':    'Plataforma',
       'welcome.admin.subtitle': 'GMV, usuarios, moderación — control completo del marketplace.',
 
+      'pill.find_part':       'Buscar una pieza',
+      'pill.compare_suppliers':'Comparar proveedores',
+      'pill.knowledge':       'Base de conocimiento',
       'pill.my_orders':       'Mis operaciones',
       'pill.open_rfq':        'RFQ abiertas',
       'pill.deposit':         'Depósito',

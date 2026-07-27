@@ -207,7 +207,7 @@ def title_for_action(action_name: str, action_label: str | None = None) -> str:
 def find_or_create_conv(user, *, action_name: str, role: str, action_label: str | None = None):
     """Найти долгий conv пользователя по категории action'а или создать.
 
-    Инвариант: per (user, category) держим РОВНО ОДИН активный conv. Если
+    Инвариант: per (user, role, category) держим РОВНО ОДИН активный conv. Если
     у пользователя уже накопились дубликаты (например, до того как
     группировка по категории была включена) — оставляем самый свежий, а
     остальные той же категории архивируем (is_active=False), чтобы они
@@ -219,7 +219,12 @@ def find_or_create_conv(user, *, action_name: str, role: str, action_label: str 
     from .models import Conversation
     cat = category_for_action(action_name)
     qs = (
-        Conversation.objects.filter(user=user, category=cat, is_active=True)
+        Conversation.objects.filter(
+            user=user,
+            role=role,
+            category=cat,
+            is_active=True,
+        )
         .order_by("-updated_at")
     )
     matches = list(qs[:20])

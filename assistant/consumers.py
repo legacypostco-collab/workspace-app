@@ -97,6 +97,7 @@ class AssistantConsumer(AsyncWebsocketConsumer):
             await self.close(code=4401)
             return
 
+        self.active_role = await self._get_active_role()
         conv_id = self.scope["url_route"]["kwargs"].get("conversation_id")
         self.conversation = await self._get_existing_conversation(conv_id) if conv_id else None
 
@@ -200,15 +201,26 @@ class AssistantConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps(payload))
 
     @database_sync_to_async
+    def _get_active_role(self):
+        session = self.scope.get("session")
+        override = session.get("assistant_role_override") if session else None
+        return detect_user_role(self.user, override=override)
+
+    @database_sync_to_async
     def _get_existing_conversation(self, conv_id):
         try:
-            return Conversation.objects.get(id=conv_id, user=self.user, is_active=True)
+            return Conversation.objects.get(
+                id=conv_id,
+                user=self.user,
+                role=self.active_role,
+                is_active=True,
+            )
         except Conversation.DoesNotExist:
             return None
 
     @database_sync_to_async
     def _create_conversation(self):
-        return Conversation.objects.create(user=self.user, role=detect_user_role(self.user))
+        return Conversation.objects.create(user=self.user, role=self.active_role)
 
     async def _stream_response(self, message):
         """Wrap sync generator process_query_stream into async."""

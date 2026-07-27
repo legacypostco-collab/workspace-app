@@ -106,6 +106,8 @@ class Message(models.Model):
         help_text='Buttons: [{"label":"...","action":"...","params":{...}}]',
     )
     context_refs = models.JSONField(default=list, blank=True)
+    contextual_actions = models.JSONField(default=list, blank=True)
+    suggestions = models.JSONField(default=list, blank=True)
     tokens_used = models.IntegerField(default=0)
     created_at = models.DateTimeField(default=timezone.now)
 
