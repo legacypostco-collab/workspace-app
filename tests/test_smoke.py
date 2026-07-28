@@ -17,7 +17,7 @@ def user(db):
 
 @pytest.fixture
 def authed_client(client, user):
-    client.login(username="testuser", password="test12345")
+    client.force_login(user)
     return client
 
 

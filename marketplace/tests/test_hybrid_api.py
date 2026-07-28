@@ -19,7 +19,7 @@ class HybridApiTests(TestCase):
 
     def test_hybrid_analytics_authenticated(self):
         user = User.objects.create_user(username="buyer1", password="pass123")
-        self.client.login(username="buyer1", password="pass123")
+        self.client.force_login(user)
         response = self.client.get("/api/v1/analytics/hybrid/?days=7")
         self.assertEqual(response.status_code, 200)
         body = response.json()
@@ -29,7 +29,7 @@ class HybridApiTests(TestCase):
 
     def test_hybrid_funnel_authenticated(self):
         user = User.objects.create_user(username="buyer2", password="pass123")
-        self.client.login(username="buyer2", password="pass123")
+        self.client.force_login(user)
         response = self.client.get("/api/v1/analytics/funnel/?days=14")
         self.assertEqual(response.status_code, 200)
         body = response.json()

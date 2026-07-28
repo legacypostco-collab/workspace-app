@@ -457,7 +457,7 @@ def apply_settlement(params, user, role):
     # `status != approved` и дважды зовут refund_to_buyer → двойной возврат.
     from django.db import transaction as _txn
     with _txn.atomic():
-        claim = (OrderClaim.objects.select_for_update()
+        claim = (OrderClaim.objects.select_for_update(of=("self",))
                  .select_related("order", "order__buyer").get(id=claim.id))
         if claim.status != "approved":
             return ActionResult(text=_("Уже обработано — статус %(status)s.")

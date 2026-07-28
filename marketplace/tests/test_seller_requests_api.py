@@ -13,7 +13,7 @@ class SellerRequestsApiTests(TestCase):
             company_name="Requests API Supplier",
             can_manage_orders=True,
         )
-        self.client.login(username="seller_requests_api", password="pass12345")
+        self.client.force_login(self.seller)
         self.category = Category.objects.create(name="Requests API Category", slug="requests-api-category")
         self.part = Part.objects.create(
             seller=self.seller,

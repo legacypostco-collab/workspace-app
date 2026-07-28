@@ -4,8 +4,9 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from marketplace.models import RFQ, UserProfile, UserRole
+from marketplace.models import CompanyVerification, RFQ, UserProfile, UserRole
 
+from .actions import _REGISTRY, can_execute
 from .commands import commands_for_role
 from .models import Conversation, Message
 from .serializers import MessageSerializer
@@ -64,6 +65,24 @@ class ConversationNavigationTests(TestCase):
 
 
 class ChatCommandTests(TestCase):
+    def test_every_menu_command_is_registered_and_allowed_for_its_role(self):
+        roles = (
+            "buyer",
+            "seller",
+            "operator",
+            "operator_manager",
+            "operator_logist",
+            "operator_customs",
+            "operator_payment",
+            "admin",
+        )
+
+        for role in roles:
+            for command in commands_for_role(role):
+                with self.subTest(role=role, action=command["action"]):
+                    self.assertIn(command["action"], _REGISTRY)
+                    self.assertTrue(can_execute(command["action"], role))
+
     def test_buyer_has_direct_rfq_command(self):
         commands = commands_for_role("buyer")
         actions = [item["action"] for item in commands]
@@ -113,6 +132,55 @@ class ChatCommandTests(TestCase):
         actions = [item["action"] for item in response.data["commands"]]
         self.assertIn("admin_dashboard", actions)
         self.assertNotIn("op_dashboard", actions)
+
+    def test_admin_can_return_after_switching_to_business_role(self):
+        admin = get_user_model().objects.create_user(
+            "role_admin",
+            password="x",
+            is_staff=True,
+        )
+        client = APIClient()
+        client.force_login(admin)
+
+        switched = client.post(
+            "/api/assistant/role/",
+            {"role": "buyer"},
+            format="json",
+        )
+        self.assertEqual(switched.status_code, 200)
+        self.assertEqual(switched.data["role"], "buyer")
+
+        restored = client.post(
+            "/api/assistant/role/",
+            {"role": "admin"},
+            format="json",
+        )
+        self.assertEqual(restored.status_code, 200)
+        self.assertEqual(restored.data["role"], "admin")
+        self.assertIsNone(restored.data["override"])
+
+        config = client.get("/api/assistant/widget-config/")
+        self.assertEqual(config.data["role"], "admin")
+        self.assertEqual(
+            [tab["role"] for tab in config.data["roles"]],
+            ["admin", "buyer", "seller", "operator"],
+        )
+
+    def test_non_staff_cannot_switch_to_admin_role(self):
+        buyer = get_user_model().objects.create_user(
+            "role_buyer",
+            password="x",
+        )
+        client = APIClient()
+        client.force_login(buyer)
+
+        response = client.post(
+            "/api/assistant/role/",
+            {"role": "admin"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     def test_guest_cannot_create_persistent_conversation(self):
         response = APIClient().post("/api/assistant/conversations/", {}, format="json")
@@ -348,3 +416,91 @@ class ChatAuthFlowTests(TestCase):
             self.client.session.get("_auth_user_id"),
             str(self.user.pk),
         )
+
+
+class RoleExtensionTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.buyer = user_model.objects.create_user("extend_buyer", password="x")
+        self.seller = user_model.objects.create_user("extend_seller", password="x")
+        self.operator = user_model.objects.create_user("extend_operator", password="x")
+        UserProfile.objects.create(user=self.buyer, role="buyer")
+        UserProfile.objects.create(user=self.seller, role="seller")
+        UserProfile.objects.create(user=self.operator, role="operator")
+
+    def test_buyer_seller_application_stays_disabled_until_review(self):
+        client = APIClient()
+        client.force_authenticate(self.buyer)
+
+        response = client.post(
+            "/api/assistant/action/",
+            {
+                "action": "add_account_role",
+                "params": {
+                    "confirmed": True,
+                    "role": "seller",
+                    "legal_name": "Test Supplier",
+                    "inn": "1234567890",
+                    "contact_name": "Test Contact",
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        role = UserRole.objects.get(user=self.buyer, role="seller")
+        self.assertFalse(role.is_enabled)
+        verification = CompanyVerification.objects.get(user=self.buyer)
+        self.assertEqual(verification.status, "pending")
+        config = client.get("/api/assistant/widget-config/")
+        self.assertEqual(
+            [tab["role"] for tab in config.data["roles"]],
+            ["buyer"],
+        )
+
+    def test_seller_can_add_buyer_role_immediately(self):
+        client = APIClient()
+        client.force_authenticate(self.seller)
+
+        response = client.post(
+            "/api/assistant/action/",
+            {
+                "action": "add_account_role",
+                "params": {
+                    "confirmed": True,
+                    "role": "buyer",
+                    "company_name": "Test Buyer",
+                    "contact_name": "Test Contact",
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        role = UserRole.objects.get(user=self.seller, role="buyer")
+        self.assertTrue(role.is_enabled)
+        config = client.get("/api/assistant/widget-config/")
+        self.assertEqual(config.data["role"], "buyer")
+        self.assertEqual(
+            {tab["role"] for tab in config.data["roles"]},
+            {"buyer", "seller"},
+        )
+
+    def test_operator_role_cannot_be_self_assigned(self):
+        client = APIClient()
+        client.force_authenticate(self.buyer)
+
+        response = client.post(
+            "/api/assistant/action/",
+            {
+                "action": "add_account_role",
+                "params": {"role": "operator"},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            UserRole.objects.filter(user=self.buyer, role="operator").exists()
+        )
+        self.assertIn("администратор", response.data["text"].lower())

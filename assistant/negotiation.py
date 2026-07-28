@@ -1242,7 +1242,7 @@ def accept_quote(params, user, role):
     reserve_pct = Decimal("10.00")
     reserve_amount = (q.total_amount * reserve_pct / Decimal("100")).quantize(Decimal("0.01"))
     with _txn.atomic():
-        q = (Quote.objects.select_for_update()
+        q = (Quote.objects.select_for_update(of=("self",))
              .select_related("rfq", "seller").get(id=q.id))
         if q.status not in ("submitted", "finalized"):
             return ActionResult(

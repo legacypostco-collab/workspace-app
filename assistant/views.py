@@ -525,7 +525,7 @@ def _handle_switch_role_login(request, params):
     (кроме операторских — операторов заводит только админ).
     """
     role = (params.get("role") or "").lower()
-    if role not in {"buyer", "seller", "operator"}:
+    if role not in {"buyer", "seller", "operator", "admin"}:
         return {"text": _("Неизвестная роль: %(r)s") % {"r": role},
                 "cards": [], "actions": [], "suggestions": [], "contextual_actions": []}
 
@@ -558,6 +558,7 @@ def _handle_switch_role_login(request, params):
         "buyer":    (_("Войти как покупатель"), _("Введите логин и пароль аккаунта покупателя.")),
         "seller":   (_("Войти как поставщик"),  _("Введите логин и пароль аккаунта поставщика.")),
         "operator": (_("Войти как оператор"),   _("Введите логин и пароль операторского аккаунта.")),
+        "admin":    (_("Вход администратора"),   _("Введите логин и пароль административного аккаунта.")),
     }
     title, greeting = ROLE_META[role]
     confirmed = bool(params.get("confirmed"))
@@ -1320,7 +1321,7 @@ class WidgetConfigView(APIView):
 
 
 class RoleSwitchView(APIView):
-    """POST /api/assistant/role/  body: {"role": "buyer"|"seller"|"operator"}
+    """POST /api/assistant/role/  body: {"role": "buyer"|"seller"|"operator"|"admin"}
 
     Переключает только роли, уже выданные текущему пользователю. Новая роль
     оформляется отдельным потоком `add_account_role`; чужой аккаунт и его
@@ -1339,7 +1340,7 @@ class RoleSwitchView(APIView):
 
         raw = request.data.get("role")
         norm = _normalize_override(raw)
-        if not norm or norm not in {"buyer", "seller", "operator"}:
+        if not norm or norm not in {"buyer", "seller", "operator", "admin"}:
             return Response({"error": f"unsupported role '{raw}'"}, status=400)
 
         current_role = detect_user_role(request.user, request=request)
@@ -2014,6 +2015,21 @@ class DrawingFileView(APIView):
             return Response({"ok": False, "error": reason}, status=403)
 
         record_access(request.user, drawing, action, request=request)
+        # Старые записи могут ссылаться на внешний защищённый файловый
+        # сервис. После проверки прав возвращаем совместимую ссылку с
+        # персональным водяным знаком; локальные /media/ ниже по-прежнему
+        # отдаются только через контролируемый FileResponse.
+        file_url = (drawing.file_url or "").strip()
+        if file_url.startswith(("http://", "https://")) and "/media/" not in file_url:
+            watermarked_url = apply_watermark_url(file_url, request.user, drawing)
+            record_access(
+                request.user,
+                drawing,
+                "watermark_added",
+                request=request,
+            )
+            return Response({"ok": True, "file_url": watermarked_url})
+
         # Стримим САМ файл (после проверки доступа выше), а не JSON со ссылкой
         # на /media/: иначе приватный чертёж открыт всем по прямой ссылке.
         # Работает одинаково на runserver (локально) и на проде.
@@ -2023,7 +2039,7 @@ class DrawingFileView(APIView):
         from django.http import FileResponse
         # file_url хранится URL-кодированным (кириллица → %D0..); на диске путь
         # декодирован — раскодируем, иначе default_storage.exists() = False.
-        rel = urllib.parse.unquote((drawing.file_url or "").split("/media/", 1)[-1].lstrip("/"))
+        rel = urllib.parse.unquote(file_url.split("/media/", 1)[-1].lstrip("/"))
         if not rel or not default_storage.exists(rel):
             return Response({"ok": False, "error": "файл чертежа не найден"}, status=404)
         fname = drawing.file_name or rel.rsplit("/", 1)[-1]

@@ -67,7 +67,7 @@ class SupplierDashboardApiTests(TestCase):
             can_manage_orders=True,
             can_view_analytics=False,
         )
-        self.client.login(username="seller_dash_api", password="pass12345")
+        self.client.force_login(self.seller)
         self.category = Category.objects.create(name="Dash Category", slug="dash-category")
 
     def test_supplier_dashboard_endpoint_returns_screen_payload(self):

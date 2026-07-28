@@ -7382,7 +7382,7 @@ def chat_project_view(request, project_id):
 
     active_role = detect_user_role(request.user, request=request)
     active_role_tab = (
-        "operator" if active_role.startswith("operator") or active_role == "admin"
+        "operator" if active_role.startswith("operator")
         else active_role
     )
     response = render(request, "chat/project.html", {

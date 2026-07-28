@@ -51,7 +51,7 @@ class SellerPortalSmokeTests(TestCase):
             password="pass12345",
         )
         UserProfile.objects.create(user=self.seller, role="seller", company_name="Smoke Supplier")
-        self.client.login(username="seller_smoke", password="pass12345")
+        self.client.force_login(self.seller)
         self.factory = RequestFactory()
 
     def test_seller_csv_template_download(self):

@@ -14,7 +14,7 @@ class SellerProductApiTests(TestCase):
             can_manage_assortment=True,
             can_manage_pricing=True,
         )
-        self.client.login(username="seller_api", password="pass12345")
+        self.client.force_login(self.seller)
         self.category = Category.objects.create(name="API Category", slug="api-category")
         self.part = Part.objects.create(
             seller=self.seller,

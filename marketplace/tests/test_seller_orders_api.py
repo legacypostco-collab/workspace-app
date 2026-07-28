@@ -16,7 +16,7 @@ class SellerOrdersApiTests(TestCase):
             company_name="Orders API Supplier",
             can_manage_orders=True,
         )
-        self.client.login(username="seller_orders_api", password="pass12345")
+        self.client.force_login(self.seller)
         self.category = Category.objects.create(name="Orders API Category", slug="orders-api-category")
         self.part = Part.objects.create(
             seller=self.seller,
@@ -101,4 +101,3 @@ class SellerOrdersApiTests(TestCase):
         self.claim.refresh_from_db()
         self.assertEqual(self.claim.status, "in_review")
         self.assertIn("checking with warehouse", self.claim.description)
-

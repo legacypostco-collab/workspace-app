@@ -20,7 +20,7 @@ class SupplierImportApiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="seller_import_api", password="pass12345")
         UserProfile.objects.create(user=self.user, role="seller")
-        self.client.login(username="seller_import_api", password="pass12345")
+        self.client.force_login(self.user)
 
     def test_upload_csv_creates_stored_file_and_preview_session(self):
         file_obj = SimpleUploadedFile(

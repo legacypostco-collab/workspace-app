@@ -1863,18 +1863,19 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
 
     from django.db import connection
 
+    from assistant.oem_normalizer import _strip_separators
     from assistant.part_naming import translate_title
     now = datetime.now(tz=UTC)
 
     insert_cols = [
-        "title", "title_ru", "slug", "oem_number", "description", "price", "stock_quantity",
+        "title", "title_ru", "slug", "oem_number", "oem_clean", "description", "price", "stock_quantity",
         "condition", "image_url", "seller_id", "brand_id", "category_id",
         "availability", "availability_status", "currency", "incoterm", "moq",
         "production_lead_days", "prep_to_ship_days", "shipping_lead_days",
         "gross_weight_kg", "length_cm", "width_cm", "height_cm",
         "country_of_origin", "cross_numbers",
         "price_fob_sea", "price_fob_air", "warehouse_address", "sea_port", "air_port",
-        "hs_code", "backorder_allowed", "mapping_status", "supplier_part_uid",
+        "hs_code", "hs_verified", "backorder_allowed", "mapping_status", "supplier_part_uid",
         "data_updated_at", "is_active", "admin_note",
         "manufacturer", "manufacturer_visible",
         "warehouse_id", "source_import_id",
@@ -1904,7 +1905,9 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 rows.append((
                     f.get("title") or "", translate_title(f.get("title") or ""),
                     f.get("slug") or "",
-                    f.get("oem_number"), "",
+                    f.get("oem_number"),
+                    _strip_separators(f.get("oem_number") or "").upper()[:100],
+                    "",
                     f.get("price"), f.get("stock_quantity") or 0,
                     f.get("condition") or "oem", "",
                     seller.id, f["brand"].id, f["category"].id,
@@ -1917,7 +1920,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     f.get("price_fob_sea"), f.get("price_fob_air"),
                     f.get("warehouse_address") or "",
                     f.get("sea_port") or "", f.get("air_port") or "",
-                    "", False, "auto", "",
+                    "", False, False, "auto", "",
                     now, True, "",
                     f.get("manufacturer") or "",
                     f.get("manufacturer_visible", True),
@@ -1926,15 +1929,19 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 ))
             INS_BATCH = 50000
             try:
-                with connection.cursor() as cur:
-                    for batch_start in range(0, len(rows), INS_BATCH):
-                        batch = rows[batch_start:batch_start + INS_BATCH]
-                        cur.executemany(insert_sql, batch)
-                        created += len(batch)
-                        cache.set(progress_key, {
-                            "current": created, "total": total_pending,
-                            "phase": "writing", "running": True,
-                        }, 600)
+                # Вложенная транзакция создаёт savepoint: ошибка одной пачки
+                # откатывается до него и не оставляет внешний import-job в
+                # состоянии InFailedSqlTransaction.
+                with transaction.atomic():
+                    with connection.cursor() as cur:
+                        for batch_start in range(0, len(rows), INS_BATCH):
+                            batch = rows[batch_start:batch_start + INS_BATCH]
+                            cur.executemany(insert_sql, batch)
+                            created += len(batch)
+                            cache.set(progress_key, {
+                                "current": created, "total": total_pending,
+                                "phase": "writing", "running": True,
+                            }, 600)
             except Exception as e:
                 logger.exception("bulk INSERT failed for %d rows (batch %d)",
                                   len(rows), batch_start)
@@ -1953,7 +1960,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             # совпадает (мы матчим по seller+oem_number). Обновление slug
             # ловит UNIQUE constraint если он отличается от исходного.
             upd_cols = [
-                "title", "title_ru", "price", "currency", "stock_quantity", "condition",
+                "title", "title_ru", "oem_clean", "price", "currency", "stock_quantity", "condition",
                 "availability", "manufacturer", "manufacturer_visible",
                 "cross_numbers", "price_fob_sea", "price_fob_air",
                 "warehouse_address", "sea_port", "air_port",
@@ -1969,6 +1976,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             for pid, f in to_update_payloads:
                 upd_rows.append((
                     f.get("title") or "", translate_title(f.get("title") or ""),
+                    _strip_separators(f.get("oem_number") or "").upper()[:100],
                     f.get("price"),
                     f.get("currency") or "USD",
                     f.get("stock_quantity") or 0, f.get("condition") or "oem",
@@ -1991,16 +1999,17 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
             # на «616473/616473» по 30+ секунд.
             UPD_BATCH = 50000
             try:
-                with connection.cursor() as cur:
-                    for batch_start in range(0, len(upd_rows), UPD_BATCH):
-                        batch = upd_rows[batch_start:batch_start + UPD_BATCH]
-                        cur.executemany(update_sql, batch)
-                        updated += len(batch)
-                        cache.set(progress_key, {
-                            "current": created + updated,
-                            "total": total_pending,
-                            "phase": "writing", "running": True,
-                        }, 600)
+                with transaction.atomic():
+                    with connection.cursor() as cur:
+                        for batch_start in range(0, len(upd_rows), UPD_BATCH):
+                            batch = upd_rows[batch_start:batch_start + UPD_BATCH]
+                            cur.executemany(update_sql, batch)
+                            updated += len(batch)
+                            cache.set(progress_key, {
+                                "current": created + updated,
+                                "total": total_pending,
+                                "phase": "writing", "running": True,
+                            }, 600)
             except Exception as e:
                 logger.exception("bulk UPDATE failed for %d rows (batch %d)",
                                   len(upd_rows), batch_start)

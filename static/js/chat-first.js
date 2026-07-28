@@ -7588,7 +7588,7 @@
   }
 
   // ── Role toggle (Покупатель / Продавец / Оператор) ───────
-  const ROLE_TABS = ['buyer', 'seller', 'operator'];
+  const ROLE_TABS = ['buyer', 'seller', 'operator', 'admin'];
 
   function paintRoleToggle(activeRole) {
     document.querySelectorAll('#roleToggle .role-tab').forEach(b => {

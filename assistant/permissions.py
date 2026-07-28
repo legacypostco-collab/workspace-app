@@ -9,11 +9,12 @@ SECURITY (P0-1, прод-аудит 2026-05-21):
 """
 
 
-SWITCHABLE_ROLES = {"buyer", "seller", "operator"}
+SWITCHABLE_ROLES = {"buyer", "seller", "operator", "admin"}
 ROLE_LABELS = {
     "buyer": "Покупатель",
     "seller": "Продавец",
     "operator": "Оператор",
+    "admin": "Администратор",
 }
 
 
@@ -69,7 +70,7 @@ def user_allowed_roles(user) -> list[str]:
     if not user or not getattr(user, "is_authenticated", False):
         return ["buyer"]
     if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
-        return ["buyer", "seller", "operator"]
+        return ["admin", "buyer", "seller", "operator"]
 
     roles: list[str] = []
     primary = _user_real_role(user)
