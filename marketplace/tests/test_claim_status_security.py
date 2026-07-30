@@ -27,7 +27,7 @@ class ClaimStatusSecurityTests(TestCase):
             status="open",
         )
 
-    def test_buyer_cannot_approve_own_claim(self):
+    def test_removed_claim_mutation_rejects_buyer(self):
         self.client.force_login(self.buyer)
 
         response = self.client.post(
@@ -36,33 +36,22 @@ class ClaimStatusSecurityTests(TestCase):
         )
 
         self.claim.refresh_from_db()
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 410)
         self.assertEqual(self.claim.status, "open")
         self.assertIsNone(self.claim.resolved_by)
 
-    def test_operator_can_follow_claim_transition_but_cannot_skip_stage(self):
+    def test_removed_claim_mutation_rejects_operator(self):
         self.client.force_login(self.operator)
 
-        skipped = self.client.post(
-            f"/claims/{self.claim.id}/status/",
-            {"status": "approved"},
-        )
+        for status in ("in_review", "approved"):
+            with self.subTest(status=status):
+                response = self.client.post(
+                    f"/claims/{self.claim.id}/status/",
+                    {"status": status},
+                )
+                self.assertEqual(response.status_code, 410)
+
         self.claim.refresh_from_db()
-        self.assertEqual(skipped.status_code, 302)
         self.assertEqual(self.claim.status, "open")
-
-        reviewed = self.client.post(
-            f"/claims/{self.claim.id}/status/",
-            {"status": "in_review"},
-        )
-        approved = self.client.post(
-            f"/claims/{self.claim.id}/status/",
-            {"status": "approved"},
-        )
-
-        self.claim.refresh_from_db()
-        self.assertEqual(reviewed.status_code, 302)
-        self.assertEqual(approved.status_code, 302)
-        self.assertEqual(self.claim.status, "approved")
-        self.assertEqual(self.claim.reviewed_by_id, self.operator.id)
-        self.assertEqual(self.claim.resolved_by_id, self.operator.id)
+        self.assertIsNone(self.claim.reviewed_by)
+        self.assertIsNone(self.claim.resolved_by)

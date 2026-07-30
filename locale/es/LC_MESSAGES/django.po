@@ -36955,3 +36955,34 @@ msgstr "El método, la moneda y el calendario de pago se acuerdan para cada sumi
 
 msgid "Войдите в чат, чтобы подобрать запчасти и сравнить предложения поставщиков."
 msgstr "Abra el chat para buscar repuestos y comparar ofertas de proveedores."
+
+#, python-format
+msgid "%(count)s активных позиций"
+msgstr "%(count)s posiciones activas"
+
+msgid "Бренды по заданному фильтру не найдены."
+msgstr "No se encontraron marcas con el filtro seleccionado."
+
+msgid "Показать все бренды"
+msgstr "Mostrar todas las marcas"
+
+msgid "Выберите бренд, чтобы открыть его активные позиции."
+msgstr "Seleccione una marca para ver sus posiciones activas."
+
+msgid "Категории по заданному фильтру не найдены."
+msgstr "No se encontraron categorías con el filtro seleccionado."
+
+msgid "Показать все категории"
+msgstr "Mostrar todas las categorías"
+
+msgid "Выберите категорию, чтобы открыть её активные позиции."
+msgstr "Seleccione una categoría para ver sus posiciones activas."
+
+msgid "Введите адрес электронной почты — мы пришлём ссылку для смены пароля."
+msgstr "Introduzca su correo electrónico y le enviaremos un enlace para cambiar la contraseña."
+
+msgid "Задайте новый пароль для вашего аккаунта."
+msgstr "Establezca una nueva contraseña para su cuenta."
+
+msgid "Если письма нет, проверьте папку «Спам» или подождите несколько минут."
+msgstr "Si no recibió el correo, revise la carpeta «Spam» o espere unos minutos."

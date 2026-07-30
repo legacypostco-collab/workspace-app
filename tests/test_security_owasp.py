@@ -123,7 +123,7 @@ def test_seller_cannot_open_buyer_claim_through_http_endpoint(
         {"title": "Seller-created claim", "description": "Must be rejected"},
     )
 
-    assert response.status_code == 403
+    assert response.status_code == 410
     assert not OrderClaim.objects.filter(
         order=buyer_a_order,
         opened_by=seller,
@@ -263,12 +263,10 @@ def test_shared_cache_url_rejects_non_redis_urls():
 
 @_skip_template_render
 def test_admin_panel_requires_staff(client, buyer_a):
-    """admin_panel_* (legacy) теперь требует staff_member_required."""
+    """Удалённая панель не должна открываться через старый адрес."""
     client.force_login(buyer_a)  # обычный buyer
-    # Через middleware /admin_panel/ → /chat/. Whitelist /admin_panel/api/ — там staff
-    r = client.get("/admin_panel/api/")  # whitelisted в middleware
-    # Если есть какой-то URL → должен быть 302 на /admin/login/ или 403/404
-    assert r.status_code in (302, 403, 404)
+    r = client.get("/admin-panel/api/")
+    assert r.status_code == 410
 
 
 # ══ Headers security ══════════════════════════════════════════════

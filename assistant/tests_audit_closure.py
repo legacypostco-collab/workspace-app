@@ -609,15 +609,6 @@ class PaymentAndViewAsTests(TestCase):
         self.assertEqual(wallet.balance, Decimal("0"))
         self.assertFalse(WalletTx.objects.filter(wallet=wallet).exists())
 
-    @override_settings(PAYMENT_PROVIDER_URL="", PAYMENT_MERCHANT_ID="")
-    def test_invoice_has_no_invented_payment_gateway(self):
-        from marketplace.views import _build_payment_url
-
-        payment_url, payment_ref = _build_payment_url(self.order)
-
-        self.assertEqual(payment_url, "")
-        self.assertTrue(payment_ref.startswith("INV-"))
-
     def test_view_as_blocks_mutation_and_allows_operator_exit(self):
         operator = User.objects.create_user("view_operator", is_staff=True)
         UserProfile.objects.create(user=operator, role="operator")

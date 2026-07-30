@@ -88,14 +88,14 @@ class HybridApiTests(TestCase):
         self.assertEqual(repeated.json(), {"ok": True})
         self.assertEqual(NewsletterSubscriber.objects.count(), 1)
 
-    def test_admin_panel_requires_superuser_not_staff_flag(self):
+    def test_removed_admin_panel_is_not_available_to_privileged_users(self):
         staff_user = User.objects.create_user(
             username="staff_without_admin_role",
             is_staff=True,
         )
         self.client.force_login(staff_user)
         denied = self.client.get("/admin-panel/")
-        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(denied.status_code, 410)
 
         admin = User.objects.create_superuser(
             username="actual_platform_admin",
@@ -103,8 +103,8 @@ class HybridApiTests(TestCase):
             password="strong-admin-password",
         )
         self.client.force_login(admin)
-        allowed = self.client.get("/admin-panel/")
-        self.assertEqual(allowed.status_code, 200)
+        removed = self.client.get("/admin-panel/")
+        self.assertEqual(removed.status_code, 410)
 
     def test_create_admin_does_not_create_account_without_password(self):
         env = {

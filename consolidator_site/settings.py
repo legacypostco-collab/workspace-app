@@ -224,9 +224,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "marketplace.context_processors.auth_meta",
-                "marketplace.context_processors.seller_context",
-                "marketplace.context_processors.buyer_context",
             ],
         },
     },
@@ -322,9 +319,8 @@ HEALTHCHECK_TOKEN = _env("HEALTHCHECK_TOKEN", "")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "/login/"
-# Главный UI — chat-first. Старые кабинеты (/dashboard, /buyer, /seller,
-# /operator, /admin_panel) считаются deprecated и редиректят на /chat/
-# через marketplace.middleware.LegacyCabinetRedirectMiddleware.
+# Главный интерфейс — рабочее пространство чата. Старые ролевые кабинеты
+# удалены и отвечают 410; переходные /dashboard и /admin_panel ведут в чат.
 LOGIN_REDIRECT_URL = "/chat/"
 LOGOUT_REDIRECT_URL = "/"
 

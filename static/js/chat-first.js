@@ -4730,7 +4730,7 @@
             const _offerData = esc(JSON.stringify({part_id:s.part_id,price:s.price,currency:s.currency||'USD',condition:s.condition,rating:s.rating,status:s.status}));
             return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}" data-row-idx="${idx}" data-offer="${_offerData}" style="cursor:pointer;" title="${tr('Выбрать котировку')}">
               <td class="as-rank">${i + 1}</td>
-              <td class="as-label">${s.seller_id ? `<a href="/admin-panel/users/${s.seller_id}/" target="_blank" style="color:inherit;text-decoration:underline;text-underline-offset:2px;" onclick="event.stopPropagation();">${esc(s.label)}</a>` : esc(s.label)}</td>
+              <td class="as-label">${s.seller_id ? `<button type="button" style="appearance:none;background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer;" onclick="event.stopPropagation();window.quickAction&&window.quickAction('admin_user_detail',{user_id:${Number(s.seller_id)}});">${esc(s.label)}</button>` : esc(s.label)}</td>
               <td><span style="color:${_stColor};font-weight:600;">${esc(_noBall(s.status_badge))}</span></td>
               <td class="as-num">${s.rating}</td>
               <td class="as-num as-price">${fmtMoney(s.price, s.currency)}</td>

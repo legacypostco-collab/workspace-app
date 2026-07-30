@@ -149,7 +149,8 @@ class ActionResult:
 # (продавец тоже может докупать товар или докомплектовывать свой заказ
 # как обычный покупатель).
 _BUYER_ACTIONS = [
-    "search_parts", "create_rfq", "get_rfq_status", "get_my_deals",
+    "search_parts", "browse_brands", "browse_categories",
+    "create_rfq", "get_rfq_status", "get_my_deals",
     "get_orders", "get_order_detail", "order_batch_items", "track_order", "track_shipment",
     "cancel_order",
     "invite_customer", "accept_customer_invite", "accept_referral",  # инвайт/реферал (для всех ролей)
@@ -249,7 +250,8 @@ _SELLER_ONLY = [
 _OPERATOR_CORE = [
     "open_project", "list_projects", "go_home",
     # Read-only browse + диспетчерские action'ы
-    "search_parts", "get_orders", "get_order_detail", "get_rfq_status",
+    "search_parts", "browse_brands", "browse_categories",
+    "get_orders", "get_order_detail", "get_rfq_status",
     "track_order", "track_shipment", "advance_order", "complete_trigger",
     "get_balance", "request_payout", "op_my_bonuses",  # бонусы оператора
     "op_my_suppliers",  # моя база поставщиков (PIVOT 2026-05-27)
@@ -342,7 +344,8 @@ _KAM_ACTIONS = [a for a in _OPERATOR_CORE if a not in _KAM_EXCLUDED] + _KAM_ONLY
 # Списки используются серверным execute(), поэтому прямой вызов скрытой
 # команды так же запрещён, как и нажатие отсутствующей кнопки.
 _OPERATOR_SHARED = {
-    "go_home", "open_url", "search_parts", "get_orders", "get_order_detail",
+    "go_home", "open_url", "search_parts", "browse_brands", "browse_categories",
+    "get_orders", "get_order_detail",
     "get_rfq_status", "track_order", "track_shipment", "get_analytics",
     "get_supply_report", "get_demand_report", "get_sla_report", "get_budget",
     "compare_suppliers", "compare_products", "top_suppliers", "get_claims",
@@ -1528,6 +1531,122 @@ def _extract_articles(text: str) -> list[str]:
         if token and _OEM_RE.match(token) and any(ch.isdigit() for ch in token):
             out.append(token)
     return out
+
+
+@register("browse_brands")
+def browse_brands(params, user, role):
+    """Show active catalog brands and continue with a filtered search."""
+    from django.db.models import Count
+    from marketplace.models import Brand
+
+    query = (params.get("query") or params.get("q") or "").strip()
+    try:
+        limit = max(1, min(int(params.get("limit") or 30), 50))
+    except (TypeError, ValueError):
+        limit = 30
+
+    brands = Brand.objects.annotate(
+        active_parts=Count(
+            "parts",
+            filter=Q(parts__is_active=True),
+            distinct=True,
+        )
+    ).filter(active_parts__gt=0)
+    if query:
+        brands = brands.filter(name__icontains=query)
+    brands = brands.order_by("-active_parts", "name")[:limit]
+
+    rows = [
+        {
+            "title": brand.name,
+            "subtitle": _("%(count)s активных позиций")
+            % {"count": brand.active_parts},
+            "action": "search_parts",
+            "params": {"brand": brand.name},
+        }
+        for brand in brands
+    ]
+    if not rows:
+        return ActionResult(
+            text=_("Бренды по заданному фильтру не найдены."),
+            actions=[
+                {
+                    "label": _("Показать все бренды"),
+                    "action": "browse_brands",
+                    "params": {},
+                }
+            ],
+        )
+    return ActionResult(
+        text=_("Выберите бренд, чтобы открыть его активные позиции."),
+        cards=[
+            {
+                "type": "list",
+                "data": {
+                    "title": _("Бренды"),
+                    "items": rows,
+                },
+            }
+        ],
+    )
+
+
+@register("browse_categories")
+def browse_categories(params, user, role):
+    """Show active catalog categories and continue with a filtered search."""
+    from django.db.models import Count
+    from marketplace.models import Category
+
+    query = (params.get("query") or params.get("q") or "").strip()
+    try:
+        limit = max(1, min(int(params.get("limit") or 30), 50))
+    except (TypeError, ValueError):
+        limit = 30
+
+    categories = Category.objects.annotate(
+        active_parts=Count(
+            "parts",
+            filter=Q(parts__is_active=True),
+            distinct=True,
+        )
+    ).filter(active_parts__gt=0)
+    if query:
+        categories = categories.filter(name__icontains=query)
+    categories = categories.order_by("-active_parts", "name")[:limit]
+
+    rows = [
+        {
+            "title": category.name,
+            "subtitle": _("%(count)s активных позиций")
+            % {"count": category.active_parts},
+            "action": "search_parts",
+            "params": {"category": category.name},
+        }
+        for category in categories
+    ]
+    if not rows:
+        return ActionResult(
+            text=_("Категории по заданному фильтру не найдены."),
+            actions=[
+                {
+                    "label": _("Показать все категории"),
+                    "action": "browse_categories",
+                    "params": {},
+                }
+            ],
+        )
+    return ActionResult(
+        text=_("Выберите категорию, чтобы открыть её активные позиции."),
+        cards=[
+            {
+                "type": "list",
+                "data": {
+                    "title": _("Категории"),
+                    "items": rows,
+                },
+            }
+        ],
+    )
 
 
 @register("search_parts")

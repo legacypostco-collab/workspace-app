@@ -341,15 +341,6 @@ class PrivateFileAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["role"], "seller")
 
-        from django.test import RequestFactory
-        from marketplace.context_processors import seller_context
-
-        request = RequestFactory().get("/seller/")
-        request.user = self.other
-        request.active_role = "seller"
-        context = seller_context(request)
-        self.assertEqual(context["seller_supplier"], self.other)
-
     def test_order_documents_reject_external_links_and_hide_legacy_urls(self):
         category = Category.objects.create(
             name="Private document category",
@@ -387,7 +378,7 @@ class PrivateFileAccessTests(TestCase):
                 "file_url": "https://files.example/private-invoice.pdf",
             },
         )
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 410)
         self.assertFalse(order.documents.exists())
 
         legacy = OrderDocument.objects.create(

@@ -129,7 +129,7 @@ def test_chat_authenticated(xb_page, xb_browser_name, login_as):
 
 @pytest.mark.parametrize("legacy_path", ["/catalog/", "/parts/legacy-test-part/"])
 def test_legacy_catalog_routes_to_workspace(xb_page, legacy_path):
-    """Старые страницы каталога не должны возвращать прежний интерфейс."""
+    """Старые ссылки сохраняют поисковое действие и не открывают прежний интерфейс."""
     response = xb_page.goto(BASE_URL + legacy_path, wait_until="domcontentloaded")
 
     assert response and response.ok, (
@@ -138,7 +138,8 @@ def test_legacy_catalog_routes_to_workspace(xb_page, legacy_path):
     assert xb_page.url.split("?", 1)[0].endswith("/chat/"), (
         f"{legacy_path} не перевёл пользователя в /chat/: {xb_page.url}"
     )
-    assert xb_page.locator("#welcomeStage").count() == 1
+    assert "run=search_parts" in xb_page.url
+    assert xb_page.locator(".marketplace-layout").count() == 0
 
 
 def test_no_horizontal_scroll_375px(xb_page, xb_browser_name):

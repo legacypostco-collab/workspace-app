@@ -31,8 +31,7 @@ from django.utils import translation
 # сценарий вместо явной ошибки.
 #
 # /dashboard и /admin_panel остаются только как переходные адреса в чат.
-# /admin-panel не перехватывается: доступ к рабочему административному
-# интерфейсу проверяют его view-декораторы, возвращая 403 не-администраторам.
+# Удалённый /admin-panel/* обрабатывается маршрутизатором единым ответом 410.
 # ────────────────────────────────────────────────────────────────────
 
 _LEGACY_PREFIXES = (
@@ -46,14 +45,8 @@ _LEGACY_WHITELIST = (
 )
 
 _LEGACY_EXACT_REDIRECTS = {
-    "/notifications/": "/chat/#notifications",
-    "/notifications": "/chat/#notifications",
-    "/kyb/": "/chat/?new=1&run=kyb_status",
-    "/kyb": "/chat/?new=1&run=kyb_status",
     "/team/": "/chat/?new=1&run=seller_team",
     "/team": "/chat/?new=1&run=seller_team",
-    "/2fa/": "/chat/#settings",
-    "/2fa": "/chat/#settings",
 }
 
 _AUTHENTICATED_CHAT_REDIRECTS = {

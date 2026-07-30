@@ -39740,3 +39740,34 @@ msgstr "The payment method, currency, and schedule are agreed for each delivery 
 
 msgid "Войдите в чат, чтобы подобрать запчасти и сравнить предложения поставщиков."
 msgstr "Open the chat to find parts and compare supplier offers."
+
+#, python-format
+msgid "%(count)s активных позиций"
+msgstr "%(count)s active items"
+
+msgid "Бренды по заданному фильтру не найдены."
+msgstr "No brands match the selected filter."
+
+msgid "Показать все бренды"
+msgstr "Show all brands"
+
+msgid "Выберите бренд, чтобы открыть его активные позиции."
+msgstr "Select a brand to view its active items."
+
+msgid "Категории по заданному фильтру не найдены."
+msgstr "No categories match the selected filter."
+
+msgid "Показать все категории"
+msgstr "Show all categories"
+
+msgid "Выберите категорию, чтобы открыть её активные позиции."
+msgstr "Select a category to view its active items."
+
+msgid "Введите адрес электронной почты — мы пришлём ссылку для смены пароля."
+msgstr "Enter your email address and we will send you a password reset link."
+
+msgid "Задайте новый пароль для вашего аккаунта."
+msgstr "Set a new password for your account."
+
+msgid "Если письма нет, проверьте папку «Спам» или подождите несколько минут."
+msgstr "If the email has not arrived, check your Spam folder or wait a few minutes."

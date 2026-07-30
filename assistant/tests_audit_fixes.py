@@ -88,7 +88,9 @@ class AuditFixesTests(TestCase):
     def test_legacy_rfq_checkout_and_proposal_routes_cannot_mutate(self):
         self.client.force_login(self.buyerA)
         before = Order.objects.filter(buyer=self.buyerA).count()
-        expected = f"/chat/?action=get_rfq_status&rfq_id={self.rfqA.id}"
+        expected = (
+            f"/chat/?new=1&run=get_rfq_status&rfq_id={self.rfqA.id}"
+        )
 
         for suffix in (
             "",

@@ -322,7 +322,7 @@ ANON_ALLOWED_ACTIONS: set[str] = {
     # Auth-actions
     "start_registration", "start_login",
     # Публичные данные каталога и справочные расчёты
-    "search_parts", "kb_search",
+    "search_parts", "browse_brands", "browse_categories", "kb_search",
     "compare_products", "compare_suppliers", "top_suppliers",
     "calc_part_logistics",
     # Аналитика загруженной спецификации без сохранения сделки

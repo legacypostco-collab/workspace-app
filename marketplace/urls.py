@@ -1,3 +1,5 @@
+from urllib.parse import urlencode
+
 from django.contrib.auth import views as auth_views
 from django.http import HttpResponseGone
 from django.shortcuts import redirect
@@ -9,6 +11,14 @@ from . import health as _health
 from . import views
 
 
+def _chat_url(action=None, **params):
+    query = {"new": "1"}
+    if action:
+        query["run"] = action
+    query.update({key: value for key, value in params.items() if value not in (None, "")})
+    return f"/chat/?{urlencode(query)}"
+
+
 def legacy_to_chat(request, *args, **kwargs):
     return redirect("/chat/")
 
@@ -17,245 +27,199 @@ def public_workspace(request, *args, **kwargs):
     return redirect("/chat/?workspace=1")
 
 
+def catalog_to_chat(request, *args, **kwargs):
+    return redirect(
+        _chat_url(
+            "search_parts",
+            query=request.GET.get("query") or request.GET.get("q"),
+            brand=request.GET.get("brand"),
+            category=request.GET.get("category"),
+        )
+    )
+
+
+def brands_to_chat(request, *args, **kwargs):
+    return redirect(
+        _chat_url(
+            "browse_brands",
+            query=request.GET.get("query") or request.GET.get("q"),
+        )
+    )
+
+
+def categories_to_chat(request, *args, **kwargs):
+    return redirect(
+        _chat_url(
+            "browse_categories",
+            query=request.GET.get("query") or request.GET.get("q"),
+        )
+    )
+
+
+def suppliers_to_chat(request, *args, **kwargs):
+    return redirect(_chat_url("top_suppliers"))
+
+
+def part_to_chat(request, slug, *args, **kwargs):
+    return redirect(_chat_url("search_parts", query=slug))
+
+
 def legacy_rfq_to_chat(request, rfq_id, *args, **kwargs):
-    return redirect(f"/chat/?action=get_rfq_status&rfq_id={rfq_id}")
+    return redirect(_chat_url("get_rfq_status", rfq_id=rfq_id))
+
+
+def order_to_chat(request, order_id, *args, **kwargs):
+    return redirect(_chat_url("get_order_detail", order_id=order_id))
+
+
+def invoice_to_chat(request, order_id, *args, **kwargs):
+    return redirect(_chat_url("list_order_documents", order_id=order_id))
+
+
+def notifications_to_chat(request, *args, **kwargs):
+    return redirect(_chat_url("notifications"))
+
+
+def kyb_to_chat(request, *args, **kwargs):
+    return redirect(_chat_url("kyb_status"))
+
+
+def twofa_to_chat(request, *args, **kwargs):
+    return redirect(_chat_url("setup_2fa"))
 
 
 def removed_portal_route(request, *args, **kwargs):
     response = HttpResponseGone(
-        "Этот устаревший кабинет отключен. Используйте рабочее пространство чата."
+        "Этот устаревший кабинет удалён. Используйте рабочее пространство чата."
+    )
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+def removed_mutation_route(request, *args, **kwargs):
+    response = HttpResponseGone(
+        "Эта устаревшая операция удалена. Выполните действие в рабочем пространстве чата."
     )
     response["Cache-Control"] = "no-store"
     return response
 
 
 urlpatterns = [
-    # ── Healthchecks (k8s / nginx / Yandex MK) ─────────────────
-    path("healthz/", _health.liveness,  name="healthz"),
-    path("readyz/",  _health.readiness, name="readyz"),
-    # ── Password reset (Django stock view'ы — стандартный flow) ──
-    # Шаблоны лежат в templates/registration/password_reset_*.html (Django default lookup).
-    # RateLimitedPasswordResetView оборачивает Django stock view с лимитом
-    # 3 запроса/час на IP — защита от спама на чужие email.
-    path("password_reset/", views.RateLimitedPasswordResetView.as_view(
-        email_template_name="registration/password_reset_email.txt",
-        subject_template_name="registration/password_reset_subject.txt",
-    ), name="password_reset"),
-    path("password_reset/done/", auth_views.PasswordResetDoneView.as_view(),
-         name="password_reset_done"),
-    path("reset/<uidb64>/<token>/", auth_views.PasswordResetConfirmView.as_view(),
-         name="password_reset_confirm"),
-    path("reset/done/", auth_views.PasswordResetCompleteView.as_view(),
-         name="password_reset_complete"),
-    # ── GDPR / 152-ФЗ: data export + soft-delete ──
+    path("healthz/", _health.liveness, name="healthz"),
+    path("readyz/", _health.readiness, name="readyz"),
+    path(
+        "password_reset/",
+        views.RateLimitedPasswordResetView.as_view(
+            email_template_name="registration/password_reset_email.txt",
+            subject_template_name="registration/password_reset_subject.txt",
+        ),
+        name="password_reset",
+    ),
+    path(
+        "password_reset/done/",
+        auth_views.PasswordResetDoneView.as_view(),
+        name="password_reset_done",
+    ),
+    path(
+        "reset/<uidb64>/<token>/",
+        auth_views.PasswordResetConfirmView.as_view(),
+        name="password_reset_confirm",
+    ),
+    path(
+        "reset/done/",
+        auth_views.PasswordResetCompleteView.as_view(),
+        name="password_reset_complete",
+    ),
+    path("password-reset/", lambda request: redirect("password_reset")),
+    path("password-reset/done/", lambda request: redirect("password_reset_done")),
     path("api/me/export/", _gdpr.export_my_data, name="gdpr_export"),
     path("api/me/delete/", _gdpr.delete_my_account, name="gdpr_delete"),
-    # ── Beta feedback widget ──
     path("api/feedback/", _feedback.submit_feedback, name="submit_feedback"),
-
+    path("api/set-language/", views.set_language_api, name="set_language_api"),
+    path("api/notifications/", views.notifications_list, name="notifications_api"),
+    path(
+        "api/notifications/read/",
+        views.notifications_mark_read,
+        name="notifications_mark_all_read",
+    ),
+    path(
+        "api/notifications/<int:notif_id>/read/",
+        views.notifications_mark_read,
+        name="notifications_mark_read",
+    ),
     path("", views.home, name="home"),
     path("landing/", views.landing_view, name="landing"),
     path("demo-center/", public_workspace, name="demo_center"),
     path("demo/", public_workspace),
-    path("directory/brands/", legacy_to_chat, name="brands_directory"),
-    path("brands/", legacy_to_chat),  # alias
-    path("directory/suppliers/", legacy_to_chat, name="suppliers_directory"),
-    path("suppliers/", legacy_to_chat),  # alias
-    path("directory/categories/", legacy_to_chat, name="categories_directory"),
-    path("categories/", legacy_to_chat),  # alias
-    path("comparison/", legacy_to_chat),  # alias for /compare/
     path("terms/", views.terms_view, name="terms"),
     path("privacy/", views.privacy_view, name="privacy"),
     path("cookies/", views.cookies_view, name="cookies"),
     path("help/", views.help_view, name="help"),
+    path("faq/", views.help_view),
     path("chat/", views.chat_first_view, name="chat"),
-    # Короткая реф-ссылка: /i/<code> → чат с применением реферала.
-    path("i/<str:code>/", views.invite_redirect, name="invite_redirect"),
     path("chat/project/<uuid:project_id>/", views.chat_project_view, name="chat_project"),
     path("chat/rfq/<int:rfq_id>/", views.chat_rfq_view, name="chat_rfq"),
     path("chat/proposal/<int:rfq_id>/", legacy_rfq_to_chat, name="chat_proposal"),
-    path("faq/", views.help_view),  # alias
+    path("i/<str:code>/", views.invite_redirect, name="invite_redirect"),
     path("register/", views.register_view, name="register"),
     path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),
     path("login/", views.login_view, name="login"),
     path("logout/", views.logout_view, name="logout"),
-    # SECURITY (round-3 audit): убраны duplicate password-reset routes —
-    # они overlay'или RateLimitedPasswordResetView (см. строки 17-26),
-    # что снимало защиту от спама на /password_reset/. Оставлен только
-    # ratelimited вариант выше, эти алиасы редиректят на него.
-    path("password-reset/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset")),
-    path("password-reset/done/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset_done")),
-    # The chat-first workspace replaced three parallel portal interfaces.
-    # Keep the old named patterns below for reverse-compatibility, but make
-    # every direct request terminate here instead of exposing stale pages or
-    # duplicate mutation flows.
+    path("catalog/", catalog_to_chat, name="catalog"),
+    path("parts/<slug:slug>/", part_to_chat, name="part_detail"),
+    path("directory/brands/", brands_to_chat, name="brands_directory"),
+    path("brands/", brands_to_chat),
+    path("directory/suppliers/", suppliers_to_chat, name="suppliers_directory"),
+    path("suppliers/", suppliers_to_chat),
+    path("directory/categories/", categories_to_chat, name="categories_directory"),
+    path("categories/", categories_to_chat),
+    path("rfq/", lambda request: redirect(_chat_url("get_rfq_status")), name="rfq_list"),
+    path("rfq/new/", lambda request: redirect(_chat_url("create_rfq")), name="rfq_new"),
+    path("rfq/<int:rfq_id>/", legacy_rfq_to_chat, name="rfq_detail"),
+    path("rfq/<int:rfq_id>/proposal/", legacy_rfq_to_chat, name="rfq_proposal"),
+    path(
+        "rfq/<int:rfq_id>/proposal/pdf/",
+        legacy_rfq_to_chat,
+        name="rfq_proposal_pdf",
+    ),
+    path(
+        "rfq/<int:rfq_id>/proposal/logistics/",
+        legacy_rfq_to_chat,
+        name="rfq_logistics_estimate",
+    ),
+    path("rfq/<int:rfq_id>/checkout/", legacy_rfq_to_chat, name="rfq_checkout"),
+    path("compare/", lambda request: redirect(_chat_url("compare_products")), name="compare"),
+    path("comparison/", lambda request: redirect(_chat_url("compare_products"))),
+    path("cart/", lambda request: redirect(_chat_url("get_my_deals")), name="cart"),
+    path("checkout/", lambda request: redirect(_chat_url("get_my_deals")), name="checkout"),
+    path("dashboard/", legacy_to_chat, name="dashboard"),
+    path("orders/<int:order_id>/", order_to_chat, name="order_detail"),
+    path("orders/<int:order_id>/invoice/", invoice_to_chat, name="order_invoice"),
+    path(
+        "orders/<int:order_id>/invoice/pdf/",
+        invoice_to_chat,
+        name="order_invoice_pdf",
+    ),
+    path("notifications/", notifications_to_chat, name="notifications"),
+    path("kyb/", kyb_to_chat, name="kyb"),
+    path("2fa/", twofa_to_chat, name="twofa_setup"),
+    path("reports/kpi/export.csv", views.kpi_reports_export_csv, name="kpi_reports_export_csv"),
+    path("reports/claims/export.csv", views.claims_export_csv, name="claims_export_csv"),
+    path("payments/callback/", views.payment_callback, name="payment_callback"),
+    path("orders/<int:order_id>/reserve-paid/", removed_mutation_route, name="order_mark_reserve_paid"),
+    path("orders/<int:order_id>/final-paid/", removed_mutation_route, name="order_mark_final_paid"),
+    path("orders/<int:order_id>/mid-paid/", removed_mutation_route, name="order_mark_mid_paid"),
+    path("orders/<int:order_id>/customs-paid/", removed_mutation_route, name="order_mark_customs_paid"),
+    path("orders/<int:order_id>/confirm-quality/", removed_mutation_route, name="order_confirm_quality"),
+    path("orders/<int:order_id>/documents/add/", removed_mutation_route, name="order_add_document"),
+    path("orders/<int:order_id>/claims/open/", removed_mutation_route, name="order_open_claim"),
+    path("claims/<int:claim_id>/status/", removed_mutation_route, name="order_update_claim_status"),
     path("buyer/", removed_portal_route),
     path("buyer/<path:legacy_path>", removed_portal_route),
     path("seller/", removed_portal_route),
     path("seller/<path:legacy_path>", removed_portal_route),
     path("operator/", removed_portal_route),
     path("operator/<path:legacy_path>", removed_portal_route),
-    path("catalog/", legacy_to_chat, name="catalog"),
-    path("rfq/", legacy_to_chat, name="rfq_list"),
-    path("rfq/new/", legacy_to_chat, name="rfq_new"),
-    path("rfq/<int:rfq_id>/", legacy_rfq_to_chat, name="rfq_detail"),
-    path("rfq/<int:rfq_id>/proposal/", legacy_rfq_to_chat, name="rfq_proposal"),
-    path("rfq/<int:rfq_id>/proposal/pdf/", legacy_rfq_to_chat, name="rfq_proposal_pdf"),
-    path("rfq/<int:rfq_id>/proposal/logistics/", legacy_rfq_to_chat, name="rfq_logistics_estimate"),
-    path("rfq/<int:rfq_id>/checkout/", legacy_rfq_to_chat, name="rfq_checkout"),
-    path("operator/queue/", views.operator_queue, name="operator_queue"),
-    path("operator/webhooks/", views.operator_webhooks, name="operator_webhooks"),
-    path("operator/webhooks/retry-all/", views.operator_retry_failed_webhooks, name="operator_retry_failed_webhooks"),
-    path("operator/webhooks/<int:log_id>/retry/", views.operator_retry_webhook, name="operator_retry_webhook"),
-    path("operator/rfq-item/<int:rfq_item_id>/assign/", views.operator_assign_supplier, name="operator_assign_supplier"),
-    path(
-        "operator/rfq-item/<int:rfq_item_id>/manual-oem/",
-        views.operator_escalate_manual_oem,
-        name="operator_escalate_manual_oem",
-    ),
-    path("parts/<slug:slug>/", legacy_to_chat, name="part_detail"),
-    path("compare/", legacy_to_chat, name="compare"),
-    path("compare/add/<int:part_id>/", legacy_to_chat, name="compare_add"),
-    path("compare/remove/<int:part_id>/", legacy_to_chat, name="compare_remove"),
-    path("compare/clear/", legacy_to_chat, name="compare_clear"),
-    path("cart/", legacy_to_chat, name="cart"),
-    path("cart/add/<int:part_id>/", legacy_to_chat, name="cart_add"),
-    path("cart/remove/<int:part_id>/", legacy_to_chat, name="cart_remove"),
-    path("checkout/", legacy_to_chat, name="checkout"),
-    path("dashboard/", views.dashboard, name="dashboard"),
-    path("dashboard/buyer/", views.dashboard_buyer, name="dashboard_buyer"),
-    path("dashboard/seller/", views.dashboard_seller, name="dashboard_seller"),
-    path("reports/kpi/", views.kpi_reports, name="kpi_reports"),
-    path("reports/kpi/export.csv", views.kpi_reports_export_csv, name="kpi_reports_export_csv"),
-    path("reports/claims/export.csv", views.claims_export_csv, name="claims_export_csv"),
-    path("orders/<int:order_id>/", views.order_detail, name="order_detail"),
-    path("orders/<int:order_id>/invoice/", views.order_invoice, name="order_invoice"),
-    path("orders/<int:order_id>/invoice/pdf/", views.order_invoice_pdf, name="order_invoice_pdf"),
-    path("orders/<int:order_id>/reserve-paid/", views.order_mark_reserve_paid, name="order_mark_reserve_paid"),
-    path("orders/<int:order_id>/final-paid/", views.order_mark_final_paid, name="order_mark_final_paid"),
-    path("orders/<int:order_id>/mid-paid/", views.order_mark_mid_paid, name="order_mark_mid_paid"),
-    path("orders/<int:order_id>/customs-paid/", views.order_mark_customs_paid, name="order_mark_customs_paid"),
-    path("orders/<int:order_id>/confirm-quality/", views.order_confirm_quality, name="order_confirm_quality"),
-    path("orders/<int:order_id>/documents/add/", views.order_add_document, name="order_add_document"),
-    path("payments/callback/", views.payment_callback, name="payment_callback"),
-    path("orders/<int:order_id>/claims/open/", views.order_open_claim, name="order_open_claim"),
-    path("claims/<int:claim_id>/status/", views.order_update_claim_status, name="order_update_claim_status"),
-    path("seller/", views.seller_dashboard, name="seller_dashboard"),
-    path("seller/dashboard/", views.seller_dashboard, name="seller_dashboard_page"),
-    path("seller/products/", views.seller_product_list, name="seller_product_list"),
-    path("seller/products/strict-upload/", views.seller_strict_upload, name="seller_strict_upload"),
-    path("seller/requests/", views.seller_request_list, name="seller_request_list"),
-    path("seller/requests/<int:rfq_id>/", views.seller_request_detail, name="seller_request_detail"),
-    path("seller/orders/", views.seller_orders, name="seller_orders"),
-    path("seller/sla/", views.seller_sla, name="seller_sla"),
-    path("seller/drawings/", views.seller_drawings, name="seller_drawings"),
-    path("seller/qr/", views.seller_qr_control, name="seller_qr_control"),
-    path("seller/finance/", views.seller_finance, name="seller_finance"),
-    path("seller/rating/", views.seller_rating, name="seller_rating"),
-    path("seller/negotiations/", views.seller_negotiations, name="seller_negotiations"),
-    path("seller/analytics/", views.seller_analytics, name="seller_analytics"),
-    path("seller/team/", views.seller_team, name="seller_team"),
-    path("seller/integrations/", views.seller_integrations, name="seller_integrations"),
-    path("seller/logistics/", views.seller_logistics, name="seller_logistics"),
-    path("seller/reports/", views.seller_reports, name="seller_reports"),
-    path("seller/orders/<int:order_id>/", views.seller_order_detail, name="seller_order_detail"),
-    path("seller/rfqs/", views.seller_rfq_inbox, name="seller_rfq_inbox"),
-    path("seller/upload/", views.seller_bulk_upload, name="seller_bulk_upload"),
-    path("seller/products/imports/<int:import_id>/", views.seller_import_result, name="seller_import_result"),
-    path("seller/imports/preview/<int:preview_id>/", views.seller_import_preview, name="seller_import_preview"),
-    path(
-        "seller/imports/preview/<int:preview_id>/confirm/",
-        views.seller_import_preview_confirm,
-        name="seller_import_preview_confirm",
-    ),
-    path(
-        "seller/imports/preview/<int:preview_id>/start/",
-        views.seller_import_preview_start,
-        name="seller_import_preview_start",
-    ),
-    path("seller/import-google-sheet/", views.seller_import_google_sheet, name="seller_import_google_sheet"),
-    path("seller/upload/template.csv", views.seller_csv_template, name="seller_csv_template"),
-    path("seller/upload/template.xlsx", views.seller_gsheet_template, name="seller_gsheet_template"),
-    path("seller/export/prices.csv", views.seller_price_export, name="seller_price_export"),
-    path("seller/imports/<int:run_id>/errors.csv", views.seller_import_errors_csv, name="seller_import_errors_csv"),
-    path("seller/parts/<int:part_id>/", views.seller_product_detail, name="seller_product_detail"),
-    path("seller/parts/new/", views.seller_part_create, name="seller_part_create"),
-    path("seller/parts/bulk-action/", views.seller_parts_bulk_action, name="seller_parts_bulk_action"),
-    path("seller/parts/<int:part_id>/inline-update/", views.seller_part_inline_update, name="seller_part_inline_update"),
-    path("seller/parts/<int:part_id>/edit/", views.seller_part_edit, name="seller_part_edit"),
-    # ═══ Operator cabinet ═══
-    path("operator/", views.operator_select_role, name="operator_dashboard"),
-    path("operator/logist/", views.operator_logist_dashboard, name="operator_logist_dashboard"),
-    path("operator/logist/shipments/", views.operator_logist_shipments, name="operator_logist_shipments"),
-    path("operator/logist/routes/", views.operator_logist_routes, name="operator_logist_routes"),
-    path("operator/customs/", views.operator_customs_dashboard, name="operator_customs_dashboard"),
-    path("operator/customs/declarations/", views.operator_customs_declarations, name="operator_customs_declarations"),
-    path("operator/customs/tariffs/", views.operator_customs_tariffs, name="operator_customs_tariffs"),
-    path("operator/payments/", views.operator_payments_dashboard, name="operator_payments_dashboard"),
-    path("operator/payments/invoices/", views.operator_payments_invoices, name="operator_payments_invoices"),
-    path("operator/payments/escrow/", views.operator_payments_escrow, name="operator_payments_escrow"),
-    path("operator/manager/", views.operator_manager_dashboard, name="operator_manager_dashboard"),
-    path("operator/manager/orders/", views.operator_manager_orders, name="operator_manager_orders"),
-    path("operator/manager/clients/", views.operator_manager_clients, name="operator_manager_clients"),
-    path("operator/logist/ports/", views.operator_logist_ports, name="operator_logist_ports"),
-    path("operator/logist/documents/", views.operator_logist_documents, name="operator_logist_documents"),
-    path("operator/logist/analytics/", views.operator_logist_analytics, name="operator_logist_analytics"),
-    path("operator/customs/documents/", views.operator_customs_documents, name="operator_customs_documents"),
-    path("operator/customs/requests/", views.operator_customs_requests, name="operator_customs_requests"),
-    path("operator/customs/analytics/", views.operator_customs_analytics, name="operator_customs_analytics"),
-    path("operator/payments/reconciliation/", views.operator_payments_reconciliation, name="operator_payments_reconciliation"),
-    path("operator/payments/analytics/", views.operator_payments_analytics, name="operator_payments_analytics"),
-    path("operator/manager/shipments/", views.operator_manager_shipments, name="operator_manager_shipments"),
-    path("operator/manager/negotiations/", views.operator_manager_negotiations, name="operator_manager_negotiations"),
-    path("operator/manager/analytics/", views.operator_manager_analytics, name="operator_manager_analytics"),
-    # ═══ Admin panel ═══
-    path("admin-panel/", views.admin_panel_dashboard, name="admin_panel_dashboard"),
-    path("admin-panel/users/", views.admin_panel_users, name="admin_panel_users"),
-    path("admin-panel/orders/", views.admin_panel_orders, name="admin_panel_orders"),
-    path("admin-panel/rfq/", views.admin_panel_rfq, name="admin_panel_rfq"),
-    path("admin-panel/finance/", views.admin_panel_finance, name="admin_panel_finance"),
-    path("admin-panel/catalog/", views.admin_panel_catalog, name="admin_panel_catalog"),
-    path("admin-panel/moderation/", views.admin_panel_moderation, name="admin_panel_moderation"),
-    path("admin-panel/settings/", views.admin_panel_settings, name="admin_panel_settings"),
-    path("admin-panel/analytics/", views.admin_panel_analytics, name="admin_panel_analytics"),
-    path("admin-panel/logs/", views.admin_panel_logs, name="admin_panel_logs"),
-    path("admin-panel/tariffs/", views.admin_panel_tariffs, name="admin_panel_tariffs"),
-    path("admin-panel/support/", views.admin_panel_support, name="admin_panel_support"),
-    path("admin-panel/orders/<int:order_id>/", views.admin_panel_order_detail, name="admin_panel_order_detail"),
-    path("admin-panel/rfq/<int:rfq_id>/", views.admin_panel_rfq_detail, name="admin_panel_rfq_detail"),
-    path("admin-panel/users/<int:user_id>/", views.admin_panel_user_detail, name="admin_panel_user_detail"),
-    path("admin-panel/users/<int:user_id>/block/", views.admin_panel_user_block, name="admin_panel_user_block"),
-    path("admin-panel/users/<int:user_id>/unblock/", views.admin_panel_user_unblock, name="admin_panel_user_unblock"),
-    path("admin-panel/imports/", views.admin_panel_imports, name="admin_panel_imports"),
-    path("admin-panel/imports/<int:import_id>/", views.admin_panel_import_detail, name="admin_panel_import_detail"),
-    path("admin-panel/export/<str:report_type>/", views.admin_panel_export_csv, name="admin_panel_export_csv"),
-    path("seller/reports/export/<str:report_type>/", views.seller_analytics, name="seller_report_export_csv"),
-    # ═══ Buyer cabinet ═══
-    path("buyer/", views.buyer_dashboard, name="buyer_dashboard"),
-    path("buyer/catalog/", views.buyer_catalog, name="buyer_catalog"),
-    path("buyer/rfq/", views.buyer_rfq_list, name="buyer_rfq_list"),
-    path("buyer/orders/", views.buyer_orders, name="buyer_orders"),
-    path("buyer/shipments/", views.buyer_shipments, name="buyer_shipments"),
-    path("buyer/claims/", views.buyer_claims, name="buyer_claims"),
-    path("buyer/suppliers/", views.buyer_suppliers, name="buyer_suppliers"),
-    path("buyer/negotiations/", views.buyer_negotiations, name="buyer_negotiations"),
-    path("buyer/finance/", views.buyer_finance, name="buyer_finance"),
-    path("buyer/analytics/", views.buyer_analytics, name="buyer_analytics"),
-
-    # i18n — set user language
-    path("api/set-language/", views.set_language_api, name="set_language_api"),
-
-    # Notifications
-    path("notifications/", views.notifications_page, name="notifications"),
-    path("api/notifications/", views.notifications_list, name="notifications_api"),
-    path("api/notifications/read/", views.notifications_mark_read, name="notifications_mark_all_read"),
-    path("api/notifications/<int:notif_id>/read/", views.notifications_mark_read, name="notifications_mark_read"),
-
-    # KYB verification
-    path("kyb/", views.kyb_view, name="kyb"),
-
-    # Team management (multi-user company accounts)
-
-    # 2FA
-    path("2fa/", views.twofa_setup, name="twofa_setup"),
+    path("admin-panel/", removed_portal_route),
+    path("admin-panel/<path:legacy_path>", removed_portal_route),
 ]
