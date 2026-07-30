@@ -2,7 +2,7 @@
 <html lang="{{ CURRENT_LANG|default:'ru' }}" dir="{% if LANG_BIDI %}rtl{% else %}ltr{% endif %}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -54,6 +54,17 @@
 
     a{color:inherit;text-decoration:none;}
     button{font-family:inherit;cursor:pointer;border:none;background:transparent;color:inherit;padding:0;}
+    .sr-only{
+      position:absolute !important;
+      width:1px !important;
+      height:1px !important;
+      padding:0 !important;
+      margin:-1px !important;
+      overflow:hidden !important;
+      clip:rect(0,0,0,0) !important;
+      white-space:nowrap !important;
+      border:0 !important;
+    }
 
     /* ────────────────────────────────────────────────────────────
        READABILITY BASELINE — все body-тексты внутри карточек.
@@ -363,7 +374,7 @@
     .hero-mic.send:hover{background:#000;}
 
     /* ── Drop hint under input ── */
-    .drop-hint{font-size:12px;color:rgba(0,0,0,0.55);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .drop-hint{font-size:12px;color:rgba(0,0,0,0.72);text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;}
     .drop-hint code{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.75);font-weight:600;padding:1px 6px;border-radius:4px;}
 
     /* ── Pill action buttons ── */
@@ -579,7 +590,7 @@
     .obp-step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;}
     .obp-step-lbl{font-size:13px;line-height:1.3;}
     .obp-step-done .obp-step-dot{background:#16a34a;color:#fff;}
-    .obp-step-done .obp-step-lbl{color:rgba(0,0,0,0.50);text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.25);}
+    .obp-step-done .obp-step-lbl{color:rgba(0,0,0,0.68);text-decoration:line-through;text-decoration-color:rgba(0,0,0,0.35);}
     .obp-step-current{background:rgba(34,197,94,0.08);}
     .obp-step-current .obp-step-dot{background:#1a1a1a;color:#fff;box-shadow:0 0 0 3px rgba(26,26,26,0.12);}
     .obp-step-current .obp-step-lbl{color:rgba(0,0,0,0.92);font-weight:600;}
@@ -592,7 +603,7 @@
     body.dark-mode .obp-progress-cur{color:#fff;}
     body.dark-mode .obp-progress-bar{background:rgba(255,255,255,0.08);}
     body.dark-mode .obp-progress-lbl{color:rgba(255,255,255,0.75);}
-    body.dark-mode .obp-step-done .obp-step-lbl{color:rgba(255,255,255,0.50);}
+    body.dark-mode .obp-step-done .obp-step-lbl{color:rgba(255,255,255,0.72);}
     body.dark-mode .obp-step-current{background:rgba(34,197,94,0.14);}
     body.dark-mode .obp-step-current .obp-step-dot{background:#fff;color:#000;box-shadow:0 0 0 3px rgba(255,255,255,0.15);}
     body.dark-mode .obp-step-current .obp-step-lbl{color:#fff;}
@@ -612,14 +623,14 @@
     body.dark-mode .ib-row-click:hover{background:rgba(255,255,255,0.10);border-color:rgba(255,255,255,0.18);}
     .ib-title{font-size:12px;font-weight:600;color:#1a1a1a;}
     .ib-sub{font-size:11px;color:rgba(0,0,0,0.55);margin-top:2px;}
-    .ib-card .ib-btn,
-    .ib-card .ib-btn.act-btn{
-      padding:6px 12px!important;font-size:11.5px!important;font-weight:600!important;flex-shrink:0;
-      background:transparent!important;color:#1a1a1a!important;
-      border:1.5px solid rgba(0,0,0,0.78)!important;border-radius:8px!important;
-      transition:all 0.12s;cursor:pointer;
+    .ib-row-arrow{
+      width:28px;height:28px;display:grid;place-items:center;flex:0 0 auto;
+      border-radius:7px;color:rgba(0,0,0,0.68);
+      transition:background .12s,color .12s,transform .12s;
     }
-    .ib-card .ib-btn:hover{background:#1a1a1a!important;color:#fff!important;border-color:#1a1a1a!important;}
+    .ib-row-click:hover .ib-row-arrow{
+      background:rgba(0,0,0,0.07);color:#111;transform:translateX(2px);
+    }
 
     /* ── Catalog card ── */
     .cat-card{padding:14px 16px;}
@@ -920,7 +931,7 @@
     .ls-collapsible[data-collapsed="1"] .ls-coll-head{margin-bottom:0;}
     .ls-coll-chev{display:inline-block;width:14px;font-size:11px;color:rgba(0,0,0,0.55);transition:transform 0.15s;text-align:center;}
     .ls-coll-title{flex:1;min-width:0;}
-    .ls-coll-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;font-size:11px;font-weight:600;color:rgba(0,0,0,0.55);background:rgba(0,0,0,0.06);border-radius:10px;}
+    .ls-coll-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 7px;font-size:11px;font-weight:600;color:rgba(0,0,0,0.72);background:rgba(0,0,0,0.06);border-radius:10px;}
     body.dark-mode .ls-collapsible .ls-coll-head:hover{background:rgba(255,255,255,0.06);}
     body.dark-mode .ls-coll-chev{color:rgba(255,255,255,0.55);}
     body.dark-mode .ls-coll-count{color:rgba(255,255,255,0.62);background:rgba(255,255,255,0.10);}
@@ -1359,7 +1370,7 @@
     .ls-badge{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;background:transparent;color:rgba(0,0,0,0.55);padding:3px 8px;border-radius:6px;flex-shrink:0;border:1px solid rgba(0,0,0,0.12);}
     /* Тонированные бейджи статуса оплаты — рядом с правой колонкой. */
     /* Цветной акцент даём только через бордер слева — без подложек */
-    .ls-badge-ok   {color:#15803d;border-color:rgba(22,163,74,0.35);}
+    .ls-badge-ok   {color:#0b5d2a;border-color:rgba(11,93,42,0.42);}
     .ls-badge-warn {color:#92400e;border-color:rgba(245,158,11,0.35);}
     .ls-badge-info {color:rgba(0,0,0,0.55);}
     .ls-badge-bad  {color:#991b1b;border-color:rgba(220,38,38,0.35);}
@@ -3432,7 +3443,7 @@
       border:0!important;
       border-radius:7px!important;
       background:transparent!important;
-      color:rgba(0,0,0,0.48)!important;
+      color:rgba(0,0,0,0.64)!important;
       padding:0 6px!important;
       font-size:12px!important;
       line-height:1!important;
@@ -3454,7 +3465,7 @@
       padding:7px 10px;
       border:0;
       border-radius:9px;
-      color:rgba(0,0,0,0.45);
+      color:rgba(0,0,0,0.64);
       font-size:13px;
       line-height:1.35;
       text-align:left;
@@ -3507,7 +3518,7 @@
     .side-project-meta,
     .side-item-stack-meta{
       margin-top:2px;
-      color:rgba(0,0,0,0.45)!important;
+      color:rgba(0,0,0,0.64)!important;
       font-size:11.5px!important;
       line-height:1.25;
       overflow:hidden;
@@ -3547,7 +3558,7 @@
     .conv-bucket + .conv-bucket{margin-top:12px!important;}
     .conv-bucket-label{
       padding:8px 10px 4px!important;
-      color:rgba(0,0,0,0.42)!important;
+      color:rgba(0,0,0,0.62)!important;
       font-size:11px!important;
       letter-spacing:0!important;
       text-transform:none!important;
@@ -3563,7 +3574,7 @@
     body.dark-mode .side-section-clear{
       background:transparent!important;
       border-color:transparent!important;
-      color:rgba(255,255,255,0.48)!important;
+      color:rgba(255,255,255,0.72)!important;
     }
     body.dark-mode .side-section-add:hover,
     body.dark-mode .side-section-clear:hover{
@@ -3574,7 +3585,7 @@
     body.dark-mode .side-state{
       background:transparent;
       border-color:transparent;
-      color:rgba(255,255,255,0.42);
+      color:rgba(255,255,255,0.72);
     }
     body.dark-mode .side-project-row:hover,
     body.dark-mode .side-item-stack:hover{
@@ -3591,7 +3602,7 @@
     body.dark-mode .side-item-stack-title{color:rgba(255,255,255,0.92)!important;}
     body.dark-mode .side-project-meta,
     body.dark-mode .side-item-stack-meta,
-    body.dark-mode .conv-bucket-label{color:rgba(255,255,255,0.52)!important;}
+    body.dark-mode .conv-bucket-label{color:rgba(255,255,255,0.72)!important;}
     body.dark-mode .side-item-del,
     body.dark-mode .side-item-stack-more{color:rgba(255,255,255,0.56)!important;}
     body.dark-mode .side-item-del:hover,
@@ -3613,7 +3624,7 @@
     body.dark-mode .welcome-text h1{color:#fff;}
     body.dark-mode .welcome-text p{color:rgba(255,255,255,0.78);}
     body.dark-mode .welcome-text p strong{color:#fff;}
-    body.dark-mode .drop-hint{color:rgba(255,255,255,0.65);}
+    body.dark-mode .drop-hint{color:rgba(255,255,255,0.82);}
     body.dark-mode .drop-hint code{background:rgba(255,255,255,0.10);color:#fff;}
     body.dark-mode .pill svg{color:rgba(255,255,255,0.65);}
 
@@ -3651,9 +3662,10 @@
     body.dark-mode .ib-section-title{color:#fff;}
     body.dark-mode .ib-title{color:#fff;}
     body.dark-mode .ib-sub{color:rgba(255,255,255,0.65);}
-    body.dark-mode .ib-card .ib-btn,
-    body.dark-mode .ib-card .ib-btn.act-btn{background:transparent!important;color:#fff!important;border-color:rgba(255,255,255,0.55)!important;}
-    body.dark-mode .ib-card .ib-btn:hover{background:#fff!important;color:#000!important;border-color:#fff!important;}
+    body.dark-mode .ib-row-arrow{color:rgba(255,255,255,0.78);}
+    body.dark-mode .ib-row-click:hover .ib-row-arrow{
+      background:rgba(255,255,255,0.10);color:#fff;
+    }
 
     /* Catalog cards */
     body.dark-mode .cat-art{color:#fff;}
@@ -4249,6 +4261,9 @@
 
   <!-- Main -->
   <main class="main">
+    {% if user.is_authenticated %}
+    <h1 class="sr-only">{% trans "Consolidator Parts — рабочее пространство" %}</h1>
+    {% endif %}
     {% if request.is_view_as %}
     <!-- View-as banner: оператор смотрит кабинет поставщика -->
     <div id="viewAsBanner" style="background:linear-gradient(90deg,#f59e0b,#eab308);color:#1a1a1a;padding:9px 16px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;border-bottom:1px solid rgba(0,0,0,0.12);box-shadow:0 2px 8px rgba(0,0,0,0.10);position:relative;z-index:50;flex-wrap:wrap;">
@@ -4295,7 +4310,7 @@
          title="{% trans 'Перейти на сайт' %}"
          aria-label="{% trans 'Перейти на сайт' %}">
         <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}"
-             alt="Consolidator Parts" loading="lazy" width="24" height="24">
+             alt="" loading="lazy" width="24" height="24">
         Consolidator Parts
       </a>
       <div class="top-right">
@@ -4469,7 +4484,7 @@
 </div>
 
 <!-- Side preview panel (как у claude.ai) — слайдит справа при клике на файл -->
-<div id="sidePreview" class="side-preview" hidden>
+<aside id="sidePreview" class="side-preview" hidden aria-label="{% trans 'Предпросмотр файла' %}">
   <!-- Ручка для изменения ширины — drag слева-направо -->
   <div id="sidePreviewResizer" class="side-preview-resizer" title="{% trans 'Тяните чтобы изменить ширину' %}"></div>
   <div class="side-preview-head">
@@ -4483,7 +4498,7 @@
     </div>
   </div>
   <div id="sidePreviewBody" class="side-preview-body"></div>
-</div>
+</aside>
 
 {{ role_actions_data|json_script:"role-actions-data" }}
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>

@@ -20,6 +20,7 @@ import base64
 import logging
 import secrets
 
+from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
@@ -86,7 +87,8 @@ def setup_2fa(params, user, role):
     from .security import encode_backup_codes
 
     twofa.backup_codes = encode_backup_codes(user, backup)
-    twofa.save(update_fields=["secret", "backup_codes"])
+    twofa.last_totp_counter = None
+    twofa.save(update_fields=["secret", "backup_codes", "last_totp_counter"])
 
     issuer = "Consolidator"
     label = user.email or user.username
@@ -155,13 +157,24 @@ def verify_2fa(params, user, role):
             }}],
         )
 
-    totp = pyotp.TOTP(twofa.secret)
-    if not totp.verify(code, valid_window=1):
-        return ActionResult(text=_("❌ Код неверный или устарел. Попробуйте ещё раз."))
+    from .security import matching_totp_counter
 
-    twofa.enabled = True
-    twofa.enabled_at = timezone.now()
-    twofa.save(update_fields=["enabled", "enabled_at"])
+    with transaction.atomic():
+        twofa = TwoFactorAuth.objects.select_for_update().get(pk=twofa.pk)
+        counter = matching_totp_counter(twofa.secret, code)
+        if counter is None:
+            return ActionResult(text=_("❌ Код неверный или устарел. Попробуйте ещё раз."))
+        if (
+            twofa.last_totp_counter is not None
+            and counter <= twofa.last_totp_counter
+        ):
+            return ActionResult(text=_("❌ Этот код уже использован. Дождитесь следующего."))
+        twofa.enabled = True
+        twofa.enabled_at = timezone.now()
+        twofa.last_totp_counter = counter
+        twofa.save(
+            update_fields=["enabled", "enabled_at", "last_totp_counter"],
+        )
     return ActionResult(
         text=_("✓ 2FA активирован! При входе или критичных платежах потребуется код из приложения."),
         contextual_actions=[
@@ -174,11 +187,6 @@ def verify_2fa(params, user, role):
 def disable_2fa(params, user, role):
     """Выключить 2FA — требует подтверждения через OTP."""
     from marketplace.models import TwoFactorAuth
-    try:
-        import pyotp
-    except ImportError:
-        return ActionResult(text=_("⚠️ pyotp не установлен."))
-
     twofa = TwoFactorAuth.objects.filter(user=user).first()
     if not twofa or not twofa.enabled:
         return ActionResult(text=_("2FA не активирован."))
@@ -198,14 +206,23 @@ def disable_2fa(params, user, role):
             }}],
         )
 
-    totp = pyotp.TOTP(twofa.secret)
-    if not totp.verify(code, valid_window=1):
+    from .security import verify_user_2fa
+
+    if not verify_user_2fa(user, code):
         return ActionResult(text=_("❌ Код неверный."))
 
     twofa.enabled = False
     twofa.secret = ""
     twofa.backup_codes = ""
-    twofa.save(update_fields=["enabled", "secret", "backup_codes"])
+    twofa.last_totp_counter = None
+    twofa.save(
+        update_fields=[
+            "enabled",
+            "secret",
+            "backup_codes",
+            "last_totp_counter",
+        ],
+    )
     return ActionResult(text=_("✓ 2FA выключен."))
 
 

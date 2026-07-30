@@ -85,7 +85,7 @@ COLUMN_MAP: dict[str, list[str]] = {
     ],
     "lead_time": [
         "delivery time", "lead time", "delivery", "lead-time",
-        "срок поставки", "поставка",
+        "срок поставки", "срок доставки", "срок, дн.", "срок дн", "поставка",
         "交货期", "交付时间",
         "lieferzeit",
         "tiempo de entrega", "plazo de entrega",
@@ -228,6 +228,7 @@ CANONICAL_TO_STD: dict[str, str] = {
     "currency":      "currency",
     "stock":         "stock",
     "moq":           "moq",
+    "lead_time":     "lead_time_days",
     "weight":        "weight_kg",
     "length":        "length_cm",
     "width":         "width_cm",
@@ -238,13 +239,13 @@ CANONICAL_TO_STD: dict[str, str] = {
     "price_fob_air": "price_fob_air",
     "sea_port":      "sea_port",
     "air_port":      "air_port",
-    # hs_code, lead_time — пока не в STD_FIELDS, но распознаются.
+    # hs_code пока не входит в STD_FIELDS, но заголовок распознаётся.
 }
 
 
 # ── Helpers ──────────────────────────────────────────────────────
 
-_NORM_RE = re.compile(r"[\s_\-./()]+")
+_NORM_RE = re.compile(r"[\s_\-./(),:;]+")
 
 def normalize(header: str) -> str:
     """Нормализует заголовок: lower + trim + убирает разделители для

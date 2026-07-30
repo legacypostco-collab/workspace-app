@@ -1329,6 +1329,41 @@ class QRScanTests(TestCase):
             unit_price=D("500"),
         )
 
+    def _attach_ready_documents(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from marketplace.models import OrderDocument
+
+        from .actions import complete_trigger
+
+        for trigger_id, doc_type in (
+            ("invoice", "invoice"),
+            ("packing_list", "packing_list"),
+        ):
+            document = OrderDocument.objects.create(
+                order=self.order,
+                doc_type=doc_type,
+                title=trigger_id,
+                file_obj=SimpleUploadedFile(
+                    f"{trigger_id}.pdf",
+                    b"%PDF-1.4 qr test evidence",
+                    content_type="application/pdf",
+                ),
+                uploaded_by=self.seller,
+            )
+            result = complete_trigger(
+                {
+                    "order_id": self.order.id,
+                    "status": "ready_to_ship",
+                    "trigger_id": trigger_id,
+                    "document_id": document.id,
+                    "sha256": "b" * 64,
+                },
+                self.seller,
+                "seller",
+            )
+            self.assertTrue(result.action_succeeded)
+
     def test_encode_decode_roundtrip(self):
         from .qr_scan import decode_qr_code, encode_qr_code
         code = encode_qr_code(self.order.id)
@@ -1337,10 +1372,13 @@ class QRScanTests(TestCase):
 
     @override_settings(QR_SECRET="", DEBUG=True)
     def test_debug_mode_does_not_use_predictable_qr_secret(self):
+        from unittest.mock import patch
+
         from .qr_scan import encode_qr_code
 
-        with self.assertRaises(RuntimeError):
-            encode_qr_code(self.order.id)
+        with patch.dict("os.environ", {"QR_SECRET": ""}):
+            with self.assertRaises(RuntimeError):
+                encode_qr_code(self.order.id)
 
     def test_decode_rejects_tampered_code(self):
         from .qr_scan import decode_qr_code
@@ -1385,6 +1423,7 @@ class QRScanTests(TestCase):
         from .qr_scan import encode_qr_code
         c = Client()
         c.force_login(self.seller)
+        self._attach_ready_documents()
         code = encode_qr_code(self.order.id)
         r = c.post(f"/api/assistant/qr/scan/{code}/", {"action": "shipped"})
         self.assertEqual(r.status_code, 200)
@@ -1396,6 +1435,115 @@ class QRScanTests(TestCase):
         # Event записан
         ev = OrderEvent.objects.filter(order=self.order).order_by("-created_at").first()
         self.assertEqual(ev.meta["qr_scan_action"], "shipped")
+
+    def test_manual_completion_cannot_forge_upload_or_qr_evidence(self):
+        from .actions import complete_trigger
+
+        for trigger_id in ("invoice", "fob_handoff_qr"):
+            with self.subTest(trigger_id=trigger_id):
+                result = complete_trigger(
+                    {
+                        "order_id": self.order.id,
+                        "status": "ready_to_ship",
+                        "trigger_id": trigger_id,
+                    },
+                    self.seller,
+                    "seller",
+                )
+                self.assertFalse(result.action_succeeded)
+        self.order.refresh_from_db()
+        self.assertFalse(
+            ((self.order.logistics_meta or {}).get("triggers") or {})
+            .get("ready_to_ship")
+        )
+
+    def test_protected_document_upload_records_verified_evidence(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import Client
+
+        client = Client()
+        client.force_login(self.seller)
+        response = client.post(
+            f"/api/assistant/orders/{self.order.id}/documents/",
+            {
+                "status": "ready_to_ship",
+                "trigger_id": "invoice",
+                "file": SimpleUploadedFile(
+                    "invoice.pdf",
+                    b"%PDF-1.4 protected evidence",
+                    content_type="application/pdf",
+                ),
+            },
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        self.order.refresh_from_db()
+        evidence = (
+            ((self.order.logistics_meta or {}).get("triggers") or {})
+            ["ready_to_ship"]["invoice"]
+        )
+        self.assertEqual(evidence["kind"], "document")
+        self.assertEqual(len(evidence["sha256"]), 64)
+
+        outsider = Client()
+        outsider.force_login(self.outsider)
+        denied = outsider.post(
+            f"/api/assistant/orders/{self.order.id}/documents/",
+            {
+                "status": "ready_to_ship",
+                "trigger_id": "packing_list",
+                "file": SimpleUploadedFile(
+                    "packing.pdf",
+                    b"%PDF-1.4 outsider evidence",
+                    content_type="application/pdf",
+                ),
+            },
+        )
+        self.assertEqual(denied.status_code, 403)
+
+    def test_delivery_confirmation_requires_qr_and_signed_documents(self):
+        from .actions import confirm_delivery
+
+        self.order.status = "delivered"
+        self.order.save(update_fields=["status"])
+        result = confirm_delivery(
+            {"order_id": self.order.id, "confirmed": True},
+            self.buyer,
+            "buyer",
+        )
+        self.assertFalse(result.action_succeeded)
+        self.assertIn("доказательства", str(result.text))
+        self.assertEqual(result.cards[0]["type"], "delivery_evidence")
+        self.assertFalse(
+            any(
+                action.get("action") == "generate_qr"
+                for action in result.actions
+            )
+        )
+
+    def test_buyer_cannot_generate_package_qr(self):
+        from .seller_actions import generate_qr
+
+        result = generate_qr(
+            {"order_id": self.order.id},
+            self.buyer,
+            "buyer",
+        )
+
+        self.assertFalse(result.action_succeeded)
+        self.assertFalse(result.cards)
+        self.assertIn("на упаковке", str(result.text))
+
+        self.client.force_login(self.buyer)
+        response = self.client.post(
+            "/api/assistant/action/",
+            data={
+                "action": "generate_qr",
+                "params": {"order_id": self.order.id},
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIs(response.json().get("action_succeeded"), False)
 
     def test_buyer_and_outsider_cannot_mark_order_shipped(self):
         from django.test import Client
@@ -1415,13 +1563,8 @@ class QRScanTests(TestCase):
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "ready_to_ship")
 
-    def test_received_scan_uses_standard_delivery_workflow(self):
-        from types import SimpleNamespace
-        from unittest.mock import patch
-
+    def test_received_scan_records_evidence_without_settlement(self):
         from django.test import Client
-
-        from marketplace.models import Order
 
         from .qr_scan import encode_qr_code
 
@@ -1431,25 +1574,23 @@ class QRScanTests(TestCase):
         c = Client()
         c.force_login(self.buyer)
 
-        def complete_delivery(params, user, role):
-            Order.objects.filter(id=params["order_id"]).update(status="completed")
-            return SimpleNamespace(text="completed")
-
-        with patch(
-            "assistant.actions.confirm_delivery",
-            side_effect=complete_delivery,
-        ) as confirm:
-            response = c.post(
-                f"/api/assistant/qr/scan/{code}/",
-                {"action": "received"},
-            )
+        response = c.post(
+            f"/api/assistant/qr/scan/{code}/",
+            {"action": "received"},
+        )
 
         self.assertEqual(response.status_code, 200)
-        confirm.assert_called_once_with(
-            {"order_id": self.order.id, "confirmed": True},
-            self.buyer,
-            "buyer",
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertTrue(body["requires_confirmation"])
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "delivered")
+        evidence = (
+            ((self.order.logistics_meta or {}).get("triggers") or {})
+            ["delivered"]["qr_received"]
         )
+        self.assertEqual(evidence["kind"], "qr_scan")
+        self.assertEqual(evidence["actor_id"], self.buyer.id)
 
     def test_seller_cannot_ship_shared_order_with_qr(self):
         from decimal import Decimal
@@ -3123,6 +3264,60 @@ class DurableChannelsTests(TestCase):
         self.assertEqual(calls[0][1]["payload"]["id"], 42)
         self.assertEqual(len(calls), 1)
 
+    def test_mark_all_notifications_pushes_realtime_state(self):
+        from unittest.mock import patch
+
+        from marketplace.models import Notification
+
+        Notification.objects.create(
+            user=self.user,
+            kind="order",
+            title="Unread",
+        )
+        self.client.force_login(self.user)
+        with patch(
+            "assistant.consumers.push_notification_state_to_user"
+        ) as push_state:
+            response = self.client.post(
+                "/api/assistant/notifications/read-all/",
+                data={},
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["unread_count"], 0)
+        self.assertFalse(
+            Notification.objects.filter(user=self.user, is_read=False).exists()
+        )
+        push_state.assert_called_once_with(
+            self.user.id,
+            unread_count=0,
+            unread_by_kind={},
+        )
+
+    def test_notification_state_uses_single_chat_group(self):
+        from unittest.mock import patch
+
+        from .consumers import push_notification_state_to_user
+
+        calls = []
+
+        class Layer:
+            async def group_send(self, group, event):
+                calls.append((group, event))
+
+        with patch("assistant.consumers.get_channel_layer", return_value=Layer()):
+            push_notification_state_to_user(
+                self.user.id,
+                unread_count=3,
+                unread_by_kind={"order": 2, "rfq": 1},
+            )
+
+        self.assertEqual(calls[0][0], f"notif_user_{self.user.id}")
+        self.assertEqual(calls[0][1]["type"], "notification_state")
+        self.assertEqual(calls[0][1]["unread_count"], 3)
+        self.assertEqual(calls[0][1]["unread_by_kind"]["order"], 2)
+
     def test_rfq_update_push_hits_chat_group_without_notification_payload(self):
         from unittest.mock import patch
 
@@ -3571,6 +3766,29 @@ class AuthFlowTests(TestCase):
         self.assertTrue(verify_user_2fa(self.user, plain_code))
         self.assertFalse(verify_user_2fa(self.user, plain_code))
 
+    def test_totp_code_is_consumed_once_per_time_step(self):
+        import time
+        from unittest.mock import patch
+
+        import pyotp
+
+        from marketplace.models import TwoFactorAuth
+
+        from .security import verify_user_2fa
+
+        base_time = time.time()
+        twofa = TwoFactorAuth.objects.create(
+            user=self.user,
+            enabled=True,
+            secret=pyotp.random_base32(),
+        )
+        code = pyotp.TOTP(twofa.secret).at(base_time)
+        with patch("assistant.security.time.time", return_value=base_time):
+            self.assertTrue(verify_user_2fa(self.user, code))
+            self.assertFalse(verify_user_2fa(self.user, code))
+        twofa.refresh_from_db()
+        self.assertIsNotNone(twofa.last_totp_counter)
+
     def test_legacy_2fa_backup_codes_are_migrated_on_verification(self):
         from marketplace.models import TwoFactorAuth
 
@@ -3616,6 +3834,9 @@ class AuthFlowTests(TestCase):
         self.assertIn("неверн", r.text)
 
     def test_disable_2fa_requires_valid_code(self):
+        import time
+        from unittest.mock import patch
+
         import pyotp
 
         from marketplace.models import TwoFactorAuth
@@ -3623,16 +3844,28 @@ class AuthFlowTests(TestCase):
         from .auth_actions import disable_2fa, setup_2fa, verify_2fa
         setup_2fa({}, self.user, "buyer")
         twofa = TwoFactorAuth.objects.get(user=self.user)
-        verify_2fa({"code": pyotp.TOTP(twofa.secret).now(), "confirmed": True},
-                    self.user, "buyer")
+        base_time = time.time()
+        first_code = pyotp.TOTP(twofa.secret).at(base_time)
+        with patch("assistant.security.time.time", return_value=base_time):
+            verify_2fa(
+                {"code": first_code, "confirmed": True},
+                self.user,
+                "buyer",
+            )
         # Bad code
         r = disable_2fa({"code": "111111", "confirmed": True}, self.user, "buyer")
         self.assertIn("неверн", r.text)
         twofa.refresh_from_db()
         self.assertTrue(twofa.enabled)
         # Good code
-        r2 = disable_2fa({"code": pyotp.TOTP(twofa.secret).now(), "confirmed": True},
-                          self.user, "buyer")
+        next_time = base_time + 30
+        next_code = pyotp.TOTP(twofa.secret).at(next_time)
+        with patch("assistant.security.time.time", return_value=next_time):
+            r2 = disable_2fa(
+                {"code": next_code, "confirmed": True},
+                self.user,
+                "buyer",
+            )
         self.assertIn("✓", r2.text)
         twofa.refresh_from_db()
         self.assertFalse(twofa.enabled)
@@ -4694,11 +4927,13 @@ class PricelistUploadTests(TestCase):
         # weight (Sandvik «unit-weight», Liebherr «Weight»)
         self.assertEqual(match_header("Weight"), "weight")
         self.assertEqual(match_header("unit-weight"), "weight")
+        self.assertEqual(match_header("Вес, кг"), "weight")
         # hs_code (Liebherr «HS Code»)
         self.assertEqual(match_header("HS Code"), "hs_code")
         self.assertEqual(match_header("ТН ВЭД"), "hs_code")
         # lead_time (Sandvik «Delivery time»)
         self.assertEqual(match_header("Delivery time"), "lead_time")
+        self.assertEqual(match_header("Срок, дн."), "lead_time")
         # replaced_by (Liebherr «Replaced by»)
         self.assertEqual(match_header("Replaced by"), "replaced_by")
         # Новые поля из доп. ТЗ
@@ -4791,6 +5026,32 @@ class PricelistUploadTests(TestCase):
             self.assertIn("СовершенноНоваяКолонка", unknown)
             self.assertFalse(ai)
             self.assertEqual(status, "ok")
+
+    def test_smart_mapping_does_not_treat_delivery_days_as_weight(self):
+        from django.test.utils import override_settings
+
+        from assistant.pricelist import _smart_mapping
+
+        with override_settings(ANTHROPIC_API_KEY=""):
+            mapping_std, unknown, ai, status = _smart_mapping(
+                [
+                    "Артикул",
+                    "Наименование",
+                    "Цена",
+                    "Срок, дн.",
+                    "Вес, кг",
+                ],
+                sample_rows=[
+                    ["A-1", "Filter", "100", "7", "9.5 кг"],
+                    ["A-2", "Pump", "200", "30", "37.71"],
+                ],
+            )
+
+        self.assertEqual(mapping_std["weight_kg"], "Вес, кг")
+        self.assertEqual(mapping_std["lead_time_days"], "Срок, дн.")
+        self.assertNotEqual(mapping_std.get("weight_kg"), "Срок, дн.")
+        self.assertFalse(ai)
+        self.assertEqual(status, "ok")
 
     def test_learned_synonym_grows_dictionary(self):
         """AI-распознанная колонка сохраняется в LearnedColumnSynonym."""
@@ -4899,3 +5160,37 @@ class PricelistUploadTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 404)
+
+
+@override_settings(
+    DEBUG=False,
+    EMBEDDING_PROVIDER="auto",
+    OPENAI_API_KEY="",
+    VOYAGE_API_KEY="",
+)
+class EmbeddingDegradationTests(TestCase):
+    def test_production_without_provider_is_explicitly_unavailable(self):
+        from .embeddings import (
+            EmbeddingProviderUnavailable,
+            embedding_provider_available,
+            get_embedding,
+        )
+
+        self.assertFalse(embedding_provider_available())
+        with self.assertRaises(EmbeddingProviderUnavailable):
+            get_embedding("test request")
+
+    def test_periodic_reindex_skips_without_provider(self):
+        from .tasks import reindex_all_task
+
+        self.assertEqual(
+            reindex_all_task(),
+            {"skipped": "embedding provider unavailable"},
+        )
+
+    def test_model_signal_does_not_enqueue_dead_task(self):
+        from .signals import _safe_delay
+
+        task = unittest.mock.Mock()
+        _safe_delay(task, 42)
+        task.delay.assert_not_called()

@@ -133,6 +133,7 @@ STD_FIELDS = [
     ], "Generic"),
     ("title",             _lazy("Название"),                True,  None, None),
     ("stock",             _lazy("Остаток (Quantity)"),      False, None, "1"),
+    ("lead_time_days",    _lazy("Срок поставки, дней"),     False, None, "1"),
     ("condition",         _lazy("Тип товара"),              False, ["OEM", "AFTERMARKET", "REMAN"], "OEM"),
     ("availability",      _lazy("Наличие"),                 False, ["IN_STOCK", "BACKORDER"], "IN_STOCK"),
     ("manufacturer",      _lazy("Завод-производитель"),     False, None, ""),
@@ -1660,6 +1661,10 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 brand = generic_brand
 
             stock = _coerce_int(get("stock")) or 0
+            lead_time_days = _coerce_int(get("lead_time_days"))
+            if lead_time_days is None or lead_time_days < 1:
+                lead_time_days = 1
+            lead_time_days = min(lead_time_days, 3650)
             currency = _normalize_currency(get("currency"))
             cond_raw = (get("condition") or "").strip().lower()
             condition = ("oem" if "oem" in cond_raw else
@@ -1748,6 +1753,7 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                     "price": price_exw,
                     "currency": currency,
                     "stock_quantity": stock,
+                    "production_lead_days": lead_time_days,
                     "condition": condition,
                     "availability": availability,
                     "manufacturer": manufacturer,

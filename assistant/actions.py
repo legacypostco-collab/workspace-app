@@ -125,9 +125,12 @@ class ActionResult:
     # idempotency cache must only receive a redacted representation.
     storage_text: str | None = None
     storage_cards: list | None = None
+    # Machine-readable result for inline controls that must not infer success
+    # from a localized human message.
+    action_succeeded: bool | None = None
 
     def to_dict(self):
-        return {
+        payload = {
             "text": self.text,
             "cards": self.cards,
             "actions": self.actions,
@@ -136,6 +139,9 @@ class ActionResult:
             "no_suggestions": self.no_suggestions,
             "navigate_conversation_id": self.navigate_conversation_id,
         }
+        if self.action_succeeded is not None:
+            payload["action_succeeded"] = self.action_succeeded
+        return payload
 
 
 # ── Permission matrix ──────────────────────────────────────
@@ -9557,8 +9563,8 @@ def _build_contextual_actions(order, role: str, user) -> list:
     # Seller на этапе ready_to_ship — документы для отгрузки
     if role == "seller" and order.status == "ready_to_ship":
         items.append({"label": _('📄 Документы для отгрузки'),
-                      "action": "open_url",
-                      "params": {"_url": f"/seller/orders/{order.id}/"}})
+                      "action": "list_order_documents",
+                      "params": {"order_id": order.id}})
     return items
 
 
@@ -9622,28 +9628,79 @@ _STAGE_CHECKLISTS = {
 }
 
 
+def _trigger_evidence_is_valid(item: dict, evidence, *, order=None) -> bool:
+    trigger_type = item.get("type") or "button"
+    if trigger_type == "upload":
+        if not (
+            isinstance(evidence, dict)
+            and evidence.get("kind") == "document"
+            and evidence.get("document_id")
+            and evidence.get("sha256")
+        ):
+            return False
+        if order is None:
+            return True
+        from marketplace.models import OrderDocument
+
+        return OrderDocument.objects.filter(
+            id=evidence["document_id"],
+            order=order,
+        ).exclude(file_obj="").exists()
+    if trigger_type == "qr":
+        return (
+            isinstance(evidence, dict)
+            and evidence.get("kind") == "qr_scan"
+            and evidence.get("actor_id")
+            and evidence.get("completed_at")
+        )
+    return bool(evidence)
+
+
+def _verified_trigger_ids(order, status: str, checklist: list | None = None) -> set[str]:
+    checklist = checklist or _stage_checklist(status, order.incoterm or "FOB")
+    stage = (
+        (((order.logistics_meta or {}).get("triggers") or {})
+         .get(status, {}))
+    )
+    return {
+        item["id"]
+        for item in checklist
+        if _trigger_evidence_is_valid(
+            item,
+            stage.get(item["id"]),
+            order=order,
+        )
+    }
+
+
 @register("complete_trigger")
 def complete_trigger(params, user, role):
-    """Помечает триггер этапа как выполненный (QR-скан, загрузка документа и т.п.).
+    """Records a checklist item only when its required evidence is present.
 
-    params: {order_id, status, trigger_id}
-    Сохраняет timestamp в Order.logistics_meta['triggers'][status][trigger_id].
+    Upload items require an OrderDocument created by the protected multipart
+    endpoint. QR items can only be recorded by the signed QR scan endpoint.
     """
     from django.utils import timezone
 
-    from marketplace.models import Order, OrderItem
+    from marketplace.models import Order, OrderDocument, OrderItem
     order_id = params.get("order_id")
     status = params.get("status") or ""
     trigger_id = params.get("trigger_id") or ""
     if not (order_id and status and trigger_id):
-        return ActionResult(text=_('Не указаны order_id / status / trigger_id.'))
+        return ActionResult(
+            text=_('Не указаны order_id / status / trigger_id.'),
+            action_succeeded=False,
+        )
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
-        return ActionResult(text=_('Заказ #%(order_id)s не найден.') % {'order_id': order_id})
+        return ActionResult(
+            text=_('Заказ #%(order_id)s не найден.') % {'order_id': order_id},
+            action_succeeded=False,
+        )
 
     if role == "seller" and order.status not in {
-        "reserve_paid", "confirmed", "in_production",
+        "reserve_paid", "confirmed", "in_production", "ready_to_ship",
     }:
         return ActionResult(
             text=_(
@@ -9651,44 +9708,134 @@ def complete_trigger(params, user, role):
                 'Отгрузка выполняется отдельной командой с данными перевозчика, '
                 'дальнейшие этапы ведёт оператор.'
             ),
+            action_succeeded=False,
         )
-    # Только продавец/оператор по заказу с его позициями
-    if role == "buyer":
-        return ActionResult(text=_('Триггеры закрывает поставщик / оператор.'))
+    # Buyer may attach signed delivery documents only for their delivered order.
+    if role == "buyer" and not (
+        order.buyer_id == user.id
+        and status == "delivered"
+        and trigger_id == "signed_docs"
+    ):
+        return ActionResult(
+            text=_('Этот пункт закрывает поставщик или оператор.'),
+            action_succeeded=False,
+        )
     if role == "seller":
         from .seller_actions import _effective_seller
         user = _effective_seller(user)
         if not OrderItem.objects.filter(order_id=order_id, part__seller=user).exists():
-            return ActionResult(text=_('Заказ #%(order_id)s не содержит ваших товаров.') % {'order_id': order_id})
+            return ActionResult(
+                text=_('Заказ #%(order_id)s не содержит ваших товаров.') % {'order_id': order_id},
+                action_succeeded=False,
+            )
     if order.status != status:
         return ActionResult(
             text=_('⚠️ Заказ #%(id)s уже не в статусе «%(status)s» (текущий: %(status2)s).') % {'id': order.id, 'status': status, 'status2': order.status},
+            action_succeeded=False,
         )
-    meta = order.logistics_meta or {}
-    triggers = meta.get("triggers") or {}
-    stage_triggers = triggers.get(status) or {}
-    if stage_triggers.get(trigger_id):
-        return ActionResult(text=_('Триггер «%(trigger_id)s» уже отмечен ранее.') % {'trigger_id': trigger_id})
-    stage_triggers[trigger_id] = timezone.now().isoformat()
-    triggers[status] = stage_triggers
-    meta["triggers"] = triggers
-    order.logistics_meta = meta
-    order.save(update_fields=["logistics_meta"])
+    checklist = _stage_checklist(status, order.incoterm or "FOB")
+    trigger = next((item for item in checklist if item["id"] == trigger_id), None)
+    if not trigger:
+        return ActionResult(
+            text=_('Пункт «%(trigger_id)s» не относится к текущему этапу заказа.') % {
+                'trigger_id': trigger_id,
+            },
+            action_succeeded=False,
+        )
+    trigger_type = trigger.get("type") or "button"
+    if trigger_type == "qr":
+        return ActionResult(
+            text=_('Этот пункт подтверждается только фактическим сканированием QR-кода заказа.'),
+            actions=[{
+                "label": _("Показать QR-код"),
+                "action": "generate_qr",
+                "params": {"order_id": order.id},
+            }],
+            action_succeeded=False,
+        )
+    if trigger_type == "auto":
+        return ActionResult(
+            text=_('Автоматический пункт нельзя закрыть вручную.'),
+            action_succeeded=False,
+        )
+
+    evidence = {
+        "completed_at": timezone.now().isoformat(),
+        "kind": "button",
+        "actor_id": user.id,
+        "actor_role": role,
+    }
+    if trigger_type == "upload":
+        document_id = params.get("document_id")
+        try:
+            document = OrderDocument.objects.get(
+                id=document_id,
+                order=order,
+            )
+        except (OrderDocument.DoesNotExist, TypeError, ValueError):
+            return ActionResult(
+                text=_('Сначала загрузите файл для этого пункта. Простая отметка не принимается.'),
+                action_succeeded=False,
+            )
+        if not document.file_obj:
+            return ActionResult(
+                text=_('У документа отсутствует сохранённый файл.'),
+                action_succeeded=False,
+            )
+        if role == "buyer" and document.uploaded_by_id != user.id:
+            return ActionResult(
+                text=_('Подтвердить можно только загруженный вами документ.'),
+                action_succeeded=False,
+            )
+        evidence.update({
+            "kind": "document",
+            "document_id": document.id,
+            "sha256": (params.get("sha256") or "")[:64],
+        })
+
+    from django.db import transaction
+
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order.pk)
+        if order.status != status:
+            return ActionResult(
+                text=_('Статус заказа уже изменился. Обновите карточку.'),
+                action_succeeded=False,
+            )
+        meta = order.logistics_meta or {}
+        triggers = meta.get("triggers") or {}
+        stage_triggers = triggers.get(status) or {}
+        if _trigger_evidence_is_valid(
+            trigger,
+            stage_triggers.get(trigger_id),
+            order=order,
+        ):
+            return ActionResult(
+                text=_('Пункт «%(trigger_id)s» уже подтверждён ранее.') % {'trigger_id': trigger_id},
+                action_succeeded=True,
+            )
+        stage_triggers[trigger_id] = evidence
+        triggers[status] = stage_triggers
+        meta["triggers"] = triggers
+        order.logistics_meta = meta
+        order.save(update_fields=["logistics_meta"])
     _log_event(order, "trigger_completed", actor=user, source=role,
                meta={"status": status, "trigger_id": trigger_id})
     # Сколько ещё осталось
-    required = _stage_checklist(status)
-    done_ids = set(stage_triggers.keys())
+    required = _stage_checklist(status, order.incoterm or "FOB")
+    done_ids = _verified_trigger_ids(order, status, required)
     remaining = [t for t in required if t["id"] not in done_ids]
     if remaining:
         return ActionResult(
             text=(f"✓ «{trigger_id}» отмечен.\n"
                    f"Осталось {len(remaining)}: " + ", ".join(t["label"] for t in remaining[:5])),
             actions=[{"label": _('📦 Очередь продавца'), "action": "seller_pipeline", "params": {}}],
+            action_succeeded=True,
         )
     return ActionResult(
         text=(_('✅ Все триггеры этапа «%(status)s» выполнены — можно нажать кнопку перехода.') % {'status': status}),
         actions=[{"label": _('📦 Очередь продавца'), "action": "seller_pipeline", "params": {}}],
+        action_succeeded=True,
     )
 
 
@@ -10119,6 +10266,19 @@ def seller_pipeline(params, user, role):
             # (которые попали в reserve_paid до того как мы добавили эту логику).
             if order.status == "reserve_paid" and "payment_received" not in triggers_done:
                 triggers_done["payment_received"] = "backfill|auto"
+            verified_done = _verified_trigger_ids(
+                order,
+                order.status,
+                _stage_checklist(
+                    order.status,
+                    order.incoterm or "FOB",
+                ),
+            )
+            if (
+                order.status == "reserve_paid"
+                and triggers_done.get("payment_received")
+            ):
+                verified_done.add("payment_received")
             g["orders"][oid] = {
                 "id": oid,
                 # Продавец не видит покупателя (анти-сговор) — обезличено.
@@ -10127,7 +10287,7 @@ def seller_pipeline(params, user, role):
                 "subtotal": Decimal("0"),
                 "payment_status": order.payment_status,
                 "payment_deadline": meta.get("payment_deadline"),
-                "triggers_done": list(triggers_done.keys()),
+                "triggers_done": list(verified_done),
                 "incoterm": order.incoterm or "FOB",
                 "status": order.status,
             }
@@ -10415,6 +10575,13 @@ def ship_order(params, user, role):
     actor = user
     seller = _effective_seller(user)
 
+    if role != "seller" and not (
+        role == "admin" or (role and role.startswith("operator"))
+    ):
+        return ActionResult(
+            text=_("Оформить отгрузку может только поставщик или оператор."),
+        )
+
     order_id = params.get("order_id")
     if not order_id:
         return ActionResult(text=_('Не указан заказ.'))
@@ -10462,6 +10629,35 @@ def ship_order(params, user, role):
             text=(
                 _('Заказ #%(id)s не может быть отгружен: остаток 90%% ещё не оплачен покупателем.') % {'id': order.id}
             ),
+        )
+
+    required_triggers = _stage_checklist(
+        "ready_to_ship",
+        order.incoterm or "FOB",
+    )
+    stage_done = _verified_trigger_ids(
+        order,
+        "ready_to_ship",
+        required_triggers,
+    )
+    missing_triggers = [
+        item for item in required_triggers if item["id"] not in stage_done
+    ]
+    if missing_triggers:
+        return ActionResult(
+            text=(
+                _("Отгрузку заказа #%(id)s нельзя оформить, пока не закрыт "
+                  "чек-лист готовности:\n")
+                % {"id": order.id}
+                + "\n".join(f"• {item['label']}" for item in missing_triggers)
+            ),
+            actions=[
+                {
+                    "label": _("Открыть очередь поставщика"),
+                    "action": "seller_pipeline",
+                    "params": {},
+                },
+            ],
         )
 
     tracking      = (params.get("tracking_number") or "").strip()
@@ -11498,8 +11694,16 @@ def advance_order(params, user, role):
         order.logistics_meta = meta
         order.save(update_fields=["logistics_meta"])
         # Проверяем что осталось — только qr/upload триггеры могут блокировать
-        missing = [t for t in required_triggers
-                   if t["id"] not in done and t.get("type") in ("qr", "upload")]
+        verified_done = _verified_trigger_ids(
+            order,
+            order.status,
+            required_triggers,
+        )
+        missing = [
+            t for t in required_triggers
+            if t["id"] not in verified_done
+            and t.get("type") in ("qr", "upload")
+        ]
         if missing:
             return ActionResult(
                 text=(
@@ -11665,6 +11869,52 @@ def confirm_delivery(params, user, role):
             ),
             actions=[{"label": _('📦 Трекинг'), "action": "track_shipment",
                       "params": {"order_id": order.id}}],
+        )
+
+    required_delivery_evidence = _stage_checklist(
+        "delivered",
+        order.incoterm or "FOB",
+    )
+    completed_delivery_evidence = _verified_trigger_ids(
+        order,
+        "delivered",
+        required_delivery_evidence,
+    )
+    missing_delivery_evidence = [
+        item for item in required_delivery_evidence
+        if item["id"] not in completed_delivery_evidence
+    ]
+    if missing_delivery_evidence:
+        missing_labels = "\n".join(
+            f"• {item['label']}" for item in missing_delivery_evidence
+        )
+        cards = []
+        if any(item["id"] == "signed_docs" for item in missing_delivery_evidence):
+            cards.append({
+                "type": "delivery_evidence",
+                "data": {
+                    "order_id": order.id,
+                    "status": "delivered",
+                    "trigger_id": "signed_docs",
+                    "title": _("Подписанные документы приёмки"),
+                    "label": _("Загрузить подписанные накладные"),
+                },
+            })
+        qr_instruction = ""
+        if any(item["id"] == "qr_received" for item in missing_delivery_evidence):
+            qr_instruction = _(
+                "\n\nQR-код не показывается в кабинете покупателя: "
+                "отсканируйте код на упаковке при фактическом получении."
+            )
+        return ActionResult(
+            text=(
+                _("Для подтверждения приёмки заказа #%(id)s нужны проверяемые доказательства:\n")
+                % {"id": order.id}
+                + missing_labels
+                + qr_instruction
+            ),
+            cards=cards,
+            action_succeeded=False,
         )
 
     # SECURITY P0-7: confirmed-gate. confirm_delivery высвобождает эскроу

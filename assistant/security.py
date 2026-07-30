@@ -4,6 +4,7 @@ import hmac
 import hashlib
 import ipaddress
 import socket
+import time
 from urllib.parse import urlparse
 from urllib.request import HTTPRedirectHandler, build_opener
 
@@ -103,26 +104,49 @@ def user_has_enabled_2fa(user) -> bool:
         return False
 
 
+def matching_totp_counter(secret: str, code: str, *, now: float | None = None) -> int | None:
+    """Return the matching TOTP time-step inside valid_window=1."""
+    import pyotp
+
+    totp = pyotp.TOTP(secret)
+    current = int(now if now is not None else time.time()) // totp.interval
+    for counter in range(current - 1, current + 2):
+        candidate = totp.at(counter * totp.interval)
+        if hmac.compare_digest(candidate, code):
+            return counter
+    return None
+
+
 def verify_user_2fa(user, code: str) -> bool:
     code = (code or "").strip().replace(" ", "")
     if not code:
         return False
     try:
-        import pyotp
         from marketplace.models import TwoFactorAuth
 
-        twofa = TwoFactorAuth.objects.filter(
-            user=user,
-            enabled=True,
-            secret__gt="",
-        ).first()
-        if not twofa:
-            return True
-        if pyotp.TOTP(twofa.secret).verify(code, valid_window=1):
-            return True
-
         with transaction.atomic():
-            locked = TwoFactorAuth.objects.select_for_update().get(pk=twofa.pk)
+            locked = (
+                TwoFactorAuth.objects.select_for_update()
+                .filter(
+                    user=user,
+                    enabled=True,
+                    secret__gt="",
+                )
+                .first()
+            )
+            if not locked:
+                return True
+            counter = matching_totp_counter(locked.secret, code)
+            if counter is not None:
+                if (
+                    locked.last_totp_counter is not None
+                    and counter <= locked.last_totp_counter
+                ):
+                    return False
+                locked.last_totp_counter = counter
+                locked.save(update_fields=["last_totp_counter"])
+                return True
+
             backup = [
                 x.strip()
                 for x in (locked.backup_codes or "").split(",")

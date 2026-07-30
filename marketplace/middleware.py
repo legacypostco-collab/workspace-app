@@ -23,40 +23,25 @@ from django.http import JsonResponse, HttpResponseRedirect
 from django.utils import translation
 
 # ────────────────────────────────────────────────────────────────────
-# Legacy cabinet → chat-first redirect.
+# Legacy cabinet handling.
 #
-# Старые кабинеты (/dashboard, /buyer/*, /seller/*, /operator/*,
-# /admin_panel/*, /admin-panel/*) — deprecated. Единственный UI = /chat/.
-# Этот middleware ловит залогиненных пользователей на этих путях и
-# редиректит на /chat/. URL'ы пока остаются в urls.py (для обратной
-# совместимости со ссылками в email-уведомлениях и старых redirect'ах),
-# но из чат-UI на них нет ни одной ссылки.
+# Старые ролевые кабинеты /buyer/*, /seller/* и /operator/* отключены
+# маршрутизатором с ответом 410. Middleware намеренно не перехватывает их:
+# скрытый редирект в чат маскировал устаревшие ссылки и запускал неожиданный
+# сценарий вместо явной ошибки.
 #
-# Не-залогиненные на /buyer/, /seller/* — Django по auth_required даст
-# redirect на /login/?next=..., после успешного логина LOGIN_REDIRECT_URL
-# = /chat/, и они уйдут в чат. Из /login/?next=/dashboard/ останется
-# только редирект — middleware перехватит и направит в /chat/.
-#
-# Whitelisted под-URL'ы: /admin/ (Django admin), /seller/onboarding/
-# (часть legacy flow, который ещё используется в register'е),
-# /admin_panel/api/ (если есть JSON-вьюшки для интеграций).
+# /dashboard и /admin_panel остаются только как переходные адреса в чат.
+# /admin-panel не перехватывается: доступ к рабочему административному
+# интерфейсу проверяют его view-декораторы, возвращая 403 не-администраторам.
 # ────────────────────────────────────────────────────────────────────
 
 _LEGACY_PREFIXES = (
     "/dashboard",
-    "/buyer",
-    "/seller",
-    "/operator",
     "/admin_panel",
-)
-
-_LEGACY_STAFF_PREFIXES = (
-    "/admin-panel",
 )
 
 _LEGACY_WHITELIST = (
     "/admin/",                  # Django admin (отдельный staff-UI)
-    "/seller/onboarding/",      # KYB flow ещё может ссылать туда
     "/admin_panel/api/",        # JSON API для интеграций
 )
 
@@ -88,10 +73,7 @@ _AUTHENTICATED_CHAT_PREFIXES = (
 
 
 class LegacyCabinetRedirectMiddleware:
-    """Залогиненный заход на /dashboard, /buyer, /seller, /operator,
-    /admin_panel → 302 на /chat/. Не трогает /admin/, API, whitelisted
-    пути и не-залогиненных (их обработает обычный auth-required flow).
-    """
+    """Перенаправляет только переходные общие страницы в chat-first UI."""
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -99,7 +81,6 @@ class LegacyCabinetRedirectMiddleware:
         path = request.path_info or ""
         user = getattr(request, "user", None)
         is_auth = bool(getattr(user, "is_authenticated", False))
-        is_staff = bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
         # Whitelist первым делом — пускаем без редиректа
         for w in _LEGACY_WHITELIST:
             if path.startswith(w):
@@ -112,11 +93,6 @@ class LegacyCabinetRedirectMiddleware:
             for p in _AUTHENTICATED_CHAT_PREFIXES:
                 if path == p or path.startswith(p):
                     return HttpResponseRedirect("/chat/")
-        for p in _LEGACY_STAFF_PREFIXES:
-            if path == p or path.startswith(p + "/"):
-                if is_staff:
-                    return self.get_response(request)
-                return HttpResponseRedirect("/chat/")
         # Любой матч legacy-префикса → редирект на /chat/
         for p in _LEGACY_PREFIXES:
             if path == p or path.startswith(p + "/"):

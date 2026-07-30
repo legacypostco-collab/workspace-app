@@ -1,7 +1,19 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from django.test import Client, RequestFactory, TestCase
 
-from marketplace.models import CompanyVerification, UserProfile, UserRole
+from marketplace.models import (
+    Brand,
+    Category,
+    CompanyVerification,
+    Part,
+    Quote,
+    RFQ,
+    RFQItem,
+    UserProfile,
+    UserRole,
+)
 
 from .permissions import _override_allowed, detect_user_role, user_allowed_role_tabs
 
@@ -36,6 +48,62 @@ class MultiRolePermissionsTests(TestCase):
 
         self.assertFalse(_override_allowed(self.user, "operator"))
         self.assertEqual(detect_user_role(self.user, request=request), "seller")
+
+    def test_login_activates_an_enabled_extra_role(self):
+        buyer = User.objects.create_user("login_multi_buyer", password="secret")
+        UserProfile.objects.create(user=buyer, role="buyer")
+        UserRole.objects.create(
+            user=buyer,
+            role="seller",
+            is_enabled=True,
+        )
+        client = Client()
+
+        response = client.post(
+            "/api/assistant/action/",
+            {
+                "action": "start_login",
+                "params": {
+                    "confirmed": True,
+                    "username": buyer.username,
+                    "password": "secret",
+                    "role": "seller",
+                },
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get("_post_action"), "reload")
+        self.assertEqual(client.session.get("assistant_role_override"), "seller")
+
+    def test_login_does_not_activate_a_disabled_extra_role(self):
+        buyer = User.objects.create_user("login_pending_seller", password="secret")
+        UserProfile.objects.create(user=buyer, role="buyer")
+        UserRole.objects.create(
+            user=buyer,
+            role="seller",
+            is_enabled=False,
+        )
+        client = Client()
+
+        response = client.post(
+            "/api/assistant/action/",
+            {
+                "action": "start_login",
+                "params": {
+                    "confirmed": True,
+                    "username": buyer.username,
+                    "password": "secret",
+                    "role": "seller",
+                },
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json().get("_post_action"), "reload")
+        self.assertIsNone(client.session.get("assistant_role_override"))
 
     def test_can_extend_current_account_with_buyer_role(self):
         client = Client()
@@ -114,3 +182,145 @@ class MultiRolePermissionsTests(TestCase):
         self.assertIn("KYB одобрен", str(result.text))
         self.assertTrue(UserRole.objects.get(user=buyer, role="seller").is_enabled)
         self.assertTrue(any(tab["role"] == "seller" for tab in user_allowed_role_tabs(buyer)))
+
+    def test_enabled_extra_seller_role_receives_auto_rfq(self):
+        from .negotiation import send_rfq_to_suppliers
+
+        buyer = User.objects.create_user("dispatch_buyer", password="x")
+        UserProfile.objects.create(user=buyer, role="buyer")
+        extra_seller = User.objects.create_user("dispatch_extra_seller", password="x")
+        UserProfile.objects.create(user=extra_seller, role="buyer")
+        UserRole.objects.create(
+            user=extra_seller,
+            role="seller",
+            is_enabled=True,
+        )
+        UserProfile.objects.filter(user=extra_seller).update(
+            supplier_status="trusted",
+        )
+
+        category = Category.objects.create(
+            name="Multi-role dispatch",
+            slug="multi-role-dispatch",
+        )
+        brand = Brand.objects.create(
+            name="Multi-role brand",
+            slug="multi-role-brand",
+        )
+        primary_part = Part.objects.create(
+            title="Primary offer",
+            slug="multi-role-primary-offer",
+            oem_number="MULTI-RFQ-1",
+            category=category,
+            brand=brand,
+            price=Decimal("8000.00"),
+            seller=self.user,
+        )
+        Part.objects.create(
+            title="Extra-role offer",
+            slug="multi-role-extra-offer",
+            oem_number="MULTI-RFQ-1",
+            category=category,
+            brand=brand,
+            price=Decimal("7900.00"),
+            seller=extra_seller,
+        )
+        rfq = RFQ.objects.create(
+            created_by=buyer,
+            customer_name=buyer.username,
+            customer_email="buyer@example.test",
+            mode="auto",
+        )
+        RFQItem.objects.create(
+            rfq=rfq,
+            query="MULTI-RFQ-1",
+            quantity=1,
+            matched_part=primary_part,
+            confidence=100,
+        )
+
+        result = send_rfq_to_suppliers(
+            {"rfq_id": rfq.id, "confirmed": True},
+            buyer,
+            "buyer",
+        )
+
+        self.assertIn("разослан", str(result.text))
+        self.assertTrue(
+            Quote.objects.filter(
+                rfq=rfq,
+                seller=extra_seller,
+                direction="seller_to_buyer",
+            ).exists()
+        )
+
+    def test_catalog_match_is_not_dropped_by_sandbox_limit(self):
+        from .negotiation import send_rfq_to_suppliers
+
+        buyer = User.objects.create_user("routing_buyer", password="x")
+        UserProfile.objects.create(user=buyer, role="buyer")
+        for index in range(3):
+            trusted = User.objects.create_user(f"routing_trusted_{index}")
+            UserProfile.objects.create(
+                user=trusted,
+                role="seller",
+                supplier_status="trusted",
+            )
+        for index in range(4):
+            unrelated = User.objects.create_user(f"routing_sandbox_{index}")
+            UserProfile.objects.create(
+                user=unrelated,
+                role="seller",
+                supplier_status="sandbox",
+            )
+
+        exact = User.objects.create_user("routing_exact_sandbox")
+        UserProfile.objects.create(
+            user=exact,
+            role="seller",
+            supplier_status="sandbox",
+        )
+        category = Category.objects.create(
+            name="Routing category",
+            slug="routing-category",
+        )
+        brand = Brand.objects.create(
+            name="Routing brand",
+            slug="routing-brand",
+        )
+        part = Part.objects.create(
+            title="Exact sandbox offer",
+            slug="routing-exact-sandbox",
+            oem_number="ROUTING-EXACT-1",
+            category=category,
+            brand=brand,
+            price=Decimal("125.00"),
+            seller=exact,
+        )
+        rfq = RFQ.objects.create(
+            created_by=buyer,
+            customer_name=buyer.username,
+            customer_email="routing@example.test",
+            mode="auto",
+        )
+        RFQItem.objects.create(
+            rfq=rfq,
+            query="ROUTING-EXACT-1",
+            quantity=2,
+            matched_part=part,
+            confidence=100,
+        )
+
+        send_rfq_to_suppliers(
+            {"rfq_id": rfq.id, "confirmed": True},
+            buyer,
+            "buyer",
+        )
+
+        self.assertTrue(
+            Quote.objects.filter(
+                rfq=rfq,
+                seller=exact,
+                direction="seller_to_buyer",
+            ).exists()
+        )

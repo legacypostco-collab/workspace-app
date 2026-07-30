@@ -18,6 +18,31 @@ logger = logging.getLogger(__name__)
 EMBEDDING_DIMENSIONS = 1536
 
 
+class EmbeddingProviderUnavailable(RuntimeError):
+    """No configured provider can produce production embeddings."""
+
+
+def embedding_provider_available() -> bool:
+    provider = getattr(settings, "EMBEDDING_PROVIDER", "auto").strip().lower()
+    openai_key = bool(
+        getattr(settings, "OPENAI_API_KEY", "")
+        or os.getenv("OPENAI_API_KEY", "")
+    )
+    voyage_key = bool(
+        getattr(settings, "VOYAGE_API_KEY", "")
+        or os.getenv("VOYAGE_API_KEY", "")
+    )
+    if provider == "openai":
+        return openai_key
+    if provider == "voyage":
+        return voyage_key
+    if provider == "stub":
+        return bool(settings.DEBUG)
+    if provider == "auto":
+        return openai_key or voyage_key or bool(settings.DEBUG)
+    return False
+
+
 def _stub_embedding(text: str) -> list[float]:
     """Deterministic hash-based pseudo-embedding for tests / dev with no API key.
 
@@ -109,7 +134,7 @@ def get_embedding(text: str) -> list[float]:
 
     if settings.DEBUG:
         return _stub_embedding(text)
-    raise RuntimeError("No embedding provider is available")
+    raise EmbeddingProviderUnavailable("No embedding provider is available")
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:

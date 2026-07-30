@@ -57,6 +57,9 @@ def test_new_chat_gets_a_new_conversation_id_after_first_action(buyer_page: Page
         page.wait_for_timeout(250)
 
     assert second_id and second_id != first_id
+    # Conversation creation finishes before the action response is rendered.
+    # Wait for the second request instead of asserting in that short interval.
+    page.wait_for_selector("#streamInner .msg-assistant", timeout=15000)
     assert page.locator("#streamInner .msg").count() > 0
 
 

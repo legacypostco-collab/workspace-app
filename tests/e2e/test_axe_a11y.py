@@ -29,6 +29,7 @@ PAGES = [
     ("/",      "landing", False),
     ("/chat/", "chat",    False),
     ("/chat/", "chat_buyer",    "buyer"),
+    ("/chat/", "chat_seller",   "seller"),
     ("/chat/", "chat_operator", "operator"),
 ]
 

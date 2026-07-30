@@ -2762,11 +2762,15 @@
         const rows = (s.rows || []).map(r => {
           const a = r.action;
           const btnLbl = a ? tr(a.label) : '';
-          const btn = a
-            ? `<button class="act-btn ib-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(btnLbl)}">${esc(btnLbl)}</button>`
+          const affordance = a
+            ? `<span class="ib-row-arrow" aria-hidden="true">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+              </span>`
             : '';
-          // Вся строка кликабельна (не только кнопка) — открывает то же действие.
-          // Клик по кнопке обрабатывается её ближайшим [data-action] (без дабл-триггера).
+          // Одна интерактивная область на всю строку. Вложенная кнопка мешала
+          // экранным дикторам и создавала два фокуса для одного действия.
           const rowClick = a
             ? ` data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(r.title || btnLbl || '')}" role="button" tabindex="0"`
             : '';
@@ -2775,7 +2779,7 @@
               <div class="ib-title">${esc(r.title || '')}</div>
               <div class="ib-sub">${esc(r.subtitle || '')}</div>
             </div>
-            ${btn}
+            ${affordance}
           </div>`;
         }).join('');
         return `<div class="ib-section">
@@ -3877,7 +3881,7 @@
                   const done = doneIds.has(t.id);
                   const isAuto = t.type === 'auto';
                   const icon = ({qr:'📷', upload:'📎', button:'✓', auto:'🤖'})[t.type] || '✓';
-                  const clickCode = `event.stopPropagation();event.preventDefault();window.sqTrigger&&window.sqTrigger(this, ${o.id}, '${esc(s.status)}', '${esc(t.id)}');`;
+                  const clickCode = `event.stopPropagation();event.preventDefault();window.sqTrigger&&window.sqTrigger(this, ${o.id}, '${esc(s.status)}', '${esc(t.id)}', '${esc(t.type || 'button')}');`;
                   const cls = `sq-trigger${done ? ' sq-trigger-done' : ''}${isAuto ? ' sq-trigger-auto' : ''}`;
                   const autoBadge = isAuto && done ? '<span class="sq-trigger-auto-tag">авто</span>' : '';
                   return `<button class="${cls}" type="button" ${(done || isAuto) ? 'disabled' : `onclick="${clickCode}"`}>
@@ -4061,6 +4065,21 @@
           ${cancelBtn}
         </div>
         ${originBlock}
+      </div>`;
+    },
+    delivery_evidence(d) {
+      const orderId = parseInt(d.order_id, 10) || 0;
+      const status = esc(d.status || 'delivered');
+      const triggerId = esc(d.trigger_id || 'signed_docs');
+      return `<div class="card">
+        <div class="card-title">${esc(d.title || tr('Документы приёмки'))}</div>
+        <div class="card-sub">${esc(tr('Файл будет проверен и привязан к заказу.'))}</div>
+        <div class="card-meta">
+          <button class="act-btn" type="button"
+            onclick="event.stopPropagation();window.sqTrigger&&window.sqTrigger(this, ${orderId}, '${status}', '${triggerId}', 'upload');">
+            ${esc(d.label || tr('Загрузить документ'))}
+          </button>
+        </div>
       </div>`;
     },
     // Компактный список RFQ: одна строка на запрос. Клик → раскрывает
@@ -6107,11 +6126,91 @@
     setTimeout(() => { try { btn.disabled = false; btn.textContent = _origText; } catch (e) {} }, 2500);
   };
 
-  // Inline-выполнение триггера: без новых сообщений в чате и скролла.
-  // Кнопка в чек-листе → отмечает себя «done», апдейтит счётчик и
-  // разблокирует «Подтвердить», если все триггеры закрыты.
-  window.sqTrigger = async (btn, orderId, status, triggerId) => {
+  function markStageTriggerDone(btn) {
+    btn.classList.add('sq-trigger-done');
+    const mark = btn.querySelector('.sq-trigger-mark');
+    if (mark) mark.textContent = '☑';
+    const orderRow = btn.closest('.sq-order');
+    if (!orderRow) {
+      btn.disabled = true;
+      btn.textContent = tr('Документ загружен');
+      return;
+    }
+    const advBtn = orderRow.querySelector('.sq-btn:not(.sq-open):not(.sq-cancel)');
+    const total = parseInt(advBtn?.dataset.checklistTotal || '0', 10);
+    const done = orderRow.querySelectorAll('.sq-trigger.sq-trigger-done').length;
+    if (advBtn) {
+      advBtn.dataset.doneCount = done;
+      if (done >= total) {
+        advBtn.disabled = false;
+        advBtn.classList.remove('sq-btn-locked');
+        advBtn.textContent = advBtn.textContent.replace(/\s*🔒\s*\d+\/\d+\s*/, '');
+      } else {
+        advBtn.textContent = advBtn.textContent.replace(/🔒\s*\d+\/\d+/, `🔒 ${done}/${total}`);
+      }
+    }
+    const title = orderRow.querySelector('.sq-checklist-title');
+    if (title && total) title.textContent = `⚡ Триггеры этапа (${done}/${total}):`;
+  }
+
+  function selectOrderEvidence(btn, orderId, status, triggerId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      input.remove();
+      if (!file) return;
+      btn.disabled = true;
+      btn.dataset._busy = '1';
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('status', status);
+      fd.append('trigger_id', triggerId);
+      try {
+        const response = await fetch(`/api/assistant/orders/${orderId}/documents/`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {'X-CSRFToken': csrf()},
+          body: fd,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.ok) {
+          btn.disabled = false;
+          delete btn.dataset._busy;
+          window.toast && window.toast(
+            '❌ ' + (payload.error || tr('Не удалось загрузить документ')),
+            4000,
+          );
+          return;
+        }
+        delete btn.dataset._busy;
+        markStageTriggerDone(btn);
+        window.toast && window.toast(tr('✓ Документ проверен и привязан к заказу'), 3000);
+      } catch (error) {
+        btn.disabled = false;
+        delete btn.dataset._busy;
+        window.toast && window.toast(tr('❌ Сетевая ошибка при загрузке'), 3500);
+      }
+    }, {once: true});
+    input.click();
+  }
+
+  // Inline checklist action. Upload and QR items require real evidence;
+  // only ordinary button items use the generic action endpoint.
+  window.sqTrigger = async (btn, orderId, status, triggerId, triggerType='button') => {
     if (btn.disabled) return;
+    if (triggerType === 'upload') {
+      selectOrderEvidence(btn, orderId, status, triggerId);
+      return;
+    }
+    if (triggerType === 'qr') {
+      quickAction('generate_qr', {order_id: orderId});
+      window.toast && window.toast(tr('Отсканируйте QR-код участником текущего этапа'), 3500);
+      return;
+    }
     btn.disabled = true;
     btn.dataset._busy = '1';
     try {
@@ -6122,36 +6221,20 @@
           operation_id:newOperationId()}),
         retryNetwork: false,
       });
-      if (j.error) {
-        btn.disabled = false; delete btn.dataset._busy;
-        window.toast && window.toast('❌ ' + (j.error || tr('common.error')), 3000);
+      if (j.error || j.action_succeeded !== true) {
+        btn.disabled = false;
+        delete btn.dataset._busy;
+        window.toast && window.toast(
+          '❌ ' + (j.error || j.text || tr('common.error')),
+          3500,
+        );
         return;
       }
-      // Помечаем триггер как выполненный
-      btn.classList.add('sq-trigger-done');
-      const mark = btn.querySelector('.sq-trigger-mark');
-      if (mark) mark.textContent = '☑';
-      // Считаем сколько закрыто в этом ордере и апдейтим advance-кнопку
-      const orderRow = btn.closest('.sq-order');
-      const advBtn = orderRow?.querySelector('.sq-btn:not(.sq-open):not(.sq-cancel)');
-      const total = parseInt(advBtn?.dataset.checklistTotal || '0', 10);
-      const done = orderRow.querySelectorAll('.sq-trigger.sq-trigger-done').length;
-      if (advBtn) {
-        advBtn.dataset.doneCount = done;
-        if (done >= total) {
-          advBtn.disabled = false;
-          advBtn.classList.remove('sq-btn-locked');
-          // Убрать "🔒 X/Y" — оставить только базовый label.
-          advBtn.textContent = advBtn.textContent.replace(/\s*🔒\s*\d+\/\d+\s*/, '');
-        } else {
-          advBtn.textContent = advBtn.textContent.replace(/🔒\s*\d+\/\d+/, `🔒 ${done}/${total}`);
-        }
-      }
-      // Заголовок чек-листа: обновить N/M
-      const title = orderRow.querySelector('.sq-checklist-title');
-      if (title && total) title.textContent = `⚡ Триггеры этапа (${done}/${total}):`;
+      markStageTriggerDone(btn);
+      delete btn.dataset._busy;
     } catch(e) {
-      btn.disabled = false; delete btn.dataset._busy;
+      btn.disabled = false;
+      delete btn.dataset._busy;
       window.toast && window.toast('❌ Сетевая ошибка', 3000);
     }
   };
@@ -6519,6 +6602,14 @@
           if (rfqId && payload.kind === 'rfq') refreshVisibleRfq(rfqId);
           loadNotifications();
           loadConvList();
+        } else if (d.type === 'notification_state') {
+          setBellBadge(d.unread_count || 0);
+          notif.byKind = d.unread_by_kind || {};
+          if ((d.unread_count || 0) === 0) {
+            notif.items.forEach(item => { item.is_read = true; });
+          }
+          try { refreshPills(); } catch (_) {}
+          if (notif.open) renderNotifList();
         } else if (d.type === 'rfq_update') {
           if (d.rfq_id) refreshVisibleRfq(d.rfq_id);
           loadConvList();

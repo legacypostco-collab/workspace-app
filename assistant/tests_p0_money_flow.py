@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -129,8 +130,15 @@ class P0MoneyFlowTests(TestCase):
                                       payment_status="paid", total_amount=Decimal("1000"),
                                       customer_name="P0")
         OrderItem.objects.create(order=order, part=self.part, quantity=1, unit_price=Decimal("1000"))
-        r = execute("confirm_delivery", {"order_id": order.id}, self.buyer, "buyer")
+        with patch(
+            "assistant.actions._verified_trigger_ids",
+            return_value={"qr_received", "signed_docs"},
+        ):
+            r = execute("confirm_delivery", {"order_id": order.id}, self.buyer, "buyer")
         self.assertIn("Подтвердить приёмку", r.text)
+        self.assertTrue(
+            any(action.get("action") == "confirm_delivery" for action in r.actions)
+        )
         order.refresh_from_db()
         # Статус НЕ изменился без подтверждения
         self.assertEqual(order.status, "delivered")

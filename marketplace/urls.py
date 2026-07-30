@@ -1,4 +1,5 @@
 from django.contrib.auth import views as auth_views
+from django.http import HttpResponseGone
 from django.shortcuts import redirect
 from django.urls import path
 
@@ -18,6 +19,14 @@ def public_workspace(request, *args, **kwargs):
 
 def legacy_rfq_to_chat(request, rfq_id, *args, **kwargs):
     return redirect(f"/chat/?action=get_rfq_status&rfq_id={rfq_id}")
+
+
+def removed_portal_route(request, *args, **kwargs):
+    response = HttpResponseGone(
+        "Этот устаревший кабинет отключен. Используйте рабочее пространство чата."
+    )
+    response["Cache-Control"] = "no-store"
+    return response
 
 
 urlpatterns = [
@@ -76,6 +85,16 @@ urlpatterns = [
     # ratelimited вариант выше, эти алиасы редиректят на него.
     path("password-reset/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset")),
     path("password-reset/done/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset_done")),
+    # The chat-first workspace replaced three parallel portal interfaces.
+    # Keep the old named patterns below for reverse-compatibility, but make
+    # every direct request terminate here instead of exposing stale pages or
+    # duplicate mutation flows.
+    path("buyer/", removed_portal_route),
+    path("buyer/<path:legacy_path>", removed_portal_route),
+    path("seller/", removed_portal_route),
+    path("seller/<path:legacy_path>", removed_portal_route),
+    path("operator/", removed_portal_route),
+    path("operator/<path:legacy_path>", removed_portal_route),
     path("catalog/", legacy_to_chat, name="catalog"),
     path("rfq/", legacy_to_chat, name="rfq_list"),
     path("rfq/new/", legacy_to_chat, name="rfq_new"),

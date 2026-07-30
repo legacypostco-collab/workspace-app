@@ -15,10 +15,11 @@ can fix bugs in `assistant/*.py` and re-run.
 from __future__ import annotations
 
 import traceback
-from decimal import Decimal
+from decimal import ROUND_CEILING, Decimal
 
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
 User = get_user_model()
 
@@ -29,6 +30,29 @@ class StepFail(Exception):
 
 class Command(BaseCommand):
     help = "Full E2E pipeline smoke test."
+
+    def execute(self, *args, **options):
+        from django.conf import settings
+        from django.test.utils import override_settings
+
+        self._had_errors = False
+        # Сквозной прогон не проверяет почтовый транспорт: сообщения остаются
+        # в памяти процесса и не отправляются во внешние системы.
+        with override_settings(
+            EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+            ALLOWED_HOSTS=list(settings.ALLOWED_HOSTS) + ["testserver"],
+            QR_SECRET=(
+                getattr(settings, "QR_SECRET", "")
+                or "local-e2e-qr-secret-not-for-production"
+            ),
+        ):
+            output = super().execute(*args, **options)
+        if self._had_errors:
+            raise CommandError(
+                "Сквозной сценарий завершился с ошибкой. "
+                "Подробности находятся выше в выводе команды."
+            )
+        return output
 
     def add_arguments(self, parser):
         parser.add_argument("--reset", action="store_true",
@@ -47,6 +71,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING(f"  ⚠ {msg}"))
 
     def _err(self, msg):
+        self._had_errors = True
         self.stdout.write(self.style.ERROR(f"  ✗ {msg}"))
 
     def _info(self, msg):
@@ -95,6 +120,51 @@ class Command(BaseCommand):
         self._ok(f"{label}: {(txt or '<no text>').splitlines()[0][:80] if txt else '(no text)'}")
         return view
 
+    def _upload_order_evidence(self, order, user, status, trigger_id):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import Client
+
+        client = Client()
+        client.force_login(user)
+        response = client.post(
+            f"/api/assistant/orders/{order.id}/documents/",
+            {
+                "status": status,
+                "trigger_id": trigger_id,
+                "file": SimpleUploadedFile(
+                    f"{trigger_id}.pdf",
+                    b"%PDF-1.4 e2e evidence",
+                    content_type="application/pdf",
+                ),
+            },
+        )
+        if response.status_code != 201:
+            self._err(
+                f"upload evidence ({status}.{trigger_id}): "
+                f"HTTP {response.status_code} {response.content[:300]!r}"
+            )
+            raise StepFail(f"upload evidence ({status}.{trigger_id})")
+        self._ok(f"upload evidence ({status}.{trigger_id})")
+
+    def _scan_order_qr(self, order, user, *, action="inspected"):
+        from django.test import Client
+
+        from assistant.qr_scan import encode_qr_code
+
+        client = Client()
+        client.force_login(user)
+        response = client.post(
+            f"/api/assistant/qr/scan/{encode_qr_code(order.id)}/",
+            {"action": action},
+        )
+        if response.status_code != 200:
+            self._err(
+                f"QR scan ({order.status}.{action}): "
+                f"HTTP {response.status_code} {response.content[:300]!r}"
+            )
+            raise StepFail(f"QR scan ({order.status}.{action})")
+        self._ok(f"QR scan ({order.status}.{action})")
+
     # ── high-level steps ────────────────────────────────────────────
     def handle(self, *args, **opts):
         self._verbose_cards = opts["verbose_cards"]
@@ -102,7 +172,14 @@ class Command(BaseCommand):
 
         # Lazy imports — avoid Django bootstrap problems before settings ready.
         from assistant import actions, kp_workflow, negotiation, operator_actions
-        from marketplace.models import RFQ, Order, Part, Quote, UserProfile
+        from marketplace.models import (
+            Order,
+            Part,
+            Quote,
+            RFQ,
+            TwoFactorAuth,
+            UserProfile,
+        )
         try:
             from assistant import payments  # noqa: F401 — verify import
         except Exception as e:
@@ -207,6 +284,19 @@ class Command(BaseCommand):
             buyer_profile.role = "buyer"; buyer_profile.save(update_fields=["role"])
         if seller_profile.role != "seller":
             seller_profile.role = "seller"; seller_profile.save(update_fields=["role"])
+        import pyotp
+
+        buyer_totp_secret = pyotp.random_base32()
+        TwoFactorAuth.objects.update_or_create(
+            user=buyer,
+            defaults={
+                "secret": buyer_totp_secret,
+                "enabled": True,
+                "enabled_at": timezone.now(),
+                "last_totp_counter": None,
+                "backup_codes": "",
+            },
+        )
         self._ok(f"buyer={buyer.username} (id={buyer.id})  seller={seller.username} (id={seller.id})")
 
         # Ensure seller has at least one part
@@ -225,7 +315,43 @@ class Command(BaseCommand):
             )
             seller_parts = [part]
         test_part = seller_parts[0]
-        self._ok(f"Test part: {test_part.oem_number} (id={test_part.id}, price=${test_part.price})")
+        unit_price = Decimal(test_part.price or 0)
+        if unit_price <= 0:
+            self._err("У тестовой позиции должна быть положительная цена.")
+            return
+        quantity = max(
+            2,
+            int(
+                (Decimal("7000.00") / unit_price).to_integral_value(
+                    rounding=ROUND_CEILING,
+                )
+            ),
+        )
+        from assistant.models import Wallet, WalletTx
+
+        wallet = Wallet.for_user(buyer)
+        target_balance = max(
+            Decimal("50000.00"),
+            unit_price * quantity * Decimal("2"),
+        )
+        if wallet.balance < target_balance:
+            topup_amount = target_balance - wallet.balance
+            wallet.balance = target_balance
+            wallet.save(update_fields=["balance", "updated_at"])
+            WalletTx.objects.create(
+                wallet=wallet,
+                kind="topup",
+                amount=topup_amount,
+                description="[E2E] Локальный тестовый баланс",
+                balance_after=wallet.balance,
+            )
+            self._ok(
+                f"Local test wallet restored to ${wallet.balance:,.2f}"
+            )
+        self._ok(
+            f"Test part: {test_part.oem_number} "
+            f"(id={test_part.id}, price=${unit_price}, qty={quantity})"
+        )
 
         # Optional reset — delete any leftover E2E orders/rfqs to keep clean state
         if reset:
@@ -250,7 +376,7 @@ class Command(BaseCommand):
         try:
             rfq_view = self._call(
                 actions.create_rfq,
-                {"product_ids": [test_part.id], "quantity": 2},
+                {"product_ids": [test_part.id], "quantity": quantity},
                 buyer, "buyer", label="create_rfq",
             )
         except StepFail:
@@ -296,6 +422,9 @@ class Command(BaseCommand):
 
         # ── STEP 4 — buyer confirms KP + pays reserve atomically ──
         self._h("STEP 4 — Buyer accepts KP + pays 10% reserve")
+        previous_order_ids = list(
+            Order.objects.filter(buyer=buyer).values_list("id", flat=True)
+        )
         try:
             kp_view = self._call(
                 kp_workflow.confirm_kp_and_reserve,
@@ -304,9 +433,17 @@ class Command(BaseCommand):
             )
         except StepFail:
             return
-        order = Order.objects.filter(buyer=buyer).order_by("-id").first()
+        order = (
+            Order.objects.filter(buyer=buyer)
+            .exclude(id__in=previous_order_ids)
+            .order_by("-id")
+            .first()
+        )
         if not order:
-            self._err("Order not created after confirm_kp")
+            self._err(
+                "Текущий RFQ не создал новый заказ после подтверждения КП; "
+                f"ответ: {(kp_view.get('text') or '')[:200]}"
+            )
             return
         self._ok(f"Order #{order.id} status={order.status} payment={order.payment_status} "
                  f"total=${order.total_amount} reserve=${order.reserve_amount}")
@@ -335,8 +472,27 @@ class Command(BaseCommand):
         try:
             self._call(actions.pay_final, {"order_id": order.id}, buyer, "buyer",
                        label="pay_final (preview)")
-            self._call(actions.pay_final, {"order_id": order.id, "confirmed": True}, buyer, "buyer",
-                       label="pay_final (confirmed)")
+            otp_gate = self._call(
+                actions.pay_final,
+                {"order_id": order.id, "confirmed": True},
+                buyer,
+                "buyer",
+                label="pay_final (2FA gate)",
+            )
+            if "одноразов" not in (otp_gate.get("text") or "").lower():
+                self._err("Крупный платеж прошел без запроса одноразового кода.")
+                return
+            self._call(
+                actions.pay_final,
+                {
+                    "order_id": order.id,
+                    "confirmed": True,
+                    "otp": pyotp.TOTP(buyer_totp_secret).now(),
+                },
+                buyer,
+                "buyer",
+                label="pay_final (2FA confirmed)",
+            )
         except StepFail:
             return
         order.refresh_from_db()
@@ -348,14 +504,40 @@ class Command(BaseCommand):
         # ── STEP 7 — seller ships (2 phases: form → submit tracking) ──
         self._h("STEP 7 — Seller ships order")
         try:
+            self._upload_order_evidence(
+                order,
+                seller,
+                "ready_to_ship",
+                "invoice",
+            )
+            self._upload_order_evidence(
+                order,
+                seller,
+                "ready_to_ship",
+                "packing_list",
+            )
+            order.refresh_from_db()
+            self._scan_order_qr(order, seller)
             self._call(actions.ship_order, {"order_id": order.id}, seller, "seller",
                        label="ship_order (form)")
             self._call(actions.ship_order,
-                       {"order_id": order.id, "tracking_number": "E2E-TRK-12345"},
+                       {
+                           "order_id": order.id,
+                           "tracking_number": "E2E-TRK-12345",
+                           "carrier": "E2E Test Carrier",
+                           "carrier_phone": "+971500000000",
+                           "carrier_email": "dispatch@example.test",
+                       },
                        seller, "seller", label="ship_order (submit)")
         except StepFail:
             return
         order.refresh_from_db()
+        if order.status != "transit_abroad":
+            self._err(
+                "После оформления отгрузки ожидался статус transit_abroad, "
+                f"получен {order.status}."
+            )
+            return
         self._ok(f"order.status = {order.status}  payment={order.payment_status}")
 
         # ── STEP 7.5 — operator control panel BEFORE customs ──────
@@ -439,10 +621,16 @@ class Command(BaseCommand):
             # Close blocking triggers at the *current* stage before advancing.
             for trig_id in STAGE_TRIGGERS.get(cur, []):
                 try:
-                    self._call(actions.complete_trigger,
-                               {"order_id": order.id, "status": cur, "trigger_id": trig_id},
-                               operator, "operator",
-                               label=f"complete_trigger ({cur}.{trig_id})")
+                    if trig_id.startswith("qr_"):
+                        order.refresh_from_db()
+                        self._scan_order_qr(order, operator)
+                    else:
+                        self._upload_order_evidence(
+                            order,
+                            operator,
+                            cur,
+                            trig_id,
+                        )
                 except StepFail:
                     return
             try:
@@ -459,8 +647,23 @@ class Command(BaseCommand):
         # ── STEP 9 — buyer confirms delivery → completed ──────────
         self._h("STEP 9 — Buyer confirms delivery")
         try:
+            order.refresh_from_db()
+            self._scan_order_qr(order, buyer, action="received")
+            self._upload_order_evidence(
+                order,
+                buyer,
+                "delivered",
+                "signed_docs",
+            )
             self._call(actions.confirm_delivery, {"order_id": order.id}, buyer, "buyer",
-                       label="confirm_delivery")
+                       label="confirm_delivery (preview)")
+            self._call(
+                actions.confirm_delivery,
+                {"order_id": order.id, "confirmed": True},
+                buyer,
+                "buyer",
+                label="confirm_delivery (confirmed)",
+            )
         except StepFail:
             return
         order.refresh_from_db()

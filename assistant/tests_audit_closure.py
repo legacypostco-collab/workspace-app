@@ -1049,12 +1049,16 @@ class OrderSplitAndAssignmentTests(TestCase):
             "share": Decimal("1.00"),
         }]
 
-        result = execute(
-            "confirm_delivery",
-            {"order_id": self.order.id, "confirmed": True},
-            self.buyer,
-            "buyer",
-        )
+        with patch(
+            "assistant.actions._verified_trigger_ids",
+            return_value={"qr_received", "signed_docs"},
+        ):
+            result = execute(
+                "confirm_delivery",
+                {"order_id": self.order.id, "confirmed": True},
+                self.buyer,
+                "buyer",
+            )
 
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "delivered")

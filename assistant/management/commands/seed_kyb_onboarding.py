@@ -23,6 +23,7 @@ from __future__ import annotations
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.test.utils import override_settings
 from django.utils import timezone
 
 from assistant.management._seed_guard import (
@@ -161,7 +162,12 @@ class Command(BaseCommand):
             )
 
             # ── Имитируем submit_for_review: прогон 5–7 API + risk eval ──
-            kyb.api_results = run_all_checks(kyb)
+            # Команда доступна только при DEBUG=True и предназначена именно
+            # для воспроизводимой проверки трех контрольных веток KYB.
+            # Обычная работа приложения по-прежнему fail-closed: без живых
+            # провайдеров все заявки уходят оператору на ручную проверку.
+            with override_settings(KYB_ALLOW_TEST_FIXTURES=True):
+                kyb.api_results = run_all_checks(kyb)
             decision, risk, reasons = evaluate_risk(kyb.api_results)
             kyb.risk_indicator = risk
             kyb.auto_decision = decision

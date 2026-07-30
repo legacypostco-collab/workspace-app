@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from django.contrib.auth.models import User
 from django.test import TestCase
-from django.urls import Resolver404, resolve
 from django.utils import timezone
 
 from marketplace.models import (
@@ -154,8 +153,9 @@ class SellerOrdersApiTests(TestCase):
         self.assertEqual(self.order.status, "confirmed")
 
     def test_legacy_seller_status_route_is_removed(self):
-        with self.assertRaises(Resolver404):
-            resolve(f"/seller/orders/{self.order.id}/status/")
+        response = self.client.get(f"/seller/orders/{self.order.id}/status/")
+        self.assertEqual(response.status_code, 410)
+        self.assertEqual(response["Cache-Control"], "no-store")
 
     def test_seller_claims_and_claim_respond_endpoints(self):
         claims_response = self.client.get("/api/v1/seller/orders/claims/")

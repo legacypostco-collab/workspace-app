@@ -16,7 +16,7 @@
   / (landing)        — заголовок + CTA «стать поставщиком»
   /chat/             — anon SPA: кнопки «Войти» / «Регистрация»
   /chat/ + login     — авторизация: уведомления и рабочие команды
-  /parts/{slug}/     — карточка товара + Schema.org Product JSON-LD
+  старые каталог/товар — переводят в единое рабочее пространство
 """
 from __future__ import annotations
 
@@ -127,29 +127,18 @@ def test_chat_authenticated(xb_page, xb_browser_name, login_as):
     assert not errors, f"JS-ошибки на /chat/ (auth): {errors}"
 
 
-def test_part_detail_with_schema(xb_page, xb_browser_name, login_as):
-    """/parts/{slug}/ → JSON-LD Product присутствует в DOM."""
-    login_as(xb_page, "buyer")
+@pytest.mark.parametrize("legacy_path", ["/catalog/", "/parts/legacy-test-part/"])
+def test_legacy_catalog_routes_to_workspace(xb_page, legacy_path):
+    """Старые страницы каталога не должны возвращать прежний интерфейс."""
+    response = xb_page.goto(BASE_URL + legacy_path, wait_until="domcontentloaded")
 
-    # Достанем любой slug через DB? Нет — лучше через каталог.
-    # Берём первый part из каталога:
-    xb_page.goto(BASE_URL + "/catalog/", wait_until="domcontentloaded")
-    first_part_link = xb_page.locator('a[href*="/parts/"]').first
-    if first_part_link.count() == 0:
-        pytest.skip("в каталоге нет ни одной part — пропускаем")
-    href = first_part_link.get_attribute("href")
-    assert href and "/parts/" in href
-
-    response = xb_page.goto(BASE_URL + href, wait_until="domcontentloaded")
-    assert response and response.ok, f"part_detail → HTTP {response.status if response else '?'}"
-
-    # Schema.org Product JSON-LD должен присутствовать
-    jsonld = xb_page.locator('script[type="application/ld+json"]')
-    assert jsonld.count() > 0, "JSON-LD не найден на /parts/{slug}/"
-    content = jsonld.first.inner_text()
-    assert '"@type": "Product"' in content, f"JSON-LD без @type Product: {content[:200]}"
-
-    _shot(xb_page, xb_browser_name, "part_detail")
+    assert response and response.ok, (
+        f"{legacy_path} → HTTP {response.status if response else '?'}"
+    )
+    assert xb_page.url.split("?", 1)[0].endswith("/chat/"), (
+        f"{legacy_path} не перевёл пользователя в /chat/: {xb_page.url}"
+    )
+    assert xb_page.locator("#welcomeStage").count() == 1
 
 
 def test_no_horizontal_scroll_375px(xb_page, xb_browser_name):

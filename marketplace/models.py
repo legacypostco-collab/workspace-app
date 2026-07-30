@@ -1857,6 +1857,11 @@ class TwoFactorAuth(models.Model):
     enabled = models.BooleanField(default=False)
     backup_codes = models.TextField(blank=True, help_text="One-time backup codes, comma-separated")
     enabled_at = models.DateTimeField(null=True, blank=True)
+    last_totp_counter = models.BigIntegerField(
+        null=True,
+        blank=True,
+        help_text="Last accepted TOTP time-step; prevents replay within valid_window.",
+    )
 
     def __str__(self):
         return f"2FA[{self.user_id}]={'on' if self.enabled else 'off'}"

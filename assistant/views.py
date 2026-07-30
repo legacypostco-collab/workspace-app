@@ -1119,6 +1119,17 @@ def _handle_start_login(request, params):
             )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    # The role selected in the login form must become the active workspace,
+    # but only when that role has already been granted to this account.
+    from .permissions import _override_allowed, detect_user_role
+
+    real_role = detect_user_role(user)
+    real_role_base = "operator" if real_role.startswith("operator") else real_role
+    if _override_allowed(user, role) and real_role_base != role:
+        request.session["assistant_role_override"] = role
+    else:
+        request.session.pop("assistant_role_override", None)
+    request.session.modified = True
     # Resume pending payment action (anon → клик pay_reserve → login → resume)
     try:
         _attach_anonymous_rfqs_to_user(request, user)
@@ -1828,6 +1839,165 @@ class ProjectDocumentFileView(APIView):
             return response
         except Exception:
             return Response({"error": _("файл не найден")}, status=404)
+
+
+class OrderDocumentUploadView(APIView):
+    """Store checklist evidence and bind it to the current order stage."""
+
+    permission_classes = [IsAuthenticated]
+    from rest_framework.parsers import FormParser, MultiPartParser
+    parser_classes = [MultiPartParser, FormParser]
+
+    DOC_TYPES = {
+        "invoice": "invoice",
+        "packing_list": "packing_list",
+        "certificates": "certificate",
+        "declaration": "customs",
+        "transport_invoice": "other",
+        "ttn_rf": "other",
+        "signed_docs": "other",
+    }
+
+    def post(self, request, order_id):
+        import hashlib
+
+        from django.conf import settings
+
+        from marketplace.models import Order, OrderDocument, OrderEvent, OrderItem
+        from marketplace.upload_security import safe_upload_name, validate_uploaded_file
+
+        from .actions import _stage_checklist, complete_trigger
+
+        order = get_object_or_404(Order, id=order_id)
+        status_code = (request.data.get("status") or "").strip()
+        trigger_id = (request.data.get("trigger_id") or "").strip()
+        if order.status != status_code:
+            return Response(
+                {"error": _("Статус заказа уже изменился. Обновите карточку.")},
+                status=409,
+            )
+        trigger = next(
+            (
+                item for item in _stage_checklist(
+                    status_code,
+                    order.incoterm or "FOB",
+                )
+                if item["id"] == trigger_id
+            ),
+            None,
+        )
+        if not trigger or trigger.get("type") != "upload":
+            return Response(
+                {"error": _("Этот пункт не принимает загрузку файла.")},
+                status=400,
+            )
+
+        role = detect_user_role(request.user, request=request)
+        allowed = role == "admin" or role.startswith("operator")
+        if role == "buyer":
+            allowed = (
+                order.buyer_id == request.user.id
+                and status_code == "delivered"
+                and trigger_id == "signed_docs"
+            )
+        elif role == "seller":
+            from .seller_actions import _effective_seller
+
+            seller = _effective_seller(request.user)
+            allowed = OrderItem.objects.filter(
+                order=order,
+                part__seller=seller,
+            ).exists()
+        if not allowed:
+            return Response({"error": _("Нет доступа к заказу.")}, status=403)
+
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            return Response({"error": _("Файл не приложен.")}, status=400)
+        try:
+            ext = validate_uploaded_file(
+                uploaded,
+                allowed_ext={
+                    ".pdf", ".png", ".jpg", ".jpeg", ".webp",
+                    ".doc", ".docx", ".xls", ".xlsx",
+                },
+                max_bytes=int(settings.MAX_ORDER_DOCUMENT_BYTES),
+            )
+            uploaded.name = safe_upload_name(uploaded, ext)
+            digest = hashlib.sha256()
+            for chunk in uploaded.chunks():
+                digest.update(chunk)
+            uploaded.seek(0)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
+        except Exception:
+            logger.exception(
+                "order evidence validation failed user_id=%s order_id=%s",
+                request.user.id,
+                order.id,
+            )
+            return Response(
+                {"error": _("Не удалось проверить файл.")},
+                status=400,
+            )
+
+        document = OrderDocument.objects.create(
+            order=order,
+            doc_type=self.DOC_TYPES.get(trigger_id, "other"),
+            title=str(trigger["label"])[:255],
+            file_obj=uploaded,
+            uploaded_by=request.user,
+        )
+        result = complete_trigger(
+            {
+                "order_id": order.id,
+                "status": status_code,
+                "trigger_id": trigger_id,
+                "document_id": document.id,
+                "sha256": digest.hexdigest(),
+            },
+            request.user,
+            role,
+        )
+        order.refresh_from_db(fields=["logistics_meta"])
+        evidence = (
+            (((order.logistics_meta or {}).get("triggers") or {})
+             .get(status_code, {}))
+            .get(trigger_id)
+        )
+        if (
+            not result.action_succeeded
+            or not isinstance(evidence, dict)
+            or evidence.get("document_id") != document.id
+        ):
+            document.file_obj.delete(save=False)
+            document.delete()
+            return Response(
+                {"error": str(result.text) or _("Не удалось связать документ с этапом.")},
+                status=409,
+            )
+
+        OrderEvent.objects.create(
+            order=order,
+            event_type="document_uploaded",
+            source=role,
+            actor=request.user,
+            meta={
+                "document_id": document.id,
+                "trigger_id": trigger_id,
+                "status": status_code,
+                "sha256": digest.hexdigest(),
+            },
+        )
+        return Response(
+            {
+                "ok": True,
+                "document_id": document.id,
+                "trigger_id": trigger_id,
+                "name": uploaded.name,
+            },
+            status=201,
+        )
 
 
 class OrderDocumentFileView(APIView):
@@ -2580,13 +2750,32 @@ class NotificationMarkReadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, notif_id=None):
+        from django.db.models import Count
+
+        from .consumers import push_notification_state_to_user
         from marketplace.models import Notification
+
         if notif_id is None:
             updated = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+            push_notification_state_to_user(
+                request.user.id,
+                unread_count=0,
+                unread_by_kind={},
+            )
             return Response({"ok": True, "updated": updated, "unread_count": 0})
         n = get_object_or_404(Notification, id=notif_id, user=request.user)
         if not n.is_read:
             n.is_read = True
             n.save(update_fields=["is_read"])
-        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+        unread_qs = Notification.objects.filter(user=request.user, is_read=False)
+        unread_count = unread_qs.count()
+        unread_by_kind = {
+            row["kind"]: row["count"]
+            for row in unread_qs.values("kind").annotate(count=Count("id"))
+        }
+        push_notification_state_to_user(
+            request.user.id,
+            unread_count=unread_count,
+            unread_by_kind=unread_by_kind,
+        )
         return Response({"ok": True, "id": n.id, "unread_count": unread_count})

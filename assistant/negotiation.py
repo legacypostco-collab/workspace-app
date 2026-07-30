@@ -263,9 +263,16 @@ def send_rfq_to_suppliers(params, user, role):
     include_risky = include_risky_requested and is_operator
 
     # Все активные продавцы (исключая sentinel-эскроу)
+    from django.db.models import Count, Q
+
     all_sellers = list(
-        User.objects.filter(profile__role="seller", is_active=True)
-        .exclude(username="__platform_escrow__")[:50]
+        User.objects.filter(
+            Q(profile__role="seller")
+            | Q(roles__role="seller", roles__is_enabled=True),
+            is_active=True,
+        )
+        .exclude(username="__platform_escrow__")
+        .distinct()[:50]
     )
     if not all_sellers:
         return ActionResult(text=_("⚠️ В системе пока нет активных поставщиков."))
@@ -280,6 +287,28 @@ def send_rfq_to_suppliers(params, user, role):
     risky = [s for s in all_sellers if status_map.get(s.id) == "risky"]
     # rejected — никогда (ТЗ §3)
 
+    # A seller that can cover every requested OEM from its active catalog is
+    # more relevant than an unrelated seller with the same trust status.
+    from marketplace.models import Part
+
+    requested_oems = set(
+        rfq.items.exclude(query="").values_list("query", flat=True)
+    )
+    catalog_match_ids = set()
+    if requested_oems:
+        catalog_match_ids = set(
+            Part.objects.filter(
+                seller__in=all_sellers,
+                is_active=True,
+                price__gt=0,
+                oem_number__in=requested_oems,
+            )
+            .values("seller_id")
+            .annotate(matched_oems=Count("oem_number", distinct=True))
+            .filter(matched_oems=len(requested_oems))
+            .values_list("seller_id", flat=True)
+        )
+
     # Priority routing: trusted всегда + sandbox если мало trusted + risky по флагу
     recipients = list(trusted)
     if len(recipients) < min_trusted:
@@ -292,6 +321,15 @@ def send_rfq_to_suppliers(params, user, role):
         recipients.extend(sandbox[:max(0, min_trusted)])
     if include_risky:
         recipients.extend(risky)
+
+    # Exact catalog matches from trusted/sandbox suppliers must not be lost to
+    # the generic sandbox slice. Risky suppliers still require an operator.
+    relevant_catalog_sellers = [
+        seller
+        for seller in trusted + sandbox
+        if seller.id in catalog_match_ids
+    ]
+    recipients = relevant_catalog_sellers + recipients
 
     # Дедуп
     seen = set()

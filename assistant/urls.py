@@ -27,6 +27,7 @@ urlpatterns = [
     path("projects/<uuid:project_id>/documents/", views.ProjectDocumentUploadView.as_view(), name="assistant-project-doc-upload"),
     path("projects/<uuid:project_id>/documents/<uuid:doc_id>/file/", views.ProjectDocumentFileView.as_view(), name="assistant-project-doc-file"),
     # Order document file (invoice/packing/QC PDF) — стримим через Django, т.к. /media/ на проде не раздаётся
+    path("orders/<int:order_id>/documents/", views.OrderDocumentUploadView.as_view(), name="assistant-order-doc-upload"),
     path("orders/<int:order_id>/documents/<int:doc_id>/file/", views.OrderDocumentFileView.as_view(), name="assistant-order-doc-file"),
     # Топап-инвойс PDF (инструкции по оплате депозита) — генерится на лету
     path("topup/<str:ref>/invoice.pdf", documents.TopupInvoicePdfView.as_view(), name="assistant-topup-pdf"),

@@ -2220,7 +2220,7 @@
     letter-spacing: 0.3px;
     background: var(--aub); color: #fff;
   }
-  .deal .badge.sale{ background: var(--accent); }
+  .deal .badge.sale{ background: var(--accent-deep); }
   /* Фон бейджа всегда белый → текст/рамку задаём фиксированными тёмными,
      не из темо-зависимых переменных (иначе в dark-mode текст белел и пропадал). */
   .deal .badge.oem{ background: #fff; color: #181818; border: 1px solid rgba(0,0,0,0.12); }
@@ -2241,7 +2241,7 @@
   .deal .body{ padding: 14px 16px 16px; display:flex; flex-direction: column; flex: 1; }
   .deal .sku{
     font-family: 'JetBrains Mono','SF Mono', Menlo, monospace;
-    font-size: 11.5px; color: var(--ink-4);
+    font-size: 11.5px; color: #666;
     letter-spacing: 0.3px;
     margin-bottom: 4px;
   }
@@ -2267,7 +2267,7 @@
     letter-spacing: -0.3px;
   }
   .deal .price .was{
-    font-size: 13px; color: var(--ink-4);
+    font-size: 13px; color: #666;
     text-decoration: line-through;
     font-feature-settings: 'tnum';
   }
@@ -2285,7 +2285,7 @@
     font-size: 11.5px;
   }
   .deal .stock .ok{
-    color: var(--ok); font-weight: 500;
+    color: #177334; font-weight: 600;
     display:flex; align-items: center; gap: 5px;
   }
   .deal .stock .ok::before{
@@ -2518,7 +2518,7 @@
     display: block;
     object-fit: contain;
   }
-  .footer-action{
+  .footer .footer-action{
     display: inline-flex;
     width: fit-content;
     min-height: 42px;
@@ -2526,13 +2526,13 @@
     justify-content: center;
     padding: 0 16px;
     border-radius: 999px;
-    background: var(--accent);
+    background: var(--accent-deep);
     color: #fff;
     font-size: 13.5px;
     font-weight: 720;
     box-shadow: 0 14px 30px rgba(232,74,33,0.24);
   }
-  .footer-action:hover{
+  .footer .footer-action:hover{
     color: #fff;
     background: var(--accent-deep);
   }
@@ -2640,6 +2640,7 @@
     flex: 0 0 auto;
   }
   .search-hero .hero-eyebrow .eyebrow-label{
+    font: inherit;
     color: inherit;
     min-width: 0;
     max-width: 100%;
@@ -3729,7 +3730,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   </g>
 </svg>
         </div>
-        <span class="eyebrow-label">{% trans "Поиск, подбор и поставка запчастей для спецтехники под ключ" %}</span>
+        <h1 class="eyebrow-label">{% trans "Поиск, подбор и поставка запчастей для спецтехники под ключ" %}</h1>
       </div>
 
       </div>

@@ -494,24 +494,46 @@ def notifications(params, user, role):
 
 @register("generate_qr")
 def generate_qr(params, user, role):
-    """Генерация подписанного QR-кода для заказа."""
+    """Генерация подписанного QR-кода, который размещается на упаковке."""
 
     from marketplace.models import Order, OrderItem
     order_id = params.get("order_id")
     if not order_id:
-        return ActionResult(text=_("Не указан заказ."))
+        return ActionResult(text=_("Не указан заказ."), action_succeeded=False)
     try:
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
-        return ActionResult(text=_("Заказ #%(id)s не найден.") % {"id": order_id})
+        return ActionResult(
+            text=_("Заказ #%(id)s не найден.") % {"id": order_id},
+            action_succeeded=False,
+        )
 
-    # Права: владелец-buyer или seller-участник
-    if role == "buyer" and order.buyer_id != user.id:
-        return ActionResult(text=_("Не ваш заказ."))
-    if role == "seller" and not OrderItem.objects.filter(
-        order=order, part__seller=user
-    ).exists():
-        return ActionResult(text=_("В заказе нет ваших товаров."))
+    # Код печатает сторона, передающая груз. Покупатель сканирует код на
+    # упаковке, но не может получить его копию из своего кабинета.
+    is_operator = bool(role and (role.startswith("operator") or role == "admin"))
+    if role == "buyer":
+        return ActionResult(
+            text=_(
+                "QR-код находится на упаковке заказа. "
+                "Отсканируйте его при фактическом получении груза."
+            ),
+            action_succeeded=False,
+        )
+    if role == "seller":
+        seller = _effective_seller(user)
+        if not OrderItem.objects.filter(
+            order=order,
+            part__seller=seller,
+        ).exists():
+            return ActionResult(
+                text=_("В заказе нет ваших товаров."),
+                action_succeeded=False,
+            )
+    elif not is_operator:
+        return ActionResult(
+            text=_("Недостаточно прав для выпуска QR-кода заказа."),
+            action_succeeded=False,
+        )
 
     # ТЗ §6.2: scan-URL ведёт на /api/assistant/qr/scan/<code>/ —
     # мобильник сканирует, открывается страница, оператор подтверждает событие.
@@ -526,7 +548,8 @@ def generate_qr(params, user, role):
         site = "http://testserver"
     if not site:
         return ActionResult(
-            text=_("QR не создан: адрес сервиса не настроен.")
+            text=_("QR не создан: адрес сервиса не настроен."),
+            action_succeeded=False,
         )
     payload = f"{site}/api/assistant/qr/scan/{code}/"
     import base64
@@ -559,6 +582,7 @@ def generate_qr(params, user, role):
             {"label": _("📋 Аудит"), "action": "audit_log", "params": {"order_id": order.id}},
         ],
         suggestions=[_("Сгенерировать ещё"), _("Где сканировать?")],
+        action_succeeded=True,
     )
 
 
@@ -1477,7 +1501,7 @@ def seller_qr(params, user, role):
         "title": _('Заказ #%(p0)s · Покупатель') % {"p0": f'{o.id}'},
         "subtitle": _('Сумма $%(p0)s · %(p1)s') % {"p0": f'{o.total_amount:,.0f}', "p1": f'{o.get_status_display()}'},
         "badge": "QR",
-        "url": f"/seller/qr/?order={o.id}",
+        "url": f"/chat/?action=generate_qr&order_id={o.id}",
     } for o in qs]
     if not rows:
         return ActionResult(
@@ -1798,9 +1822,8 @@ def upload_pricelist(params, user, role):
 def import_pricelist_preview(params, user, role):
     """Открывает форму с инструкцией по импорту прайса.
 
-    Реальный импорт идёт через /api/assistant/upload-spec/ (для buyer'а)
-    или /seller/upload/ (для seller'а — bulk). В chat-first для seller'а
-    показываем кнопки скачивания шаблона и прямой загрузки.
+    Реальный импорт идёт через API рабочего пространства. В chat-first для
+    seller'а показываем шаблон и открываем штатную загрузку в чате.
     """
     return ActionResult(
         text=(
@@ -1817,12 +1840,12 @@ def import_pricelist_preview(params, user, role):
                 "rows": [
                     {"title": _("Скачать шаблон CSV"),
                      "subtitle": _("Готовый файл с примером"), "badge": "CSV",
-                     "url": "/seller/upload/template.csv"},
-                    {"title": _("Загрузить через bulk"),
-                     "subtitle": _("Старый интерфейс, поддерживает Excel/Google Sheets"),
-                     "badge": "Bulk", "url": "/seller/upload/"},
+                     "url": "/api/assistant/pricelist-template.csv"},
+                    {"title": _("Загрузить прайс в чате"),
+                     "subtitle": _("Excel или CSV с предварительной проверкой"),
+                     "badge": "Файл", "url": "/chat/?action=upload_pricelist"},
                     {"title": _("Перетащить в чат"),
-                     "subtitle": _("Файл .xlsx/.csv прямо в окно чата (для buyer'а)"),
+                     "subtitle": _("Файл .xlsx/.csv прямо в окно чата"),
                      "badge": "Drop", "url": None},
                 ],
             },

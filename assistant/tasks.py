@@ -12,7 +12,11 @@ def index_part_task(self, part_id):
         part = Part.objects.select_related("brand", "category").get(id=part_id)
     except Part.DoesNotExist:
         return f"Part {part_id} not found"
-    chunk = index_part(part)
+    from .embeddings import EmbeddingProviderUnavailable
+    try:
+        chunk = index_part(part)
+    except EmbeddingProviderUnavailable:
+        return "Skipped: embedding provider unavailable"
     return str(chunk.id)
 
 
@@ -26,7 +30,11 @@ def index_order_task(self, order_id):
         order = Order.objects.select_related("buyer").get(id=order_id)
     except Order.DoesNotExist:
         return f"Order {order_id} not found"
-    chunk = index_order(order)
+    from .embeddings import EmbeddingProviderUnavailable
+    try:
+        chunk = index_order(order)
+    except EmbeddingProviderUnavailable:
+        return "Skipped: embedding provider unavailable"
     return str(chunk.id)
 
 
@@ -39,13 +47,20 @@ def index_rfq_task(self, rfq_id):
         rfq = RFQ.objects.get(id=rfq_id)
     except RFQ.DoesNotExist:
         return f"RFQ {rfq_id} not found"
-    chunk = index_rfq(rfq)
+    from .embeddings import EmbeddingProviderUnavailable
+    try:
+        chunk = index_rfq(rfq)
+    except EmbeddingProviderUnavailable:
+        return "Skipped: embedding provider unavailable"
     return str(chunk.id)
 
 
 @shared_task
 def reindex_all_task():
     """Nightly full reindex (called from beat schedule)."""
+    from .embeddings import embedding_provider_available
+    if not embedding_provider_available():
+        return {"skipped": "embedding provider unavailable"}
     from .indexer import index_all_orders, index_all_parts, index_all_rfqs, index_faq
     return {
         "faq": index_faq(),

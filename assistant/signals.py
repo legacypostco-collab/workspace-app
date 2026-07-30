@@ -17,6 +17,9 @@ def _safe_delay(task, *args):
     global _BROKER_AVAILABLE
     if not _BROKER_AVAILABLE:
         return
+    from .embeddings import embedding_provider_available
+    if not embedding_provider_available():
+        return
     try:
         task.delay(*args)
     except Exception:

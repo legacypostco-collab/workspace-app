@@ -32,6 +32,30 @@ def push_notification_to_user(user_id: int, payload: dict):
         logger.exception("push_notification_to_user failed")
 
 
+def push_notification_state_to_user(
+    user_id: int,
+    *,
+    unread_count: int,
+    unread_by_kind: dict | None = None,
+):
+    """Synchronize notification counters across the user's open sessions."""
+    try:
+        from asgiref.sync import async_to_sync
+        layer = get_channel_layer()
+        if not layer:
+            return
+        async_to_sync(layer.group_send)(
+            f"notif_user_{user_id}",
+            {
+                "type": "notification_state",
+                "unread_count": max(0, int(unread_count)),
+                "unread_by_kind": unread_by_kind or {},
+            },
+        )
+    except Exception:
+        logger.exception("push_notification_state_to_user failed")
+
+
 def push_rfq_update_to_user(user_id: int, *, rfq_id: int, event: str = "rfq_update",
                             quote_id: int | None = None):
     """Live-событие изменения RFQ/котировки для открытого chat-first UI.
@@ -112,6 +136,14 @@ class AssistantConsumer(AsyncWebsocketConsumer):
         await self.send_json({
             "type": "notification",
             "payload": event.get("payload") or {},
+        })
+
+    async def notification_state(self, event):
+        """Синхронизировать счётчики после чтения в другой вкладке."""
+        await self.send_json({
+            "type": "notification_state",
+            "unread_count": event.get("unread_count", 0),
+            "unread_by_kind": event.get("unread_by_kind") or {},
         })
 
     async def order_update(self, event):

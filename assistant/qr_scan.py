@@ -78,10 +78,38 @@ SCAN_TRANSITIONS = {
     "shipped":   ("ready_to_ship", "shipped"),
     "transit":   ("shipped", "transit_abroad"),
     "customs":   ("transit_abroad", "customs"),
-    "delivered": ("transit_rf", "delivered"),
-    "received":  ("delivered", "completed"),  # buyer scans = receipt confirmed
+    "delivered": ("issuing", "delivered"),
+    "received":  ("delivered", None),
     "inspected": (None, None),   # event-only (записываем audit, статус не меняется)
 }
+
+
+def _qr_trigger_for_status(status: str, action: str) -> str | None:
+    if action == "received" and status == "delivered":
+        return "qr_received"
+    if status == "ready_to_ship" and action in {"inspected", "shipped"}:
+        return "fob_handoff_qr"
+    if status == "transit_rf" and action == "inspected":
+        return "qr_rf"
+    if status == "issuing" and action in {"inspected", "delivered"}:
+        return "qr_issuing"
+    return None
+
+
+def _record_qr_evidence(order, trigger_id: str, *, actor, actor_source: str, ip: str):
+    meta = order.logistics_meta or {}
+    triggers = meta.get("triggers") or {}
+    stage_triggers = triggers.get(order.status) or {}
+    stage_triggers[trigger_id] = {
+        "completed_at": timezone.now().isoformat(),
+        "kind": "qr_scan",
+        "actor_id": actor.id,
+        "actor_role": actor_source,
+        "ip": ip[:64],
+    }
+    triggers[order.status] = stage_triggers
+    meta["triggers"] = triggers
+    order.logistics_meta = meta
 
 
 def _scan_permission(user, order, action: str) -> tuple[bool, str]:
@@ -105,10 +133,12 @@ def _scan_permission(user, order, action: str) -> tuple[bool, str]:
         allowed = is_operator or (is_seller and len(sellers) == 1)
         return allowed, "operator" if is_operator else "seller"
     if action == "inspected":
-        allowed = is_operator or is_buyer or is_seller
-        if is_operator:
-            return allowed, "operator"
-        return allowed, "buyer" if is_buyer else "seller"
+        if order.status == "ready_to_ship":
+            allowed = is_operator or (is_seller and len(sellers) == 1)
+            return allowed, "operator" if is_operator else "seller"
+        if order.status in {"transit_rf", "issuing"}:
+            return is_operator, "operator"
+        return False, ""
     return False, ""
 
 
@@ -138,7 +168,11 @@ class QRScanView(View):
                 "Войдите в систему под аккаунтом участника поставки.",
                 status=401,
             )
-        if not _scan_permission(request.user, order, "inspected")[0]:
+        can_view = any(
+            _scan_permission(request.user, order, action)[0]
+            for action in SCAN_TRANSITIONS
+        )
+        if not can_view:
             return self._html_error("Доступ к заказу запрещён.", status=403)
 
         # Какие действия доступны на этом этапе
@@ -219,35 +253,44 @@ class QRScanView(View):
         from .security import client_ip
 
         if scan_action == "received":
-            from .actions import confirm_delivery
+            scan_ip = client_ip(request)[:64]
+            from django.db import transaction
 
-            result = confirm_delivery(
-                {"order_id": order.id, "confirmed": True},
-                request.user,
-                "buyer",
-            )
-            order.refresh_from_db(fields=["status"])
-            if order.status != "completed":
-                return JsonResponse(
-                    {"ok": False, "error": str(result.text)},
-                    status=409,
+            with transaction.atomic():
+                locked_order = Order.objects.select_for_update().get(id=order.id)
+                if locked_order.status != "delivered":
+                    return JsonResponse(
+                        {"ok": False, "error": "order status already changed"},
+                        status=409,
+                    )
+                _record_qr_evidence(
+                    locked_order,
+                    "qr_received",
+                    actor=request.user,
+                    actor_source="buyer",
+                    ip=scan_ip,
                 )
-            OrderEvent.objects.create(
-                order=order,
-                event_type="quality_confirmed",
-                source="buyer",
-                actor=request.user,
-                meta={
-                    "qr_scan_action": scan_action,
-                    "ip": client_ip(request)[:64],
-                },
-            )
+                locked_order.save(update_fields=["logistics_meta"])
+                OrderEvent.objects.create(
+                    order=locked_order,
+                    event_type="quality_confirmed",
+                    source="buyer",
+                    actor=request.user,
+                    meta={
+                        "qr_scan_action": scan_action,
+                        "trigger_id": "qr_received",
+                        "ip": scan_ip,
+                    },
+                )
+
             return JsonResponse({
                 "ok": True,
                 "order_id": order_id,
                 "scan_action": scan_action,
                 "from_status": "delivered",
-                "to_status": "completed",
+                "to_status": "delivered",
+                "trigger_id": "qr_received",
+                "requires_confirmation": True,
                 "scanned_at": timezone.now().isoformat(),
             })
 
@@ -263,6 +306,16 @@ class QRScanView(View):
                     status=409,
                 )
             old_status = order.status
+            scan_ip = client_ip(request)[:64]
+            trigger_id = _qr_trigger_for_status(old_status, scan_action)
+            if trigger_id:
+                _record_qr_evidence(
+                    order,
+                    trigger_id,
+                    actor=request.user,
+                    actor_source=actor_source,
+                    ip=scan_ip,
+                )
             OrderEvent.objects.create(
                 order=order,
                 event_type="status_changed",
@@ -272,12 +325,42 @@ class QRScanView(View):
                     "qr_scan_action": scan_action,
                     "from": old_status,
                     "to": target_status,
-                    "ip": client_ip(request)[:64],
+                    "trigger_id": trigger_id,
+                    "ip": scan_ip,
                 },
             )
+            if scan_action == "shipped":
+                from .actions import _stage_checklist, _verified_trigger_ids
+
+                ready_checklist = _stage_checklist(
+                    "ready_to_ship",
+                    order.incoterm or "FOB",
+                )
+                stage_done = _verified_trigger_ids(
+                    order,
+                    "ready_to_ship",
+                    ready_checklist,
+                )
+                missing = [
+                    item for item in ready_checklist
+                    if item["id"] not in stage_done
+                ]
+                if missing:
+                    order.save(update_fields=["logistics_meta"])
+                    return JsonResponse(
+                        {
+                            "ok": False,
+                            "error": "ready checklist is incomplete",
+                            "missing": [item["id"] for item in missing],
+                            "trigger_id": trigger_id,
+                        },
+                        status=409,
+                    )
             if target_status:
                 order.status = target_status
-                order.save(update_fields=["status"])
+                order.save(update_fields=["status", "logistics_meta"])
+            elif trigger_id:
+                order.save(update_fields=["logistics_meta"])
 
         return JsonResponse({
             "ok": True,
@@ -285,6 +368,7 @@ class QRScanView(View):
             "scan_action": scan_action,
             "from_status": need_status or old_status,
             "to_status": target_status or order.status,
+            "trigger_id": trigger_id,
             "scanned_at": timezone.now().isoformat(),
         })
 

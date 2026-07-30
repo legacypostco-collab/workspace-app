@@ -20,7 +20,7 @@ from marketplace.models import Category, Order, OrderItem, Part, UserProfile
 User = get_user_model()
 
 
-@override_settings(STORAGES={
+@override_settings(QR_SECRET="deal-flow-qr-secret", STORAGES={
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }, CHANNEL_LAYERS={"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}})
@@ -140,6 +140,91 @@ class DealFlowE2ESmokeTests(TestCase):
         )
         self.assertEqual(convs.count(), 1, "все алерты группируются в один conv")
         self.assertEqual(convs.first().messages.count(), 2)
+
+    def test_shipping_requires_ready_checklist(self):
+        from assistant.actions import complete_trigger, ship_order
+        from assistant.qr_scan import encode_qr_code
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import Client
+        from marketplace.models import OrderDocument
+
+        self.order.status = "ready_to_ship"
+        self.order.payment_status = "paid"
+        self.order.save(update_fields=["status", "payment_status"])
+        shipping_params = {
+            "order_id": self.order.id,
+            "tracking_number": "ITU-TRACK-1",
+            "carrier": "Test Carrier",
+            "carrier_phone": "+971500000000",
+            "carrier_email": "dispatch@example.test",
+        }
+
+        blocked = ship_order(
+            shipping_params,
+            self.seller,
+            "seller",
+        )
+        self.assertIn("чек-лист", str(blocked.text))
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "ready_to_ship")
+
+        rejected = complete_trigger(
+            {
+                "order_id": self.order.id,
+                "status": "ready_to_ship",
+                "trigger_id": "fob_handoff_qr",
+            },
+            self.seller,
+            "seller",
+        )
+        self.assertFalse(rejected.action_succeeded)
+        self.assertIn("сканирован", str(rejected.text))
+
+        for trigger_id, doc_type in (
+            ("invoice", "invoice"),
+            ("packing_list", "packing_list"),
+        ):
+            document = OrderDocument.objects.create(
+                order=self.order,
+                doc_type=doc_type,
+                title=trigger_id,
+                file_obj=SimpleUploadedFile(
+                    f"{trigger_id}.pdf",
+                    b"%PDF-1.4 test evidence",
+                    content_type="application/pdf",
+                ),
+                uploaded_by=self.seller,
+            )
+            completed = complete_trigger(
+                {
+                    "order_id": self.order.id,
+                    "status": "ready_to_ship",
+                    "trigger_id": trigger_id,
+                    "document_id": document.id,
+                    "sha256": "a" * 64,
+                },
+                self.seller,
+                "seller",
+            )
+            self.assertTrue(completed.action_succeeded)
+
+        client = Client()
+        client.force_login(self.seller)
+        qr_response = client.post(
+            f"/api/assistant/qr/scan/{encode_qr_code(self.order.id)}/",
+            {"action": "inspected"},
+        )
+        self.assertEqual(qr_response.status_code, 200)
+        self.assertEqual(qr_response.json()["trigger_id"], "fob_handoff_qr")
+
+        shipped = ship_order(
+            shipping_params,
+            self.seller,
+            "seller",
+        )
+        self.assertIn("отгружен", str(shipped.text).lower())
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "transit_abroad")
 
     def test_targets_filter_excludes_role(self):
         """targets=('buyer',) — seller НЕ получает уведомление."""

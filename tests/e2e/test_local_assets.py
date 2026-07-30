@@ -38,7 +38,7 @@ def _assert_clean(external: list[str], policy_errors: list[str]) -> None:
     assert not policy_errors, f"page triggered CSP violations: {policy_errors}"
 
 
-def test_legacy_role_routes_redirect_to_clean_chat(
+def test_legacy_role_routes_are_explicitly_removed(
     seller_page: Page,
     base_url: str,
 ):
@@ -46,9 +46,9 @@ def test_legacy_role_routes_redirect_to_clean_chat(
     external, policy_errors = _watch_asset_violations(page)
 
     for path in ("/buyer/", "/seller/", "/seller/logistics/", "/seller/qr/"):
-        response = page.goto(f"{base_url}{path}", wait_until="networkidle")
-        assert response and response.ok
-        assert page.url.rstrip("/").endswith("/chat")
+        response = page.goto(f"{base_url}{path}", wait_until="domcontentloaded")
+        assert response and response.status == 410
+        assert page.url.rstrip("/").endswith(path.rstrip("/"))
 
     _assert_clean(external, policy_errors)
 

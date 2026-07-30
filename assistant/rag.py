@@ -700,14 +700,18 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
         label = params.get("_label") or action_name
         effective_role = role or "buyer"
         result = action_executor.execute(action_name, params, user, effective_role)
-        return {
+        payload = {
             "text": result.text,
             "cards": result.cards,
             "actions": result.actions,
             "contextual_actions": list(getattr(result, "contextual_actions", []) or []),
             "suggestions": result.suggestions,
+            "no_suggestions": bool(result.no_suggestions),
             "message_id": None,
         }
+        if result.action_succeeded is not None:
+            payload["action_succeeded"] = result.action_succeeded
+        return payload
 
     user = user or conversation.user
 
@@ -780,12 +784,13 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
         conversation.title = label[:100]
         conversation.save(update_fields=["title", "updated_at"])
 
-    return {
+    payload = {
         "text": result.text,
         "cards": result.cards,
         "actions": result.actions,
         "contextual_actions": list(getattr(result, "contextual_actions", []) or []),
         "suggestions": result.suggestions,
+        "no_suggestions": bool(result.no_suggestions),
         "message_id": str(assistant_msg.id),
         "navigate_conversation_id": result.navigate_conversation_id,
         "_storage_response": {
@@ -793,6 +798,9 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
             "cards": storage_cards,
         },
     }
+    if result.action_succeeded is not None:
+        payload["action_succeeded"] = result.action_succeeded
+    return payload
 
 
 def _format_action_result(result) -> str:
