@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import zipfile
 
 from django.conf import settings
 from django.utils.text import get_valid_filename
@@ -31,6 +32,65 @@ class UploadSecurityError(ValueError):
     pass
 
 
+MAX_OFFICE_ARCHIVE_ENTRIES = 5_000
+MAX_OFFICE_EXPANDED_BYTES = 250 * 1024 * 1024
+MAX_OFFICE_COMPRESSION_RATIO = 200
+
+
+def validate_office_archive(upload, ext: str) -> None:
+    """Reject malformed, encrypted and excessively expanding OOXML archives."""
+    if ext not in {".xlsx", ".docx"}:
+        return
+    try:
+        pos = upload.tell()
+    except Exception:
+        pos = None
+    try:
+        upload.seek(0)
+        with zipfile.ZipFile(upload) as archive:
+            entries = archive.infolist()
+            if len(entries) > MAX_OFFICE_ARCHIVE_ENTRIES:
+                raise UploadSecurityError("В офисном файле слишком много вложенных элементов.")
+
+            names = set()
+            expanded_size = 0
+            for entry in entries:
+                normalized_name = entry.filename.replace("\\", "/").lstrip("/")
+                parts = [part for part in normalized_name.split("/") if part]
+                if any(part == ".." for part in parts):
+                    raise UploadSecurityError("Офисный файл содержит небезопасные пути.")
+                if entry.flag_bits & 0x1:
+                    raise UploadSecurityError("Зашифрованные офисные файлы не поддерживаются.")
+
+                names.add(normalized_name)
+                expanded_size += int(entry.file_size)
+                if expanded_size > MAX_OFFICE_EXPANDED_BYTES:
+                    raise UploadSecurityError("Офисный файл слишком велик после распаковки.")
+                if entry.file_size > 0:
+                    if entry.compress_size <= 0:
+                        raise UploadSecurityError("Некорректная структура офисного файла.")
+                    ratio = entry.file_size / entry.compress_size
+                    if ratio > MAX_OFFICE_COMPRESSION_RATIO:
+                        raise UploadSecurityError("Офисный файл имеет опасную степень сжатия.")
+
+            required = (
+                {"[Content_Types].xml", "xl/workbook.xml"}
+                if ext == ".xlsx"
+                else {"[Content_Types].xml", "word/document.xml"}
+            )
+            if not required.issubset(names):
+                raise UploadSecurityError("Содержимое файла не соответствует офисному формату.")
+    except UploadSecurityError:
+        raise
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        raise UploadSecurityError("Офисный файл повреждён или имеет неверный формат.") from exc
+    finally:
+        try:
+            upload.seek(pos if pos is not None else 0)
+        except Exception:
+            pass
+
+
 def validate_uploaded_file(upload, *, allowed_ext: set[str], max_bytes: int | None = None) -> str:
     if upload is None:
         raise UploadSecurityError("Файл не приложен.")
@@ -39,6 +99,8 @@ def validate_uploaded_file(upload, *, allowed_ext: set[str], max_bytes: int | No
         raise UploadSecurityError("Тип файла не разрешен.")
     size = int(getattr(upload, "size", 0) or 0)
     limit = int(max_bytes or getattr(settings, "MAX_UPLOAD_FILE_BYTES", 50 * 1024 * 1024))
+    if size <= 0:
+        raise UploadSecurityError("Файл пустой.")
     if size > limit:
         raise UploadSecurityError(f"Файл слишком большой. Максимум {limit} байт.")
 
@@ -64,6 +126,7 @@ def validate_uploaded_file(upload, *, allowed_ext: set[str], max_bytes: int | No
     if ext in TEXT_EXT:
         if b"\x00" in head:
             raise UploadSecurityError("Текстовый файл содержит бинарные данные.")
+    validate_office_archive(upload, ext)
     # CAD-форматы имеют разные сигнатуры; запрещаем только явно опасные бинарники.
 
     try:

@@ -9,6 +9,7 @@ import json
 import logging
 
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -35,11 +36,25 @@ def submit_feedback(request):
         return JsonResponse({"ok": False, "error": "text is required"}, status=400)
 
     user = request.user
+    rate_key = f"feedback:user:{user.pk}"
+    if cache.add(rate_key, 1, 24 * 60 * 60):
+        feedback_count = 1
+    else:
+        try:
+            feedback_count = cache.incr(rate_key)
+        except ValueError:
+            cache.set(rate_key, 1, 24 * 60 * 60)
+            feedback_count = 1
+    if feedback_count > 20:
+        return JsonResponse(
+            {"ok": False, "error": "rate_limit_exceeded"},
+            status=429,
+        )
 
-    # Логируем в нашем audit для tracking
-    logger.warning(
-        "BETA_FEEDBACK user=%s url=%s text=%s",
-        user.username, page_url, text[:120],
+    logger.info(
+        "beta_feedback user_id=%s text_length=%s",
+        user.pk,
+        len(text),
     )
 
     # Сохраняем как Conversation+Message — оператор увидит в чате
@@ -81,6 +96,6 @@ def submit_feedback(request):
 
         return JsonResponse({"ok": True, "id": str(conv.id),
                               "thanks": "Спасибо! Мы получили фидбэк."})
-    except Exception as e:
+    except Exception:
         logger.exception("save feedback failed")
-        return JsonResponse({"ok": False, "error": str(e)[:200]}, status=500)
+        return JsonResponse({"ok": False, "error": "save_failed"}, status=500)

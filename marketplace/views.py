@@ -1,24 +1,25 @@
 import csv
+import hashlib
 import io
 import json
 import logging
 import os
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import Request
 from uuid import uuid4
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core import signing
 from django.core.cache import cache
+from django.core.exceptions import PermissionDenied, RequestDataTooBig
 from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db import transaction
@@ -27,6 +28,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
@@ -50,6 +52,7 @@ from .forms import (
     SellerBulkUploadForm,
     SellerPartForm,
 )
+from .export_security import safe_spreadsheet_row
 from .models import (
     RFQ,
     Brand,
@@ -90,25 +93,6 @@ ORDER_TRANSITIONS = {
     "cancelled": set(),
 }
 
-
-def _find_status_path(current: str, target: str, _max_depth: int = 15) -> list[str] | None:
-    """BFS to find shortest path from current to target through ORDER_TRANSITIONS."""
-    if current == target:
-        return []
-    from collections import deque
-    queue: deque[tuple[str, list[str]]] = deque([(current, [])])
-    visited = {current}
-    while queue and len(visited) < _max_depth:
-        node, path = queue.popleft()
-        for nxt in ORDER_TRANSITIONS.get(node, set()):
-            if nxt == "cancelled":
-                continue
-            if nxt == target:
-                return path + [nxt]
-            if nxt not in visited:
-                visited.add(nxt)
-                queue.append((nxt, path + [nxt]))
-    return None
 
 logger = logging.getLogger("marketplace")
 
@@ -187,6 +171,29 @@ def _get_compare_ids(request: HttpRequest) -> list[int]:
 def _set_compare_ids(request: HttpRequest, ids: list[int]) -> None:
     request.session[COMPARE_SESSION_KEY] = [int(x) for x in ids]
     request.session.modified = True
+
+
+def _safe_next_url(request: HttpRequest, fallback: str) -> str:
+    target = (request.POST.get("next") or request.GET.get("next") or "").strip()
+    if target and url_has_allowed_host_and_scheme(
+        target,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return target
+    return fallback
+
+
+def admin_panel_required(view):
+    @wraps(view)
+    def wrapped(request: HttpRequest, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect("login")
+        if not request.user.is_active or not request.user.is_superuser:
+            raise PermissionDenied
+        return view(request, *args, **kwargs)
+
+    return wrapped
 
 
 def _log_order_event(order: Order, event_type: str, source: str = "system", actor: User | None = None, meta: dict | None = None):
@@ -296,7 +303,7 @@ def _create_order_from_rows(
             "currency": "USD",
         }
         logistics_result = logistics_estimate(logistics_payload)
-        if settings.LOGISTICS_STRICT_MODE and not logistics_result.get("ok", False):
+        if not logistics_result.get("ok", False):
             raise ValueError(logistics_result.get("error", "Logistics calculation failed"))
 
     logistics_cost = Decimal("0.00")
@@ -388,15 +395,16 @@ def _create_order_from_rows(
 def _role_for(user: User | None) -> str | None:
     if not user or not user.is_authenticated:
         return None
-    if user.is_superuser:
-        return "seller"
-    profile = getattr(user, "profile", None)
-    return profile.role if profile else "buyer"
+    active_role = getattr(user, "_assistant_active_role", None)
+    if active_role:
+        return active_role
+    from assistant.permissions import detect_user_role
+    return detect_user_role(user)
 
 
 def _is_demo_user(user) -> bool:
     """Check if user is a demo account."""
-    return getattr(user, "username", "").startswith("demo_")
+    return settings.DEBUG and getattr(user, "username", "").startswith("demo_")
 
 
 def _tpl(user, path: str) -> str:
@@ -413,10 +421,14 @@ def _profile_for(user: User | None):
 def _has_order_access(user: User, order: Order, role: str | None) -> bool:
     if user.is_superuser:
         return True
+    if role == "admin" or (role and role.startswith("operator")):
+        return True
     if order.buyer_id == user.id:
         return True
     if role == "seller":
-        return order.items.filter(part__seller=user).exists()
+        from marketplace.order_access import seller_principal
+
+        return order.items.filter(part__seller=seller_principal(user)).exists()
     return False
 
 
@@ -431,7 +443,7 @@ def _operator_can_access_part(user: User, part: Part) -> bool:
     if user.is_superuser:
         return True
     profile = _profile_for(user)
-    if not profile or profile.role != "seller":
+    if not profile or _role_for(user) != "seller":
         return False
     if not _has_seller_permission(user, "can_manage_orders"):
         return False
@@ -462,9 +474,12 @@ def _webhook_payload_for_event(event: OrderEvent) -> dict:
 
 
 def _send_webhook_attempt(*, event: OrderEvent, endpoint: str, payload: dict, attempt: int) -> bool:
-    from assistant.security import safe_outbound_url
+    from assistant.security import safe_outbound_url, urlopen_no_redirect
 
-    ok_url, url_reason = safe_outbound_url(endpoint)
+    ok_url, _url_reason = safe_outbound_url(
+        endpoint,
+        allow_query=False,
+    )
     if not ok_url:
         WebhookDeliveryLog.objects.create(
             order_event=event,
@@ -473,7 +488,7 @@ def _send_webhook_attempt(*, event: OrderEvent, endpoint: str, payload: dict, at
             success=False,
             attempt=attempt,
             request_payload=payload,
-            error=f"blocked endpoint: {url_reason}",
+            error="Webhook endpoint was blocked by the security policy.",
         )
         return False
 
@@ -493,32 +508,32 @@ def _send_webhook_attempt(*, event: OrderEvent, endpoint: str, payload: dict, at
     )
     try:
         req = Request(endpoint, data=body, headers=headers, method="POST")
-        with urlopen(req, timeout=float(getattr(settings, "WEBHOOK_TIMEOUT_SEC", 2))) as resp:
+        # The target passed safe_outbound_url with a production allowlist.
+        with urlopen_no_redirect(
+            req,
+            timeout=float(getattr(settings, "WEBHOOK_TIMEOUT_SEC", 2)),
+        ) as resp:
             status_code = int(getattr(resp, "status", 200))
-            response_body = resp.read().decode("utf-8", errors="ignore")[:4000]
         is_ok = 200 <= status_code < 300
         log.success = is_ok
         log.status_code = status_code
-        log.response_body = response_body
-        log.save(update_fields=["success", "status_code", "response_body", "updated_at"])
+        log.save(update_fields=["success", "status_code", "updated_at"])
         return is_ok
     except HTTPError as exc:
-        err_body = ""
-        try:
-            err_body = exc.read().decode("utf-8", errors="ignore")[:4000]
-        except Exception:
-            err_body = ""
-        log.error = f"HTTPError: {exc}"
+        log.error = "Remote endpoint returned an HTTP error."
         log.status_code = int(getattr(exc, "code", 0) or 0)
-        log.response_body = err_body
-        log.save(update_fields=["error", "status_code", "response_body", "updated_at"])
+        log.save(update_fields=["error", "status_code", "updated_at"])
         return False
-    except URLError as exc:
-        log.error = f"URLError: {exc}"
+    except URLError:
+        log.error = "Webhook transport failed."
         log.save(update_fields=["error", "updated_at"])
         return False
-    except Exception as exc:
-        log.error = f"Exception: {exc}"
+    except Exception:
+        logger.exception(
+            "Webhook delivery failed order_id=%s",
+            event.order_id,
+        )
+        log.error = "Webhook delivery failed."
         log.save(update_fields=["error", "updated_at"])
         return False
 
@@ -574,41 +589,50 @@ def _retry_webhook_log(log: WebhookDeliveryLog) -> bool:
         request_payload=payload,
     )
     try:
-        from assistant.security import safe_outbound_url
+        from assistant.security import safe_outbound_url, urlopen_no_redirect
 
-        ok_url, url_reason = safe_outbound_url(log.endpoint)
+        ok_url, _url_reason = safe_outbound_url(
+            log.endpoint,
+            allow_query=False,
+        )
         if not ok_url:
-            retry_log.error = f"blocked endpoint: {url_reason}"
+            retry_log.error = (
+                "Webhook endpoint was blocked by the security policy."
+            )
             retry_log.save(update_fields=["error", "updated_at"])
             return False
 
         req = Request(log.endpoint, data=body, headers=headers, method="POST")
-        with urlopen(req, timeout=float(getattr(settings, "WEBHOOK_TIMEOUT_SEC", 2))) as resp:
+        # The target passed safe_outbound_url with a production allowlist.
+        with urlopen_no_redirect(
+            req,
+            timeout=float(getattr(settings, "WEBHOOK_TIMEOUT_SEC", 2)),
+        ) as resp:
             status_code = int(getattr(resp, "status", 200))
-            response_body = resp.read().decode("utf-8", errors="ignore")[:4000]
         ok = 200 <= status_code < 300
         retry_log.success = ok
         retry_log.status_code = status_code
-        retry_log.response_body = response_body
-        retry_log.save(update_fields=["success", "status_code", "response_body", "updated_at"])
+        retry_log.save(
+            update_fields=["success", "status_code", "updated_at"]
+        )
         return ok
     except HTTPError as exc:
-        err_body = ""
-        try:
-            err_body = exc.read().decode("utf-8", errors="ignore")[:4000]
-        except Exception:
-            err_body = ""
-        retry_log.error = f"HTTPError: {exc}"
+        retry_log.error = "Remote endpoint returned an HTTP error."
         retry_log.status_code = int(getattr(exc, "code", 0) or 0)
-        retry_log.response_body = err_body
-        retry_log.save(update_fields=["error", "status_code", "response_body", "updated_at"])
+        retry_log.save(
+            update_fields=["error", "status_code", "updated_at"]
+        )
         return False
-    except URLError as exc:
-        retry_log.error = f"URLError: {exc}"
+    except URLError:
+        retry_log.error = "Webhook transport failed."
         retry_log.save(update_fields=["error", "updated_at"])
         return False
-    except Exception as exc:
-        retry_log.error = f"Exception: {exc}"
+    except Exception:
+        logger.exception(
+            "Webhook retry failed order_id=%s",
+            log.order_id,
+        )
+        retry_log.error = "Webhook delivery failed."
         retry_log.save(update_fields=["error", "updated_at"])
         return False
 
@@ -626,41 +650,46 @@ def _can_manage_claims(user: User, role: str | None) -> bool:
         return True
     if role == "seller":
         return _has_seller_permission(user, "can_manage_orders")
-    return role == "buyer"
+    return bool(
+        role == "buyer"
+        or role == "admin"
+        or (role and role.startswith("operator"))
+    )
 
 
 def _build_payment_url(order: Order) -> tuple[str, str]:
     payment_ref = f"INV-{order.id}-{order.created_at:%Y%m%d}"
     payment_base = (settings.PAYMENT_PROVIDER_URL or "").strip()
+    if not payment_base:
+        return "", payment_ref
+
     payment_currency = settings.PAYMENT_CURRENCY or "USD"
-    payment_query = urlencode(
-        {
-            "merchant": settings.PAYMENT_MERCHANT_ID or "demo-merchant",
-            "invoice": payment_ref,
-            "order_id": order.id,
-            "amount": str(order.total_amount),
-            "currency": payment_currency,
-            "customer_email": order.customer_email,
-        }
-    )
-    if payment_base:
-        delimiter = "&" if "?" in payment_base else "?"
-        return f"{payment_base}{delimiter}{payment_query}", payment_ref
-    return f"https://pay.consolidator.parts/pay?{payment_query}", payment_ref
+    payment_params = {
+        "invoice": payment_ref,
+        "order_id": order.id,
+        "amount": str(order.total_amount),
+        "currency": payment_currency,
+        "customer_email": order.customer_email,
+    }
+    merchant_id = (settings.PAYMENT_MERCHANT_ID or "").strip()
+    if merchant_id:
+        payment_params["merchant"] = merchant_id
+    delimiter = "&" if "?" in payment_base else "?"
+    return f"{payment_base}{delimiter}{urlencode(payment_params)}", payment_ref
 
 
 def _has_seller_permission(user: User, permission: str) -> bool:
     if user.is_superuser:
         return True
     profile = _profile_for(user)
-    if not profile or profile.role != "seller":
+    if not profile or _role_for(user) != "seller":
         return False
     return bool(getattr(profile, permission, False))
 
 
 def _apply_seller_brand_scope(user: User, qs):
     profile = _profile_for(user)
-    if not profile or profile.role != "seller":
+    if not profile or _role_for(user) != "seller":
         return qs.none()
     allowed_brand_ids = list(profile.allowed_brands.values_list("id", flat=True))
     if allowed_brand_ids:
@@ -753,7 +782,11 @@ def operator_required(view):
         if not request.user.is_authenticated:
             return redirect("login")
         role = _role_for(request.user)
-        if not (request.user.is_superuser or role == "seller"):
+        if not (
+            request.user.is_superuser
+            or role == "admin"
+            or (role or "").startswith("operator")
+        ):
             messages.error(request, "Доступно только оператору.")
             return redirect("dashboard")
         return view(request, *args, **kwargs)
@@ -1022,7 +1055,7 @@ def _bulk_lookup_csv_response(rows: list[dict]) -> HttpResponse:
     for row in rows:
         part = row["part"]
         writer.writerow(
-            [
+            safe_spreadsheet_row([
                 row["query"],
                 row["normalized_query"] if row["normalized_query"] != row["query"] else "",
                 row["quantity"],
@@ -1035,7 +1068,7 @@ def _bulk_lookup_csv_response(rows: list[dict]) -> HttpResponse:
                 row["stock_label"],
                 "review" if row["review_flag"] else "",
                 row["input_hint"],
-            ]
+            ])
         )
     response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
     response["Content-Disposition"] = 'attachment; filename="bulk-price-lookup.csv"'
@@ -1180,7 +1213,12 @@ def help_center_view(request: HttpRequest) -> HttpResponse:
         "categories_nav": categories_nav,
         "active_query": query,
         "active_category": active_category,
-        "schema_json": _json.dumps(schema, ensure_ascii=False),
+        "schema_json": (
+            _json.dumps(schema, ensure_ascii=False)
+            .replace("&", "\\u0026")
+            .replace("<", "\\u003C")
+            .replace(">", "\\u003E")
+        ),
         "meta_description": escape(md),
     })
 
@@ -1279,40 +1317,12 @@ def home_marketplace(request: HttpRequest) -> HttpResponse:
     )
 
 
-@login_required
-def demo_center(request: HttpRequest) -> HttpResponse:
-    buyer = User.objects.filter(username="demo_buyer").first()
-    seller = User.objects.filter(username="demo_seller").first()
-    operator = User.objects.filter(username="demo_operator").first()
-
-    demo_rfq = (
-        RFQ.objects.filter(created_by=buyer).order_by("-id").first()
-        if buyer
-        else None
-    )
-    demo_orders = (
-        Order.objects.filter(buyer=buyer).order_by("-id")[:8]
-        if buyer
-        else []
-    )
-    return render(
-        request,
-        "marketplace/demo_center.html",
-        {
-            "buyer_user": buyer,
-            "seller_user": seller,
-            "operator_user": operator,
-            "demo_rfq": demo_rfq,
-            "demo_orders": demo_orders,
-        },
-    )
-
-
 # ─── Rate limiting helpers ───────────────────────────────────────────────────
 
 def _client_ip(request: HttpRequest) -> str:
-    xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    return xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR", "0.0.0.0")
+    from assistant.security import client_ip
+
+    return client_ip(request)
 
 
 def _rl_check(request: HttpRequest, prefix: str, max_hits: int, window: int) -> bool:
@@ -1336,20 +1346,53 @@ def _rl_reset(request: HttpRequest, prefix: str) -> None:
     cache.delete(f"rl:{prefix}:{_client_ip(request)}")
 
 
+def _rl_consume(
+    request: HttpRequest,
+    prefix: str,
+    max_hits: int,
+    window: int,
+    *,
+    identity: str | None = None,
+) -> bool:
+    """Atomically consume one attempt and return whether it is allowed."""
+    subject = identity or _client_ip(request)
+    key = f"rl:{prefix}:{subject}"
+    if cache.add(key, 1, window):
+        return True
+    try:
+        return cache.incr(key) <= max_hits
+    except ValueError:
+        cache.set(key, 1, window)
+        return True
+
+
 # Rate-limited subclass of PasswordResetView (Django stock view игнорирует наш
-# _rl_check, поэтому оборачиваем). 3 запроса/час на IP — типичный лимит.
+# limiter, поэтому оборачиваем). Лимит действует по IP и по хэшу email.
 from django.contrib.auth.views import PasswordResetView as _DjangoPwReset
 
 
 class RateLimitedPasswordResetView(_DjangoPwReset):
     def post(self, request, *args, **kwargs):
-        if not _rl_check(request, "password_reset", 3, 3600):
+        email = (request.POST.get("email") or "").strip().lower()
+        email_digest = hashlib.sha256(email.encode("utf-8")).hexdigest()
+        ip_allowed = _rl_consume(
+            request,
+            "password_reset",
+            3,
+            3600,
+        )
+        email_allowed = _rl_consume(
+            request,
+            "password_reset_email",
+            3,
+            3600,
+            identity=email_digest,
+        )
+        if not ip_allowed or not email_allowed:
             messages.error(request,
                 "Слишком много запросов на восстановление пароля. Попробуйте через час.")
             return self.get(request, *args, **kwargs)
-        response = super().post(request, *args, **kwargs)
-        _rl_hit(request, "password_reset", 3600)
-        return response
+        return super().post(request, *args, **kwargs)
 
 
 # ─── Email verification helpers ──────────────────────────────────────────────
@@ -1368,9 +1411,11 @@ def _decode_verify_token(token: str):
     return data["uid"], data["email"]
 
 
-def _send_verification_email(request: HttpRequest, user: User) -> None:
+def _send_verification_email(request: HttpRequest, user: User) -> bool:
     token = _make_verify_token(user.id, user.email)
-    verify_url = request.build_absolute_uri(f"/verify-email/{token}/")
+    site_url = (getattr(settings, "SITE_URL", "") or "").strip().rstrip("/")
+    verify_path = f"/verify-email/{token}/"
+    verify_url = f"{site_url}{verify_path}" if site_url else request.build_absolute_uri(verify_path)
     subject = "Подтвердите email — Consolidator Parts"
     body = (
         f"Здравствуйте, {user.first_name or user.username}!\n\n"
@@ -1380,14 +1425,16 @@ def _send_verification_email(request: HttpRequest, user: User) -> None:
     )
     try:
         send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email], fail_silently=False)
+        return True
     except Exception:
-        pass  # console backend or misconfigured SMTP — don't crash registration
+        logger.exception("registration verification email failed for user_id=%s", user.id)
+        return False
 
 
 def register_view(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         # Rate limit: 5 registrations per hour per IP
-        if not _rl_check(request, "register", 5, 3600):
+        if not _rl_consume(request, "register", 5, 3600):
             messages.error(request, "Слишком много попыток регистрации. Попробуйте через час.")
             return redirect("/chat/?action=start_registration")
 
@@ -1398,28 +1445,38 @@ def register_view(request: HttpRequest) -> HttpResponse:
             user.first_name = form.cleaned_data["first_name"]
             user.last_name = form.cleaned_data["last_name"]
 
-            # In production (EMAIL_HOST configured) require email verification
-            email_verification_required = bool(getattr(settings, "EMAIL_HOST", "").strip())
+            email_verification_required = bool(
+                getattr(settings, "EMAIL_VERIFICATION_REQUIRED", not settings.DEBUG)
+            )
             if email_verification_required:
                 user.is_active = False
 
-            user.save()
-            UserProfile.objects.create(
-                user=user,
-                role=form.cleaned_data["role"],
-                company_name=form.cleaned_data["company_name"],
-                language=form.cleaned_data.get("language") or "ru",
-            )
+            with transaction.atomic():
+                user.save()
+                UserProfile.objects.create(
+                    user=user,
+                    role=form.cleaned_data["role"],
+                    company_name=form.cleaned_data["company_name"],
+                    language=form.cleaned_data.get("language") or "ru",
+                )
             # Активируем выбранный язык сразу
             try:
                 request.session[settings.LANGUAGE_COOKIE_NAME or "django_language"] = form.cleaned_data.get("language") or "ru"
             except Exception:
                 pass
-            _rl_hit(request, "register", 3600)
-
             if email_verification_required:
-                _send_verification_email(request, user)
-                return render(request, "marketplace/email_verification_sent.html", {"email": user.email})
+                delivered = _send_verification_email(request, user)
+                if not delivered:
+                    messages.error(
+                        request,
+                        "Аккаунт создан, но письмо подтверждения не отправлено. "
+                        "Обратитесь в поддержку.",
+                    )
+                return render(
+                    request,
+                    "marketplace/email_verification_sent.html",
+                    {"email": user.email, "delivery_failed": not delivered},
+                )
 
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, "Регистрация завершена.")
@@ -1468,7 +1525,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
                    тоже на /chat/ (юзер увидит ошибку в чат-форме).
     """
     if request.method == "GET":
-        nxt = request.GET.get("next", "")
+        nxt = _safe_next_url(request, "")
         url = "/chat/?action=start_login"
         if nxt:
             from urllib.parse import quote
@@ -1476,7 +1533,7 @@ def login_view(request: HttpRequest) -> HttpResponse:
         return redirect(url)
 
     # POST: тот же flow, но в случае ошибок редиректим обратно в чат.
-    if not _rl_check(request, "login", 10, 600):
+    if not _rl_consume(request, "login", 10, 600):
         messages.error(request, "Слишком много попыток входа. Подождите 10 минут.")
         return redirect("/chat/?action=start_login")
 
@@ -1492,7 +1549,6 @@ def login_view(request: HttpRequest) -> HttpResponse:
         try:
             from assistant.security import user_has_enabled_2fa, verify_user_2fa
             if user_has_enabled_2fa(user) and not verify_user_2fa(user, request.POST.get("otp_code") or ""):
-                _rl_hit(request, "login", 600)
                 messages.error(request, "Для аккаунта включена 2FA. Введите одноразовый код.")
                 return redirect("/chat/?action=start_login")
         except Exception:
@@ -1501,13 +1557,10 @@ def login_view(request: HttpRequest) -> HttpResponse:
             return redirect("/chat/?action=start_login")
         _rl_reset(request, "login")
         login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-        next_url = (request.POST.get("next") or request.GET.get("next") or "").strip()
-        if next_url and next_url.startswith("/") and not next_url.startswith("//"):
+        next_url = _safe_next_url(request, "")
+        if next_url:
             return redirect(next_url)
         return redirect("/chat/")
-    else:
-        _rl_hit(request, "login", 600)
-
     # На ошибке: messages + редирект в чат (форма откроется снова).
     messages.error(request, "Неверный логин или пароль.")
     return redirect("/chat/?action=start_login")
@@ -1520,38 +1573,6 @@ def logout_view(request: HttpRequest) -> HttpResponse:
     logout(request)
     messages.info(request, "Вы вышли из системы.")
     return redirect("home")
-
-
-def demo_login(request: HttpRequest) -> HttpResponse:
-    """Быстрый вход в демо-кабинет по роли. ОТКЛЮЧЕНО в production.
-
-    Это backdoor: логинит без пароля по `?role=buyer|seller|operator`.
-    Работает только когда `DEBUG=True` ИЛИ env `ALLOW_DEMO_LOGIN=1`.
-    В prod возвращает 404 — endpoint как бы не существует.
-    """
-    import os
-
-    from django.contrib.auth import authenticate
-    if not settings.DEBUG and os.environ.get("ALLOW_DEMO_LOGIN", "") not in ("1", "true", "yes"):
-        from django.http import Http404
-        raise Http404()
-
-    # Все роли идут в /chat/ — chat-first единственный UI.
-    DEMO_USERS = {
-        "seller":   ("demo_seller",   "/chat/"),
-        "buyer":    ("demo_buyer",    "/chat/"),
-        "operator": ("demo_operator", "/chat/"),
-    }
-    role = request.GET.get("role", "")
-    entry = DEMO_USERS.get(role)
-    if not entry:
-        return redirect("login")
-    username, redirect_to = entry
-    user = authenticate(request, username=username, password="demo12345")
-    if user is None:
-        return redirect("login")
-    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return redirect(redirect_to)
 
 
 def catalog(request: HttpRequest) -> HttpResponse:
@@ -1641,7 +1662,7 @@ def cart_add(request: HttpRequest, part_id: int) -> HttpResponse:
     if current < part.stock_quantity:
         cart[str(part.id)] = current + 1
     _set_cart(request, cart)
-    return redirect(request.POST.get("next") or "cart")
+    return redirect(_safe_next_url(request, "cart"))
 
 
 @require_POST
@@ -1679,7 +1700,7 @@ def compare_add(request: HttpRequest, part_id: int) -> HttpResponse:
             ids.pop(0)
         ids.append(part.id)
     _set_compare_ids(request, ids)
-    return redirect(request.POST.get("next") or "compare")
+    return redirect(_safe_next_url(request, "compare"))
 
 
 @require_POST
@@ -1687,7 +1708,7 @@ def compare_remove(request: HttpRequest, part_id: int) -> HttpResponse:
     ids = _get_compare_ids(request)
     ids = [x for x in ids if x != int(part_id)]
     _set_compare_ids(request, ids)
-    return redirect(request.POST.get("next") or "compare")
+    return redirect(_safe_next_url(request, "compare"))
 
 
 @require_POST
@@ -1812,7 +1833,7 @@ def kpi_reports_export_csv(request: HttpRequest) -> HttpResponse:
     writer.writerow(["order_id", "status", "payment_status", "sla_status", "total_amount", "logistics_cost", "created_at"])
     for order in scoped_orders.order_by("-id")[:5000]:
         writer.writerow(
-            [
+            safe_spreadsheet_row([
                 order.id,
                 order.status,
                 order.payment_status,
@@ -1820,7 +1841,7 @@ def kpi_reports_export_csv(request: HttpRequest) -> HttpResponse:
                 order.total_amount,
                 order.logistics_cost,
                 order.created_at.isoformat(),
-            ]
+            ])
         )
     return response
 
@@ -1841,7 +1862,7 @@ def claims_export_csv(request: HttpRequest) -> HttpResponse:
     writer.writerow(["claim_id", "order_id", "status", "title", "opened_by", "resolved_by", "created_at", "updated_at"])
     for claim in claims:
         writer.writerow(
-            [
+            safe_spreadsheet_row([
                 claim.id,
                 claim.order_id,
                 claim.status,
@@ -1850,7 +1871,7 @@ def claims_export_csv(request: HttpRequest) -> HttpResponse:
                 claim.resolved_by.username if claim.resolved_by else "",
                 claim.created_at.isoformat(),
                 claim.updated_at.isoformat(),
-            ]
+            ])
         )
     return response
 
@@ -3258,7 +3279,19 @@ def seller_part_inline_update(request: HttpRequest, part_id: int) -> JsonRespons
         part.save()
         return JsonResponse({"ok": True, "value": str(getattr(part, field))})
     except Exception as exc:
-        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+        logger.warning(
+            "seller_inline_edit_failed",
+            exc_info=True,
+            extra={
+                "seller_id": request.user.id,
+                "part_id": part.id,
+                "field": field,
+            },
+        )
+        return JsonResponse(
+            {"ok": False, "error": "Некорректное значение."},
+            status=400,
+        )
 
 
 @login_required
@@ -3338,14 +3371,20 @@ def _supplier_profile_for_part(part: Part):
 
 def _supplier_status_for_part(part: Part) -> str:
     profile = _supplier_profile_for_part(part)
-    if not profile or profile.role != "seller":
+    if not profile or (
+        profile.role != "seller"
+        and not part.seller.roles.filter(role="seller", is_enabled=True).exists()
+    ):
         return "sandbox"
     return profile.supplier_status or "sandbox"
 
 
 def _supplier_rating_for_part(part: Part) -> Decimal:
     profile = _supplier_profile_for_part(part)
-    if not profile or profile.role != "seller":
+    if not profile or (
+        profile.role != "seller"
+        and not part.seller.roles.filter(role="seller", is_enabled=True).exists()
+    ):
         return Decimal("0.00")
     return Decimal(profile.rating_score or 0)
 
@@ -3728,17 +3767,23 @@ def rfq_logistics_estimate(request: HttpRequest, rfq_id: int) -> JsonResponse:
         return JsonResponse({"ok": False, "error": "forbidden"}, status=403)
 
     payload = {
-        "origin": (request.POST.get("origin") or "").strip(),
-        "destination": (request.POST.get("destination") or "").strip(),
-        "mode": (request.POST.get("mode") or "sea").strip().lower(),
-        "incoterm": (request.POST.get("incoterm") or "FOB").strip().upper(),
-        "weight_kg": (request.POST.get("weight_kg") or "0").strip(),
-        "volume_m3": (request.POST.get("volume_m3") or "0").strip(),
-        "currency": (request.POST.get("currency") or "USD").strip().upper(),
+        "origin": (request.POST.get("origin") or "").strip()[:200],
+        "destination": (request.POST.get("destination") or "").strip()[:200],
+        "mode": (request.POST.get("mode") or "sea").strip().lower()[:20],
+        "incoterm": (request.POST.get("incoterm") or "FOB").strip().upper()[:10],
+        "weight_kg": (request.POST.get("weight_kg") or "0").strip()[:32],
+        "volume_m3": (request.POST.get("volume_m3") or "0").strip()[:32],
+        "currency": (request.POST.get("currency") or "USD").strip().upper()[:3],
     }
     result = logistics_estimate(payload)
     if not result.get("ok", False):
-        return JsonResponse({"ok": False, "error": result.get("error", "logistics_calculation_failed"), "result": result}, status=502)
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": result.get("error", "logistics_calculation_failed"),
+            },
+            status=502,
+        )
     return JsonResponse({"ok": True, "result": result})
 
 
@@ -3877,7 +3922,7 @@ def rfq_proposal_pdf(request: HttpRequest, rfq_id: int) -> HttpResponse:
 @login_required
 def rfq_checkout(request: HttpRequest, rfq_id: int) -> HttpResponse:
     rfq = get_object_or_404(RFQ.objects.prefetch_related("items__matched_part"), id=rfq_id)
-    if request.method == "GET" and not (request.user.is_staff or request.user.is_superuser):
+    if request.method == "GET" and not request.user.is_superuser:
         return redirect("chat_rfq", rfq_id=rfq.id)
     role = _role_for(request.user)
     if role == "seller" and not request.user.is_superuser:
@@ -4284,74 +4329,30 @@ def seller_part_edit(request: HttpRequest, part_id: int) -> HttpResponse:
 @require_POST
 def seller_import_google_sheet(request: HttpRequest) -> HttpResponse:
     """Import from a public Google Sheets URL."""
-    import re as _re
-    import urllib.request as _urllib_request
-    from urllib.parse import urlparse
+    if not _has_seller_permission(request.user, "can_manage_assortment"):
+        messages.error(request, "Нет прав на загрузку ассортимента.")
+        return redirect("seller_product_list")
 
     sheet_url = (request.POST.get("sheet_url") or "").strip()
-    parsed = urlparse(sheet_url)
-    if parsed.scheme != "https" or parsed.hostname != "docs.google.com":
-        messages.error(request, "Нужна корректная ссылка Google Sheets.")
-        return redirect("seller_product_list")
-
-    # Extract sheet ID
-    match = _re.search(r"/spreadsheets/d/([a-zA-Z0-9_-]+)", sheet_url)
-    if not match:
-        messages.error(request, "Не удалось извлечь ID таблицы из ссылки.")
-        return redirect("seller_product_list")
-
-    sheet_id = match.group(1)
-    csv_export_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
-    from assistant.security import safe_outbound_url
-
-    ok_url, reason = safe_outbound_url(
-        csv_export_url,
-        allowed_hosts_setting="GOOGLE_SHEETS_ALLOWED_HOSTS",
-        allow_private_setting="GOOGLE_SHEETS_ALLOW_PRIVATE_IPS",
-        allow_insecure_setting="GOOGLE_SHEETS_ALLOW_INSECURE_HTTP",
-    )
-    if not ok_url:
-        messages.error(request, f"Google-таблица заблокирована настройками безопасности: {reason}")
-        return redirect("seller_product_list")
-
     try:
-        req = _urllib_request.Request(csv_export_url, headers={"User-Agent": "ConsolidatorParts/1.0"})
-        with _urllib_request.urlopen(req, timeout=15) as resp:
-            raw = resp.read()
-    except Exception:
-        messages.error(request, "Не удалось загрузить Google-таблицу. Убедитесь, что таблица открыта для чтения (доступ по ссылке).")
+        from imports.google_sheets import (
+            GoogleSheetImportError,
+            create_google_sheet_preview,
+        )
+
+        google_preview = create_google_sheet_preview(
+            sheet_url=sheet_url,
+            supplier=request.user,
+            mapping_builder=_auto_map_columns,
+            auto_confirm=True,
+        )
+    except GoogleSheetImportError as exc:
+        messages.error(request, str(exc))
         return redirect("seller_product_list")
 
-    try:
-        from marketplace.services.imports import _csv_rows
-        headers, rows = _csv_rows(raw)
-    except Exception as exc:
-        messages.error(request, f"Ошибка парсинга таблицы: {exc}")
-        return redirect("seller_product_list")
-
-    sample = [row_dict for _, row_dict in rows[:10]]
-    detected = {h: h for h in headers}
-    auto_mapping = _auto_map_columns(headers)
-
-    # If key columns are mapped, auto-confirm and start import
-    has_key_cols = auto_mapping.get("oem") and auto_mapping.get("price_exw")
-    initial_status = (
-        ImportPreviewSession.Status.MAPPING_CONFIRMED if has_key_cols
-        else ImportPreviewSession.Status.DRAFT
-    )
-
-    preview = ImportPreviewSession.objects.create(
-        supplier=request.user,
-        source_type=ImportPreviewSession.SourceType.GOOGLE_SHEET,
-        source_url=sheet_url,
-        status=initial_status,
-        detected_columns=detected,
-        sample_rows=sample,
-        column_mapping=auto_mapping,
-    )
-
-    total = len(rows)
-    mapped = len(auto_mapping)
+    preview = google_preview.session
+    total = google_preview.row_count
+    mapped = len(preview.column_mapping or {})
     return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}&gs_imported=1&gs_rows={total}&gs_cols={mapped}")
 
 
@@ -4364,7 +4365,7 @@ def seller_import_preview(request: HttpRequest, preview_id: int) -> HttpResponse
     if preview.source_type not in (ImportPreviewSession.SourceType.CSV, ImportPreviewSession.SourceType.GOOGLE_SHEET):
         messages.error(request, "Для этого источника preview пока не поддерживается в UI.")
         return redirect("seller_product_list")
-    if preview.source_type == ImportPreviewSession.SourceType.CSV and not preview.source_file_id:
+    if not preview.source_file_id:
         messages.error(request, "Файл источника не найден.")
         return redirect("seller_product_list")
 
@@ -4416,8 +4417,11 @@ def seller_import_preview_start(request: HttpRequest, preview_id: int) -> HttpRe
     if preview.status != ImportPreviewSession.Status.MAPPING_CONFIRMED:
         messages.error(request, "Сначала подтвердите маппинг колонок.")
         return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
+    if not preview.source_file_id:
+        messages.error(request, "Файл источника не найден. Загрузите источник повторно.")
+        return redirect(f"{reverse('seller_product_list')}?preview_id={preview.id}")
 
-    idempotency_key = preview.source_file.checksum_sha256 if preview.source_file_id else ""
+    idempotency_key = preview.source_file.checksum_sha256
     job = ImportJob.objects.create(
         supplier=request.user,
         source_type=preview.source_type,
@@ -4811,7 +4815,7 @@ def seller_price_export(request: HttpRequest) -> HttpResponse:
     writer.writerow(["Part Number", "Description", "Unitprice", "Currency", "Stock", "OEM", "Brand", "Category", "Active"])
     for part in parts:
         writer.writerow(
-            [
+            safe_spreadsheet_row([
                 part.title,
                 part.description or "",
                 str(part.price),
@@ -4821,7 +4825,7 @@ def seller_price_export(request: HttpRequest) -> HttpResponse:
                 part.brand.name if part.brand else "",
                 part.category.name if part.category else "",
                 "1" if part.is_active else "0",
-            ]
+            ])
         )
     return response
 
@@ -4851,147 +4855,15 @@ def seller_import_errors_csv(request: HttpRequest, run_id: int) -> HttpResponse:
     writer.writerow(["row_number", "original_data", "error_type", "error_message", "fix_suggestion"])
     for err in run.errors or []:
         writer.writerow(
-            [
+            safe_spreadsheet_row([
                 err.get("row", ""),
                 json.dumps(err.get("original_data", {}), ensure_ascii=False),
                 err.get("error_type") or err.get("code", ""),
                 err.get("reason", ""),
                 err.get("hint", ""),
-            ]
+            ])
         )
     return response
-
-
-@seller_required
-@require_POST
-def seller_order_status_update(request: HttpRequest, order_id: int) -> HttpResponse:
-    if not _has_seller_permission(request.user, "can_manage_orders"):
-        messages.error(request, "Нет прав на управление заказами.")
-        return redirect("seller_orders")
-
-    # SECURITY P1: open-redirect защита — допускаем только локальные URL.
-    from django.utils.http import url_has_allowed_host_and_scheme
-    next_url = (request.POST.get("next") or "").strip()
-    if next_url and not url_has_allowed_host_and_scheme(
-        next_url, allowed_hosts={request.get_host()},
-        require_https=request.is_secure(),
-    ):
-        next_url = ""
-
-    order = get_object_or_404(Order, id=order_id)
-    has_access = order.items.filter(part__seller=request.user).exists()
-    if not has_access:
-        messages.error(request, "Вы не можете менять этот заказ.")
-        return redirect("seller_orders")
-
-    allowed = {key for key, _ in Order.STATUS_CHOICES}
-    status = (request.POST.get("status") or "").strip()
-    if status not in allowed:
-        messages.error(request, "Неверный статус.")
-        return redirect(next_url or "seller_orders")
-    seller_allowed_statuses = {"pending", "reserve_paid", "confirmed", "in_production", "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing", "shipped", "delivered", "completed", "cancelled"}
-    if status not in seller_allowed_statuses:
-        messages.error(request, "Этот статус может быть изменен только клиентом или системой.")
-        return redirect(next_url or "seller_orders")
-
-    current = order.status
-    if status != current:
-        # Build path through intermediate statuses
-        path = _find_status_path(current, status)
-        if path is None:
-            messages.error(request, f"Недопустимый переход статуса: {current} -> {status}")
-            return redirect(next_url or "seller_orders")
-
-        # Advance through each intermediate status, logging events
-        for step_status in path:
-            prev = order.status
-            order.status = step_status
-            update_fields = ["status"]
-            if step_status == "confirmed" and not order.ship_deadline:
-                order.ship_deadline = timezone.now() + timedelta(days=5)
-                update_fields.append("ship_deadline")
-            order.save(update_fields=update_fields)
-            _log_order_event(
-                order,
-                "status_changed",
-                source="seller",
-                actor=request.user,
-                meta={"from": prev, "to": step_status},
-            )
-        _recalc_order_sla(order)
-
-        # Handle QR code scan
-        qr_code = request.POST.get("qr_code", "").strip()
-        if qr_code:
-            _log_order_event(
-                order,
-                "status_changed",
-                source="seller",
-                actor=request.user,
-                meta={"qr_code": qr_code, "status": status},
-            )
-
-        # Handle document upload (e.g. customs declaration)
-        # SECURITY P1: валидация типа и размера файла — иначе seller мог
-        # загрузить HTML/JS под доменом платформы и использовать как фишинг.
-        doc_file = request.FILES.get("document")
-        if doc_file:
-            import os as _os
-            ALLOWED_EXT = {".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx"}
-            MAX_SIZE = 20 * 1024 * 1024  # 20 MB
-            ext = _os.path.splitext(doc_file.name)[1].lower()
-            if ext not in ALLOWED_EXT:
-                messages.error(request, f"Тип файла {ext} запрещён. Разрешены: {', '.join(sorted(ALLOWED_EXT))}.")
-                return redirect(next_url or "seller_orders")
-            if doc_file.size > MAX_SIZE:
-                messages.error(request, "Файл больше 20 МБ.")
-                return redirect(next_url or "seller_orders")
-            doc_type = "customs" if status == "customs" else "other"
-            OrderDocument.objects.create(
-                order=order,
-                doc_type=doc_type,
-                title=doc_file.name,
-                file_obj=doc_file,
-                uploaded_by=request.user,
-            )
-            _log_order_event(
-                order,
-                "document_uploaded",
-                source="seller",
-                actor=request.user,
-                meta={"doc_type": doc_type, "filename": doc_file.name},
-            )
-
-    if status == "cancelled":
-        seller_ids = (
-            order.items.values_list("part__seller_id", flat=True)
-            .exclude(part__seller_id__isnull=True)
-            .distinct()
-        )
-        for seller_id in seller_ids:
-            SupplierRatingEvent.objects.create(
-                supplier_id=seller_id,
-                event_type="order_cancellation",
-                impact_score=Decimal("-8.00"),
-                meta={"order_id": order.id},
-            )
-    if status == "shipped" and order.ship_deadline and timezone.now() > order.ship_deadline:
-        seller_ids = (
-            order.items.values_list("part__seller_id", flat=True)
-            .exclude(part__seller_id__isnull=True)
-            .distinct()
-        )
-        for seller_id in seller_ids:
-            SupplierRatingEvent.objects.create(
-                supplier_id=seller_id,
-                event_type="delivery_delay",
-                impact_score=Decimal("-5.00"),
-                meta={"order_id": order.id, "deadline": order.ship_deadline.isoformat()},
-            )
-    messages.success(request, f"Статус заказа #{order.id} обновлен: {order.get_status_display()}")
-    if next_url:
-        return redirect(next_url)
-    return redirect("seller_orders")
 
 
 @login_required
@@ -5194,15 +5066,23 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
     pdf.drawString(left, y, f"Payment reference: {payment_ref}")
 
     qr_size = 28 * mm
-    qr = QrCodeWidget(payment_url)
-    bounds = qr.getBounds()
-    qr_width = bounds[2] - bounds[0]
-    qr_height = bounds[3] - bounds[1]
-    drawing = Drawing(qr_size, qr_size, transform=[qr_size / qr_width, 0, 0, qr_size / qr_height, 0, 0])
-    drawing.add(qr)
-    renderPDF.draw(drawing, pdf, right - qr_size, y - qr_size + 3 * mm)
-    pdf.setFont("Helvetica", 7)
-    pdf.drawString(right - qr_size, y - qr_size - 1 * mm, "Scan for payment link")
+    if payment_url:
+        qr = QrCodeWidget(payment_url)
+        bounds = qr.getBounds()
+        qr_width = bounds[2] - bounds[0]
+        qr_height = bounds[3] - bounds[1]
+        drawing = Drawing(
+            qr_size,
+            qr_size,
+            transform=[qr_size / qr_width, 0, 0, qr_size / qr_height, 0, 0],
+        )
+        drawing.add(qr)
+        renderPDF.draw(drawing, pdf, right - qr_size, y - qr_size + 3 * mm)
+        pdf.setFont("Helvetica", 7)
+        pdf.drawString(right - qr_size, y - qr_size - 1 * mm, "Scan for payment link")
+    else:
+        pdf.setFont("Helvetica", 8)
+        pdf.drawRightString(right, y - 8 * mm, "Payment gateway is not configured")
 
     y -= 35 * mm
     pdf.setFont("Helvetica", 8)
@@ -5224,148 +5104,33 @@ def order_invoice_pdf(request: HttpRequest, order_id: int) -> HttpResponse:
 @login_required
 @require_POST
 def order_mark_reserve_paid(request: HttpRequest, order_id: int) -> HttpResponse:
-    order = get_object_or_404(Order, id=order_id)
-    role = _role_for(request.user)
-    if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, "Только клиент заказа может подтверждать оплату резерва.")
-        return redirect("order_invoice", order_id=order.id)
-    if not _has_order_access(request.user, order, role):
-        messages.error(request, "Нет доступа к заказу.")
-        return redirect("dashboard")
-    if order.status in {"cancelled", "completed"}:
-        messages.error(request, "Заказ закрыт для изменения оплаты.")
-        return redirect("order_invoice", order_id=order.id)
-    if order.payment_status in {"reserve_paid", "paid"}:
-        messages.info(request, "Резерв уже зафиксирован.")
-        return redirect("order_invoice", order_id=order.id)
-
-    previous = order.status
-    order.payment_status = "reserve_paid"
-    order.reserve_paid_at = timezone.now()
-    if order.status == "pending":
-        order.status = "reserve_paid"
-    order.save(update_fields=["payment_status", "reserve_paid_at", "status"])
-    _log_order_event(order, "reserve_paid", source="buyer", actor=request.user, meta={"reserve_amount": str(order.reserve_amount)})
-    if previous != order.status:
-        _log_order_event(order, "status_changed", source="buyer", actor=request.user, meta={"from": previous, "to": order.status})
-    messages.success(request, "Резерв 10% зафиксирован.")
-    return redirect("order_invoice", order_id=order.id)
+    return HttpResponse("Этот способ подтверждения оплаты отключён.", status=410)
 
 
 @login_required
 @require_POST
 def order_mark_final_paid(request: HttpRequest, order_id: int) -> HttpResponse:
-    order = get_object_or_404(Order, id=order_id)
-    role = _role_for(request.user)
-    if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, "Только клиент заказа может подтверждать финальную оплату.")
-        return redirect("order_invoice", order_id=order.id)
-    if not _has_order_access(request.user, order, role):
-        messages.error(request, "Нет доступа к заказу.")
-        return redirect("dashboard")
-    if order.status in {"cancelled", "completed"}:
-        messages.error(request, "Заказ закрыт для изменения оплаты.")
-        return redirect("order_invoice", order_id=order.id)
-    if order.payment_status == "paid":
-        messages.info(request, "Финальная оплата уже зафиксирована.")
-        return redirect("order_invoice", order_id=order.id)
-    # Для simple: reserve_paid → paid; для staged: customs_paid → paid
-    if order.payment_scheme == "staged":
-        if order.payment_status != "customs_paid":
-            messages.error(request, "Для поэтапной схемы все промежуточные платежи должны быть зафиксированы.")
-            return redirect("order_invoice", order_id=order.id)
-    else:
-        if order.payment_status != "reserve_paid":
-            messages.error(request, "Сначала нужно зафиксировать резерв 10%.")
-            return redirect("order_invoice", order_id=order.id)
-
-    order.payment_status = "paid"
-    order.final_paid_at = timezone.now()
-    order.save(update_fields=["payment_status", "final_paid_at"])
-    _log_order_event(order, "final_payment_paid", source="buyer", actor=request.user, meta={"total_amount": str(order.total_amount)})
-    messages.success(request, "Финальная оплата зафиксирована.")
-    return redirect("order_invoice", order_id=order.id)
+    return HttpResponse("Этот способ подтверждения оплаты отключён.", status=410)
 
 
 @login_required
 @require_POST
 def order_mark_mid_paid(request: HttpRequest, order_id: int) -> HttpResponse:
     """Подтверждение 50% после подтверждения заказа (staged scheme)."""
-    order = get_object_or_404(Order, id=order_id)
-    role = _role_for(request.user)
-    if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, "Только клиент заказа может подтверждать оплату.")
-        return redirect("order_invoice", order_id=order.id)
-    if not _has_order_access(request.user, order, role):
-        messages.error(request, "Нет доступа к заказу.")
-        return redirect("dashboard")
-    if order.payment_scheme != "staged":
-        messages.error(request, "Промежуточный платёж доступен только для поэтапной схемы.")
-        return redirect("order_invoice", order_id=order.id)
-    if order.payment_status != "reserve_paid":
-        messages.error(request, "Сначала нужно зафиксировать резерв 10%.")
-        return redirect("order_invoice", order_id=order.id)
-
-    order.payment_status = "mid_paid"
-    order.mid_paid_at = timezone.now()
-    order.save(update_fields=["payment_status", "mid_paid_at"])
-    _log_order_event(order, "mid_payment_paid", source="buyer", actor=request.user, meta={"mid_payment_amount": str(order.mid_payment_amount)})
-    messages.success(request, f"Промежуточная оплата 50% (${order.mid_payment_amount}) зафиксирована.")
-    return redirect("order_invoice", order_id=order.id)
+    return HttpResponse("Этот способ подтверждения оплаты отключён.", status=410)
 
 
 @login_required
 @require_POST
 def order_mark_customs_paid(request: HttpRequest, order_id: int) -> HttpResponse:
     """Подтверждение 40% после прохождения таможни (staged scheme)."""
-    order = get_object_or_404(Order, id=order_id)
-    role = _role_for(request.user)
-    if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, "Только клиент заказа может подтверждать оплату.")
-        return redirect("order_invoice", order_id=order.id)
-    if not _has_order_access(request.user, order, role):
-        messages.error(request, "Нет доступа к заказу.")
-        return redirect("dashboard")
-    if order.payment_scheme != "staged":
-        messages.error(request, "Таможенный платёж доступен только для поэтапной схемы.")
-        return redirect("order_invoice", order_id=order.id)
-    if order.payment_status != "mid_paid":
-        messages.error(request, "Сначала нужно зафиксировать промежуточный платёж 50%.")
-        return redirect("order_invoice", order_id=order.id)
-
-    order.payment_status = "customs_paid"
-    order.customs_paid_at = timezone.now()
-    order.save(update_fields=["payment_status", "customs_paid_at"])
-    _log_order_event(order, "customs_payment_paid", source="buyer", actor=request.user, meta={"customs_payment_amount": str(order.customs_payment_amount)})
-    messages.success(request, f"Таможенная оплата 40% (${order.customs_payment_amount}) зафиксирована.")
-    return redirect("order_invoice", order_id=order.id)
+    return HttpResponse("Этот способ подтверждения оплаты отключён.", status=410)
 
 
 @login_required
 @require_POST
 def order_confirm_quality(request: HttpRequest, order_id: int) -> HttpResponse:
-    order = get_object_or_404(Order, id=order_id)
-    role = _role_for(request.user)
-    if order.buyer_id != request.user.id and not request.user.is_superuser:
-        messages.error(request, "Только клиент заказа может подтвердить качество.")
-        return redirect("order_detail", order_id=order.id)
-    if not _has_order_access(request.user, order, role):
-        messages.error(request, "Нет доступа к заказу.")
-        return redirect("dashboard")
-    if order.status != "delivered":
-        messages.error(request, "Качество можно подтвердить только после статуса Delivered.")
-        return redirect("order_detail", order_id=order.id)
-    if order.payment_status != "paid":
-        messages.error(request, "Перед закрытием заказа нужна финальная оплата.")
-        return redirect("order_detail", order_id=order.id)
-
-    previous = order.status
-    order.status = "completed"
-    order.save(update_fields=["status"])
-    _log_order_event(order, "quality_confirmed", source="buyer", actor=request.user)
-    _log_order_event(order, "status_changed", source="buyer", actor=request.user, meta={"from": previous, "to": order.status})
-    messages.success(request, "Качество подтверждено. Заказ закрыт.")
-    return redirect("order_detail", order_id=order.id)
+    return HttpResponse("Подтверждение приёмки выполняется через защищённый процесс сделки.", status=410)
 
 
 @login_required
@@ -5405,8 +5170,17 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
     if not title:
         messages.error(request, "Укажите название документа.")
         return redirect("order_detail", order_id=order.id)
-    if not file_url and not file_obj:
-        messages.error(request, "Добавьте файл или ссылку на документ.")
+    if len(title) > OrderDocument._meta.get_field("title").max_length:
+        messages.error(request, "Название документа слишком длинное.")
+        return redirect("order_detail", order_id=order.id)
+    if file_url:
+        messages.error(
+            request,
+            "Внешние ссылки на документы отключены. Загрузите файл.",
+        )
+        return redirect("order_detail", order_id=order.id)
+    if not file_obj:
+        messages.error(request, "Добавьте файл документа.")
         return redirect("order_detail", order_id=order.id)
     if file_obj:
         try:
@@ -5418,15 +5192,23 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
                 max_bytes=int(settings.MAX_ORDER_DOCUMENT_BYTES),
             )
             file_obj.name = safe_upload_name(file_obj, ext)
-        except Exception as exc:
+        except ValueError as exc:
             messages.error(request, str(exc))
+            return redirect("order_detail", order_id=order.id)
+        except Exception:
+            logger.exception(
+                "order document validation failed user_id=%s order_id=%s",
+                request.user.id,
+                order.id,
+            )
+            messages.error(request, "Не удалось проверить файл.")
             return redirect("order_detail", order_id=order.id)
 
     doc = OrderDocument.objects.create(
         order=order,
         doc_type=doc_type,
         title=title,
-        file_url=file_url,
+        file_url="",
         file_obj=file_obj,
         uploaded_by=request.user,
     )
@@ -5443,102 +5225,305 @@ def order_add_document(request: HttpRequest, order_id: int) -> HttpResponse:
 
 @csrf_exempt
 @require_POST
+@transaction.atomic
 def payment_callback(request: HttpRequest) -> HttpResponse:
     import hmac
 
     configured_secret = (getattr(settings, "PAYMENT_CALLBACK_SECRET", "") or "").strip()
-    # SECURITY P0-2: в проде секрет ОБЯЗАТЕЛЕН. Иначе endpoint открыт всему
-    # миру и позволяет менять Order.payment_status на любой заказ.
     if not configured_secret:
-        if not settings.DEBUG:
-            return JsonResponse(
-                {"ok": False, "error": "PAYMENT_CALLBACK_SECRET not configured"},
-                status=503,
-            )
-        # В DEBUG разрешаем без секрета — для локальной разработки.
+        return JsonResponse(
+            {"ok": False, "error": "PAYMENT_CALLBACK_SECRET not configured"},
+            status=503,
+        )
     provided_secret = (request.headers.get("X-Payment-Secret") or "").strip()
-    if configured_secret and not hmac.compare_digest(configured_secret, provided_secret):
+    if not hmac.compare_digest(configured_secret, provided_secret):
         return JsonResponse({"ok": False, "error": "invalid_secret"}, status=403)
 
-    payload: dict = {}
-    if request.content_type and "application/json" in request.content_type.lower():
-        try:
-            payload = json.loads(request.body.decode("utf-8") or "{}")
-        except Exception:
-            payload = {}
-    if not payload:
-        payload = request.POST.dict()
+    max_body_bytes = int(
+        getattr(settings, "PAYMENT_CALLBACK_MAX_BODY_BYTES", 64 * 1024)
+    )
+    try:
+        content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+    except (TypeError, ValueError):
+        content_length = 0
+    if content_length > max_body_bytes:
+        return JsonResponse(
+            {"ok": False, "error": "payload_too_large"},
+            status=413,
+        )
 
-    order_id_raw = payload.get("order_id") or payload.get("orderId")
-    invoice_number = (payload.get("invoice_number") or payload.get("invoice") or "").strip()
-    callback_status = (payload.get("status") or payload.get("payment_status") or "").strip().lower()
-    transaction_id = (payload.get("transaction_id") or payload.get("tx_id") or "").strip()
+    payload: dict = {}
+    is_json = bool(
+        request.content_type
+        and "application/json" in request.content_type.lower()
+    )
+    if is_json:
+        try:
+            raw_body = request.body
+        except RequestDataTooBig:
+            return JsonResponse(
+                {"ok": False, "error": "payload_too_large"},
+                status=413,
+            )
+        if len(raw_body) > max_body_bytes:
+            return JsonResponse(
+                {"ok": False, "error": "payload_too_large"},
+                status=413,
+            )
+        try:
+            payload = json.loads(raw_body.decode("utf-8") or "{}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return JsonResponse(
+                {"ok": False, "error": "invalid_json"},
+                status=400,
+            )
+    if not is_json:
+        try:
+            payload = request.POST.dict()
+        except RequestDataTooBig:
+            return JsonResponse(
+                {"ok": False, "error": "payload_too_large"},
+                status=413,
+            )
+    if not isinstance(payload, dict):
+        return JsonResponse(
+            {"ok": False, "error": "invalid_payload"},
+            status=400,
+        )
+
+    def callback_text(*names, max_length):
+        for name in names:
+            value = payload.get(name)
+            if isinstance(value, (str, int, float, Decimal)):
+                return str(value).strip()[:max_length]
+        return ""
+
+    order_id_raw = callback_text("order_id", "orderId", max_length=32)
+    invoice_number = callback_text(
+        "invoice_number",
+        "invoice",
+        max_length=80,
+    )
+    callback_status = callback_text(
+        "status",
+        "payment_status",
+        max_length=40,
+    ).lower()
+    transaction_id = callback_text(
+        "transaction_id",
+        "tx_id",
+        max_length=200,
+    )
 
     order = None
     if order_id_raw:
         try:
-            order = Order.objects.filter(id=int(order_id_raw)).first()
+            order = Order.objects.select_for_update().filter(id=int(order_id_raw)).first()
         except Exception:
             order = None
     if not order and invoice_number:
-        order = Order.objects.filter(invoice_number=invoice_number).first()
+        order = (
+            Order.objects.select_for_update()
+            .filter(invoice_number=invoice_number)
+            .first()
+        )
     if not order:
         return JsonResponse({"ok": False, "error": "order_not_found"}, status=404)
+    if invoice_number and order.invoice_number != invoice_number:
+        return JsonResponse(
+            {"ok": False, "error": "order_invoice_mismatch"},
+            status=400,
+        )
+    if not transaction_id:
+        return JsonResponse(
+            {"ok": False, "error": "transaction_id_required"},
+            status=400,
+        )
+    if not order.invoice_number or not invoice_number:
+        return JsonResponse(
+            {"ok": False, "error": "invoice_number_required"},
+            status=400,
+        )
+
+    status_aliases = {
+        "reserve_paid": "reserve_paid",
+        "reserve_success": "reserve_paid",
+        "deposit_paid": "reserve_paid",
+        "mid_paid": "mid_paid",
+        "mid_payment": "mid_paid",
+        "confirmation_paid": "mid_paid",
+        "customs_paid": "customs_paid",
+        "customs_payment": "customs_paid",
+        "paid": "paid",
+        "success": "paid",
+        "final_paid": "paid",
+        "full_paid": "paid",
+        "refunded": "refunded",
+        "refund": "refunded",
+    }
+    target_status = status_aliases.get(callback_status)
+    if not target_status:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "unsupported_status",
+                "status": callback_status,
+            },
+            status=400,
+        )
+
+    amount_raw = callback_text("amount", max_length=40)
+    currency = callback_text("currency", max_length=10).upper()
+    if not amount_raw or not currency:
+        return JsonResponse(
+            {"ok": False, "error": "amount_and_currency_required"},
+            status=400,
+        )
+    if currency and currency != (settings.PAYMENT_CURRENCY or "USD").upper():
+        return JsonResponse(
+            {"ok": False, "error": "currency_mismatch"},
+            status=400,
+        )
+    if amount_raw:
+        try:
+            callback_amount = Decimal(amount_raw).quantize(Decimal("0.01"))
+        except (InvalidOperation, ValueError):
+            return JsonResponse(
+                {"ok": False, "error": "invalid_amount"},
+                status=400,
+            )
+        reserve_amount = (
+            order.reserve_amount
+            or (
+                Decimal(order.total_amount or 0)
+                * Decimal(order.reserve_percent or 0)
+                / Decimal("100")
+            ).quantize(Decimal("0.01"))
+        )
+        expected_amounts = {
+            "reserve_paid": Decimal(reserve_amount),
+            "mid_paid": Decimal(order.mid_payment_amount or 0),
+            "customs_paid": Decimal(order.customs_payment_amount or 0),
+            "paid": max(
+                Decimal("0.00"),
+                Decimal(order.total_amount or 0)
+                - Decimal(reserve_amount)
+                - (
+                    Decimal(order.mid_payment_amount or 0)
+                    + Decimal(order.customs_payment_amount or 0)
+                    if order.payment_scheme == "staged"
+                    else Decimal("0.00")
+                ),
+            ),
+            "refunded": Decimal(order.total_amount or 0),
+        }
+        expected_amount = expected_amounts[target_status].quantize(
+            Decimal("0.01")
+        )
+        if callback_amount != expected_amount:
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "error": "amount_mismatch",
+                },
+                status=400,
+            )
 
     meta = {
         "callback_status": callback_status,
+        "target_status": target_status,
         "transaction_id": transaction_id,
         "invoice_number": order.invoice_number,
+        "amount": amount_raw,
+        "currency": currency,
     }
-    changed_fields: list[str] = []
-    if callback_status in {"reserve_paid", "reserve_success", "deposit_paid"}:
-        if order.payment_status not in {"reserve_paid", "paid"}:
-            order.payment_status = "reserve_paid"
-            changed_fields.append("payment_status")
-        if not order.reserve_paid_at:
-            order.reserve_paid_at = timezone.now()
-            changed_fields.append("reserve_paid_at")
+    previous_transaction = OrderEvent.objects.filter(
+        meta__transaction_id=transaction_id,
+    ).only("order_id").first() if transaction_id else None
+    if previous_transaction:
+        if previous_transaction.order_id != order.id:
+            return JsonResponse(
+                {"ok": False, "error": "transaction_id_reused"},
+                status=409,
+            )
+        return JsonResponse(
+            {
+                "ok": True,
+                "order_id": order.id,
+                "payment_status": order.payment_status,
+                "idempotent_replay": True,
+            }
+        )
+    if order.payment_status == target_status:
+        return JsonResponse(
+            {
+                "ok": True,
+                "order_id": order.id,
+                "payment_status": order.payment_status,
+                "idempotent_replay": True,
+            }
+        )
+
+    allowed_current = {
+        "reserve_paid": {"awaiting_reserve", "pending"},
+        "mid_paid": {"reserve_paid"} if order.payment_scheme == "staged" else set(),
+        "customs_paid": {"mid_paid"} if order.payment_scheme == "staged" else set(),
+        "paid": (
+            {"customs_paid"}
+            if order.payment_scheme == "staged"
+            else {"reserve_paid"}
+        ),
+        "refunded": {"paid", "refund_pending"},
+    }
+    if order.status == "cancelled" and target_status != "refunded":
+        return JsonResponse(
+            {"ok": False, "error": "cancelled_order"},
+            status=409,
+        )
+    if order.payment_status not in allowed_current[target_status]:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "invalid_payment_transition",
+                "from": order.payment_status,
+                "to": target_status,
+            },
+            status=409,
+        )
+
+    now = timezone.now()
+    changed_fields = ["payment_status"]
+    order.payment_status = target_status
+    event_type = "status_changed"
+    if target_status == "reserve_paid":
+        order.reserve_paid_at = now
+        changed_fields.append("reserve_paid_at")
+        event_type = "reserve_paid"
         if order.status == "pending":
             prev_status = order.status
             order.status = "reserve_paid"
             changed_fields.append("status")
-            _log_order_event(order, "status_changed", source="system", meta={"from": prev_status, "to": order.status, **meta})
-        order.save(update_fields=list(set(changed_fields)))
-        _log_order_event(order, "reserve_paid", source="system", meta=meta)
-    elif callback_status in {"mid_paid", "mid_payment", "confirmation_paid"}:
-        if order.payment_scheme == "staged" and order.payment_status not in {"mid_paid", "customs_paid", "paid"}:
-            order.payment_status = "mid_paid"
-            changed_fields.append("payment_status")
-        if not order.mid_paid_at:
-            order.mid_paid_at = timezone.now()
-            changed_fields.append("mid_paid_at")
-        order.save(update_fields=list(set(changed_fields)))
-        _log_order_event(order, "mid_payment_paid", source="system", meta=meta)
-    elif callback_status in {"customs_paid", "customs_payment"}:
-        if order.payment_scheme == "staged" and order.payment_status not in {"customs_paid", "paid"}:
-            order.payment_status = "customs_paid"
-            changed_fields.append("payment_status")
-        if not order.customs_paid_at:
-            order.customs_paid_at = timezone.now()
-            changed_fields.append("customs_paid_at")
-        order.save(update_fields=list(set(changed_fields)))
-        _log_order_event(order, "customs_payment_paid", source="system", meta=meta)
-    elif callback_status in {"paid", "success", "final_paid", "full_paid"}:
-        if order.payment_status != "paid":
-            order.payment_status = "paid"
-            changed_fields.append("payment_status")
-        if not order.final_paid_at:
-            order.final_paid_at = timezone.now()
-            changed_fields.append("final_paid_at")
-        order.save(update_fields=list(set(changed_fields)))
-        _log_order_event(order, "final_payment_paid", source="system", meta=meta)
-    elif callback_status in {"refunded", "refund"}:
-        if order.payment_status != "refunded":
-            order.payment_status = "refunded"
-            order.save(update_fields=["payment_status"])
-        _log_order_event(order, "status_changed", source="system", meta={"from": order.status, "to": order.status, **meta})
-    else:
-        return JsonResponse({"ok": False, "error": "unsupported_status", "status": callback_status}, status=400)
+            _log_order_event(
+                order,
+                "status_changed",
+                source="system",
+                meta={"from": prev_status, "to": order.status, **meta},
+            )
+    elif target_status == "mid_paid":
+        order.mid_paid_at = now
+        changed_fields.append("mid_paid_at")
+        event_type = "mid_payment_paid"
+    elif target_status == "customs_paid":
+        order.customs_paid_at = now
+        changed_fields.append("customs_paid_at")
+        event_type = "customs_payment_paid"
+    elif target_status == "paid":
+        order.final_paid_at = now
+        changed_fields.append("final_paid_at")
+        event_type = "final_payment_paid"
+
+    order.save(update_fields=changed_fields)
+    _log_order_event(order, event_type, source="system", meta=meta)
 
     return JsonResponse({"ok": True, "order_id": order.id, "payment_status": order.payment_status})
 
@@ -5551,6 +5536,11 @@ def order_open_claim(request: HttpRequest, order_id: int) -> HttpResponse:
     if not _has_order_access(request.user, order, role):
         messages.error(request, "Нет доступа к заказу.")
         return redirect("dashboard")
+    if order.buyer_id != request.user.id:
+        return HttpResponse(
+            "Только покупатель может открыть рекламацию.",
+            status=403,
+        )
     if not _can_manage_claims(request.user, role):
         messages.error(request, "Нет прав на работу с рекламациями.")
         return redirect("order_detail", order_id=order.id)
@@ -5562,6 +5552,12 @@ def order_open_claim(request: HttpRequest, order_id: int) -> HttpResponse:
     description = (request.POST.get("description") or "").strip()
     if not title or not description:
         messages.error(request, "Заполните тему и описание рекламации.")
+        return redirect("order_detail", order_id=order.id)
+    if len(title) > 255:
+        messages.error(request, "Тема рекламации не должна превышать 255 символов.")
+        return redirect("order_detail", order_id=order.id)
+    if len(description) > 10_000:
+        messages.error(request, "Описание рекламации не должно превышать 10 000 символов.")
         return redirect("order_detail", order_id=order.id)
 
     claim = OrderClaim.objects.create(
@@ -5594,6 +5590,12 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
     if not _can_manage_claims(request.user, role):
         messages.error(request, "Нет прав на работу с рекламациями.")
         return redirect("order_detail", order_id=order.id)
+    if role == "seller":
+        from marketplace.order_access import seller_can_access_claim
+
+        if not seller_can_access_claim(request.user, claim):
+            messages.error(request, "Нет доступа к этой рекламации.")
+            return redirect("order_detail", order_id=order.id)
 
     new_status = (request.POST.get("status") or "").strip()
     allowed_statuses = {key for key, _ in OrderClaim.STATUS_CHOICES}
@@ -5601,14 +5603,69 @@ def order_update_claim_status(request: HttpRequest, claim_id: int) -> HttpRespon
         messages.error(request, "Некорректный статус рекламации.")
         return redirect("order_detail", order_id=order.id)
 
-    prev_status = claim.status
-    if prev_status == new_status:
-        messages.info(request, "Статус рекламации не изменился.")
-        return redirect("order_detail", order_id=order.id)
+    transitions = {
+        "open": {"in_review"},
+        "in_review": {"approved", "rejected"},
+        "approved": {"corrective_actions", "financial_settlement", "closed"},
+        "rejected": {"closed"},
+        "corrective_actions": {"closed"},
+        "financial_settlement": {"closed"},
+        "closed": set(),
+    }
+    is_operator = bool(
+        request.user.is_superuser
+        or role == "admin"
+        or (role and role.startswith("operator"))
+    )
 
-    claim.status = new_status
-    claim.resolved_by = request.user if new_status in {"approved", "rejected", "closed"} else claim.resolved_by
-    claim.save(update_fields=["status", "resolved_by", "updated_at"])
+    with transaction.atomic():
+        claim = (
+            OrderClaim.objects.select_for_update()
+            .select_related("order")
+            .get(id=claim.id)
+        )
+        prev_status = claim.status
+        if prev_status == new_status:
+            messages.info(request, "Статус рекламации не изменился.")
+            return redirect("order_detail", order_id=order.id)
+
+        if new_status not in transitions.get(prev_status, set()):
+            messages.error(request, "Недопустимый переход статуса рекламации.")
+            return redirect("order_detail", order_id=order.id)
+        if role == "seller" and not (
+            prev_status == "open" and new_status == "in_review"
+        ):
+            messages.error(
+                request,
+                "Поставщик может только принять открытую рекламацию в работу.",
+            )
+            return redirect("order_detail", order_id=order.id)
+        if role == "buyer" and not (
+            new_status == "closed"
+            and prev_status
+            in {"approved", "rejected", "corrective_actions", "financial_settlement"}
+        ):
+            messages.error(
+                request,
+                "Решение по рекламации принимает оператор платформы.",
+            )
+            return redirect("order_detail", order_id=order.id)
+        if role not in {"buyer", "seller"} and not is_operator:
+            messages.error(request, "Нет прав на изменение рекламации.")
+            return redirect("order_detail", order_id=order.id)
+
+        claim.status = new_status
+        update_fields = ["status", "updated_at"]
+        if is_operator and new_status == "in_review":
+            claim.reviewed_by = request.user
+            update_fields.append("reviewed_by")
+        if is_operator and new_status in {"approved", "rejected"}:
+            claim.resolved_by = request.user
+            update_fields.append("resolved_by")
+        if new_status == "closed":
+            claim.closed_at = timezone.now()
+            update_fields.append("closed_at")
+        claim.save(update_fields=update_fields)
     _log_order_event(
         order,
         "claim_status_changed",
@@ -5752,7 +5809,7 @@ def operator_manager_analytics(request):
 
 # ═══ Admin panel ═══
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_dashboard(request):
     import datetime, json as _json, os as _os
     from django.db.models import Sum
@@ -5766,7 +5823,7 @@ def admin_panel_dashboard(request):
     orders_qs = Order.objects.all()
     total_orders = orders_qs.count()
     active_statuses = ["pending","reserve_paid","confirmed","in_production",
-                       "ready_to_ship","transit_abroad","customs","transit_rf","issuing"]
+                       "ready_to_ship","shipped","transit_abroad","customs","transit_rf","issuing"]
     active_orders = orders_qs.filter(status__in=active_statuses).count()
     total_gmv = orders_qs.aggregate(s=Sum("total_amount"))["s"] or 0
     month_revenue = orders_qs.filter(created_at__gte=month_ago).aggregate(s=Sum("total_amount"))["s"] or 0
@@ -5837,7 +5894,7 @@ def admin_panel_dashboard(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_users(request, user_id=None):
     import datetime
 
@@ -5903,7 +5960,7 @@ def admin_panel_users(request, user_id=None):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_user_detail(request, user_id):
     import datetime
     from django.db.models import Sum
@@ -5947,7 +6004,7 @@ def admin_panel_user_detail(request, user_id):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_orders(request):
     import datetime
     from django.db.models import Sum
@@ -5955,7 +6012,7 @@ def admin_panel_orders(request):
 
     week_ago = timezone.now() - datetime.timedelta(days=7)
     active_statuses = ["pending","reserve_paid","confirmed","in_production",
-                       "ready_to_ship","transit_abroad","customs","transit_rf","issuing"]
+                       "ready_to_ship","shipped","transit_abroad","customs","transit_rf","issuing"]
 
     qs = Order.objects.select_related("buyer").all()
     total = qs.count()
@@ -6021,7 +6078,7 @@ def admin_panel_orders(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_rfq(request):
     import datetime
     from marketplace.models import RFQ
@@ -6072,7 +6129,7 @@ def admin_panel_rfq(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_finance(request):
     import datetime
     from django.db.models import Sum
@@ -6144,7 +6201,7 @@ def admin_panel_finance(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_catalog(request):
     from marketplace.models import Part, Brand, Category, PricelistImport
 
@@ -6254,13 +6311,13 @@ def admin_panel_catalog(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_moderation(request):
     from marketplace.models import Order, OrderClaim, Part, UserProfile
 
     tab = request.GET.get("tab", "suppliers")
     active_statuses = ["pending","reserve_paid","confirmed","in_production",
-                       "ready_to_ship","transit_abroad","customs","transit_rf","issuing"]
+                       "ready_to_ship","shipped","transit_abroad","customs","transit_rf","issuing"]
 
     sandbox_suppliers = list(
         UserProfile.objects.filter(supplier_status="sandbox")
@@ -6336,7 +6393,7 @@ def admin_panel_moderation(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_order_detail(request, order_id):
     from marketplace.models import Order, OrderItem, OrderEvent, OrderDocument, OrderClaim
 
@@ -6347,8 +6404,8 @@ def admin_panel_order_detail(request, order_id):
     claims = OrderClaim.objects.filter(order=order).order_by("-created_at")
 
     status_order = ["pending","reserve_paid","confirmed","in_production",
-                    "ready_to_ship","transit_abroad","customs","transit_rf",
-                    "shipped","delivered","completed"]
+                    "ready_to_ship","shipped","transit_abroad","customs","transit_rf",
+                    "issuing","delivered","completed"]
     try:
         current_step = status_order.index(order.status) + 1
     except ValueError:
@@ -6375,7 +6432,7 @@ def admin_panel_order_detail(request, order_id):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_rfq_detail(request, rfq_id):
     from marketplace.models import RFQ, RFQItem
 
@@ -6396,7 +6453,7 @@ def admin_panel_rfq_detail(request, rfq_id):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_imports(request):
     from marketplace.models import PricelistImport
     from django.db.models import Sum
@@ -6434,7 +6491,7 @@ def admin_panel_imports(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_import_detail(request, import_id):
     from marketplace.models import PricelistImport, Part
 
@@ -6472,7 +6529,7 @@ def admin_panel_import_detail(request, import_id):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_user_block(request, user_id):
     if request.method == "POST":
         target = get_object_or_404(User, pk=user_id)
@@ -6482,7 +6539,7 @@ def admin_panel_user_block(request, user_id):
     return redirect(f"/admin-panel/users/{user_id}/")
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_user_unblock(request, user_id):
     if request.method == "POST":
         target = get_object_or_404(User, pk=user_id)
@@ -6491,7 +6548,7 @@ def admin_panel_user_unblock(request, user_id):
     return redirect(f"/admin-panel/users/{user_id}/")
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_export_csv(request, report_type):
     import csv as _csv
     import io as _io
@@ -6540,14 +6597,14 @@ def admin_panel_export_csv(request, report_type):
     w = _csv.writer(buf)
     w.writerow(header)
     for row in rows:
-        w.writerow([str(v) if v is not None else "" for v in row])
+        w.writerow(safe_spreadsheet_row(str(v) if v is not None else "" for v in row))
 
     response = HttpResponse(buf.getvalue(), content_type="text/csv; charset=utf-8-sig")
     response["Content-Disposition"] = f'attachment; filename="{report_type}.csv"'
     return response
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_settings(request):
     import json as _json_mod
     settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
@@ -6624,7 +6681,7 @@ def admin_panel_settings(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_analytics(request):
     now = timezone.now()
 
@@ -6744,7 +6801,7 @@ def admin_panel_analytics(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_logs(request):
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -6822,7 +6879,7 @@ def admin_panel_logs(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_tariffs(request):
     import json as _json
     settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
@@ -6929,7 +6986,7 @@ def admin_panel_tariffs(request):
     })
 
 
-@staff_member_required
+@admin_panel_required
 def admin_panel_support(request):
     import json as _json
     settings_path = os.path.join(settings.BASE_DIR, "platform_settings.json")
@@ -7032,13 +7089,22 @@ def admin_panel_support(request):
 from .models import CompanyVerification, Notification, TeamMember
 
 
+def _safe_local_notification_url(value) -> str:
+    url = str(value or "").strip()
+    if not url.startswith("/") or url.startswith("//"):
+        return ""
+    if not url_has_allowed_host_and_scheme(url, allowed_hosts=set()):
+        return ""
+    return url
+
+
 @login_required
 def notifications_list(request):
     """JSON API for notification dropdown."""
     qs = Notification.objects.filter(user=request.user)[:30]
     items = [{
         "id": n.id, "kind": n.kind, "title": n.title, "body": n.body[:120],
-        "url": n.url, "is_read": n.is_read,
+        "url": _safe_local_notification_url(n.url), "is_read": n.is_read,
         "created_at": n.created_at.strftime("%d.%m %H:%M"),
     } for n in qs]
     unread = Notification.objects.filter(user=request.user, is_read=False).count()
@@ -7046,6 +7112,7 @@ def notifications_list(request):
 
 
 @login_required
+@require_POST
 def notifications_mark_read(request, notif_id=None):
     if notif_id:
         Notification.objects.filter(user=request.user, id=notif_id).update(is_read=True)
@@ -7056,9 +7123,15 @@ def notifications_mark_read(request, notif_id=None):
 
 @login_required
 def notifications_page(request):
-    qs = Notification.objects.filter(user=request.user)
+    items = list(Notification.objects.filter(user=request.user))
+    for notification in items:
+        notification.safe_url = _safe_local_notification_url(notification.url)
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
-    return render(request, "components/notifications_page.html", {"items": qs})
+    return render(
+        request,
+        "components/notifications_page.html",
+        {"items": items},
+    )
 
 
 # ── KYB Verification ───────────────────────────────────────
@@ -7066,16 +7139,38 @@ def notifications_page(request):
 def kyb_view(request):
     kyb, _ = CompanyVerification.objects.get_or_create(user=request.user)
     if request.method == "POST" and kyb.status not in ("verified", "pending"):
-        for field in ["legal_name", "inn", "kpp", "ogrn", "legal_address",
-                       "bank_name", "bank_account", "bik", "director_name"]:
-            setattr(kyb, field, request.POST.get(field, "").strip())
+        validated_files = {}
         for fld in ["doc_charter", "doc_egrul", "doc_passport"]:
             if fld in request.FILES:
-                setattr(kyb, fld, request.FILES[fld])
-        kyb.status = "pending"
-        kyb.submitted_at = timezone.now()
-        kyb.rejection_reason = ""
-        kyb.save()
+                uploaded = request.FILES[fld]
+                try:
+                    from marketplace.upload_security import (
+                        safe_upload_name,
+                        validate_uploaded_file,
+                    )
+
+                    ext = validate_uploaded_file(
+                        uploaded,
+                        allowed_ext={".pdf", ".jpg", ".jpeg", ".png"},
+                        max_bytes=int(
+                            getattr(settings, "MAX_KYB_DOC_BYTES", 5 * 1024 * 1024)
+                        ),
+                    )
+                    uploaded.name = safe_upload_name(uploaded, ext)
+                    validated_files[fld] = uploaded
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+                    return redirect("kyb")
+        with transaction.atomic():
+            for field in ["legal_name", "inn", "kpp", "ogrn", "legal_address",
+                          "bank_name", "bank_account", "bik", "director_name"]:
+                setattr(kyb, field, request.POST.get(field, "").strip())
+            for field, uploaded in validated_files.items():
+                setattr(kyb, field, uploaded)
+            kyb.status = "pending"
+            kyb.submitted_at = timezone.now()
+            kyb.rejection_reason = ""
+            kyb.save()
         Notification.objects.create(
             user=request.user, kind="system",
             title=_("KYB документы отправлены на проверку"),
@@ -7085,75 +7180,6 @@ def kyb_view(request):
         messages.success(request, _("Документы отправлены на проверку"))
         return redirect("kyb")
     return render(request, "components/kyb_form.html", {"kyb": kyb})
-
-
-# ── Team management ────────────────────────────────────────
-@login_required
-def team_list(request):
-    members = TeamMember.objects.filter(owner=request.user).select_related("user")
-    if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "invite":
-            email = (request.POST.get("email") or "").strip().lower()
-            full_name = (request.POST.get("full_name") or "").strip()
-            role = (request.POST.get("role") or "viewer").strip()
-            if email and email != request.user.email:
-                token = signing.dumps({"owner": request.user.id, "email": email}, salt="team-invite")
-                tm, created = TeamMember.objects.get_or_create(
-                    owner=request.user, invited_email=email,
-                    defaults={"full_name": full_name, "role": role,
-                              "invite_token": token, "status": "invited"},
-                )
-                if created:
-                    invite_url = request.build_absolute_uri(f"/team/accept/{token}/")
-                    try:
-                        from django.core.mail import send_mail
-                        send_mail(
-                            subject=str(_("Приглашение в команду на Consolidator Parts")),
-                            message=str(_("Вас пригласили присоединиться к команде. Перейдите по ссылке: ")) + invite_url,
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[email],
-                            fail_silently=True,
-                        )
-                    except Exception:
-                        pass
-                    messages.success(request, _("Приглашение отправлено: ") + email)
-                else:
-                    messages.warning(request, _("Уже приглашён: ") + email)
-        elif action == "remove":
-            mid = request.POST.get("member_id")
-            TeamMember.objects.filter(owner=request.user, id=mid).delete()
-            messages.success(request, _("Участник удалён"))
-        elif action == "change_role":
-            mid = request.POST.get("member_id")
-            new_role = request.POST.get("role")
-            TeamMember.objects.filter(owner=request.user, id=mid).update(role=new_role)
-            messages.success(request, _("Роль изменена"))
-        return redirect("team_management")
-    return render(request, "components/team_page.html", {"members": members,
-                                                          "role_choices": TeamMember.ROLE_CHOICES})
-
-
-@login_required
-def team_accept(request, token):
-    try:
-        data = signing.loads(token, salt="team-invite", max_age=60 * 60 * 24 * 14)  # 14 days
-    except Exception:
-        messages.error(request, _("Ссылка приглашения недействительна или истекла"))
-        return redirect("login")
-    tm = TeamMember.objects.filter(invite_token=token, status="invited").first()
-    if not tm:
-        messages.info(request, _("Приглашение уже принято или отозвано"))
-        return redirect("login")
-    if request.user.is_authenticated:
-        tm.user = request.user
-        tm.status = "active"
-        tm.accepted_at = timezone.now()
-        tm.save()
-        messages.success(request, _("Вы присоединились к команде ") + tm.owner.get_full_name())
-        return redirect("dashboard")
-    # Otherwise show register/login choice
-    return render(request, "components/team_accept.html", {"tm": tm, "token": token})
 
 
 # help_view — alias на публичный help_center_view (без login, для SEO).
@@ -7185,9 +7211,12 @@ def twofa_setup(request):
             if twofa.secret and pyotp.TOTP(twofa.secret).verify(code, valid_window=1):
                 twofa.enabled = True
                 twofa.enabled_at = timezone.now()
-                # Generate 8 backup codes
-                twofa.backup_codes = ",".join(_secrets.token_hex(4) for _ in range(8))
+                backup_codes = [_secrets.token_hex(4) for _ in range(8)]
+                from assistant.security import encode_backup_codes
+
+                twofa.backup_codes = encode_backup_codes(request.user, backup_codes)
                 twofa.save()
+                request.session["new_2fa_backup_codes"] = backup_codes
                 Notification.objects.create(
                     user=request.user, kind="system",
                     title=_("Двухфакторная аутентификация включена"),
@@ -7214,15 +7243,6 @@ def twofa_setup(request):
             twofa.save()
             messages.success(request, _("2FA отключена"))
             return redirect("twofa_setup")
-        elif action == "regenerate":
-            try:
-                import pyotp
-                twofa.secret = pyotp.random_base32()
-                twofa.save()
-            except ImportError:
-                pass
-            return redirect("twofa_setup")
-
     # Generate secret if not exists
     if not twofa.secret and not twofa.enabled:
         try:
@@ -7255,7 +7275,7 @@ def twofa_setup(request):
         except ImportError:
             pass
 
-    backup_list = twofa.backup_codes.split(",") if twofa.backup_codes else []
+    backup_list = request.session.pop("new_2fa_backup_codes", [])
     return render(request, "components/twofa_setup.html", {
         "twofa": twofa, "qr_url": qr_url, "backup_codes": backup_list,
     })
@@ -7272,26 +7292,21 @@ def chat_first_view(request):
     """
     # Allowlist действий по ролям → фронт фильтрует каталог пилюль, чтобы не
     # предлагать пилюли, недоступные роли (клик по ним всё равно дал бы «нет прав»).
-    role_actions_json = "{}"
+    role_actions_data = {}
     try:
-        import json as _json
         from assistant.actions import ROLE_ACTIONS
-        role_actions_json = _json.dumps({r: list(a) for r, a in ROLE_ACTIONS.items()},
-                                        ensure_ascii=False)
+        role_actions_data = {r: list(a) for r, a in ROLE_ACTIONS.items()}
     except Exception:
         pass
-    role_commands_json = "{}"
+    role_commands_data = {}
     try:
         from assistant.commands import commands_for_all_roles
-        role_commands_json = _json.dumps(
-            commands_for_all_roles(),
-            ensure_ascii=False,
-        )
+        role_commands_data = commands_for_all_roles()
     except Exception:
         pass
     ctx = {
-        "role_actions_json": role_actions_json,
-        "role_commands_json": role_commands_json,
+        "role_actions_data": role_actions_data,
+        "role_commands_data": role_commands_data,
     }
     # Анти-мелькание ТОЛЬКО для залогиненного: серверно отдаём его роль/идентичность/
     # welcome, чтобы первый кадр при F5 был уже его кабинетом, а не дефолтным (buyer)
@@ -7321,9 +7336,9 @@ def chat_first_view(request):
             "admin": ("welcome.admin.title", "Управление платформой"),
         }
         _SUB = {
-            "buyer": "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу предложения от <strong>200+ поставщиков</strong>.",
+            "buyer": "Загрузите спецификацию в Excel, перетащите фото детали или опишите словами — соберу и сравню предложения поставщиков.",
             "seller": "Срочные задачи, входящие RFQ и отгрузки. Каталог, финансы и команда — по запросу.",
-            "operator": "Вы — <strong>дирижёр всей сделки</strong>: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи.",
+            "operator": "Вы управляете всей сделкой: ведёте заказ от оплаты до доставки, координируете логистов, таможенных брокеров и контролируете платежи.",
             "admin": "Контролируйте пользователей, каталог, модерацию и показатели платформы из одного рабочего окна.",
         }
         _wt_key, _wt = _WELCOME[base_role]

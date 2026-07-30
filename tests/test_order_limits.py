@@ -42,7 +42,9 @@ def test_zero_returns_block():
     assert "Добрать" in str(block["cards"]) or "Добрать" in block["text"]
 
 
-def test_invalid_input_does_not_block():
-    """Защита от false-positive: если сумма не парсится — не блокируем."""
-    assert check_min_order("not-a-number") is None  # type: ignore
-    assert check_min_order(None) is None  # type: ignore
+def test_invalid_input_fails_closed():
+    """Непроверенная сумма не должна обходить финансовое ограничение."""
+    for value in ("not-a-number", None, Decimal("NaN"), Decimal("Infinity")):
+        block = check_min_order(value)  # type: ignore[arg-type]
+        assert block is not None
+        assert "$0.00" in block["text"]

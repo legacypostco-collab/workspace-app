@@ -5,6 +5,7 @@ from .models import (
     Brand,
     Category,
     KnowledgeBaseEntry,
+    NewsletterSubscriber,
     Order,
     OrderClaim,
     OrderDocument,
@@ -17,6 +18,14 @@ from .models import (
     UserRole,
     WebhookDeliveryLog,
 )
+
+
+@admin.register(NewsletterSubscriber)
+class NewsletterSubscriberAdmin(admin.ModelAdmin):
+    list_display = ("email", "is_active", "created_at", "updated_at")
+    list_filter = ("is_active", "created_at")
+    search_fields = ("email",)
+    readonly_fields = ("created_at", "updated_at")
 
 
 @admin.register(KnowledgeBaseEntry)
@@ -254,6 +263,6 @@ class SupplierRatingEventAdmin(admin.ModelAdmin):
 
 @admin.register(WebhookDeliveryLog)
 class WebhookDeliveryLogAdmin(admin.ModelAdmin):
-    list_display = ("order", "endpoint", "success", "attempt", "status_code", "created_at")
+    list_display = ("order", "safe_endpoint", "success", "attempt", "status_code", "created_at")
     list_filter = ("success", "status_code", "created_at")
     search_fields = ("order__id", "endpoint", "error")

@@ -43,6 +43,59 @@ _HEAVY_QUERY_RE = re.compile(
     r"(сам(ый|ым|ая|ого)|худш|лучш|\bтоп\b|\bвсе[хй]?\b|список\s+всех|рейтинг|сравни)",
     re.IGNORECASE)
 
+_SENSITIVE_PARAM_KEYS = {
+    "password",
+    "password1",
+    "password2",
+    "current_password",
+    "new_password",
+    "otp_code",
+    "secret",
+    "token",
+    "api_token",
+    "backup_code",
+    "join_team",
+    "invite_customer",
+}
+_SENSITIVE_CODE_ACTIONS = {
+    "verify_2fa",
+    "disable_2fa",
+    "accept_referral",
+    "accept_customer_invite",
+}
+
+
+def _storage_result(result):
+    text = result.storage_text if result.storage_text is not None else result.text
+    cards = result.storage_cards if result.storage_cards is not None else result.cards
+    return text, cards
+
+
+def _params_for_storage(action_name: str, params: dict) -> tuple[dict, bool]:
+    """Remove credentials from durable chat history."""
+    sensitive = False
+
+    def scrub(value, key=""):
+        nonlocal sensitive
+        normalized = key.strip().lower()
+        is_secret = normalized in _SENSITIVE_PARAM_KEYS
+        if normalized == "code" and action_name in _SENSITIVE_CODE_ACTIONS:
+            is_secret = True
+        if is_secret:
+            sensitive = True
+            return "[redacted]"
+        if isinstance(value, dict):
+            return {k: scrub(v, str(k)) for k, v in value.items()}
+        if isinstance(value, list):
+            return [scrub(item) for item in value]
+        return value
+
+    serializable = {
+        k: v for k, v in (params or {}).items()
+        if k not in {"_request", "_conversation"}
+    }
+    return scrub(serializable), sensitive
+
 
 def _max_out_tokens(query: str) -> int:
     """ТЗ §3 — потолок output-токенов по типу запроса."""
@@ -486,11 +539,12 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None,
             cards = result.cards or []
             actions = result.actions or []
 
+            storage_text, storage_cards = _storage_result(result)
             assistant_msg = Message.objects.create(
                 conversation=conversation,
                 role=Message.Role.ASSISTANT,
-                content=clean_text,
-                cards=cards,
+                content=storage_text,
+                cards=storage_cards,
                 actions=actions,
                 context_refs=[],
                 contextual_actions=list(getattr(result, "contextual_actions", []) or []),
@@ -530,7 +584,10 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None,
     language = _detect_language(user_message)
     context_chunks = _search_context(user_message, conversation.role, language)
     context_refs = _build_context_refs(context_chunks)
-    available = action_executor.list_actions(conversation.role)
+    available = [
+        tool["name"]
+        for tool in action_executor.get_tool_definitions(conversation.role)
+    ]
     system_prompt = get_system_prompt(conversation.role, context_chunks, available, ui_lang=ui_lang)
     history = _get_history(conversation)
     if history and history[-1]["role"] == "user" and history[-1]["content"] == user_message:
@@ -558,9 +615,12 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None,
                 user=user,
                 user_query=user_message,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("Anthropic API error")
-            full_response = _("⚠️ Ошибка API: %(e)s") % {"e": e}
+            full_response = _(
+                "Сервис помощника временно недоступен. "
+                "Попробуйте ещё раз или выберите нужное действие в меню."
+            )
     else:
         full_response = _stub_with_action(user_message, context_chunks, conversation.role, user)
 
@@ -653,7 +713,7 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
 
     # Save user-action message (for history) — но без _request (HttpRequest не сериализуем).
     label = params.get("_label") or action_name
-    saved_params = {k: v for k, v in (params or {}).items() if k != "_request"}
+    saved_params, has_sensitive_params = _params_for_storage(action_name, params)
 
     # FIX: защита от дублей при двойном клике / быстром ретрае. Если за
     # последние 3 секунды ровно та же пара (action, params) уже записывалась
@@ -667,7 +727,7 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
         .filter(conversation=conversation, role=Message.Role.ACTION,
                 created_at__gte=debounce_cutoff)
         .order_by("-created_at").first())
-    if recent_dup:
+    if recent_dup and not has_sensitive_params:
         try:
             prev_action = (recent_dup.actions or [{}])[0]
             if prev_action.get("action") == action_name \
@@ -699,14 +759,18 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
 
     # Execute action — current request's role over conversation's stored role
     effective_role = role or conversation.role
-    result = action_executor.execute(action_name, params, user, effective_role)
+    execution_params = {**(params or {}), "_conversation": conversation}
+    result = action_executor.execute(
+        action_name, execution_params, user, effective_role,
+    )
 
-    # Save assistant message with result
+    # Save only the redacted representation for secret-bearing actions.
+    storage_text, storage_cards = _storage_result(result)
     assistant_msg = Message.objects.create(
         conversation=conversation,
         role=Message.Role.ASSISTANT,
-        content=result.text,
-        cards=result.cards,
+        content=storage_text,
+        cards=storage_cards,
         actions=result.actions,
         contextual_actions=list(getattr(result, "contextual_actions", []) or []),
         suggestions=list(getattr(result, "suggestions", []) or []),
@@ -723,6 +787,11 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
         "contextual_actions": list(getattr(result, "contextual_actions", []) or []),
         "suggestions": result.suggestions,
         "message_id": str(assistant_msg.id),
+        "navigate_conversation_id": result.navigate_conversation_id,
+        "_storage_response": {
+            "text": storage_text,
+            "cards": storage_cards,
+        },
     }
 
 
@@ -842,11 +911,12 @@ def process_query_stream(conversation: Conversation, user_message: str, ui_lang:
                 "type": "cards", "cards": cards, "actions": actions, "text": text,
                 "contextual_actions": ctx_actions, "suggestions": suggestions,
             }
+            storage_text, storage_cards = _storage_result(result)
             Message.objects.create(
                 conversation=conversation,
                 role=Message.Role.ASSISTANT,
-                content=text,
-                cards=cards,
+                content=storage_text,
+                cards=storage_cards,
                 actions=actions,
                 context_refs=[],
                 contextual_actions=ctx_actions,
@@ -912,9 +982,12 @@ def process_query_stream(conversation: Conversation, user_message: str, ui_lang:
                 user_query=user_message,
             )
             yield {"type": "token", "text": full_response}
-        except Exception as e:
+        except Exception:
             logger.exception("Anthropic streaming error")
-            err = _("⚠️ Ошибка API: %(e)s") % {"e": e}
+            err = _(
+                "Сервис помощника временно недоступен. "
+                "Попробуйте ещё раз или выберите нужное действие в меню."
+            )
             yield {"type": "token", "text": err}
             full_response = err
     else:

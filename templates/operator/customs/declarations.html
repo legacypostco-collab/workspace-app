@@ -321,7 +321,16 @@ function uploadFilesSelected(input) {
   Array.from(input.files).forEach(function(file) {
     var item = document.createElement('div');
     item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:#1A1A1A;border-radius:8px;border:1px solid rgba(102,187,106,0.2);';
-    item.innerHTML = '<span style="font-size:14px;">📄</span><span style="font-size:12px;color:#ECECEC;flex:1;">' + file.name + '{% trans "</span><span style=\"font-size:11px;color:#66BB6A;\">✓ Загружен</span>" %}';
+    var icon = document.createElement('span');
+    icon.style.fontSize = '14px';
+    icon.textContent = '📄';
+    var filename = document.createElement('span');
+    filename.style.cssText = 'font-size:12px;color:#ECECEC;flex:1;';
+    filename.textContent = file.name;
+    var status = document.createElement('span');
+    status.style.cssText = 'font-size:11px;color:#66BB6A;';
+    status.textContent = '{% trans "✓ Загружен" %}';
+    item.append(icon, filename, status);
     list.appendChild(item);
   });
   opToast('{% trans 'Загружено файлов: ' %}' + input.files.length, 2000, 'success');

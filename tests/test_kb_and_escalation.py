@@ -82,10 +82,12 @@ class TestKbFaqIntegration:
         assert "из админки" in r.text
 
     def test_fallback_to_hardcoded_when_db_empty(self):
-        # Таблица пуста — fallback на FAQ_ENTRIES хардкод (16 шт)
+        # Таблица пуста — используется встроенный набор FAQ.
         r = kb_faq({}, self.user, "buyer")
         assert "встроенная" in r.text
-        assert "16" in r.text
+        assert r.cards
+        assert r.cards[0]["type"] == "faq"
+        assert r.cards[0]["data"]["items"]
 
     def test_search_in_db(self):
         KnowledgeBaseEntry.objects.create(

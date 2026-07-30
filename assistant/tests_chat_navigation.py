@@ -116,11 +116,12 @@ class ChatCommandTests(TestCase):
         self.assertEqual(data["contextual_actions"][0]["action"], "track_order")
         self.assertEqual(data["suggestions"][0]["action"], "get_orders")
 
-    def test_widget_returns_admin_commands_for_staff(self):
+    def test_widget_returns_admin_commands_for_superuser(self):
         admin = get_user_model().objects.create_user(
             "chat_admin",
             password="x",
             is_staff=True,
+            is_superuser=True,
         )
         client = APIClient()
         client.force_authenticate(admin)
@@ -138,6 +139,7 @@ class ChatCommandTests(TestCase):
             "role_admin",
             password="x",
             is_staff=True,
+            is_superuser=True,
         )
         client = APIClient()
         client.force_login(admin)

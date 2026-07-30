@@ -1,6 +1,6 @@
-"""E2E: demo-login + chat-first основные элементы для трёх ролей.
+"""E2E: normal login + chat-first основные элементы для трёх ролей.
 
-Demo-аккаунты обычно имеют существующие conversations, так что chat-first
+Test accounts may have existing conversations, so chat-first
 сразу открывает последний разговор (welcome-stage скрыт). Тесты проверяют
 устойчивые элементы: topbar, sidebar, role-toggle, и заголовок (даже если
 hidden, его текст должен матчить роль).
@@ -11,10 +11,10 @@ from playwright.sync_api import Page, expect
 
 
 def test_buyer_landing_renders_chat_ui(buyer_page: Page):
-    """Buyer landing: sidebar + topbar + аватар + welcomeTitle с buyer-текстом."""
+    """Buyer workspace: sidebar, notifications and buyer welcome title."""
     page = buyer_page
     expect(page.locator("#sidebar")).to_be_attached(timeout=10000)
-    expect(page.locator("#topAvatar")).to_be_visible()
+    expect(page.locator("#topBell")).to_be_visible()
     # welcomeTitle всегда в DOM (может быть hidden если есть convs)
     title_text = page.locator("#welcomeTitle").inner_text(timeout=5000)
     assert "запчасть" in title_text.lower() or "найти" in title_text.lower(), \
@@ -38,11 +38,13 @@ def test_operator_landing_has_operator_title(operator_page: Page):
 
 
 def test_role_toggle_visible_in_sidebar(buyer_page: Page):
-    """Role-toggle (Покупатель/Продавец/Оператор) присутствует в sidebar."""
+    """Role-toggle only contains roles actually granted to the account."""
     page = buyer_page
     expect(page.locator("#roleToggle")).to_be_visible(timeout=5000)
-    # 3 кнопки роли
-    expect(page.locator(".role-tab")).to_have_count(3)
+    granted = page.locator("#roleToggle .role-tab:not(.role-tab-add)")
+    assert granted.count() >= 1
+    expect(page.locator("#roleToggle .role-tab.active")).to_have_count(1)
+    expect(page.locator("#roleToggle .role-tab-add")).to_be_visible()
 
 
 def test_topbar_bell_renders(buyer_page: Page):

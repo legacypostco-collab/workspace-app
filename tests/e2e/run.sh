@@ -8,6 +8,8 @@
 #   E2E_HEADED=1          — показывать браузер (default headless)
 #   E2E_SLOW_MO=200       — задержка между действиями в ms (для отладки)
 #   E2E_BASE_URL=http://… — URL сервера (default http://127.0.0.1:8003)
+#   E2E_*_USERNAME        — логины buyer / seller / operator
+#   E2E_*_PASSWORD        — пароли ролей; E2E_PASSWORD можно использовать общий
 #   SKIP_SERVER=1         — не запускать сервер, ожидать что уже работает
 
 set -euo pipefail
@@ -56,4 +58,4 @@ fi
 
 # 2. pytest
 echo "Running E2E tests against $URL…"
-exec ./venv/bin/pytest tests/e2e/ -v --tb=short "$@"
+E2E_RUN=1 E2E_BASE_URL="$URL" exec ./venv/bin/pytest tests/e2e/ -v --tb=short "$@"

@@ -56,6 +56,24 @@ class SellerProductApiTests(TestCase):
         self.part.refresh_from_db()
         self.assertEqual(self.part.availability_status, "limited")
 
+    def test_seller_product_bulk_action_rejects_non_list_ids(self):
+        response = self.client.post(
+            "/api/v1/seller/products/bulk-action/",
+            data={"action": "hide", "part_ids": str(self.part.id)},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "part_ids must be a list")
+
+    def test_seller_product_bulk_action_limits_batch_size(self):
+        response = self.client.post(
+            "/api/v1/seller/products/bulk-action/",
+            data={"action": "hide", "part_ids": list(range(501))},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.json()["error"], "too many part_ids; maximum is 500")
+
     def test_seller_product_price_history_and_demand_endpoints(self):
         rfq = RFQ.objects.create(customer_name="API Buyer", customer_email="api_buyer@example.com")
         RFQItem.objects.create(rfq=rfq, query="API-001", quantity=2, matched_part=self.part, state="auto_matched")

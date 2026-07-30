@@ -8,8 +8,10 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import logging
 import os
 import re
+import zipfile
 
 from django.core.cache import cache
 from django.shortcuts import get_object_or_404
@@ -23,7 +25,11 @@ from .models import Conversation
 from .permissions import detect_user_role
 from .rag import execute_action
 
+logger = logging.getLogger(__name__)
+
 MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
+MAX_XLSX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
+MAX_XLSX_ENTRIES = 2_000
 
 
 def _verify_magic_bytes(kind: str, blob: bytes) -> bool:
@@ -33,8 +39,7 @@ def _verify_magic_bytes(kind: str, blob: bytes) -> bool:
     Возвращает True если первые байты соответствуют ожидаемому типу.
 
     Сигнатуры:
-      xlsx/xls (modern xlsx — это ZIP):  PK\\x03\\x04
-      xls (legacy OLE2 compound):        \\xD0\\xCF\\x11\\xE0\\xA1\\xB1\\x1A\\xE1
+      xlsx (modern Office ZIP):           PK\\x03\\x04
       pdf:                                %PDF
       csv: пропускаем (это plain text, нет уникальной сигнатуры) — но
            проверяем что нет MZ/ELF/PK сигнатур в начале (anti-EXE).
@@ -43,8 +48,7 @@ def _verify_magic_bytes(kind: str, blob: bytes) -> bool:
         return False
     head = blob[:8]
     if kind == "xlsx":
-        # XLSX = ZIP container. Старый XLS = OLE2.
-        return head[:4] == b"PK\x03\x04" or head == b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"
+        return head[:4] == b"PK\x03\x04"
     if kind == "pdf":
         return head[:4] == b"%PDF"
     if kind == "csv":
@@ -96,24 +100,47 @@ def _extract_from_xlsx(blob: bytes) -> list[str]:
         from openpyxl import load_workbook
     except ImportError:
         return []
+    if blob.startswith(b"PK\x03\x04"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(blob)) as archive:
+                entries = archive.infolist()
+                if len(entries) > MAX_XLSX_ENTRIES:
+                    return []
+                expanded_size = sum(entry.file_size for entry in entries)
+                if expanded_size > MAX_XLSX_UNCOMPRESSED_BYTES:
+                    return []
+        except (OSError, zipfile.BadZipFile):
+            return []
     try:
-        wb = load_workbook(io.BytesIO(blob), read_only=True, data_only=True)
+        wb = load_workbook(
+            io.BytesIO(blob),
+            read_only=True,
+            data_only=True,
+            keep_links=False,
+        )
     except Exception:
         return []
-    out: list[str] = []
-    seen: set[str] = set()
-    for sheet in wb.worksheets:
-        for row in sheet.iter_rows(values_only=True):
-            for cell in row:
-                if cell is None:
-                    continue
-                token = str(cell).strip()
-                if _looks_like_article(token) and token.upper() not in seen:
-                    seen.add(token.upper())
-                    out.append(token)
-                    if len(out) >= MAX_ARTICLES:
-                        return out
-    return out
+    try:
+        out: list[str] = []
+        seen: set[str] = set()
+        for sheet in wb.worksheets:
+            for row in sheet.iter_rows(
+                max_row=min(sheet.max_row or 0, 5000),
+                max_col=min(sheet.max_column or 0, 100),
+                values_only=True,
+            ):
+                for cell in row:
+                    if cell is None:
+                        continue
+                    token = str(cell).strip()
+                    if _looks_like_article(token) and token.upper() not in seen:
+                        seen.add(token.upper())
+                        out.append(token)
+                        if len(out) >= MAX_ARTICLES:
+                            return out
+        return out
+    finally:
+        wb.close()
 
 
 def _extract_from_csv(blob: bytes) -> list[str]:
@@ -126,9 +153,24 @@ def _extract_from_csv(blob: bytes) -> list[str]:
     for delim in (",", ";", "\t"):
         try:
             reader = csv.reader(io.StringIO(text), delimiter=delim)
-            sample = list(reader)
-            if sample and any(len(r) > 1 for r in sample[:5]):
-                for row in sample:
+            has_columns = False
+            candidate_rows = []
+            for row_no, row in enumerate(reader):
+                if row_no < 5:
+                    candidate_rows.append(row)
+                    has_columns = has_columns or len(row) > 1
+                    continue
+                if not has_columns:
+                    break
+                for cell in row:
+                    token = (cell or "").strip()
+                    if _looks_like_article(token) and token.upper() not in seen:
+                        seen.add(token.upper())
+                        out.append(token)
+                        if len(out) >= MAX_ARTICLES:
+                            return out
+            if has_columns:
+                for row in candidate_rows:
                     for cell in row:
                         token = (cell or "").strip()
                         if _looks_like_article(token) and token.upper() not in seen:
@@ -165,18 +207,6 @@ def _extract_from_pdf(blob: bytes) -> list[str]:
     return _extract_from_text("\n".join(chunks))
 
 
-def _detect_kind(filename: str, content_type: str) -> str:
-    name = (filename or "").lower()
-    ctype = (content_type or "").lower()
-    if name.endswith(".xlsx") or name.endswith(".xls") or "spreadsheet" in ctype or "excel" in ctype:
-        return "xlsx"
-    if name.endswith(".csv") or "csv" in ctype:
-        return "csv"
-    if name.endswith(".pdf") or "pdf" in ctype:
-        return "pdf"
-    return "unknown"
-
-
 class RecognizePhotoView(APIView):
     """POST /api/assistant/recognize-photo/   (multipart, field "photo")
 
@@ -196,6 +226,16 @@ class RecognizePhotoView(APIView):
             return Response({"error": "photo is required"}, status=400)
         if photo.size > 10 * 1024 * 1024:
             return Response({"error": _("файл > 10 МБ")}, status=400)
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+
+            ext = validate_uploaded_file(
+                photo,
+                allowed_ext={".jpg", ".jpeg", ".png", ".webp"},
+                max_bytes=10 * 1024 * 1024,
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
 
         api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
         if not api_key:
@@ -204,6 +244,15 @@ class RecognizePhotoView(APIView):
                 "error": _("Распознавание фото не настроено (нет ANTHROPIC_API_KEY). "
                            "Опишите деталь словами или загрузите Excel/CSV со списком."),
             }, status=200)
+        allowed, _remaining = _aic.try_consume(
+            request.user,
+            detect_user_role(request.user, request=request),
+        )
+        if not allowed:
+            return Response(
+                {"error": _("Лимит запросов к распознаванию исчерпан.")},
+                status=429,
+            )
 
         try:
             import base64
@@ -211,7 +260,12 @@ class RecognizePhotoView(APIView):
             import anthropic
             blob = photo.read()
             b64 = base64.b64encode(blob).decode("ascii")
-            media_type = photo.content_type or "image/jpeg"
+            media_type = {
+                ".jpg": "image/jpeg",
+                ".jpeg": "image/jpeg",
+                ".png": "image/png",
+                ".webp": "image/webp",
+            }[ext]
             client = anthropic.Anthropic(api_key=api_key)
             resp = client.messages.create(
                 model=os.getenv("ANTHROPIC_VISION_MODEL", "claude-haiku-4-5-20251001"),
@@ -237,8 +291,12 @@ class RecognizePhotoView(APIView):
             )
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
             return Response({"text": text})
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=200)
+        except Exception:
+            logger.exception("photo recognition failed user_id=%s", request.user.pk)
+            return Response(
+                {"error": _("Не удалось распознать изображение. Повторите позже.")},
+                status=502,
+            )
 
 
 class TranscribeAudioView(APIView):
@@ -253,11 +311,28 @@ class TranscribeAudioView(APIView):
     parser_classes = [MultiPartParser]
 
     def post(self, request):
+        from . import ai_credits as _aic
+
+        if not _aic.rate_ok(request.user, "transcribe_audio", 20, 3600):
+            return Response(
+                {"error": _("Слишком частые запросы на расшифровку. Повторите позже.")},
+                status=429,
+            )
         audio = request.FILES.get("audio")
         if not audio:
             return Response({"error": "audio is required"}, status=400)
         if audio.size > 20 * 1024 * 1024:
             return Response({"error": _("файл > 20 МБ")}, status=400)
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+
+            validate_uploaded_file(
+                audio,
+                allowed_ext={".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"},
+                max_bytes=20 * 1024 * 1024,
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
 
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
         if not api_key:
@@ -265,6 +340,15 @@ class TranscribeAudioView(APIView):
                 "text": "",
                 "error": _("Серверная расшифровка не настроена (нет OPENAI_API_KEY). Используется встроенный Web Speech API в браузере."),
             }, status=200)
+        allowed, _remaining = _aic.try_consume(
+            request.user,
+            detect_user_role(request.user, request=request),
+        )
+        if not allowed:
+            return Response(
+                {"error": _("Лимит запросов к расшифровке исчерпан.")},
+                status=429,
+            )
 
         # Реальный вызов Whisper
         try:
@@ -274,13 +358,25 @@ class TranscribeAudioView(APIView):
             r = requests.post(
                 "https://api.openai.com/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {api_key}"},
-                files=files, data=data, timeout=60,
+                files=files, data=data, timeout=60, allow_redirects=False,
             )
             if not r.ok:
-                return Response({"error": f"Whisper API: {r.status_code} {r.text[:200]}"}, status=200)
+                logger.warning(
+                    "audio transcription provider error status=%s user_id=%s",
+                    r.status_code,
+                    request.user.pk,
+                )
+                return Response(
+                    {"error": _("Не удалось расшифровать аудио. Повторите позже.")},
+                    status=502,
+                )
             return Response({"text": r.json().get("text", "")})
-        except Exception as exc:
-            return Response({"error": str(exc)}, status=200)
+        except Exception:
+            logger.exception("audio transcription failed user_id=%s", request.user.pk)
+            return Response(
+                {"error": _("Не удалось расшифровать аудио. Повторите позже.")},
+                status=502,
+            )
 
 
 class UploadSpecView(APIView):
@@ -296,8 +392,9 @@ class UploadSpecView(APIView):
     def post(self, request):
         is_authenticated = bool(request.user and request.user.is_authenticated)
         if not is_authenticated:
-            forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
-            remote = forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "")
+            from .security import client_ip
+
+            remote = client_ip(request)
             fingerprint = hashlib.sha256((remote or "unknown").encode("utf-8")).hexdigest()[:24]
             rate_key = f"anon_spec_upload:{fingerprint}"
             if cache.add(rate_key, 1, timeout=3600):
@@ -322,19 +419,30 @@ class UploadSpecView(APIView):
                 {"error": _("файл слишком большой (>%(mb)s МБ)") % {"mb": MAX_FILE_BYTES // (1024*1024)}},
                 status=400,
             )
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+
+            ext = validate_uploaded_file(
+                upload,
+                allowed_ext={".xlsx", ".csv", ".pdf"},
+                max_bytes=MAX_FILE_BYTES,
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
 
         blob = upload.read()
-        kind = _detect_kind(upload.name, upload.content_type or "")
+        kind = ext.removeprefix(".")
 
         # ── Magic-bytes защита от polyglot-атак ─────────────────
-        # _detect_kind полагается на расширение + клиентский content-type
-        # (юзер может подменить). Проверяем сигнатуру в первых байтах.
-        # Раньше проверка была только для PDF — мог пройти EXE.xlsx или
-        # PE-payload с расширением .csv.
+        # Проверяем содержимое повторно после общей проверки загрузки.
         if not _verify_magic_bytes(kind, blob):
             return Response(
-                {"error": f"Содержимое файла не соответствует расширению .{kind} "
-                          f"(подозрение на polyglot/подменённый файл)."},
+                {"error": _("Содержимое файла не соответствует его расширению.")},
+                status=400,
+            )
+        if kind == "csv" and b"\x00" in blob:
+            return Response(
+                {"error": _("Текстовый файл содержит бинарные данные.")},
                 status=400,
             )
 
@@ -351,7 +459,7 @@ class UploadSpecView(APIView):
                 }, status=200)
         else:
             return Response(
-                {"error": "Поддерживаются Excel (.xlsx/.xls), CSV и PDF"},
+                {"error": _("Поддерживаются Excel (.xlsx), CSV и PDF.")},
                 status=400,
             )
 
@@ -391,8 +499,15 @@ class UploadSpecView(APIView):
                 request.user,
                 role=(detect_user_role(request.user) if is_authenticated else "buyer"),
             )
-        except Exception as exc:  # pragma: no cover
-            return Response({"error": str(exc)}, status=500)
+        except Exception:  # pragma: no cover
+            logger.exception(
+                "uploaded specification processing failed user_id=%s",
+                request.user.pk if is_authenticated else None,
+            )
+            return Response(
+                {"error": _("Не удалось обработать спецификацию. Повторите позже.")},
+                status=500,
+            )
 
         # Префиксная подпись о загрузке
         prefix = (

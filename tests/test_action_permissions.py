@@ -152,6 +152,24 @@ def test_operator_subroles_have_core_actions(role, action):
     )
 
 
+@pytest.mark.parametrize("action", ["op_confirm_topup", "op_reject_topup", "apply_settlement"])
+def test_logist_and_customs_cannot_execute_payment_writes(action):
+    assert not can_execute(action, "operator_logist")
+    assert not can_execute(action, "operator_customs")
+
+
+@pytest.mark.parametrize("action", ["op_customs_release", "op_hs_assign", "op_cert_upload"])
+def test_logist_and_payment_cannot_execute_customs_writes(action):
+    assert not can_execute(action, "operator_logist")
+    assert not can_execute(action, "operator_payment")
+
+
+@pytest.mark.parametrize("action", ["op_assign_carrier", "advance_order"])
+def test_customs_and_payment_cannot_execute_logistics_writes(action):
+    assert not can_execute(action, "operator_customs")
+    assert not can_execute(action, "operator_payment")
+
+
 # ── 9. Неизвестная роль → всё заблокировано ──────────────────────────────
 
 

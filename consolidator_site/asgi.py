@@ -20,9 +20,8 @@ from channels.security.websocket import AllowedHostsOriginValidator  # noqa: E40
 from django.conf import settings  # noqa: E402
 
 from assistant.routing import websocket_urlpatterns as assistant_ws  # noqa: E402
-from marketplace.routing import websocket_urlpatterns as marketplace_ws  # noqa: E402
 
-websocket_urlpatterns = marketplace_ws + assistant_ws
+websocket_urlpatterns = assistant_ws
 
 
 class ExpandedOriginValidator:

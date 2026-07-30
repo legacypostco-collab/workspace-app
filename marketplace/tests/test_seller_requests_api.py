@@ -64,7 +64,7 @@ class SellerRequestsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.rfq.refresh_from_db()
         self.rfq_item.refresh_from_db()
-        self.assertEqual(self.rfq.status, "quoted")
+        self.assertEqual(self.rfq.status, "new")
         self.assertIn("seller_quote", self.rfq_item.decision_reason)
 
     def test_seller_request_decline_endpoint(self):
@@ -76,7 +76,7 @@ class SellerRequestsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.rfq.refresh_from_db()
         self.rfq_item.refresh_from_db()
-        self.assertEqual(self.rfq.status, "cancelled")
+        self.assertEqual(self.rfq.status, "new")
         self.assertIn("seller_decline", self.rfq_item.decision_reason)
 
     def test_seller_request_renegotiate_endpoint(self):
@@ -88,5 +88,18 @@ class SellerRequestsApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.rfq.refresh_from_db()
         self.rfq_item.refresh_from_db()
-        self.assertEqual(self.rfq.status, "needs_review")
+        self.assertEqual(self.rfq.status, "new")
         self.assertIn("seller_renegotiate", self.rfq_item.decision_reason)
+
+    def test_seller_cannot_change_global_rfq_status_or_store_huge_comment(self):
+        too_long = self.client.post(
+            f"/api/v1/seller/requests/{self.rfq.id}/decline/",
+            data={"reason": "x" * 2001},
+            content_type="application/json",
+        )
+
+        self.rfq.refresh_from_db()
+        self.rfq_item.refresh_from_db()
+        self.assertEqual(too_long.status_code, 400)
+        self.assertEqual(self.rfq.status, "new")
+        self.assertEqual(self.rfq_item.decision_reason, "")

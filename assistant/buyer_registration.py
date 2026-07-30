@@ -4,12 +4,13 @@
   • country, tax_id, contact_name, position, email, phone, messenger, equipment_fleet
 
 ТЗ §2: автоматические проверки
-  • email format + MX-записи домена
+  • формат email + MX-записи домена
   • phone format
-  • регистрация номера в WhatsApp/Telegram
+  • формат контакта WhatsApp/Telegram
 
 ТЗ §3: решение
-  • все проверки пройдены → auto-create + login
+  • данные валидны → создать аккаунт
+  • в рабочем режиме → вход только после подтверждения email
   • проблемы с контактами → запрос уточнений
 
 ТЗ §4: что не спрашиваем сейчас (потом при первой сделке)
@@ -92,18 +93,17 @@ def _check_phone(phone: str) -> tuple[bool, str]:
 
 
 def _check_messenger(kind: str, handle: str, phone_e164: str) -> tuple[bool, str]:
-    """Использует mock-API из kyb_api_checks. На проде дёрнет реальные SDK."""
-    try:
-        from .kyb_api_checks import check_messengers
-    except Exception:
-        return True, ""  # модуля нет → не блокируем регистрацию
-    wa = phone_e164 if kind == "whatsapp" else ""
-    tg = handle if kind == "telegram" else ""
-    r = check_messengers(wa, tg, phone_e164)
-    # check_messengers возвращает signals — yellow если канала нет
-    sigs = [s for s in (r.get("signals") or []) if s.get("level") in ("red", "yellow")]
-    if sigs:
-        return False, sigs[0].get("msg", _("канал связи не подтверждён"))
+    """Validate contact shape without claiming provider-side verification."""
+    handle = (handle or "").strip()
+    if kind == "telegram":
+        if not re.fullmatch(r"@[A-Za-z0-9_]{5,32}", handle):
+            return False, _("укажите Telegram в формате @username")
+    elif kind == "whatsapp":
+        ok, normalized = _check_phone(handle or phone_e164)
+        if not ok:
+            return False, normalized
+    else:
+        return False, _("выберите поддерживаемый мессенджер")
     return True, ""
 
 
@@ -149,7 +149,7 @@ def _form_card(values: dict | None = None, errors: dict | None = None) -> dict:
         {"name": "tax_id", "label": _("Регистрационный номер (ИНН / Tax ID)"),
          "required": True, "placeholder": "7708123456",
          "value": values.get("tax_id", ""),
-         "help": _("Название и адрес подтянутся автоматически."),
+         "help": _("Если подключена внешняя проверка, название компании заполнится автоматически."),
          "error": err("tax_id")},
         {"name": "contact_name", "label": _("ФИО контактного лица"),
          "required": True, "placeholder": _("Иванов Иван Иванович"),
@@ -189,9 +189,9 @@ def _form_card(values: dict | None = None, errors: dict | None = None) -> dict:
         "type": "form",
         "data": {
             "title": _("Регистрация покупателя"),
-            "subtitle": _("8 полей · проверка контактов · доступ за 5 минут."),
+            "subtitle": _("Данные компании и контакты для рабочего аккаунта."),
             "submit_action": "start_registration",
-            "submit_label": _("Создать аккаунт и войти →"),
+            "submit_label": _("Создать аккаунт"),
             "fields": fields,
             "fixed_params": {"confirmed": True, "role": "buyer"},
         },
@@ -201,7 +201,7 @@ def _form_card(values: dict | None = None, errors: dict | None = None) -> dict:
 def render_form(params: dict | None = None) -> dict:
     """Phase 1: показать форму (вместе с возможными ошибками после попытки сабмита)."""
     return {
-        "text": _("Заполните 8 полей — после автопроверки сразу получите доступ."),
+        "text": _("Заполните данные. В рабочем режиме доступ откроется после подтверждения e-mail."),
         "cards": [_form_card(params or {})],
         "actions": [{"action": "start_login", "label": _("У меня уже есть аккаунт")}],
         "suggestions": [], "contextual_actions": [],
@@ -295,29 +295,58 @@ def attempt_register(request, params: dict) -> dict:
             "suggestions": [], "contextual_actions": [],
         }}
 
+    from django.conf import settings
+    from django.db import transaction
+
     user = form.save(commit=False)
     user.email = v["email"]
-    user.save()
-    UserProfile.objects.create(
-        user=user, role="buyer", language="ru",
-        company_name=company_name,
-        country=v["country"], tax_id=v["tax_id"],
-        contact_name=v["contact_name"], position=v["position"],
-        phone_e164=v["phone_e164"],
-        messenger_kind=v["messenger_kind"],
-        messenger_handle=v["messenger_handle"],
-        equipment_fleet=v["equipment_fleet"],
+    email_verification_required = bool(
+        getattr(settings, "EMAIL_VERIFICATION_REQUIRED", not settings.DEBUG)
     )
+    if email_verification_required:
+        user.is_active = False
+    with transaction.atomic():
+        user.save()
+        UserProfile.objects.create(
+            user=user, role="buyer", language="ru",
+            company_name=company_name,
+            country=v["country"], tax_id=v["tax_id"],
+            contact_name=v["contact_name"], position=v["position"],
+            phone_e164=v["phone_e164"],
+            messenger_kind=v["messenger_kind"],
+            messenger_handle=v["messenger_handle"],
+            equipment_fleet=v["equipment_fleet"],
+        )
 
-    # ── ТЗ §3: «все проверки пройдены → доступ автоматически» ─
+    if email_verification_required:
+        from marketplace.views import _send_verification_email
+
+        delivered = _send_verification_email(request, user)
+        if delivered:
+            text = _(
+                "Аккаунт создан. Мы отправили ссылку подтверждения на %(email)s. "
+                "Перейдите по ней в течение 24 часов, чтобы войти."
+            ) % {"email": user.email}
+        else:
+            text = _(
+                "Аккаунт создан, но письмо подтверждения отправить не удалось. "
+                "Аккаунт пока не активирован; обратитесь в поддержку через чат."
+            )
+        return {"ok": True, "login_allowed": False, "user": user, "response": {
+            "text": text,
+            "cards": [],
+            "actions": [{"action": "contact_operator", "label": _("Поддержка")}]
+                       if not delivered else [],
+            "suggestions": [], "contextual_actions": [],
+        }}
+
+    # Local development may skip email verification explicitly.
     greeting = (_(", %(company)s") % {"company": company_name}) if company_name else ""
     return {"ok": True, "user": user, "response": {
         "text": (
-            _("Аккаунт создан и проверен. Добро пожаловать%(greeting)s!\n"
-              "• E-mail проверен · телефон проверен · мессенджер на связи.\n"
-              "• Реквизиты компании подтянулись автоматически.\n\n"
-              "Юридический адрес, банк и подписанта попросим при первой сделке "
-              "(не сейчас — экономим ваше время).") % {"greeting": greeting}
+            _("Аккаунт создан. Добро пожаловать%(greeting)s!\n"
+              "Контактные данные сохранены; подтверждение у внешних сервисов "
+              "не выполнялось.") % {"greeting": greeting}
         ),
         "cards": [],
         "actions": [{"action": "reload_page", "label": _("Открыть кабинет")}],

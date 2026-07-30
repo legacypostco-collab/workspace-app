@@ -4,7 +4,7 @@
   1. Размер ≤ settings.MAX_*_BYTES
   2. Расширение в allow-list для категории (KYB / docs / prices / drawings)
   3. Magic bytes (content sniffing) — чтобы PDF был реально PDF, не exec
-  4. (опц.) Virus scan через ClamAV (см. file_scan.py)
+  4. Virus scan через ClamAV в production (см. file_scan.py)
 
 Использование в form:
     from marketplace.upload_validation import validate_upload, KYB_DOC_RULES
@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -102,6 +103,14 @@ def validate_upload(uploaded_file, rules: dict) -> None:
         raise ValidationError(
             f"{kind}: недопустимое расширение. Разрешено: {', '.join(allowed_exts)}."
         )
+    ext = os.path.splitext(name)[1]
+    if ext in {".xlsx", ".docx"}:
+        try:
+            from .upload_security import validate_office_archive
+
+            validate_office_archive(uploaded_file, ext)
+        except ValueError as exc:
+            raise ValidationError(f"{kind}: {exc}") from exc
 
     # 3. MIME (advisory — браузер может ошибиться)
     content_type = (getattr(uploaded_file, "content_type", "") or "").lower()
@@ -126,15 +135,22 @@ def validate_upload(uploaded_file, rules: dict) -> None:
                 )
         except ValidationError:
             raise
-        except Exception:
-            logger.exception("magic byte check failed (non-fatal)")
+        except Exception as exc:
+            logger.exception("magic byte check failed")
+            raise ValidationError(
+                f"{kind}: не удалось безопасно проверить содержимое файла."
+            ) from exc
 
-    # 5. (опц.) Virus scan
+    # 5. Virus scan. Production defaults to enabled + fail-closed.
     if getattr(settings, "ENABLE_VIRUS_SCAN", False):
         try:
             from .file_scan import scan_or_raise
             scan_or_raise(uploaded_file)
         except ValidationError:
             raise
-        except Exception:
-            logger.exception("virus scan failed (non-fatal)")
+        except Exception as exc:
+            logger.exception("virus scan failed")
+            if getattr(settings, "VIRUS_SCAN_REQUIRED", not settings.DEBUG):
+                raise ValidationError(
+                    f"{kind}: антивирусная проверка временно недоступна."
+                ) from exc

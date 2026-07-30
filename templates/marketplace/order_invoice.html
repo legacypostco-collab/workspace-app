@@ -337,7 +337,7 @@
           <div>
             <p class="invoice-company">Consolidator Parts</p>
             <p class="invoice-meta">Поставка запчастей для спецтехники</p>
-            <p class="invoice-meta">sales@consolidator.parts</p>
+            <p class="invoice-meta">sales@consolidatorparts.com</p>
           </div>
         </div>
         <div class="invoice-number-box">
@@ -354,7 +354,7 @@
           <p class="invoice-label">Поставщик</p>
           <p><strong>Consolidator Parts</strong></p>
           <p>Операционная платформа закупок</p>
-          <p>sales@consolidator.parts</p>
+          <p>sales@consolidatorparts.com</p>
         </div>
         <div class="invoice-party">
           <p class="invoice-label">Покупатель</p>
@@ -429,20 +429,19 @@
           <h2 style="margin:0 0 6px;font-size:20px;">Оплата по заказу</h2>
           <p class="invoice-muted" style="margin:0;">
             Резерв {{ order.reserve_percent }}%, затем финальная оплата после подтверждения поставки.
-            Платёжная ссылка: <a href="{{ payment_url }}" target="_blank" rel="noopener">{{ payment_ref }}</a>
+            {% if payment_url %}
+              Платёжная ссылка: <a href="{{ payment_url }}" target="_blank" rel="noopener">{{ payment_ref }}</a>
+            {% else %}
+              Платёжный шлюз пока не подключён. Используйте назначенные реквизиты
+              или обратитесь к менеджеру по заказу.
+            {% endif %}
           </p>
         </div>
         <div class="invoice-payment-actions">
           {% if order.payment_status == 'awaiting_reserve' %}
-            <form method="post" action="{% url 'order_mark_reserve_paid' order.id %}">
-              {% csrf_token %}
-              <button class="invoice-btn" type="submit">Я оплатил резерв ${{ reserve_due }}</button>
-            </form>
+            <a class="invoice-btn" href="/chat/?action=pay_reserve&amp;order_id={{ order.id }}">Оплатить резерв ${{ reserve_due }}</a>
           {% elif order.payment_status == 'reserve_paid' %}
-            <form method="post" action="{% url 'order_mark_final_paid' order.id %}">
-              {% csrf_token %}
-              <button class="invoice-btn" type="submit">Я оплатил остаток ${{ final_due }}</button>
-            </form>
+            <a class="invoice-btn" href="/chat/?action=pay_final&amp;order_id={{ order.id }}">Оплатить остаток ${{ final_due }}</a>
           {% else %}
             <span class="invoice-muted">Оплата по заказу зафиксирована.</span>
           {% endif %}

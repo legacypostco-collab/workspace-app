@@ -6,7 +6,7 @@ Usage:
 
 Reads from env vars:
   DJANGO_ADMIN_USER     (default: admin)
-  DJANGO_ADMIN_EMAIL    (default: admin@consolidator.parts)
+  DJANGO_ADMIN_EMAIL    (default: admin@consolidatorparts.com)
   DJANGO_ADMIN_PASSWORD (required if user doesn't exist)
 
 Idempotent: safe to run on every deploy.
@@ -16,7 +16,7 @@ from __future__ import annotations
 import os
 
 from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):
@@ -24,8 +24,22 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         username = os.getenv("DJANGO_ADMIN_USER", "admin").strip()
-        email    = os.getenv("DJANGO_ADMIN_EMAIL", "admin@consolidator.parts").strip()
+        email    = os.getenv("DJANGO_ADMIN_EMAIL", "admin@consolidatorparts.com").strip()
         password = os.getenv("DJANGO_ADMIN_PASSWORD", "").strip()
+
+        existing_user = User.objects.filter(username=username).first()
+        if existing_user is None and not password:
+            raise CommandError(
+                "DJANGO_ADMIN_PASSWORD is required when creating a new administrator."
+            )
+        if (
+            existing_user is not None
+            and not existing_user.is_superuser
+            and not password
+        ):
+            raise CommandError(
+                "DJANGO_ADMIN_PASSWORD is required when promoting an existing user."
+            )
 
         user, created = User.objects.get_or_create(
             username=username,
@@ -33,20 +47,14 @@ class Command(BaseCommand):
         )
 
         if created:
-            if not password:
-                self.stdout.write(self.style.WARNING(
-                    f"Admin user '{username}' created with NO password — "
-                    "set DJANGO_ADMIN_PASSWORD or run `createsuperuser`."
-                ))
-            else:
-                user.set_password(password)
-                user.email = email
-                user.is_staff = True
-                user.is_superuser = True
-                user.save()
-                self.stdout.write(self.style.SUCCESS(
-                    f"Admin user '{username}' created with provided password."
-                ))
+            user.set_password(password)
+            user.email = email
+            user.is_staff = True
+            user.is_superuser = True
+            user.save()
+            self.stdout.write(self.style.SUCCESS(
+                f"Admin user '{username}' created with provided password."
+            ))
         else:
             changed = False
             if password:

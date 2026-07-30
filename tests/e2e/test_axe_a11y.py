@@ -19,7 +19,6 @@ import os
 import pathlib
 
 import pytest
-from playwright.sync_api import sync_playwright
 
 BASE_URL = os.getenv("E2E_BASE_URL", "http://127.0.0.1:8003")
 RESULTS_DIR = pathlib.Path(__file__).parent / "axe-results"
@@ -29,45 +28,36 @@ RESULTS_DIR.mkdir(exist_ok=True)
 PAGES = [
     ("/",      "landing", False),
     ("/chat/", "chat",    False),
-    # Авторизованные — нужны demo-аккаунты (создаются в CI до запуска)
-    ("/chat/", "chat_buyer",    "demo_buyer"),
-    ("/chat/", "chat_operator", "demo_operator"),
+    ("/chat/", "chat_buyer",    "buyer"),
+    ("/chat/", "chat_operator", "operator"),
 ]
 
 
-@pytest.fixture(scope="session")
-def axe_runner():
+@pytest.fixture
+def axe_runner(browser):
     """Возвращает (Page, run_axe_fn). axe-playwright-python инжектит
     axe-core script и возвращает violations."""
     try:
         from axe_playwright_python.sync_playwright import Axe  # type: ignore
     except ImportError:
         pytest.skip("axe-playwright-python не установлен (`pip install axe-playwright-python`)")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        ctx = browser.new_context(
-            viewport={"width": 1440, "height": 900}, locale="ru-RU",
-        )
-        page = ctx.new_page()
-        axe = Axe()
-        yield page, axe
-        ctx.close()
-        browser.close()
+    ctx = browser.new_context(
+        viewport={"width": 1440, "height": 900}, locale="ru-RU",
+    )
+    page = ctx.new_page()
+    axe = Axe()
+    yield page, axe
+    ctx.close()
 
 
-def _login_demo(page, role: str) -> None:
-    page.goto(f"{BASE_URL}/demo-login/?role={role.split('_')[1]}",
-               wait_until="domcontentloaded")
-
-
-@pytest.mark.parametrize("url,slug,login_as", PAGES,
+@pytest.mark.parametrize("url,slug,role", PAGES,
                           ids=[f"{slug}" for _, slug, _ in PAGES])
-def test_axe_no_critical(axe_runner, url, slug, login_as):
+def test_axe_no_critical(axe_runner, url, slug, role, login_as):
     """Страница не должна иметь impact=critical нарушений."""
     page, axe = axe_runner
-    if login_as:
-        _login_demo(page, login_as)
-    page.goto(f"{BASE_URL}{url}", wait_until="networkidle")
+    if role:
+        login_as(page, role)
+    page.goto(f"{BASE_URL}{url}", wait_until="domcontentloaded")
     # Даём шанс ленивым картинкам/шрифтам загрузиться
     page.wait_for_timeout(500)
 
@@ -78,7 +68,7 @@ def test_axe_no_critical(axe_runner, url, slug, login_as):
     # Сохраняем полный отчёт для артефакта
     out = RESULTS_DIR / f"{slug}.json"
     out.write_text(json.dumps({
-        "url": url, "login_as": login_as,
+        "url": url, "role": role,
         "violations": violations,
         "passes": len(results.response.get("passes", [])) if hasattr(results, "response") else 0,
     }, indent=2, ensure_ascii=False))

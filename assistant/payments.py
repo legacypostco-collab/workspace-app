@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 ESCROW_USERNAME = "__platform_escrow__"
+MAX_PAYMENT_AMOUNT = Decimal("999999999999.99")
 
 
 class InsufficientFunds(Exception):
@@ -44,6 +45,20 @@ class InsufficientFunds(Exception):
 
 class InsufficientEscrow(Exception):
     pass
+
+
+def _positive_payment_amount(value):
+    try:
+        amount = Decimal(str(value))
+    except Exception:
+        return None
+    if (
+        not amount.is_finite()
+        or amount <= 0
+        or amount > MAX_PAYMENT_AMOUNT
+    ):
+        return None
+    return amount
 
 
 # ── Платформа-эскроу ──────────────────────────────────────────
@@ -75,8 +90,11 @@ def create_payment_intent(amount, *, order_id: int, payer, kind: str = "reserve"
     Wallet engine — чисто in-memory placeholder.
     Stripe engine — реальный stripe.PaymentIntent.create() через API.
     """
+    amount = _positive_payment_amount(amount)
+    if amount is None:
+        raise ValueError("payment amount must be finite and positive")
     from .payments_engines import get_engine
-    intent = get_engine().create_intent(Decimal(str(amount)), order_id=order_id, payer=payer, kind=kind)
+    intent = get_engine().create_intent(amount, order_id=order_id, payer=payer, kind=kind)
     intent.setdefault("created_at", timezone.now().isoformat())
     return intent
 
@@ -99,7 +117,9 @@ def _wallet_confirm_intent(intent: dict, payer) -> dict:
     SECURITY P0-5: select_for_update на обоих кошельках — два параллельных
     confirm не могут одновременно прочитать-модифицировать-записать баланс.
     """
-    amount = Decimal(str(intent["amount"]))
+    amount = _positive_payment_amount(intent.get("amount"))
+    if amount is None:
+        raise ValueError("payment amount must be finite and positive")
     order_id = intent["order_id"]
     _KIND_TR = {"reserve": _("резерв"), "payment": _("оплата"), "mid": _("доплата"), "customs": _("таможня")}
     kind_label = _KIND_TR.get(intent.get("kind", "payment"), intent.get("kind", "payment"))
@@ -150,10 +170,10 @@ def _wallet_confirm_intent(intent: dict, payer) -> dict:
 
 
 def split_by_seller(order) -> list[dict]:
-    """Разбивка эскроу-суммы заказа по продавцам пропорционально их позициям.
+    """Остаток выплат продавцам с учётом уже проведённых переводов.
 
     Возвращает [{"seller": user, "amount": Decimal, "items": [item_id,...]}].
-    Сумма всех amount = escrow_balance_for_order(order.id).
+    Сумма всех amount не превышает escrow_balance_for_order(order.id).
 
     Для multi-supplier заказов (RFQ-консолидация). Если в заказе один
     продавец — вернёт список из одного элемента. Если у части позиций
@@ -176,27 +196,90 @@ def split_by_seller(order) -> list[dict]:
         bucket["items"].append(it.id)
         seller_obj_by_id[seller.id] = seller
 
+    platform_wallet = get_platform_wallet()
+    platform_txs = WalletTx.objects.filter(
+        wallet=platform_wallet,
+        order_id=order.id,
+    )
+    held = sum(
+        (
+            tx.amount
+            for tx in platform_txs
+            if tx.kind == "escrow_hold"
+        ),
+        Decimal("0"),
+    )
+    refunded = sum(
+        (
+            tx.amount
+            for tx in platform_txs
+            if tx.kind == "escrow_refund"
+        ),
+        Decimal("0"),
+    )
+    settlement_pool = max(Decimal("0"), held - refunded)
     escrow = escrow_balance_for_order(order.id)
-    if base_total <= 0 or escrow <= 0:
+    if base_total <= 0 or settlement_pool <= 0 or escrow <= 0:
         return []
 
-    out = []
-    accumulated = Decimal("0")
+    targets = {}
+    accumulated_target = Decimal("0")
     seller_ids = list(by_seller.keys())
     for i, sid in enumerate(seller_ids):
         bucket = by_seller[sid]
-        share = (bucket["line_total"] / base_total)
-        # Последнему продавцу доплачиваем разницу, чтобы не потерять копейки на округлении
+        share = bucket["line_total"] / base_total
         if i == len(seller_ids) - 1:
-            amount = (escrow - accumulated).quantize(Decimal("0.01"))
+            target = (
+                settlement_pool - accumulated_target
+            ).quantize(Decimal("0.01"))
         else:
-            amount = (escrow * share).quantize(Decimal("0.01"))
-            accumulated += amount
+            target = (settlement_pool * share).quantize(Decimal("0.01"))
+            accumulated_target += target
+        released = sum(
+            WalletTx.objects.filter(
+                wallet__user_id=sid,
+                order_id=order.id,
+                kind="escrow_release",
+            ).values_list("amount", flat=True),
+            Decimal("0"),
+        )
+        targets[sid] = {
+            "target": target,
+            "outstanding": max(Decimal("0"), target - released),
+            "share": share,
+        }
+
+    total_outstanding = sum(
+        (row["outstanding"] for row in targets.values()),
+        Decimal("0"),
+    )
+    available = min(escrow, total_outstanding)
+    if available <= 0 or total_outstanding <= 0:
+        return []
+
+    payable_ids = [
+        sid for sid in seller_ids
+        if targets[sid]["outstanding"] > 0
+    ]
+    out = []
+    allocated = Decimal("0")
+    for i, sid in enumerate(payable_ids):
+        row = targets[sid]
+        if i == len(payable_ids) - 1:
+            amount = (available - allocated).quantize(Decimal("0.01"))
+        else:
+            amount = (
+                available * row["outstanding"] / total_outstanding
+            ).quantize(Decimal("0.01"))
+            allocated += amount
+        if amount <= 0:
+            continue
+        bucket = by_seller[sid]
         out.append({
             "seller": seller_obj_by_id[sid],
             "amount": amount,
             "items": bucket["items"],
-            "share": float(share),
+            "share": float(row["share"]),
         })
     return out
 
@@ -207,9 +290,17 @@ def release_to_seller(*, order, seller, amount=None) -> dict:
     Делегирует активному engine. Для Stripe режима amount обязателен.
     """
     if amount is None:
-        amount = escrow_balance_for_order(order.id)
-    amount = Decimal(str(amount))
-    if amount <= 0:
+        split = next(
+            (
+                row
+                for row in split_by_seller(order)
+                if row["seller"].id == seller.id
+            ),
+            None,
+        )
+        amount = split["amount"] if split else Decimal("0")
+    amount = _positive_payment_amount(amount)
+    if amount is None:
         return {"ok": False, "reason": _("ничего не удержано"), "amount": 0}
     from .payments_engines import get_engine
     return get_engine().release_to_seller(order=order, seller=seller, amount=amount)
@@ -226,11 +317,31 @@ def _wallet_release_to_seller(*, order, seller, amount: Decimal) -> dict:
     plat = Wallet.objects.select_for_update().get(pk=get_platform_wallet().pk)
     if amount is None:
         amount = escrow_balance_for_order(order.id)
-    amount = Decimal(str(amount))
-    if amount <= 0:
+    amount = _positive_payment_amount(amount)
+    if amount is None:
         return {"ok": False, "reason": _("ничего не удержано"), "amount": 0}
+    order_escrow = escrow_balance_for_order(order.id)
+    if order_escrow < amount:
+        raise InsufficientEscrow(
+            f"order escrow has ${order_escrow}, need ${amount}"
+        )
+    allowed_split = next(
+        (
+            row
+            for row in split_by_seller(order)
+            if row["seller"].id == seller.id
+        ),
+        None,
+    )
+    seller_due = allowed_split["amount"] if allowed_split else Decimal("0")
+    if amount > seller_due:
+        raise InsufficientEscrow(
+            f"seller escrow share has ${seller_due}, need ${amount}"
+        )
     if plat.balance < amount:
-        raise InsufficientEscrow(f"escrow has ${plat.balance}, need ${amount}")
+        raise InsufficientEscrow(
+            f"platform escrow has ${plat.balance}, need ${amount}"
+        )
 
     seller_wallet = Wallet.objects.select_for_update().get(pk=Wallet.for_user(seller).pk)
     plat.balance -= amount
@@ -255,8 +366,8 @@ def refund_to_buyer(*, order, buyer, amount=None) -> dict:
     """Возврат эскроу → buyer. Делегирует активному engine."""
     if amount is None:
         amount = escrow_balance_for_order(order.id)
-    amount = Decimal(str(amount))
-    if amount <= 0:
+    amount = _positive_payment_amount(amount)
+    if amount is None:
         return {"ok": False, "reason": _("ничего не удержано"), "amount": 0}
     from .payments_engines import get_engine
     return get_engine().refund_to_buyer(order=order, buyer=buyer, amount=amount)
@@ -267,8 +378,20 @@ def _wallet_refund_to_buyer(*, order, buyer, amount: Decimal) -> dict:
     # P0 (гонка-деньги): кошельки под select_for_update (платформенный первым) —
     # иначе конкурентные возвраты теряют обновление баланса / возвращают дважды.
     plat = Wallet.objects.select_for_update().get(pk=get_platform_wallet().pk)
+    amount = _positive_payment_amount(amount)
+    if amount is None:
+        return {"ok": False, "reason": _("ничего не удержано"), "amount": 0}
+    if not order.buyer_id or order.buyer_id != buyer.id:
+        raise InsufficientEscrow("buyer is not the order owner")
+    order_escrow = escrow_balance_for_order(order.id)
+    if order_escrow < amount:
+        raise InsufficientEscrow(
+            f"order escrow has ${order_escrow}, need ${amount}"
+        )
     if plat.balance < amount:
-        raise InsufficientEscrow(f"escrow has ${plat.balance}, need ${amount}")
+        raise InsufficientEscrow(
+            f"platform escrow has ${plat.balance}, need ${amount}"
+        )
 
     buyer_wallet = Wallet.objects.select_for_update().get(pk=Wallet.for_user(buyer).pk)
     plat.balance -= amount
@@ -353,9 +476,13 @@ def dispatch_webhook(event: dict) -> dict:
     try:
         result = handler(event.get("data") or {})
         return {"received": True, "handled": True, "result": result}
-    except Exception as e:
+    except Exception:
         logger.exception("webhook handler %s failed", et)
-        return {"received": True, "handled": False, "error": str(e)}
+        return {
+            "received": True,
+            "handled": False,
+            "error": _("Не удалось обработать событие оплаты."),
+        }
 
 
 @register_webhook("payment_intent.succeeded")

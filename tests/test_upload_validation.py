@@ -1,14 +1,17 @@
 """Unit tests for marketplace.upload_validation — size/ext/magic/MIME."""
 import io
+import zipfile
 
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 
 from marketplace.upload_validation import (
     IMAGE_RULES, KYB_DOC_RULES, PDF_DOC_RULES, PRICELIST_RULES,
     validate_upload,
 )
+from marketplace.upload_security import UploadSecurityError, validate_uploaded_file
 
 
 def _pdf_bytes(size=1000):
@@ -25,6 +28,14 @@ def _exe_bytes(size=1000):
 
 def _upload(name, content, mime=None):
     return SimpleUploadedFile(name, content, content_type=mime or "")
+
+
+def _minimal_xlsx_bytes(workbook_body=b"<workbook/>"):
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("xl/workbook.xml", workbook_body)
+    return buffer.getvalue()
 
 
 # ── Size ─────────────────────────────────────────────────────────
@@ -98,9 +109,7 @@ def test_validate_pricelist_csv_ok():
 
 
 def test_validate_pricelist_xlsx_ok():
-    """xlsx тут без magic check (rules has magic_bytes=None)."""
-    fake_xlsx = b"PK\x03\x04" + b"x" * 1000  # zip header
-    validate_upload(_upload("price.xlsx", fake_xlsx,
+    validate_upload(_upload("price.xlsx", _minimal_xlsx_bytes(),
                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
                      PRICELIST_RULES)
 
@@ -119,3 +128,40 @@ def test_validate_image_png_ok():
 def test_validate_image_rejects_pdf():
     with pytest.raises(ValidationError):
         validate_upload(_upload("doc.pdf", _pdf_bytes()), IMAGE_RULES)
+
+
+@override_settings(ENABLE_VIRUS_SCAN=True, VIRUS_SCAN_REQUIRED=True)
+def test_required_virus_scanner_fails_closed_when_unavailable(monkeypatch):
+    monkeypatch.setattr("marketplace.file_scan._get_client", lambda: None)
+
+    with pytest.raises(ValidationError) as exc:
+        validate_upload(_upload("doc.pdf", _pdf_bytes()), PDF_DOC_RULES)
+
+    assert "проверку безопасности" in str(exc.value)
+
+
+@override_settings(ENABLE_VIRUS_SCAN=True, VIRUS_SCAN_REQUIRED=False)
+def test_unavailable_virus_scanner_is_allowed_only_when_not_required(monkeypatch):
+    monkeypatch.setattr("marketplace.file_scan._get_client", lambda: None)
+
+    validate_upload(_upload("doc.pdf", _pdf_bytes()), PDF_DOC_RULES)
+
+
+@override_settings(VIRUS_SCAN_REQUIRED=False)
+def test_ooxml_archive_with_dangerous_compression_ratio_is_rejected():
+    compressed_bomb = _minimal_xlsx_bytes(b"0" * (2 * 1024 * 1024))
+
+    with pytest.raises(UploadSecurityError, match="степень сжатия"):
+        validate_uploaded_file(
+            _upload("price.xlsx", compressed_bomb),
+            allowed_ext={".xlsx"},
+        )
+
+
+@override_settings(VIRUS_SCAN_REQUIRED=False)
+def test_corrupted_ooxml_archive_is_rejected():
+    with pytest.raises(UploadSecurityError, match="повреждён"):
+        validate_uploaded_file(
+            _upload("price.xlsx", b"PK\x03\x04not-a-real-archive"),
+            allowed_ext={".xlsx"},
+        )

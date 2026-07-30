@@ -36,20 +36,6 @@
 </section>
 
 <section class="panel" style="margin-bottom: 16px;">
-  <h2>{% trans "Действие поставщика" %}</h2>
-  <form method="post" action="{% url 'seller_order_status_update' order.id %}" class="status-form">
-    {% csrf_token %}
-    <input type="hidden" name="next" value="{% url 'seller_order_detail' order.id %}" />
-    <label for="status-main">{% trans "Сменить статус заказа" %}</label>
-    <select id="status-main" name="status" onchange="this.form.submit()">
-      {% for value, label in status_choices %}
-        <option value="{{ value }}" {% if order.status == value %}selected{% endif %}>{{ label }}</option>
-      {% endfor %}
-    </select>
-  </form>
-</section>
-
-<section class="panel" style="margin-bottom: 16px;">
   <h2>{% trans "Позиции по вашему ассортименту" %}</h2>
   <div class="list">
     {% for item in seller_items %}

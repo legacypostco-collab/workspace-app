@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -10,11 +11,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from assistant.permissions import detect_user_role
 from files.models import StoredFile
 from files.storage import read_stored_file_bytes, store_import_source_file
 from marketplace.models import UserProfile
 from offers.models import SupplierOffer
 
+from .google_sheets import GoogleSheetImportError, create_google_sheet_preview
 from .models import ImportJob, ImportPreviewSession, ImportRow
 from .serializers import (
     ImportPreviewDetailSerializer,
@@ -34,48 +37,72 @@ from .tasks import process_import_job
 logger = logging.getLogger("imports")
 
 
-def _is_seller(user) -> bool:
+def _is_seller(request) -> bool:
+    user = request.user
     if not user.is_authenticated:
         return False
     if user.is_superuser:
         return True
-    profile = UserProfile.objects.filter(user=user).first()
-    return bool(profile and profile.role == "seller")
+    return detect_user_role(user, request=request) == "seller"
+
+
+def _can_manage_imports(request) -> bool:
+    if not _is_seller(request):
+        return False
+    if request.user.is_superuser:
+        return True
+    profile = UserProfile.objects.filter(user=request.user).first()
+    return bool(profile and profile.can_manage_assortment)
 
 
 class SupplierImportFileCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not _is_seller(request.user):
+        if not _can_manage_imports(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = UploadImportFileSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         uploaded_file = serializer.validated_data["file"]
 
+        try:
+            uploaded_file.seek(0)
+            raw = uploaded_file.read(int(settings.MAX_IMPORT_FILE_BYTES) + 1)
+            uploaded_file.seek(0)
+            preview_result = ImportParser().build_preview_from_bytes(raw)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except OSError:
+            logger.exception(
+                "import preview read failed supplier_id=%s",
+                request.user.id,
+            )
+            return Response(
+                {"error": "Не удалось безопасно прочитать файл."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         stored = store_import_source_file(uploaded_file)
-        stored_file = StoredFile.objects.create(
-            supplier=request.user,
-            source_type=StoredFile.SourceType.IMPORT_CSV,
-            storage_key=stored.storage_key,
-            original_name=stored.original_name,
-            content_type=stored.content_type,
-            size_bytes=stored.size_bytes,
-            checksum_sha256=stored.checksum_sha256,
-        )
-        preview = ImportPreviewSession.objects.create(
-            supplier=request.user,
-            source_type=ImportPreviewSession.SourceType.CSV,
-            source_file=stored_file,
-            status=ImportPreviewSession.Status.DRAFT,
-        )
-        parser = ImportParser()
-        preview_result = parser.build_preview(stored_file.storage_key)
-        preview.detected_columns = preview_result.detected_columns
-        preview.sample_rows = preview_result.sample_rows
-        preview.column_mapping = preview_result.detected_columns
-        preview.save(update_fields=["detected_columns", "sample_rows", "column_mapping", "updated_at"])
+        with transaction.atomic():
+            stored_file = StoredFile.objects.create(
+                supplier=request.user,
+                source_type=StoredFile.SourceType.IMPORT_CSV,
+                storage_key=stored.storage_key,
+                original_name=stored.original_name,
+                content_type=stored.content_type,
+                size_bytes=stored.size_bytes,
+                checksum_sha256=stored.checksum_sha256,
+            )
+            preview = ImportPreviewSession.objects.create(
+                supplier=request.user,
+                source_type=ImportPreviewSession.SourceType.CSV,
+                source_file=stored_file,
+                status=ImportPreviewSession.Status.DRAFT,
+                detected_columns=preview_result.detected_columns,
+                sample_rows=preview_result.sample_rows,
+                column_mapping=preview_result.detected_columns,
+            )
         response = ImportPreviewResponseSerializer(
             {
                 "preview_id": preview.id,
@@ -91,22 +118,21 @@ class SupplierImportGoogleSheetCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not _is_seller(request.user):
+        if not _can_manage_imports(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = UploadGoogleSheetSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         sheet_url = serializer.validated_data["url"]
 
-        preview = ImportPreviewSession.objects.create(
-            supplier=request.user,
-            source_type=ImportPreviewSession.SourceType.GOOGLE_SHEET,
-            source_url=sheet_url,
-            status=ImportPreviewSession.Status.DRAFT,
-            detected_columns={},
-            sample_rows=[],
-            column_mapping={},
-        )
+        try:
+            google_preview = create_google_sheet_preview(
+                sheet_url=sheet_url,
+                supplier=request.user,
+            )
+        except GoogleSheetImportError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        preview = google_preview.session
         response = ImportPreviewResponseSerializer(
             {
                 "preview_id": preview.id,
@@ -122,7 +148,7 @@ class SupplierImportPreviewDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, preview_id: int):
-        if not _is_seller(request.user):
+        if not _is_seller(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
         data = ImportPreviewDetailSerializer(preview).data
@@ -133,7 +159,7 @@ class SupplierImportPreviewConfirmMappingAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, preview_id: int):
-        if not _is_seller(request.user):
+        if not _can_manage_imports(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         preview = get_object_or_404(ImportPreviewSession, id=preview_id, supplier=request.user)
         serializer = ImportPreviewMappingConfirmSerializer(data=request.data)
@@ -141,7 +167,7 @@ class SupplierImportPreviewConfirmMappingAPIView(APIView):
         mapping = serializer.validated_data["mapping"]
 
         fieldnames: list[str] = []
-        if preview.source_type == ImportPreviewSession.SourceType.CSV and preview.source_file_id:
+        if preview.source_file_id:
             parser = ImportParser()
             preview_result = parser.build_preview(preview.source_file.storage_key, rows_limit=1)
             fieldnames = preview_result.fieldnames
@@ -160,7 +186,7 @@ class SupplierImportStartAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not _is_seller(request.user):
+        if not _can_manage_imports(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         serializer = ImportStartSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -171,10 +197,10 @@ class SupplierImportStartAPIView(APIView):
         )
         if preview.status != ImportPreviewSession.Status.MAPPING_CONFIRMED:
             return Response({"error": "confirm mapping before start"}, status=status.HTTP_400_BAD_REQUEST)
+        if not preview.source_file_id:
+            return Response({"error": "source file is unavailable"}, status=status.HTTP_400_BAD_REQUEST)
 
-        idempotency_key = ""
-        if preview.source_file_id:
-            idempotency_key = preview.source_file.checksum_sha256
+        idempotency_key = preview.source_file.checksum_sha256
         job = ImportJob.objects.create(
             supplier=request.user,
             source_type=preview.source_type,
@@ -192,6 +218,13 @@ class SupplierImportStartAPIView(APIView):
                 "import_job_enqueue_failed",
                 extra={"job_id": job.id, "supplier_id": request.user.id, "error": str(exc)},
             )
+            job.status = ImportJob.Status.FAILED
+            job.error_message = "Не удалось поставить импорт в очередь."
+            job.save(update_fields=["status", "error_message", "updated_at"])
+            return Response(
+                {"error": "import queue is temporarily unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         response = ImportJobResponseSerializer({"job_id": job.id, "status": job.status})
         return Response(response.data, status=status.HTTP_201_CREATED)
 
@@ -200,7 +233,7 @@ class SupplierImportListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        if not _is_seller(request.user):
+        if not _is_seller(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         qs = ImportJob.objects.filter(supplier=request.user).order_by("-created_at")[:50]
         data = ImportJobSummarySerializer(qs, many=True).data
@@ -211,7 +244,7 @@ class SupplierImportDetailAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, import_id: int):
-        if not _is_seller(request.user):
+        if not _is_seller(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         job = get_object_or_404(ImportJob.objects.select_related("error_report__file"), id=import_id, supplier=request.user)
         data = ImportJobDetailSerializer(job, context={"request": request}).data
@@ -222,7 +255,7 @@ class SupplierImportRowsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, import_id: int):
-        if not _is_seller(request.user):
+        if not _is_seller(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         job = get_object_or_404(ImportJob, id=import_id, supplier=request.user)
         rows = ImportRow.objects.filter(job=job).order_by("row_no")
@@ -243,7 +276,7 @@ class SupplierImportProgressAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, import_id: int):
-        if not _is_seller(request.user):
+        if not _is_seller(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         job = get_object_or_404(ImportJob.objects.select_related("error_report__file"), id=import_id, supplier=request.user)
         detail = ImportJobDetailSerializer(job, context={"request": request}).data
@@ -265,7 +298,7 @@ class SupplierImportErrorsDownloadAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, import_id: int):
-        if not _is_seller(request.user):
+        if not _is_seller(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         job = get_object_or_404(ImportJob.objects.select_related("error_report__file"), id=import_id, supplier=request.user)
         if not getattr(job, "error_report", None) or not job.error_report.file_id:
@@ -283,14 +316,50 @@ class SupplierStrictImportAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if not _can_manage_imports(request):
+            return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
             return Response({"error": "Файл не выбран."}, status=status.HTTP_400_BAD_REQUEST)
 
         ext = (uploaded_file.name or "").rsplit(".", 1)[-1].lower()
-        if ext not in ("xls", "xlsx", "csv"):
+        if ext not in ("xlsx", "csv"):
             return Response(
-                {"error": "Неподдерживаемый формат. Загрузите XLS, XLSX или CSV."},
+                {"error": "Неподдерживаемый формат. Загрузите XLSX или CSV."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+
+            validate_uploaded_file(
+                uploaded_file,
+                allowed_ext={".xlsx", ".csv"},
+                max_bytes=int(settings.MAX_IMPORT_FILE_BYTES),
+            )
+        except ValueError as exc:
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            uploaded_file.seek(0)
+            raw = uploaded_file.read(int(settings.MAX_IMPORT_FILE_BYTES) + 1)
+            uploaded_file.seek(0)
+        except OSError:
+            return Response(
+                {"error": "Не удалось безопасно прочитать файл."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        service = StrictImportService()
+        ok, error_msg, missing = service.validate_content(
+            raw,
+            uploaded_file.name,
+        )
+        if not ok:
+            return Response(
+                {"error": error_msg, "missing_columns": missing},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -304,14 +373,6 @@ class SupplierStrictImportAPIView(APIView):
             size_bytes=stored.size_bytes,
             checksum_sha256=stored.checksum_sha256,
         )
-
-        service = StrictImportService()
-        ok, error_msg, missing = service.validate_structure(stored_file.storage_key, stored_file.original_name)
-        if not ok:
-            return Response(
-                {"error": error_msg, "missing_columns": missing},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
 
         result = service.process_file(
             storage_key=stored_file.storage_key,
@@ -340,7 +401,7 @@ class SupplierImportRollbackAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, import_id: int):
-        if not _is_seller(request.user):
+        if not _can_manage_imports(request):
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
         job = get_object_or_404(ImportJob, id=import_id, supplier=request.user)
         if job.status not in {ImportJob.Status.COMPLETED, ImportJob.Status.PARTIAL_SUCCESS}:

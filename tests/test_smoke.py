@@ -34,13 +34,25 @@ def authed_client(client, user):
     "/privacy/",
     "/cookies/",
     "/password-reset/",
-    "/api/docs/",
-    "/api/schema/",
 ])
 def test_public_urls_render(client, url):
     """All public URLs return 200."""
     resp = client.get(url)
     assert resp.status_code in (200, 301, 302), f"{url} returned {resp.status_code}"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url", ["/api/docs/", "/api/schema/", "/api/redoc/"])
+def test_api_documentation_requires_staff(client, url):
+    assert client.get(url).status_code == 403
+
+    staff = User.objects.create_user(
+        username=f"docs_staff_{url.split('/')[2]}",
+        password="not-used",
+        is_staff=True,
+    )
+    client.force_login(staff)
+    assert client.get(url).status_code == 200
 
 
 @pytest.mark.django_db

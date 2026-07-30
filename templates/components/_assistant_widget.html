@@ -109,7 +109,7 @@
     fetch('/api/assistant/widget-config/').then(r=>r.json()).then(cfg=>{
       var s = $('aiSuggest');
       s.innerHTML = (cfg.suggestions || []).map(q =>
-        '<button class="ai-suggest-chip" onclick="aiAsk(this.textContent)">'+q+'</button>'
+        '<button class="ai-suggest-chip" onclick="aiAsk(this.textContent)">'+escapeHtml(String(q || ''))+'</button>'
       ).join('');
       if (cfg.latest_conversation_id) {
         convId = cfg.latest_conversation_id;
@@ -200,8 +200,8 @@
     }
     if (role === 'bot' && msgId) {
       inner += '<div class="ai-msg-fb">' +
-        '<button onclick="aiFb(\''+msgId+'\',1,this)">👍</button>' +
-        '<button onclick="aiFb(\''+msgId+'\',-1,this)">👎</button>' +
+        '<button data-message-id="'+escapeHtml(String(msgId))+'" onclick="aiFb(this.dataset.messageId,1,this)">👍</button>' +
+        '<button data-message-id="'+escapeHtml(String(msgId))+'" onclick="aiFb(this.dataset.messageId,-1,this)">👎</button>' +
         '</div>';
     }
     inner += '</div>';
@@ -285,7 +285,7 @@
     setTimeout(()=>{ b.scrollTop = b.scrollHeight; }, 30);
   }
 
-  function escapeHtml(s){return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+  function escapeHtml(s){return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 
   // Auto-grow textarea
   document.addEventListener('input', function(e){

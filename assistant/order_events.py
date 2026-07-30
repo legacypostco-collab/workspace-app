@@ -121,7 +121,7 @@ def _shipment_conv(user, order, role="buyer"):
     from .models import Conversation
     title_prefix = f"Сделка ORD-{order.id}"
     conv = (Conversation.objects.filter(
-        user=user, category="shipment",
+        user=user, role=role, category="shipment",
         title__startswith=title_prefix, is_active=True,
     ).order_by("-updated_at").first())
     if conv:
@@ -146,9 +146,8 @@ def _order_sellers(order):
 def _operator_users():
     """Возвращает операторов которым пушим SLA-эскалации.
 
-    Кандидаты:
-      • is_staff=True (django admin)
-      • UserProfile.role='operator' / 'operator_*' (явная operator-роль)
+    Кандидаты: активные пользователи с явно выданной ролью оператора и
+    superuser. Технический флаг доступа к панели управления права не даёт.
     Дедуплицируем по id, ограничиваем 10 чтобы не флудить алертами.
     """
     from django.contrib.auth import get_user_model
@@ -156,11 +155,11 @@ def _operator_users():
     from marketplace.models import UserProfile
     User = get_user_model()
     operator_user_ids = set(
-        UserProfile.objects.filter(role__startswith="operator")
+        UserProfile.objects.filter(role="operator")
         .values_list("user_id", flat=True)
     )
     qs = User.objects.filter(
-        Q(is_staff=True) | Q(id__in=operator_user_ids),
+        Q(is_superuser=True) | Q(id__in=operator_user_ids),
         is_active=True,
     ).distinct()[:10]
     return list(qs)
@@ -258,19 +257,29 @@ def notify_order_event(order, event: str, *, actor=None,
             cards=cards,
             actions=extra,
         )
-        # WebSocket для live-update
+        # Сначала сохраняем уведомление, затем посылаем только сигнал о нём.
         try:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-            layer = get_channel_layer()
-            if layer:
-                async_to_sync(layer.group_send)(
-                    f"notif_user_{user.id}",
-                    {"type": "order_update", "order_id": order.id,
-                     "event": event, "conversation_id": str(conv.id)},
-                )
+            from marketplace.models import Notification
+            from .consumers import push_notification_to_user
+            notification = Notification.objects.create(
+                user=user,
+                kind="order",
+                title=gettext("Обновление заказа ORD-{id}").format(id=order.id),
+                body=body,
+                url=f"/chat/?conv={conv.id}",
+            )
+            push_notification_to_user(user.id, {
+                "id": notification.id,
+                "kind": "order",
+                "title": notification.title,
+                "body": notification.body,
+                "url": notification.url,
+                "order_id": order.id,
+                "event": event,
+                "conversation_id": str(conv.id),
+            })
         except Exception:
-            pass
+            logger.exception("order notification delivery failed")
         logger.info(
             f"order_event: ORD-{order.id} {event} → {role_label}"
             f" {user.id} conv {conv.id}"
@@ -362,19 +371,29 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None, user_obj=None,
             actions=actions,
         )
         try:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-            layer = get_channel_layer()
-            if layer:
-                async_to_sync(layer.group_send)(
-                    f"notif_user_{op.id}",
-                    {"type": "operator_alert", "event": event,
-                     "rfq_id": rfq.id if rfq else None,
-                     "order_id": order.id if order else None,
-                     "claim_id": claim.id if claim else None},
-                )
+            from marketplace.models import Notification
+            from .consumers import push_notification_to_user
+            notification = Notification.objects.create(
+                user=op,
+                kind="sla" if event.startswith("sla_") else "info",
+                title=gettext("Операторское уведомление"),
+                body=f"{title_prefix} · {body}" if title_prefix else body,
+                url=f"/chat/?conv={conv.id}",
+            )
+            push_notification_to_user(op.id, {
+                "id": notification.id,
+                "kind": notification.kind,
+                "title": notification.title,
+                "body": notification.body,
+                "url": notification.url,
+                "event": event,
+                "rfq_id": rfq.id if rfq else None,
+                "order_id": order.id if order else None,
+                "claim_id": claim.id if claim else None,
+                "conversation_id": str(conv.id),
+            })
         except Exception:
-            pass
+            logger.exception("operator notification delivery failed")
 
     # ── Bonus: всем операторам с подключённым Telegram — push в TG ──
     # Это даёт реальный канал доставки помимо WS/admin-chat (если оператор

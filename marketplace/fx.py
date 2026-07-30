@@ -33,11 +33,11 @@ def _normalize(cur) -> str:
 
 
 def _fetch_rates():
-    """Тянем актуальные курсы из бесплатного API. None при неудаче (→ фолбэк)."""
+    """Тянем актуальные курсы из разрешённого внешнего источника."""
     try:
         import json
         import urllib.request
-        from assistant.security import safe_outbound_url
+        from assistant.security import safe_outbound_url, urlopen_no_redirect
         # rates[X] = сколько X за 1 USD → инвертируем в "USD за 1 X".
         url = "https://open.er-api.com/v6/latest/USD"
         ok_url, reason = safe_outbound_url(
@@ -52,8 +52,13 @@ def _fetch_rates():
         req = urllib.request.Request(
             url,
             headers={"User-Agent": "consolidator-fx/1.0"})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            data = json.loads(r.read().decode())
+        # URL is fixed and checked against FX_ALLOWED_HOSTS immediately above.
+        with urlopen_no_redirect(req, timeout=5) as r:
+            raw = r.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            logger.warning("fx: oversized rate response rejected")
+            return None
+        data = json.loads(raw.decode())
         per_usd = data.get("rates") or {}
         out = {"USD": Decimal("1")}
         for cur in ("EUR", "RUB", "CNY"):
@@ -69,28 +74,42 @@ def _fetch_rates():
             logger.info("fx: rates refreshed from API")
             return out
     except Exception:
-        logger.warning("fx: rate fetch failed — using fallback constants")
+        logger.warning("fx: rate fetch failed")
     return None
 
 
 def get_rates() -> dict:
-    """{currency: USD_per_unit} — из кэша/API, фолбэк — константы."""
+    """Вернуть курсы; тестовые константы разрешены только в DEBUG."""
+    from django.conf import settings
+
     try:
         from django.core.cache import cache
         rates = cache.get(_CACHE_KEY)
         if rates:
             return rates
-        rates = _fetch_rates() or dict(_FALLBACK_USD_PER)
+        rates = _fetch_rates()
+        if not rates:
+            if not settings.DEBUG:
+                raise RuntimeError("FX rate provider is unavailable")
+            rates = dict(_FALLBACK_USD_PER)
         cache.set(_CACHE_KEY, rates, _CACHE_TTL)
         return rates
-    except Exception:
-        return dict(_FALLBACK_USD_PER)
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        if settings.DEBUG:
+            return dict(_FALLBACK_USD_PER)
+        logger.exception("fx: unable to load rates")
+        raise RuntimeError("FX rate provider is unavailable") from exc
 
 
 def rate_to_usd(currency) -> Decimal:
     """Сколько USD стоит 1 единица `currency`."""
     cur = _normalize(currency)
-    return get_rates().get(cur, _FALLBACK_USD_PER.get(cur, Decimal("1")))
+    rates = get_rates()
+    if cur not in rates:
+        raise ValueError(f"Unsupported currency: {cur}")
+    return rates[cur]
 
 
 def to_usd(amount, currency):

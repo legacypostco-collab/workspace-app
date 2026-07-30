@@ -13,7 +13,9 @@ import sys
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, override_settings
+from marketplace.models import Category, Part
 
 User = get_user_model()
 
@@ -107,26 +109,61 @@ def test_password_reset_blocks_after_3_requests(client, user):
     assert r.status_code in (200, 302, 429)
 
 
-# ══ demo_login backdoor ════════════════════════════════════════════
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
+def test_password_reset_limits_the_same_email_across_different_ips(user):
+    from django.core import mail
 
-@override_settings(DEBUG=False)
+    cache.clear()
+    for index in range(4):
+        client = Client(
+            HTTP_HOST="testserver",
+            REMOTE_ADDR=f"198.51.100.{index + 1}",
+        )
+        response = client.post(
+            "/password_reset/",
+            {"email": user.email},
+        )
+        assert response.status_code in (200, 302)
+
+    assert len(mail.outbox) == 3
+
+
+def test_rate_limit_consumes_attempt_atomically(client):
+    from marketplace.views import _rl_consume
+
+    request = type("Request", (), {"META": {"REMOTE_ADDR": "203.0.113.10"}})()
+    assert _rl_consume(request, "atomic-test", 2, 60)
+    assert _rl_consume(request, "atomic-test", 2, 60)
+    assert not _rl_consume(request, "atomic-test", 2, 60)
+
+
+# ══ Вход без пароля отсутствует ════════════════════════════════════
+
+@override_settings(DEBUG=True)
 @_skip_template_render
-def test_demo_login_404_in_prod(client):
-    """В production /demo-login/ возвращает 404 (без `ALLOW_DEMO_LOGIN=1`)."""
+def test_demo_login_route_is_removed(client):
     r = client.get("/demo-login/?role=buyer")
     assert r.status_code == 404
 
 
-@override_settings(DEBUG=True)
-@_skip_template_render
-def test_demo_login_works_in_debug(client, db):
-    """В DEBUG/dev — работает."""
-    # Создаём demo_buyer
-    User.objects.get_or_create(username="demo_buyer",
-                                 defaults={"email": "demo@x.com"})[0].set_password("demo12345")
-    r = client.get("/demo-login/?role=buyer")
-    # В DEBUG → 302 на /chat/ (либо login если demo_buyer не нашёлся)
-    assert r.status_code == 302
+def test_disabled_cart_route_ignores_external_next(client, db):
+    category = Category.objects.create(name="Redirect test", slug="redirect-test")
+    part = Part.objects.create(
+        category=category,
+        title="Redirect test",
+        slug="redirect-test",
+        oem_number="REDIRECT-1",
+        price="1.00",
+        stock_quantity=1,
+    )
+    response = client.post(
+        f"/cart/add/{part.id}/",
+        {"next": "https://evil.example/phishing"},
+    )
+    assert response.status_code == 302
+    assert response["Location"] == "/chat/"
 
 
 # ══ Legacy cabinet redirect ═══════════════════════════════════════
@@ -149,6 +186,14 @@ def test_legacy_dashboard_redirects_to_chat(client, user):
 
 
 @_skip_template_render
+def test_demo_route_keeps_public_workspace_for_authenticated_user(client, user):
+    client.force_login(user)
+    response = client.get("/demo/")
+    assert response.status_code == 302
+    assert response["Location"] == "/chat/?workspace=1"
+
+
+@_skip_template_render
 def test_admin_login_NOT_redirected(client, user):
     """Whitelist: /admin/ должен пройти через middleware → Django admin login."""
     client.force_login(user)
@@ -164,6 +209,65 @@ def test_healthz_no_auth(client):
     r = client.get("/healthz/")
     assert r.status_code == 200
     assert r.json()["ok"] is True
+
+
+@override_settings(TELEGRAM_WEBHOOK_SECRET="telegram-test-secret")
+def test_telegram_webhook_requires_secret_header(client):
+    missing = client.post(
+        "/api/assistant/tg/webhook/",
+        data="{}",
+        content_type="application/json",
+    )
+    assert missing.status_code == 404
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        handled = []
+        monkeypatch.setattr("assistant.tg_views.handle_update", handled.append)
+        accepted = client.post(
+            "/api/assistant/tg/webhook/",
+            data='{"update_id": 1}',
+            content_type="application/json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="telegram-test-secret",
+        )
+    assert accepted.status_code == 200
+    assert handled == [{"update_id": 1}]
+
+
+@override_settings(TELEGRAM_WEBHOOK_SECRET="telegram-test-secret")
+def test_telegram_webhook_rejects_oversized_or_non_object_payload(
+    client,
+    monkeypatch,
+):
+    monkeypatch.setattr("assistant.tg_views.MAX_TELEGRAM_WEBHOOK_BYTES", 4)
+    oversized = client.post(
+        "/api/assistant/tg/webhook/",
+        data='{"update_id": 1}',
+        content_type="application/json",
+        HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="telegram-test-secret",
+    )
+    assert oversized.status_code == 413
+
+    monkeypatch.setattr("assistant.tg_views.MAX_TELEGRAM_WEBHOOK_BYTES", 1024)
+    non_object = client.post(
+        "/api/assistant/tg/webhook/",
+        data="[]",
+        content_type="application/json",
+        HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="telegram-test-secret",
+    )
+    assert non_object.status_code == 400
+
+
+def test_guest_spec_upload_rejects_executable_disguised_as_csv(client):
+    upload = SimpleUploadedFile(
+        "parts.csv",
+        b"MZ\x90\x00malicious",
+        content_type="text/csv",
+    )
+    response = client.post(
+        "/api/assistant/upload-spec/",
+        {"file": upload},
+    )
+    assert response.status_code == 400
 
 
 @_skip_template_render

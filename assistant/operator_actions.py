@@ -17,6 +17,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _log_event, _notify, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +25,12 @@ logger = logging.getLogger(__name__)
 # ── Канонические значения ─────────────────────────────────────
 OP_SUBROLES = ("manager", "logist", "customs", "payments")
 DISPUTE_RESOLUTIONS = ("refund", "release", "no_action", "partial_refund")
+MAX_DISPUTE_AMOUNT = Decimal("999999999999.99")
 
 # Open-statuses — те, что считаем «в работе»
 OPEN_STATUSES = (
     "pending", "reserve_paid", "confirmed", "in_production",
-    "ready_to_ship", "transit_abroad", "customs", "transit_rf", "issuing",
+    "ready_to_ship", "shipped", "transit_abroad", "customs", "transit_rf", "issuing",
 )
 
 
@@ -322,9 +324,9 @@ def op_queue(params, user, role):
     flt = (params.get("filter") or "all").strip().lower()
     qs = Order.objects.all()
     # PIVOT 2026-05-27: оператор видит только заказы/sub-orders своих
-    # поставщиков. Лиды (is_staff=True) — всё. Параметр `all_ops=1` СНИМАЕТ
-    # фильтр ТОЛЬКО ДЛЯ STAFF — обычный оператор не может им bypass'нуть PIVOT.
-    show_all = user.is_staff  # лид (is_staff=True) видит всё
+    # поставщиков. Общий оператор и администратор видят всё, предметные
+    # подроли — только назначенные и ещё не распределённые заказы.
+    show_all = role in ("operator", "admin")
     if not show_all:
         # Оператор видит СВОИ заказы (assigned_operator=user) И ещё не
         # распределённые (assigned_operator пуст). Это согласуется с правилом
@@ -963,8 +965,8 @@ def op_order_detail(params, user, role):
     # FIX (HIGH, IDOR): обычный оператор открывает только свои назначенные
     # заказы и ещё не распределённые (ничьи) — чужой назначенный закрыт.
     # Согласовано с правилом видимости op_queue (:318-326) и op_resolve_dispute
-    # (:1666). Только staff (lead-operator) видит любой заказ по ID.
-    if (not user.is_staff and order.assigned_operator_id
+    # (:1666). Общий operator/admin видит любой заказ по ID.
+    if (role not in ("operator", "admin") and order.assigned_operator_id
             and order.assigned_operator_id != user.id):
         return ActionResult(text=_("Этот заказ не назначен на вас — обратитесь к старшему оператору."))
 
@@ -1329,7 +1331,11 @@ def op_order_detail(params, user, role):
                     "oem": oem, "fmt": (d.file_format or "").upper(),
                     "st": _DST.get(d.status, d.status or ''),
                     "date": f"{d.created_at:%d.%m.%Y}"}),
-                "url": d.file_url or None,
+                "url": (
+                    f"/api/assistant/drawings/{d.id}/file/?action=view"
+                    if d.file_url
+                    else None
+                ),
                 "badge": {"label": (d.file_format or "").upper() or "—", "tone": "info"},
             })
 
@@ -1415,7 +1421,7 @@ def op_assign(params, user, role):
         return ActionResult(text=_("Заказ не найден."))
 
     to_role = (params.get("to_role") or "").strip().lower()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     # Шаг 1: предпросмотр (DraftCard с формой)
     if not confirmed or to_role not in OP_SUBROLES:
@@ -1451,32 +1457,50 @@ def op_assign(params, user, role):
             }],
         )
 
-    # Шаг 2: запись
+    # Шаг 2: выбираем наименее загруженного активного специалиста.
+    from django.contrib.auth import get_user_model
+    from django.db.models import Count
+    from marketplace.models import UserProfile
+
+    profile_role = "payment" if to_role == "payments" else to_role
+    candidate_ids = UserProfile.objects.filter(
+        role="operator", operator_role=profile_role,
+    ).values_list("user_id", flat=True)
+    target = (
+        get_user_model().objects.filter(id__in=candidate_ids, is_active=True)
+        .annotate(active_orders=Count("assigned_orders"))
+        .order_by("active_orders", "id")
+        .first()
+    )
+    if not target:
+        return ActionResult(
+            text=_("Нет активного специалиста выбранной роли. Оставьте заказ в общей очереди или выберите другую роль."),
+        )
+
     comment = (params.get("comment") or "").strip()
+    order.assigned_operator = target
+    order.save(update_fields=["assigned_operator"])
     _log_event(
         order, "operator_action", actor=user, source="operator",
-        meta={"kind": "assigned", "to_role": to_role, "by": user.username, "comment": comment},
+        meta={
+            "kind": "assigned", "to_role": to_role, "by": user.username,
+            "assignee_id": target.id, "assignee": target.username,
+            "comment": comment,
+        },
     )
-    # Уведомим самого оператора (что он теперь owner) — best-effort: ищем
-    # любого пользователя с username demo_operator или с operator_role==to_role.
+    # Уведомляем именно назначенного специалиста.
     try:
-        from django.contrib.auth import get_user_model
-        target = (
-            get_user_model().objects.filter(username="demo_operator").first()
-            or get_user_model().objects.filter(is_staff=True).first()
+        _notify(
+            target, kind="order",
+            title=_('Вам назначен заказ #%(p0)s') % {"p0": f'{order.id}'},
+            body=_('%(p0)s назначил вас ответственным по заказу %(p1)s.') % {"p0": f'{user.username}', "p1": f'{order.customer_name}'},
+            url=f"/chat/?action=op_order_detail&order_id={order.id}",
         )
-        if target:
-            _notify(
-                target, kind="order",
-                title=_('Вам назначен заказ #%(p0)s') % {"p0": f'{order.id}'},
-                body=_('%(p0)s назначил роль «%(p1)s» по заказу %(p2)s.') % {"p0": f'{user.username}', "p1": f'{to_role}', "p2": f'{order.customer_name}'},
-                url=f"/chat/?order={order.id}",
-            )
     except Exception:
         logger.exception("op_assign notify failed")
 
     return ActionResult(
-        text=_('✓ Заказ #%(p0)s назначен на «%(p1)s».') % {"p0": f'{order.id}', "p1": f'{to_role}'},
+        text=_('✓ Заказ #%(p0)s назначен специалисту %(p1)s.') % {"p0": f'{order.id}', "p1": target.username},
         contextual_actions=[
             {"action": "op_order_detail", "label": _("Открыть заказ"), "params": {"order_id": order.id}},
             {"action": "op_dashboard", "label": _("← Сводка")},
@@ -1501,7 +1525,7 @@ def op_add_note(params, user, role):
         return ActionResult(text=_("Заказ не найден."))
 
     text = (params.get("text") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not text:
         return ActionResult(
@@ -1552,7 +1576,7 @@ def op_assign_carrier(params, user, role):
     except (Order.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Заказ не найден."))
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     carrier_name    = (params.get("carrier_name") or "").strip()[:120]
     tracking_number = (params.get("tracking_number") or "").strip()[:80]
     tracking_url    = (params.get("tracking_url") or "").strip()[:500]
@@ -1681,14 +1705,14 @@ def op_resolve_dispute(params, user, role):
         return ActionResult(text=_("Заказ не найден."))
 
     # FIX (HIGH): обычный оператор может resolve dispute только по своим
-    # назначенным заказам (PIVOT 2026-05-27). Только staff (lead-operator)
-    # может закрыть любой спор.
-    if not user.is_staff and order.assigned_operator_id and order.assigned_operator_id != user.id:
+    # назначенным заказам (PIVOT 2026-05-27). Общий operator/admin может
+    # закрыть любой спор.
+    if role not in ("operator", "admin") and order.assigned_operator_id and order.assigned_operator_id != user.id:
         return ActionResult(text=_("Этот спор не назначен на вас — обратитесь к старшему оператору."))
 
     resolution = (params.get("resolution") or "").strip().lower()
     refund_amount_raw = params.get("refund_amount") or "0"
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or resolution not in DISPUTE_RESOLUTIONS:
         return ActionResult(
@@ -1720,82 +1744,153 @@ def op_resolve_dispute(params, user, role):
     try:
         refund_amount = Decimal(str(refund_amount_raw)) if refund_amount_raw else Decimal("0")
     except Exception:
-        refund_amount = Decimal("0")
-    reason = (params.get("reason") or "").strip()
+        return ActionResult(text=_("Сумма возврата указана неверно."))
+    if (
+        not refund_amount.is_finite()
+        or refund_amount < 0
+        or refund_amount > MAX_DISPUTE_AMOUNT
+    ):
+        return ActionResult(text=_("Сумма возврата указана неверно."))
+    reason = str(params.get("reason") or "").strip()
+    if not reason:
+        return ActionResult(text=_("Укажите обоснование решения по спору."))
+    if len(reason) > 2000:
+        return ActionResult(text=_("Обоснование решения слишком длинное."))
 
     # Side-effects: статус оплаты + реальное движение эскроу (multi-seller split)
     from decimal import Decimal as _D
 
+    from django.db import transaction
     from marketplace.models import OrderItem as _OI
 
     from . import payments as _pay
     from .rating import record_rating_event
 
     money_moved = ""
-    new_payment_status = order.payment_status
-
-    # Поставщики этого заказа (для rating events)
-    sellers_in_order = list({
-        oi.part.seller for oi in
-        _OI.objects.filter(order=order).select_related("part__seller")
-        if oi.part and oi.part.seller
-    })
 
     try:
-        if resolution == "refund":
-            res = _pay.refund_to_buyer(order=order, buyer=order.buyer)
-            if res.get("ok"):
+        with transaction.atomic():
+            order = Order.objects.select_for_update(of=("self",)).get(pk=order.pk)
+            if (
+                role not in ("operator", "admin")
+                and order.assigned_operator_id
+                and order.assigned_operator_id != user.id
+            ):
+                return ActionResult(
+                    text=_("Этот спор не назначен на вас — обратитесь к старшему оператору.")
+                )
+
+            sellers_in_order = list({
+                oi.part.seller for oi in
+                _OI.objects.filter(order=order).select_related("part__seller")
+                if oi.part and oi.part.seller
+            })
+            new_payment_status = order.payment_status
+
+            if resolution == "refund":
+                if not order.buyer_id:
+                    raise ValueError("order has no buyer")
+                res = _pay.refund_to_buyer(order=order, buyer=order.buyer)
+                if not res.get("ok"):
+                    raise _pay.InsufficientEscrow("full refund was not completed")
+                if _pay.escrow_balance_for_order(order.id) != _D("0"):
+                    raise _pay.InsufficientEscrow("full refund left order escrow")
                 money_moved = _(" · возврат $%(amount)s → покупатель") % {"amount": f"{res['amount']:,.2f}"}
-            new_payment_status = "refunded"
-            # Rating: refund → claim_confirmed (-7) для всех продавцов заказа
-            for s in sellers_in_order:
-                record_rating_event(s, event_type="claim_confirmed",
-                                    meta={"order_id": order.id, "resolution": "refund",
-                                          "reason": reason[:200]})
-        elif resolution == "partial_refund":
-            if refund_amount > 0 and order.buyer:
+                new_payment_status = "refunded"
+                for seller in sellers_in_order:
+                    record_rating_event(
+                        seller,
+                        event_type="claim_confirmed",
+                        meta={
+                            "order_id": order.id,
+                            "resolution": "refund",
+                            "reason": reason[:200],
+                        },
+                    )
+            elif resolution == "partial_refund":
+                if refund_amount <= 0:
+                    raise ValueError("partial refund amount must be positive")
+                order_total = Decimal(str(order.total_amount or 0))
+                if (
+                    not order_total.is_finite()
+                    or order_total <= 0
+                    or refund_amount > order_total
+                ):
+                    raise ValueError("partial refund exceeds order total")
+                if not order.buyer_id:
+                    raise ValueError("order has no buyer")
                 res = _pay.refund_to_buyer(order=order, buyer=order.buyer, amount=refund_amount)
-                if res.get("ok"):
-                    money_moved = _(" · возврат $%(amount)s → покупатель") % {"amount": f"{res['amount']:,.2f}"}
-            new_payment_status = "refund_pending"
-            # Rating: partial_refund → return (-5) для всех продавцов заказа
-            for s in sellers_in_order:
-                record_rating_event(s, event_type="return",
-                                    meta={"order_id": order.id, "resolution": "partial_refund",
-                                          "amount": float(refund_amount)})
-        elif resolution == "release":
-            splits = _pay.split_by_seller(order)
-            released_total = _D("0")
-            for s in splits:
-                res = _pay.release_to_seller(order=order, seller=s["seller"], amount=s["amount"])
-                if res.get("ok"):
+                if not res.get("ok"):
+                    raise _pay.InsufficientEscrow("partial refund was not completed")
+                money_moved = _(" · возврат $%(amount)s → покупатель") % {"amount": f"{res['amount']:,.2f}"}
+                new_payment_status = "refund_pending"
+                for seller in sellers_in_order:
+                    record_rating_event(
+                        seller,
+                        event_type="return",
+                        meta={
+                            "order_id": order.id,
+                            "resolution": "partial_refund",
+                            "amount": float(refund_amount),
+                        },
+                    )
+            elif resolution == "release":
+                splits = _pay.split_by_seller(order)
+                if not splits:
+                    raise _pay.InsufficientEscrow("no seller payout is available")
+                released_total = _D("0")
+                for split in splits:
+                    res = _pay.release_to_seller(
+                        order=order,
+                        seller=split["seller"],
+                        amount=split["amount"],
+                    )
+                    if not res.get("ok"):
+                        raise _pay.InsufficientEscrow("seller payout was not completed")
                     released_total += _D(str(res["amount"]))
-            if released_total > 0:
+                if _pay.escrow_balance_for_order(order.id) != _D("0"):
+                    raise _pay.InsufficientEscrow("seller payout left order escrow")
                 n = len(splits)
                 money_moved = (
                     _(" · выплата $%(amount)s → продавц") % {"amount": f"{released_total:,.2f}"}
                     + (_("ам") if n > 1 else _("у"))
                 )
-            new_payment_status = "paid"
-            # release → нейтрально для рейтинга (споp закрыт в пользу продавца)
+                new_payment_status = "paid"
+
+            if new_payment_status != order.payment_status:
+                order.payment_status = new_payment_status
+                order.save(update_fields=["payment_status"])
+
+            _log_event(
+                order, "operator_action", actor=user, source="operator",
+                meta={
+                    "kind": "dispute_resolved",
+                    "resolution": resolution,
+                    "refund_amount": float(refund_amount),
+                    "reason": reason,
+                    "by": user.username,
+                    "money_moved": money_moved,
+                },
+            )
     except Exception:
-        logger.exception("escrow move on dispute resolution failed")
-
-    if new_payment_status != order.payment_status:
-        order.payment_status = new_payment_status
-        order.save(update_fields=["payment_status"])
-
-    _log_event(
-        order, "operator_action", actor=user, source="operator",
-        meta={
-            "kind": "dispute_resolved",
-            "resolution": resolution,
-            "refund_amount": float(refund_amount),
-            "reason": reason,
-            "by": user.username,
-            "money_moved": money_moved,
-        },
-    )
+        logger.exception(
+            "dispute resolution failed for order=%s resolution=%s",
+            order.id,
+            resolution,
+        )
+        return ActionResult(
+            text=_(
+                "Не удалось закрыть спор: денежная операция не подтверждена. "
+                "Статус заказа и журнал не изменены."
+            ),
+            contextual_actions=[
+                {
+                    "action": "op_order_detail",
+                    "label": _("Открыть заказ"),
+                    "params": {"order_id": order.id},
+                },
+            ],
+        )
 
     # Уведомим обе стороны
     if order.buyer:
@@ -1895,7 +1990,7 @@ def op_hs_assign(params, user, role):
 
     hs_code = (params.get("hs_code") or "").strip()
     country = (params.get("country") or "RU").strip().upper()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not hs_code:
         cur = _customs_meta(order)
@@ -2063,7 +2158,7 @@ def op_cert_upload(params, user, role):
 
     cert = (params.get("cert") or "").strip()
     number = (params.get("number") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not cert:
         return ActionResult(
@@ -2339,7 +2434,7 @@ def op_customs_release(params, user, role):
     except (Order.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Заказ не найден."))
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     customs = _customs_meta(order)
     hs_code = customs.get("hs_code", "")
     have = list(customs.get("certs") or [])
@@ -3441,8 +3536,8 @@ def op_payments_dashboard(params, user, role):
     ).exclude(
         payment_status__in=("paid", "refunded"),
     ).exclude(status__in=("delivered", "completed", "cancelled"))
-    # PIVOT 2026-05-27: фильтр по ownership (не для лидов)
-    if not user.is_staff:
+    # PIVOT 2026-05-27: фильтр по ownership для предметных подролей.
+    if role not in ("operator", "admin"):
         _orders_q = _orders_q.filter(assigned_operator=user)
     active_orders = list(_orders_q)
     # Реальный outstanding = сумма total_amount активных заказов
@@ -4081,7 +4176,7 @@ def op_confirm_topup(params, user, role):
     атомарно (см. WalletTopupRequest.mark_paid)."""
     from assistant.models import WalletTopupRequest
 
-    if not (user.is_staff or user.is_superuser):
+    if role not in ("operator_payment", "operator", "admin"):
         return ActionResult(text=_("⚠️ Действие доступно только сотрудникам."))
 
     topup_id = params.get("topup_id")
@@ -4130,7 +4225,7 @@ def op_reject_topup(params, user, role):
 
     from assistant.models import WalletTopupRequest
 
-    if not (user.is_staff or user.is_superuser):
+    if role not in ("operator_payment", "operator", "admin"):
         return ActionResult(text=_("⚠️ Действие доступно только сотрудникам."))
 
     topup_id = params.get("topup_id")

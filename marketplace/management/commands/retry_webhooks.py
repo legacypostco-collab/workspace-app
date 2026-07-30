@@ -1,11 +1,11 @@
 import json
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from assistant.security import safe_outbound_url
+from assistant.security import safe_outbound_url, urlopen_no_redirect
 from marketplace.models import WebhookDeliveryLog
 
 
@@ -51,43 +51,43 @@ class Command(BaseCommand):
                 request_payload=payload,
             )
             try:
-                ok_url, reason = safe_outbound_url(endpoint)
+                ok_url, _reason = safe_outbound_url(
+                    endpoint,
+                    allow_query=False,
+                )
                 if not ok_url:
-                    retry_log.error = f"blocked endpoint: {reason}"
+                    retry_log.error = "Webhook endpoint was blocked by the security policy."
                     retry_log.save(update_fields=["error", "updated_at"])
                     fail_count += 1
                     continue
 
                 req = Request(endpoint, data=body, headers=headers, method="POST")
-                with urlopen(req, timeout=timeout) as resp:
+                # The target passed safe_outbound_url with a production allowlist.
+                with urlopen_no_redirect(req, timeout=timeout) as resp:
                     status_code = int(getattr(resp, "status", 200))
-                    response_body = resp.read().decode("utf-8", errors="ignore")[:4000]
                 is_ok = 200 <= status_code < 300
                 retry_log.success = is_ok
                 retry_log.status_code = status_code
-                retry_log.response_body = response_body
-                retry_log.save(update_fields=["success", "status_code", "response_body", "updated_at"])
+                retry_log.save(
+                    update_fields=["success", "status_code", "updated_at"]
+                )
                 if is_ok:
                     ok_count += 1
                 else:
                     fail_count += 1
             except HTTPError as exc:
-                err_body = ""
-                try:
-                    err_body = exc.read().decode("utf-8", errors="ignore")[:4000]
-                except Exception:
-                    err_body = ""
-                retry_log.error = f"HTTPError: {exc}"
+                retry_log.error = "Remote endpoint returned an HTTP error."
                 retry_log.status_code = int(getattr(exc, "code", 0) or 0)
-                retry_log.response_body = err_body
-                retry_log.save(update_fields=["error", "status_code", "response_body", "updated_at"])
+                retry_log.save(
+                    update_fields=["error", "status_code", "updated_at"]
+                )
                 fail_count += 1
-            except URLError as exc:
-                retry_log.error = f"URLError: {exc}"
+            except URLError:
+                retry_log.error = "Webhook transport failed."
                 retry_log.save(update_fields=["error", "updated_at"])
                 fail_count += 1
-            except Exception as exc:
-                retry_log.error = f"Exception: {exc}"
+            except Exception:
+                retry_log.error = "Webhook delivery failed."
                 retry_log.save(update_fields=["error", "updated_at"])
                 fail_count += 1
 

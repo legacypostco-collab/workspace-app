@@ -6,9 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>{% if page_key == 'terms' %}{% trans "Условия использования" %}{% elif page_key == 'privacy' %}{% trans "Политика конфиденциальности" %}{% else %}{% trans "Использование cookies" %}{% endif %} — Consolidator</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-  <link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{min-height:100%;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
@@ -64,7 +61,7 @@
     </ul>
 
     <h2>{% trans "3. Финансовые условия" %}</h2>
-    <p>{% trans "Платформа использует трёхступенчатую схему оплаты: резерв 10%, основной платёж 50%, таможенный платёж 40%. Все средства проходят через эскроу-счёт оператора." %}</p>
+    <p>{% trans "Платформа использует двухэтапную схему оплаты: резерв 10% и окончательный платёж 90% перед отгрузкой. Все средства проходят через эскроу-счёт оператора." %}</p>
 
     <h2>{% trans "4. SLA и ответственность" %}</h2>
     <p>{% trans "Поставщики обязуются соблюдать сроки реакции на RFQ и отгрузки согласно SLA. Нарушение SLA влечёт штрафные санкции." %}</p>

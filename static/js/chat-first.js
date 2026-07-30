@@ -1711,6 +1711,73 @@
   // возвращает оригинал, если перевода нет → данные, бэкенд-строки (уже на языке)
   // и HTML-разметка не страдают; переводятся только известные UI-литералы.
   const esc = s => _escRaw(window.t ? window.t(s == null ? '' : String(s)) : s);
+  function safeSameOriginUrl(value) {
+    if (!value || typeof value !== 'string') return '';
+    try {
+      const parsed = new URL(value, window.location.origin);
+      if (parsed.origin !== window.location.origin) return '';
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return '';
+      return parsed.pathname + parsed.search + parsed.hash;
+    } catch (_) {
+      return '';
+    }
+  }
+  function navigateSameOrigin(value) {
+    const target = safeSameOriginUrl(value);
+    if (!target) return false;
+    window.location.assign(target);
+    return true;
+  }
+  function openSameOrigin(value) {
+    const target = safeSameOriginUrl(value);
+    if (!target) return false;
+    window.open(target, '_blank', 'noopener');
+    return true;
+  }
+  function openTrustedExternal(value) {
+    if (!value || typeof value !== 'string') return false;
+    try {
+      const parsed = new URL(value);
+      if (
+        parsed.protocol !== 'https:'
+        || parsed.hostname !== 't.me'
+        || parsed.username
+        || parsed.password
+      ) return false;
+      window.open(parsed.href, '_blank', 'noopener');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+  function safeHttpsUrl(value) {
+    if (!value || typeof value !== 'string') return '';
+    try {
+      const parsed = new URL(value, window.location.origin);
+      if (parsed.username || parsed.password) return '';
+      if (parsed.origin === window.location.origin) {
+        return parsed.pathname + parsed.search + parsed.hash;
+      }
+      return parsed.protocol === 'https:' ? parsed.href : '';
+    } catch (_) {
+      return '';
+    }
+  }
+  function safeImageUrl(value) {
+    const sameOrigin = safeSameOriginUrl(value);
+    if (sameOrigin) return sameOrigin;
+    if (
+      typeof value === 'string'
+      && /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/=\s]+$/i.test(value)
+    ) return value;
+    return '';
+  }
+  function safeCssColor(value, fallback='#E84A21') {
+    const color = String(value || '').trim();
+    return /^#[0-9a-f]{3}(?:[0-9a-f]{3})?(?:[0-9a-f]{2})?$/i.test(color)
+      ? color
+      : fallback;
+  }
   // Выбран ли русский интерфейс (выставляется и сервером в <html lang>, и setLanguage).
   const _isRuUI = () => (document.documentElement.getAttribute('lang') || 'ru').toLowerCase().slice(0, 2) === 'ru';
   // Имя позиции для колонки NAME. Только при ru-локали И наличии name_ru показываем
@@ -1754,6 +1821,26 @@
     'start_registration', 'start_login', 'start_onboarding', 'switch_role_login',
   ]);
 
+  function newOperationId() {
+    const cryptoApi = window.crypto;
+    if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
+      return cryptoApi.randomUUID();
+    }
+    if (!cryptoApi || typeof cryptoApi.getRandomValues !== 'function') {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
+        const random = Math.floor(Math.random() * 16);
+        const value = char === 'x' ? random : ((random & 0x3) | 0x8);
+        return value.toString(16);
+      });
+    }
+    const bytes = new Uint8Array(16);
+    cryptoApi.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  }
+
   async function api(path, opts={}) {
     // Канал браузер↔origin (РФ) нестабилен: ~10-15% запросов рвутся ИЛИ
     // зависают (без таймаута UI крутит спиннер вечно). Для idempotent
@@ -1791,11 +1878,9 @@
       }
       if (timer) clearTimeout(timer);
       if (res.ok) return res.json();
-      // 52x от Cloudflare = origin НЕдостижим → запрос вообще не дошёл до приложения,
-      // поэтому ретрай безопасен ДАЖЕ для мутирующего POST (двойного выполнения нет).
-      // Прочие 5xx (500/502/503) — ретраим GET и read-only POST.
-      const cfUnreachable = (res.status >= 520 && res.status <= 524);
-      const canRetry = cfUnreachable || (retryNet && res.status >= 500);
+      // Код прокси не доказывает, что запрос не дошёл до приложения. Повторяем
+      // только GET/HEAD и явно помеченные read-only POST.
+      const canRetry = retryNet && res.status >= 500;
       if (canRetry && i < attempts - 1) {
         lastErr = new Error(`${path} → ${res.status}`);
         await new Promise(r => setTimeout(r, 600 + i*900));
@@ -1929,10 +2014,10 @@
       const t = document.createElement('div');
       const title = (payload && payload.title) || tr('card.notification');
       const body  = (payload && payload.body)  || '';
-      const url   = (payload && payload.url)   || '';
+      const url   = safeSameOriginUrl((payload && payload.url) || '');
       t.style.cssText = 'pointer-events:auto;background:#1d2330;color:#fff;padding:10px 14px;border-radius:10px;border:1px solid rgba(232,74,33,0.35);box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:340px;font-size:13px;line-height:1.4;cursor:pointer;';
       t.innerHTML = '<div style="font-weight:600;margin-bottom:2px;">🔔 ' + esc(title) + '</div>' + (body ? '<div style="opacity:.85;">' + esc(body) + '</div>' : '');
-      if (url) t.addEventListener('click', () => { try { location.href = url; } catch(e){} });
+      if (url) t.addEventListener('click', () => navigateSameOrigin(url));
       host.appendChild(t);
       setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 5000);
       // Счётчик увеличиваем только для настоящих Notification из базы.
@@ -2200,9 +2285,9 @@
     const item = ev.target.closest && ev.target.closest('.notif-item');
     if (!item) return;
     const id = parseInt(item.dataset.id, 10);
-    const url = item.dataset.url || '';
+    const url = safeSameOriginUrl(item.dataset.url || '');
     if (id) markNotifRead(id);
-    if (url) { try { location.href = url; } catch(e){} }
+    if (url) navigateSameOrigin(url);
   });
 
   // ── Клик по пилюле порта → выделить FOB-ячейку соответствующего режима ──
@@ -2434,7 +2519,7 @@
       else body = (d.groups || []).filter(g => (g.rows || []).length).map(g =>
         '<div class="opd-group"><div class="opd-gtitle">' + esc(g.label) + ' (' + (g.rows || []).length + ')</div>'
         + (g.rows || []).map(r =>
-            '<a class="dw-result" href="' + esc(r.url || '#') + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">'
+            '<a class="dw-result" href="' + esc(safeSameOriginUrl(r.url) || '#') + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">'
             + '<span class="dw-rtitle">' + esc(r.title || '') + '</span>'
             + (r.subtitle ? '<span class="dw-rsub">' + esc(r.subtitle) + '</span>' : '') + '</a>').join('')
         + '</div>').join('');
@@ -2455,8 +2540,8 @@
           <div class="card-price">${fmtMoney(d.price, d.currency)}</div>
         </div>
         <div class="card-meta">
-          ${d.in_stock !== false ? `<span class="card-chip card-chip-green">${d.quantity ? d.quantity + ' ' + tr('stock.pcs') : tr('stock.in_stock')}</span>` : `<span class="card-chip card-chip-gray">${tr('stock.not_available')}</span>`}
-          ${d.delivery_days ? `<span class="card-chip">${d.delivery_days} дн</span>` : ''}
+          ${d.in_stock !== false ? `<span class="card-chip card-chip-green">${d.quantity ? esc(d.quantity) + ' ' + tr('stock.pcs') : tr('stock.in_stock')}</span>` : `<span class="card-chip card-chip-gray">${tr('stock.not_available')}</span>`}
+          ${d.delivery_days ? `<span class="card-chip">${esc(d.delivery_days)} дн</span>` : ''}
           ${d.condition ? `<span class="card-chip card-chip-gray">${esc(d.condition)}</span>` : ''}
         </div>
       </div>`;
@@ -2465,7 +2550,7 @@
       return `<div class="card qr-card">
         <div class="card-title">${esc(d.title || 'QR-код')}</div>
         ${d.subtitle ? `<div class="qr-sub">${esc(d.subtitle)}</div>` : ''}
-        <div class="qr-img"><img src="${esc(d.image_url)}" alt="QR" loading="lazy"/></div>
+        <div class="qr-img"><img src="${esc(safeImageUrl(d.image_url))}" alt="QR" loading="lazy"/></div>
         <div class="qr-payload">${esc(d.payload || '')}</div>
       </div>`;
     },
@@ -2972,7 +3057,7 @@
         if (r.action) {
           attrs = `class="${cls}" data-action="${esc(r.action)}" data-params='${esc(JSON.stringify(r.params || {}))}' data-label="${esc(r.title || r.action)}"`;
         } else if (r.url) {
-          attrs = `class="${cls}" onclick="window.open('${esc(r.url)}','_blank','noopener')"`;
+          attrs = `class="${cls}" data-href="${esc(safeSameOriginUrl(r.url))}"`;
         } else {
           attrs = `class="${cls}"`;
         }
@@ -2982,10 +3067,10 @@
           const checkedAttr = r.checked ? ' ls-checkbox-on' : '';
           const titleDone = r.checked ? ' ls-title-done' : '';
           const subDone = r.checked ? 'Проверено' : 'Кликнуть → отметить как проверено';
-          const inlineHandler = r.action
-            ? `onclick="event.preventDefault();event.stopPropagation();window.toggleChecklistRow&&window.toggleChecklistRow(this,'${esc(r.action)}','${esc(JSON.stringify(r.params || {}))}')"`
+          const checklistAttrs = r.action
+            ? `data-action="${esc(r.action)}" data-params='${esc(JSON.stringify(r.params || {}))}'`
             : '';
-          return `<div class="ls-row ls-link ls-row-check${toneCls}" ${inlineHandler}>
+          return `<div class="ls-row ls-link ls-row-check${toneCls}" ${checklistAttrs}>
             <span class="ls-checkbox${checkedAttr}" aria-hidden="true">${r.checked ? '✓' : ''}</span>
             <div class="ls-main">
               <div class="ls-title${titleDone}">${esc(r.title || '')}</div>
@@ -3228,8 +3313,8 @@
           data-field="${esc(String(d.field || ''))}"
           data-apply-as="${esc(String(d.apply_as || 'constant'))}">
         <div class="sq-step">${idx + 1} / ${total}</div>
-        <div class="sq-q">${tr(String(d.question || ''))}</div>
-        ${d.hint ? `<div class="sq-hint" style="font-size:13px;line-height:1.4;opacity:.72;margin:-2px 0 10px;">${tr(String(d.hint))}</div>` : ''}
+        <div class="sq-q">${esc(d.question || '')}</div>
+        ${d.hint ? `<div class="sq-hint" style="font-size:13px;line-height:1.4;opacity:.72;margin:-2px 0 10px;">${esc(d.hint)}</div>` : ''}
         ${chips ? `<div class="sq-chips">${chips}</div>` : ''}
         <div class="sq-input-row">
           ${countryHtml}
@@ -3411,7 +3496,7 @@
           </div>
           <div class="iv-ref-btns" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
             <button class="iv-ref-copy" type="button" data-copy="${esc(d.ref)}" title="Скопировать">Копировать</button>
-            ${d.pdf_url ? `<a class="iv-ref-copy iv-ref-dl" href="${esc(d.pdf_url)}" download title="Скачать инвойс в PDF" style="text-decoration:none;">⬇ Скачать</a>` : ''}
+            ${safeSameOriginUrl(d.pdf_url) ? `<a class="iv-ref-copy iv-ref-dl" href="${esc(safeSameOriginUrl(d.pdf_url))}" download title="Скачать инвойс в PDF" style="text-decoration:none;">⬇ Скачать</a>` : ''}
           </div>
           ${d.ref_warning ? `<div class="iv-ref-warn">⚠️ ${esc(d.ref_warning)}</div>` : ''}
         </div>` : ''}
@@ -3479,7 +3564,7 @@
         const inner = `
           <div class="kpi-value">${esc(String(k.value ?? '—'))}</div>
           <div class="kpi-label">${esc(k.label || '')}</div>
-          ${k.sub ? `<div class="kpi-sub">${tr(k.sub)}</div>` : ''}`;
+          ${k.sub ? `<div class="kpi-sub">${esc(k.sub)}</div>` : ''}`;
         if (k.action) {
           // S4 fix: action/params могут содержать апострофы → ломали inline onclick='…'
           // и открывали XSS. Кладём в data-* атрибуты с esc(); делегированный
@@ -3489,8 +3574,8 @@
             data-action="${esc(k.action)}"
             data-params='${esc(paramsJson)}'>${inner}</button>`;
         }
-        if (k.url) {
-          return `<a class="kpi-cell kpi-cell-clickable" href="${esc(k.url)}">${inner}</a>`;
+        if (safeSameOriginUrl(k.url)) {
+          return `<a class="kpi-cell kpi-cell-clickable" href="${esc(safeSameOriginUrl(k.url))}">${inner}</a>`;
         }
         return `<div class="kpi-cell">${inner}</div>`;
       }).join('');
@@ -3574,11 +3659,13 @@
             // Кнопка с двумя действиями: open + copy URL (на случай если
             // preview-режим Claude блочит docs.google.com — копируем
             // URL в clipboard и пользователь открывает сам).
-            const u = m.secondary.url;
-            secHtml = `<div class="im-sec-row">
-              <a class="im-secondary" href="${esc(u)}" target="_blank" rel="noopener">${esc(m.secondary.label || '↗')}</a>
-              <button class="im-copy-btn" data-copy-url="${esc(u)}" title="Скопировать ссылку">📋</button>
-            </div>`;
+            const u = safeHttpsUrl(m.secondary.url);
+            if (u) {
+              secHtml = `<div class="im-sec-row">
+                <a class="im-secondary" href="${esc(u)}" target="_blank" rel="noopener">${esc(m.secondary.label || '↗')}</a>
+                <button class="im-copy-btn" data-copy-url="${esc(u)}" title="Скопировать ссылку">📋</button>
+              </div>`;
+            }
           } else if (m.secondary.action) {
             secHtml = `<button class="im-secondary act-btn" data-action="${esc(m.secondary.action)}" data-params='${esc(JSON.stringify(m.secondary.params || {}))}' data-label="${esc(m.secondary.label || '')}">${esc(m.secondary.label || '↗')}</button>`;
           }
@@ -3598,8 +3685,8 @@
           // Просто primary-кнопка
           if (m.primary.action) {
             formHtml = `<button class="im-primary act-btn" data-action="${esc(m.primary.action)}" data-params='${esc(JSON.stringify(m.primary.params || {}))}' data-label="${esc(m.primary.label || '')}">${esc(m.primary.label || 'OK')}</button>`;
-          } else if (m.primary.url) {
-            formHtml = `<a class="im-primary" href="${esc(m.primary.url)}" target="_blank" rel="noopener">${esc(m.primary.label || '↗')}</a>`;
+          } else if (safeHttpsUrl(m.primary.url)) {
+            formHtml = `<a class="im-primary" href="${esc(safeHttpsUrl(m.primary.url))}" target="_blank" rel="noopener">${esc(m.primary.label || '↗')}</a>`;
           }
         }
         const disabledCls = m.disabled ? ' im-card-disabled' : '';
@@ -4413,12 +4500,15 @@
       </div>`;
     },
     supplier(d) {
+      const kpi = d.kpi
+        ? Object.entries(d.kpi).map(([k, v]) => `${esc(k)}: ${esc(v)}`).join(' · ')
+        : '';
       return `<div class="card">
         <div class="card-row">
           <div class="card-emoji">🏭</div>
           <div class="card-info">
             <div class="card-title">${esc(d.name)}</div>
-            <div class="card-sub">${d.kpi ? Object.entries(d.kpi).map(([k,v]) => `${k}: ${v}`).join(' · ') : ''}</div>
+            <div class="card-sub">${kpi}</div>
           </div>
         </div>
       </div>`;
@@ -4434,7 +4524,7 @@
       const items = d.items || [];
       const max = Math.max(...items.map(i => i.value || 0)) || 1;
       const bars = items.map(i =>
-        `<div class="chart-bar" style="height:${(i.value/max*100)|0}%;${i.color ? 'background:'+i.color : ''}"><div class="chart-bar-label">${esc(i.label)}</div></div>`
+        `<div class="chart-bar" style="height:${Math.max(0, Math.min(100, (Number(i.value)/max*100)|0))}%;background:${safeCssColor(i.color)}"><div class="chart-bar-label">${esc(i.label)}</div></div>`
       ).join('');
       return `<div class="card">
         <div class="card-title" style="margin-bottom:8px;">${esc(d.title || '')}</div>
@@ -4898,8 +4988,9 @@
     btn.disabled = true; btn.textContent = '⏳ Сохраняю…';
     api('/api/assistant/action/', {
       method: 'POST',
-      body: JSON.stringify({ action: 'edit_product', params: params }),
-      retryNetwork: true,
+      body: JSON.stringify({ action: 'edit_product', params: params,
+        operation_id: newOperationId() }),
+      retryNetwork: false,
     }).then(function(resp){
       btn.disabled = false;
       if (resp && resp.error) { btn.textContent = '💾 Сохранить'; if (window.toast) window.toast('❌ ' + resp.error, 3000); return; }
@@ -5235,7 +5326,8 @@
       // style: primary (главный зелёный/чёрный CTA), warn (янтарный SEMI),
       // soft (мягкий outline для MANUAL), default (обычная чёрная кнопка)
       const styleCls = a.style ? ` act-btn-${esc(a.style)}` : '';
-      return `<button class="act-btn${styleCls}" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(a.label)}">${esc(a.label)}</button>`;
+      const label = a.label || (a.params && a.params._label) || a.action || tr('Действие');
+      return `<button class="act-btn${styleCls}" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(label)}">${esc(label)}</button>`;
     }).join('') + '</div>';
   }
 
@@ -5247,7 +5339,7 @@
   function avatar(role) {
     if (role === 'user') {
       const initial = ((state.config && state.config.user_name || 'U')[0] || 'U').toUpperCase();
-      return `<div class="msg-avatar msg-avatar-user">${initial}</div>`;
+      return `<div class="msg-avatar msg-avatar-user">${esc(initial)}</div>`;
     }
     if (role === 'action') return '<div class="msg-avatar msg-avatar-act">▸</div>';
     return `<div class="msg-avatar msg-avatar-bot">${STAR_SVG_BLACK}</div>`;
@@ -5437,9 +5529,10 @@
 
   function renderContextualActions(items) {
     if (!items || !items.length) return '';
-    const btns = items.map(a =>
-      `<button class="act-btn ctx-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(a.label)}">${esc(a.label)}</button>`
-    ).join('');
+    const btns = items.map(a => {
+      const label = a.label || (a.params && a.params._label) || a.action || tr('Действие');
+      return `<button class="act-btn ctx-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(label)}">${esc(label)}</button>`;
+    }).join('');
     return `<div class="ctx-row">
       <span class="ctx-label">💡 Также можете:</span>
       ${btns}
@@ -5557,9 +5650,11 @@
   // Делегируем клик по clickable card → 1) data-href навигация, 2) data-action quickAction
   document.addEventListener('click', (e) => {
     // 1. Чистая навигация (RFQ карточки и т.п.)
-    const navCard = e.target.closest('.card-clickable[data-href]');
+    const navCard = e.target.closest(
+      '.card-clickable[data-href], .ls-row[data-href]'
+    );
     if (navCard && navCard.dataset.href) {
-      window.location.href = navCard.dataset.href;
+      navigateSameOrigin(navCard.dataset.href);
       return;
     }
     // 2. Action-карточки (order → track_order, KPI-ячейки, sidebar pills и т.п.)
@@ -5575,7 +5670,10 @@
   // Поддержка клавиатуры (Enter/Space) для clickable cards
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const target = e.target.closest && e.target.closest('.card-clickable[data-action], .card-clickable[data-href]');
+    const target = e.target.closest && e.target.closest(
+      '.card-clickable[data-action], .card-clickable[data-href], '
+      + '.ls-row[data-action], .ls-row[data-href]'
+    );
     if (!target) return;
     e.preventDefault();
     target.click();
@@ -6020,8 +6118,9 @@
       const j = await api('/api/assistant/action/', {
         method:'POST',
         body: JSON.stringify({action:'complete_trigger',
-          params:{order_id: orderId, status, trigger_id: triggerId}}),
-        retryNetwork: true,
+          params:{order_id: orderId, status, trigger_id: triggerId},
+          operation_id:newOperationId()}),
+        retryNetwork: false,
       });
       if (j.error) {
         btn.disabled = false; delete btn.dataset._busy;
@@ -6072,7 +6171,8 @@
       const r = await fetch('/api/assistant/action/', {
         method:'POST', credentials:'same-origin',
         headers:{'Content-Type':'application/json','X-CSRFToken':csrf()},
-        body: JSON.stringify({action, params:{order_id: orderId}}),
+        body: JSON.stringify({action, params:{order_id: orderId},
+          operation_id:newOperationId()}),
       });
       const j = await r.json();
       if (!r.ok || j.error) {
@@ -6136,8 +6236,9 @@
     try {
       const j = await api('/api/assistant/action/', {
         method:'POST',
-        body: JSON.stringify({action:'seller_cancel_pending', params:{order_id: orderId}}),
-        retryNetwork: true,
+        body: JSON.stringify({action:'seller_cancel_pending', params:{order_id: orderId},
+          operation_id:newOperationId()}),
+        retryNetwork: false,
       });
       if (j.error) {
         window.toast && window.toast('❌ Ошибка: ' + j.error, 3000);
@@ -6170,12 +6271,13 @@
     });
     if (!ok) return;
     // api() вместо fetch — чтобы дождаться ответа и убрать карточку отменённого
-    // заказа из DOM в текущем списке; retryNetwork=true т.к. отмена идемпотентна.
+    // заказа из DOM в текущем списке. Мутацию автоматически не повторяем.
     try {
       const j = await api('/api/assistant/action/', {
         method:'POST',
-        body: JSON.stringify({action:'cancel_order', params:{order_id: orderId}}),
-        retryNetwork: true,
+        body: JSON.stringify({action:'cancel_order', params:{order_id: orderId},
+          operation_id:newOperationId()}),
+        retryNetwork: false,
       });
       if (j.error) {
         window.toast && window.toast('❌ Ошибка: ' + j.error, 3000);
@@ -6228,8 +6330,9 @@
       const j = await api('/api/assistant/action/', {
         method:'POST',
         body: JSON.stringify({action:'seller_warehouses',
-                              params:{warehouse_id: wid, action: 'delete'}}),
-        retryNetwork: true,
+                              params:{warehouse_id: wid, action: 'delete'},
+                              operation_id:newOperationId()}),
+        retryNetwork: false,
       });
       if (j && j.error) throw new Error(j.error);
       // Удаляем строку склада из DOM во всех карточках чата, чтобы клик
@@ -6255,8 +6358,9 @@
       const j = await api('/api/assistant/action/', {
         method:'POST',
         body: JSON.stringify({action:'seller_warehouses',
-                              params:{warehouse_id: wid, rename_to: next.trim()}}),
-        retryNetwork: true,
+                              params:{warehouse_id: wid, rename_to: next.trim()},
+                              operation_id:newOperationId()}),
+        retryNetwork: false,
       });
       addMessage('assistant', j.text || '✓ Переименовано', j.cards || [], j.actions || []);
     } catch(e) {
@@ -6389,14 +6493,32 @@
           finishStream(state._lastCards, state._lastActions, state._lastRefs || d.refs, state._lastText, ctxActs, sugs);
           state._lastCards = []; state._lastActions = []; state._lastRefs = []; state._lastText = null;
           state._lastCtxActions = []; state._lastSuggestions = [];
+        } else if (d.type === 'support_sent') {
+          state._wsPending = null;
+          removeTyping();
+          state.streaming = false;
+          $('sendBtn').disabled = false;
+          $('heroSendBtn').disabled = false;
+          loadConvList();
         } else if (d.type === 'error') {
           state._wsPending = null;   // серверная ошибка, не обрыв — не до-запрашиваем
           finishStream([], []);
           addMessage('assistant', '⚠️ ' + d.message);
         } else if (d.type === 'notification') {
-          showNotifToast(d.payload || {});
-          const rfqId = rfqIdFromPayload(d.payload || {});
-          if (rfqId && (d.payload || {}).kind === 'rfq') refreshVisibleRfq(rfqId);
+          const payload = d.payload || {};
+          const currentConversationChanged = (
+            (payload.kind === 'support_message' || payload.kind === 'order')
+              && payload.conversation_id === state.convId
+          );
+          if (currentConversationChanged) {
+            try { loadConv(state.convId, {silent: true}); } catch(_) {}
+          } else {
+            showNotifToast(payload);
+          }
+          const rfqId = rfqIdFromPayload(payload);
+          if (rfqId && payload.kind === 'rfq') refreshVisibleRfq(rfqId);
+          loadNotifications();
+          loadConvList();
         } else if (d.type === 'rfq_update') {
           if (d.rfq_id) refreshVisibleRfq(d.rfq_id);
           loadConvList();
@@ -6476,12 +6598,9 @@
     if (hb) hb.disabled = false;
   }
 
-  // Обрыв WS на полпути. КРИТИЧНО: consumers.py материализует генератор ЦЕЛИКОМ
-  // ДО стрима, поэтому к моменту обрыва ответ (вкл. возможный create_rfq) УЖЕ
-  // сохранён в БД. Раньше recovery делал повторный POST /chat/ → ЗАНОВО гнал
-  // AI-пайплайн → второй create_rfq, второй AI-кредит, дубль user+assistant.
-  // Теперь: сначала ПЕРЕЗАГРУЖАЕМ разговор (GET, idempotent, api сам ретраит),
-  // и если ответ уже в БД — рендерим его БЕЗ повторного запуска пайплайна.
+  // Обрыв WS на полпути. Сначала перезагружаем разговор: ответ мог уже
+  // сохраниться до сетевого разрыва. Это предотвращает повторный запуск
+  // действия, двойное списание AI-кредита и дубли сообщений.
   async function _recoverInterruptedStream(text) {
     // Сразу показываем индикатор: чинит «зависший пустой экран» на ~90с,
     // пока GET тянет сохранённый ответ (intent — как при отправке).
@@ -6510,8 +6629,7 @@
         loadConvList();
         return;
       }
-      // Ответа в БД нет (редкий ранний обрыв — до материализации генератора):
-      // тогда безопасно до-запросить по HTTP (пайплайн ещё не отработал).
+      // Ответа в БД нет: безопасно до-запрашиваем его по HTTP.
       const r = await api('/api/assistant/chat/', {
         method: 'POST',
         body: JSON.stringify({conversation_id: state.convId, message: text}),
@@ -6912,14 +7030,14 @@
         .replace(/^\/rfq\/(\d+)\/?$/, '/chat/rfq/$1/')
         .replace(/^\/buyer\/orders\/(\d+)\/?$/, '/chat/')
         .replace(/^\/seller\/rfqs\/(\d+)\/?$/, '/chat/rfq/$1/');
-      if (url.startsWith('/chat/')) {
-        window.location.href = url;
+      if (safeSameOriginUrl(url).startsWith('/chat/')) {
+        navigateSameOrigin(url);
         return;
       }
       // Все не-/chat/ URL — это или PDF/файлы, или внешка. Открываем в новой вкладке,
       // чтобы пользователь не уходил из чата.
       const isFile = /\.(pdf|xlsx?|csv|docx?|zip|png|jpe?g)(\?|$)/i.test(url);
-      if (isFile) { window.open(url, '_blank', 'noopener'); return; }
+      if (isFile && openSameOrigin(url)) return;
       // Иначе — не уходим, превращаем в обычный action call (если action есть).
       if (!action) return;
     }
@@ -6939,21 +7057,41 @@
     const typingDelay = isFast
       ? setTimeout(() => addTyping("loading", true), 800)
       : setTimeout(() => addTyping(pickIntent(action)), 250);
+    const requestedConvId = state.convId;
+    const readOnlyRequest = READONLY_ACTIONS.has(action)
+      || (AUTH_DISPLAY_ACTIONS.has(action) && !params.confirmed);
+    const operationId = readOnlyRequest ? null : newOperationId();
     try {
       const r = await api('/api/assistant/action/', {
         method:'POST',
-        body: JSON.stringify({conversation_id: state.convId, action, params}),
+        body: JSON.stringify({conversation_id: state.convId, action, params,
+          ...(operationId ? {operation_id: operationId} : {})}),
         // read-only действие → можно авто-ретраить обрыв канала (не задвоится).
         // Auth-формы без confirmed — тоже показ формы (read-only) → ретраим.
         // start_login / start_registration с confirmed=true — тоже ретраим:
         // логин идемпотентен (повторный вход в тот же акк безвреден), а без
         // ретрая пользователь видит «Connection lost» если daphne перезапустился
         // в момент отправки формы.
-        retryNetwork: READONLY_ACTIONS.has(action)
-          || AUTH_DISPLAY_ACTIONS.has(action),
+        retryNetwork: readOnlyRequest,
       });
       if (typingDelay) clearTimeout(typingDelay);
       removeTyping();
+      if (r.navigate_conversation_id) {
+        setConvId(r.navigate_conversation_id);
+        await window.openConv(r.navigate_conversation_id);
+        loadConvList();
+        return;
+      }
+      // Сервер отделяет служебную команду от живого разговора поддержки.
+      // В этом случае открываем созданную цепочку целиком, чтобы на экране
+      // не смешивалась старая переписка с ответом из нового чата.
+      if (r.conversation_id && requestedConvId
+          && r.conversation_id !== requestedConvId) {
+        setConvId(r.conversation_id);
+        await window.openConv(r.conversation_id);
+        loadConvList();
+        return;
+      }
       setConvId(r.conversation_id || state.convId);
       const ctxActs = ensureHomeNav(r.contextual_actions || []);
       // no_suggestions → не подставляем дефолтные подсказки (экраны, где
@@ -7057,7 +7195,7 @@
       // Бэкенд шлёт ссылку как `_url` (доминирующая конвенция), часть мест — `url`.
       // Принимаем оба, иначе переход молча не срабатывает («не открывается»).
       const url = params && (params._url || params.url);
-      if (url) window.location.href = url;
+      if (url && !navigateSameOrigin(url)) openTrustedExternal(url);
       return;
     }
     return _origQuickAction(action, params);
@@ -7280,8 +7418,9 @@
     try {
       const r = await api('/api/assistant/action/', {
         method: 'POST',
-        body: JSON.stringify({conversation_id: state.convId, action, params}),
-        retryNetwork: true,
+        body: JSON.stringify({conversation_id: state.convId, action, params,
+          operation_id:newOperationId()}),
+        retryNetwork: false,
       });
       const card = (r.cards || []).find(c => c.type === 'drawings');
       if (card && dwCard && dwCard.isConnected) {
@@ -7437,7 +7576,7 @@
     const item = e.target.closest && e.target.closest('.dw-item');
     if (!item) return;
     const url = item.dataset.url;
-    if (url) window.open(url, '_blank', 'noopener');
+    if (url) openSameOrigin(url);
   });
   // 🔗 → раскрыть/скрыть инлайн-поиск позиции под чертежом (без новой карточки)
   document.addEventListener('click', (e) => {
@@ -7521,6 +7660,17 @@
       });
       return;
     }
+    const checklistRow = e.target.closest('.ls-row-check[data-action]');
+    if (checklistRow) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.toggleChecklistRow?.(
+        checklistRow,
+        checklistRow.dataset.action,
+        checklistRow.dataset.params || '{}',
+      );
+      return;
+    }
     // 2. Обычные action-кнопки и любой [data-action] (например, ls-row)
     const btn = e.target.closest('.act-btn,[data-action]');
     if (!btn) return;
@@ -7592,7 +7742,11 @@
 
   function paintRoleToggle(activeRole) {
     document.querySelectorAll('#roleToggle .role-tab').forEach(b => {
-      b.classList.toggle('active', b.dataset.role === activeRole);
+      const isActive = b.dataset.role === activeRole;
+      b.classList.toggle('active', isActive);
+      if (b.getAttribute('role') === 'tab') {
+        b.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      }
     });
   }
 
@@ -7858,7 +8012,7 @@
     const cfg = ROLE_WELCOME[role] || ROLE_WELCOME.buyer;
     const t = $('welcomeTitle'), s = $('welcomeSubtitle'), p = $('welcomePills');
     if (t) t.textContent = tr(cfg.titleKey);
-    if (s) s.innerHTML = tr(cfg.subKey);
+    if (s) s.textContent = tr(cfg.subKey);
     if (!p) return;
     window.__pillRole = role;
     // Гостевой экран: равные по ширине пилюли по центру, без «+» (анониму нечего настраивать).
@@ -7872,14 +8026,15 @@
       // Бейдж «требует действия» на ГЛАВНОЙ не показываем — только в меню пилюль.
       // «×» скрыт; проявляется только в режиме редактирования (долгое нажатие).
       return `<button class="pill" type="button" data-pid="${esc(b.id)}"
-        onclick='quickAction(${JSON.stringify(b.action)}, ${JSON.stringify(params)})'>
+        data-pill-action="${esc(b.action)}"
+        data-pill-params="${esc(JSON.stringify(params))}">
         <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>
         <span class="pill-txt">${esc(label)}${subHtml}</span>
       </button>`;
     }).join('');
     const master = isGuest ? '' : `<button class="pill-add" type="button" aria-label="Добавить пилюлю"
         title="Меню пилюль: добавить, закрепить, переставить"
-        onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>`;
+        data-pill-master>+</button>`;
     p.innerHTML = html + master;
     wirePillEditMode();
   }
@@ -8172,9 +8327,23 @@
         const pill = del.closest('.pill'); if (pill) __pillRemove(pill.getAttribute('data-pid'));
         return;
       }
-      if (__pillEditing) {
-        if (e.target.closest('.pill-add')) { __exitPillEdit(); return; }
+      const master = e.target.closest('[data-pill-master]');
+      if (master) {
         e.stopPropagation(); e.preventDefault();
+        if (__pillEditing) __exitPillEdit();
+        if (window.__openPillMaster) window.__openPillMaster();
+        return;
+      }
+      if (__pillEditing) {
+        e.stopPropagation(); e.preventDefault();
+        return;
+      }
+      const pill = e.target.closest('.pill[data-pill-action]');
+      if (pill) {
+        e.stopPropagation(); e.preventDefault();
+        let params = {};
+        try { params = JSON.parse(pill.dataset.pillParams || '{}'); } catch (_) {}
+        quickAction(pill.dataset.pillAction, params);
       }
     }, true);
   }
@@ -9132,11 +9301,8 @@
     if (state.ws) { try { state.ws.close(); } catch(e){} }
     setConvId(null);
     showWelcome({clear: true});
-    try {
-      await createConversation();
-    } catch (e) {
-      addMessage('assistant', tr('Не удалось создать новый диалог. Проверьте соединение и повторите.'));
-    }
+    // Conversation создаётся лениво непосредственно перед первым сообщением,
+    // командой или файлом. Само открытие «Нового чата» не засоряет историю.
     connectWS();
     await loadConvList();
     if (isMobile()) toggleSidebar(false);
@@ -11524,8 +11690,10 @@
     if (action === '__pricelist_cancel') return window.__pricelist_cancel_handler(params);
     if (action === '__pricelist_retry_generate') return generateAndShowOutputFile();
     if (action === '__download_url' && params && params.url) {
+      var safeDownloadUrl = safeSameOriginUrl(params.url);
+      if (!safeDownloadUrl) return;
       var a = document.createElement('a');
-      a.href = params.url; a.download = '';
+      a.href = safeDownloadUrl; a.download = '';
       document.body.appendChild(a); a.click(); a.remove();
       return;
     }
@@ -11779,7 +11947,6 @@
         ? tr('guest.mode')
         : (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
       if (!state.config.anonymous) $('sideAvatar').textContent = initial;
-      { const _ta = $('topAvatar'); if (_ta) _ta.textContent = initial; }
       // Активная вкладка role-toggle
       const r = state.config.role || 'buyer';
       const uiRole = (r.startsWith('operator') || r === 'admin') ? 'operator' : (r === 'seller' ? 'seller' : 'buyer');
@@ -11851,6 +12018,14 @@
       document.documentElement.classList.remove('cf-restoring');
       if (!state.ws || state.ws.readyState >= 2) connectWS();
       if (hasIntent || params.get('role')) await consumeUrlIntent(params);
+      const pendingAction = state.config && state.config.pending_action;
+      if (!hasIntent && pendingAction && pendingAction.action) {
+        await window.newChat();
+        await window.quickAction(
+          pendingAction.action,
+          pendingAction.params || {},
+        );
+      }
       if (workspaceOnly) history.replaceState({}, '', '/chat/');
     } catch(e){ console.warn('conv resolve failed', e); document.documentElement.classList.remove('cf-restoring'); }
     if (!state.ws || state.ws.readyState >= 2) connectWS();

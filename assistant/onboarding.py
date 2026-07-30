@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy as _l
 
 from .actions import ActionResult, _notify, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,7 @@ def start_onboarding(params, user, role):
         return ActionResult(
             text=_(
                 "🛡 Самостоятельная верификация временно недоступна.\n"
-                "Свяжитесь с менеджером: support@consolidator.parts — "
+                "Свяжитесь с менеджером: support@consolidatorparts.com — "
                 "пройдём проверку вместе за 1-2 рабочих дня."
             ),
             contextual_actions=[{"action": "go_home", "label": _("🏠 Главная")}],
@@ -482,7 +483,7 @@ _COUNTRY_FIELDS = {
          "pattern": r"^\d{13}(\d{2})?$"},
     ],
     "AE": [
-        {"name": "inn",  "label": "Trade License No.", "hint": _l("Например 5022051 (RAKEZ / DED / IFZA)"),
+        {"name": "inn",  "label": "Trade License No.", "hint": _l("Укажите номер из торговой лицензии"),
          "required": True},
         {"name": "ogrn", "label": "Tax Registration No. (TRN)", "hint": _l("15 цифр (если зарегистрирован для VAT)"),
          "pattern": r"^\d{15}$"},
@@ -546,7 +547,7 @@ def submit_company_info(params, user, role):
     inn = (params.get("inn") or "").strip()
     kpp = (params.get("kpp") or "").strip()
     ogrn = (params.get("ogrn") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     # Phase 1: страна не выбрана — отдельный мини-шаг с одним select'ом
     if not country:
@@ -641,7 +642,7 @@ def submit_company_info(params, user, role):
 def submit_legal_address(params, user, role):
     kyb = _kyb(user)
     address = (params.get("legal_address") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not address:
         return ActionResult(
@@ -689,10 +690,10 @@ _BANK_FIELDS_BY_COUNTRY = {
         {"name": "bank_name",    "label": "Bank Name", "required": True,
          "hint": _l("Например: Emirates NBD (Gold & Diamond Park Branch), ADCB, …")},
         {"name": "bik",          "label": "SWIFT / BIC Code", "required": True,
-         "hint": _l("8 или 11 символов, например UNILAEAD"),
+         "hint": _l("8 или 11 символов из банковских реквизитов"),
          "pattern": r"^[A-Z0-9]{8}([A-Z0-9]{3})?$"},
         {"name": "bank_account", "label": "IBAN", "required": True,
-         "hint": _l("Например: AE34 0470 0000 0020 0830 094"),
+         "hint": _l("Введите IBAN в точности как в банковских реквизитах"),
          "pattern": r"^AE\d{2}\s?(\d{4}\s?){4}\d{3}$"},
     ],
 }
@@ -722,7 +723,7 @@ def submit_bank(params, user, role):
     bank_name = (params.get("bank_name") or "").strip()
     bik       = (params.get("bik") or "").strip()
     account   = (params.get("bank_account") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not (bank_name and bik and account):
         country_label = next((c["label"] for c in _COUNTRY_OPTIONS if c["value"] == country), country)
@@ -792,7 +793,7 @@ def submit_bank(params, user, role):
 def submit_director(params, user, role):
     kyb = _kyb(user)
     name = (params.get("director_name") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not name:
         return ActionResult(
@@ -832,7 +833,7 @@ def submit_for_review(params, user, role):
             actions=[{"action": "start_onboarding", "label": _("Продолжить заполнение")}],
         )
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed:
         return ActionResult(
             text=_("📨 Шаг 5/5 · Отправка на проверку"),
@@ -980,7 +981,7 @@ def update_kyb_contacts(params, user, role):
     focus='docs' → отдельный action `upload_kyb_doc` (файловая загрузка).
     """
     kyb = _kyb(user)
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     focus = (params.get("focus") or "").strip()
 
     # docs — особый случай: file upload, не form
@@ -1395,7 +1396,7 @@ def op_kyb_clarify(params, user, role):
         kyb = CompanyVerification.objects.get(user_id=int(params.get("user_id") or 0))
     except (CompanyVerification.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Анкета не найдена."))
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     note = (params.get("note") or "").strip()
     if not confirmed:
         return ActionResult(
@@ -1430,7 +1431,7 @@ def op_kyb_approve(params, user, role):
     if not _is_operator(role) and role != "admin":
         return ActionResult(text=_("Доступно только оператору."))
     from marketplace.models import CompanyVerification
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     # FIX (HIGH): защита от TOCTOU race — двое операторов одновременно approve.
     # Используем UPDATE WHERE status='pending' для атомарного захвата:
     # если RowsAffected=0, кто-то уже approve'нул раньше.
@@ -1487,7 +1488,7 @@ def op_kyb_approve(params, user, role):
     # активных поставщиков (защита от перегрузки).
     from marketplace.models import UserProfile as _UP
     MAX_SUPPLIERS_PER_OP = 25
-    if not user.is_staff:  # супер-админу не лимитируем
+    if role != "admin":  # администратору платформы лимит не применяем
         current_count = _UP.objects.filter(assigned_operator=user).count()
         if current_count >= MAX_SUPPLIERS_PER_OP:
             return ActionResult(
@@ -1603,7 +1604,7 @@ def op_kyb_reject(params, user, role):
         return ActionResult(text=_('Анкета не в статусе pending (сейчас: %(p0)s).') % {"p0": f'{kyb.get_status_display()}'})
 
     reason = (params.get("reason") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed or not reason:
         return ActionResult(
             text=_("Укажите причину отклонения"),
@@ -1651,12 +1652,14 @@ def op_kyb_reject(params, user, role):
 def kyb_required_for_seller(user) -> bool:
     """True если у пользователя KYB не verified (нужно блокировать seller-actions).
 
-    Demo-аккаунты (demo_*) пропускаются — у них статусы могут быть пустыми, но они
-    должны работать «из коробки» для презентаций.
+    В DEBUG тестовые учётные записи можно использовать без анкеты. В рабочем
+    режиме имя пользователя никогда не даёт обход проверки компании.
     """
     if not user or not user.is_authenticated:
         return False
-    if (user.username or "").startswith("demo_"):
+    from django.conf import settings
+
+    if settings.DEBUG and (user.username or "").startswith("demo_"):
         return False
     try:
         from marketplace.models import CompanyVerification
@@ -1665,4 +1668,5 @@ def kyb_required_for_seller(user) -> bool:
             return True
         return kyb.status != "verified"
     except Exception:
-        return False
+        logger.exception("failed to check KYB status for user_id=%s", user.pk)
+        return True

@@ -10,7 +10,6 @@
     python manage.py seed_vpr_catalog --only bartsparts fridayparts
     python manage.py seed_vpr_catalog --dry-run
     python manage.py seed_vpr_catalog --limit 500   # первые N строк каждого файла
-    ALLOW_SEED_IN_PROD=1 python manage.py seed_vpr_catalog
 """
 from __future__ import annotations
 
@@ -24,7 +23,11 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils.text import slugify
 
-from assistant.management._seed_guard import ensure_dev_only
+from assistant.management._seed_guard import (
+    add_seed_password_argument,
+    ensure_dev_only,
+    require_seed_password,
+)
 from marketplace.models import Brand, Category, Part, SellerWarehouse, UserProfile
 
 User = get_user_model()
@@ -257,6 +260,7 @@ class Command(BaseCommand):
     help = "Импорт каталога ВПР (9 поставщиков)"
 
     def add_arguments(self, parser):
+        add_seed_password_argument(parser)
         parser.add_argument("--only", nargs="*", choices=list(SOURCES),
                             help="Только эти источники")
         parser.add_argument("--limit", type=int, default=0,
@@ -266,12 +270,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         ensure_dev_only(self)
+        password = "" if options["dry_run"] else require_seed_password(options)
         dry = options["dry_run"]
         limit = options["limit"]
         only = set(options["only"] or SOURCES.keys())
 
         # ── Создать/получить аккаунт ВПР ──────────────────────────────────────
-        seller = self._get_or_create_seller()
+        seller = self._get_or_create_seller(password)
         self.stdout.write(self.style.SUCCESS(f"Seller: {seller.username} (id={seller.pk})"))
 
         # ── Дефолтная категория ────────────────────────────────────────────────
@@ -308,7 +313,7 @@ class Command(BaseCommand):
 
     # ── helpers ───────────────────────────────────────────────────────────────
 
-    def _get_or_create_seller(self):
+    def _get_or_create_seller(self, password):
         user, created = User.objects.get_or_create(
             username="vpr",
             defaults={
@@ -318,7 +323,7 @@ class Command(BaseCommand):
             },
         )
         if created:
-            user.set_password("demo12345")
+            user.set_password(password)
             user.save()
             self.stdout.write("  Создан пользователь vpr")
         profile, _ = UserProfile.objects.get_or_create(

@@ -28,7 +28,6 @@ env:
   CELERY_TASK_ALWAYS_EAGER: "True"
   CHANNELS_INMEMORY: "True"
   KYB_ENABLED: "True"
-  ALLOW_DEMO_LOGIN: "1"
 
 jobs:
   # ════════════════════════════════════════════════════════════
@@ -55,6 +54,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "${{ env.PY_VERSION }}", cache: pip }
+      - name: Generate one-time E2E credentials
+        run: |
+          password="$(python -c 'import secrets; print(secrets.token_urlsafe(24))')"
+          echo "::add-mask::$password"
+          echo "E2E_PASSWORD=$password" >> "$GITHUB_ENV"
+          echo "E2E_BUYER_USERNAME=demo_buyer" >> "$GITHUB_ENV"
+          echo "E2E_SELLER_USERNAME=demo_seller" >> "$GITHUB_ENV"
+          echo "E2E_OPERATOR_USERNAME=demo_operator" >> "$GITHUB_ENV"
       - name: Install deps
         run: |
           pip install -r requirements.txt
@@ -65,12 +72,13 @@ jobs:
           python manage.py migrate --noinput
           # Создаём demo-аккаунты для тестов
           python manage.py shell -c "
+          import os
           from django.contrib.auth import get_user_model
           from marketplace.models import UserProfile
           U = get_user_model()
           for name, role in [('demo_buyer','buyer'),('demo_seller','seller'),('demo_operator','operator')]:
-              u,_ = U.objects.get_or_create(username=name, defaults={'email':f'{name}@x.local'})
-              u.set_password('demo12345'); u.is_active=True
+              u,_ = U.objects.get_or_create(username=name, defaults={'email':f'{name}@example.invalid'})
+              u.set_password(os.environ['E2E_PASSWORD']); u.is_active=True
               if role=='operator': u.is_staff=True
               u.save()
               UserProfile.objects.get_or_create(user=u, defaults={'role':role,'language':'ru'})
@@ -179,7 +187,7 @@ jobs:
           nohup python manage.py runserver 127.0.0.1:8003 --noreload > /tmp/dj.log 2>&1 &
           for i in {1..30}; do curl -sf http://127.0.0.1:8003/healthz/ && break || sleep 1; done
       - name: Run axe scan
-        env: { E2E_BASE_URL: http://127.0.0.1:8003 }
+        env: { E2E_BASE_URL: "http://127.0.0.1:8003" }
         run: pytest tests/e2e/test_axe_a11y.py -v --tb=short
       - name: Upload axe report
         if: always()

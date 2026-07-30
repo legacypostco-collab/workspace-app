@@ -108,7 +108,7 @@ def process_import_job(self, import_job_id: int):
             )
             if self.request.retries >= self.max_retries:
                 job.status = ImportJob.Status.FAILED
-                job.error_message = str(exc)[:2000]
+                job.error_message = "Импорт завершился с внутренней ошибкой."
                 job.finished_at = timezone.now()
                 job.save(update_fields=["status", "error_message", "finished_at", "updated_at"])
                 try:
@@ -119,9 +119,14 @@ def process_import_job(self, import_job_id: int):
                     logger.exception("dashboard_projection_refresh_failed_after_import_error", extra={"job_id": job.id, "supplier_id": job.supplier_id})
                 logger.error(
                     "import_job_failed_final",
-                    extra={"job_id": job.id, "supplier_id": job.supplier_id, "error": str(exc)},
+                    extra={"job_id": job.id, "supplier_id": job.supplier_id},
                 )
-                return {"ok": False, "job_id": job.id, "status": job.status, "error": str(exc)}
+                return {
+                    "ok": False,
+                    "job_id": job.id,
+                    "status": job.status,
+                    "error": "Импорт завершился с внутренней ошибкой.",
+                }
 
             countdown = 2 ** (self.request.retries + 1)
             raise self.retry(exc=exc, countdown=countdown)

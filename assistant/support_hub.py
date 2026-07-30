@@ -27,6 +27,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy as _l
 
 from .actions import ActionResult, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ def support_home(params, user, role):
         # за последние 14 дней (не клик «Связаться с оператором», а реальный
         # вопрос/жалоба). Служебные аккаунты (is_staff/is_superuser) скрываем.
         from .models import Conversation
-        from django.db.models import Q, Max, OuterRef, Subquery
+        from django.db.models import OuterRef, Subquery
         cutoff_14 = now - timedelta(days=14)
 
         # Подзапрос: ID последнего USER-сообщения с осмысленным текстом по каждому conv
@@ -69,9 +70,16 @@ def support_home(params, user, role):
             .exclude(content__isnull=True).exclude(content="")
             .order_by("-created_at"))
 
-        # Все conv в категории support с хотя бы одним user-сообщением длиннее 10 символов
-        ticket_convs = list(Conversation.objects
-            .filter(category="support", updated_at__gte=cutoff_14)
+        # Все conv в категории support с хотя бы одним user-сообщением длиннее 10 символов.
+        ticket_qs = Conversation.objects.filter(
+            category="support", updated_at__gte=cutoff_14,
+        )
+        if role == "operator_manager":
+            from .conversation_access import accessible_conversations
+            ticket_qs = accessible_conversations(user, role).filter(
+                category="support", updated_at__gte=cutoff_14,
+            )
+        support_convs = list(ticket_qs
             .exclude(user__is_staff=True)
             .exclude(user__is_superuser=True)
             .annotate(
@@ -82,20 +90,14 @@ def support_home(params, user, role):
             .filter(last_user_msg_id__isnull=False)
             .select_related("user")
             .order_by("-last_user_at")[:20])
-        # Дополнительно: фильтр на минимальную длину текста (>10 символов = настоящий вопрос)
-        ticket_convs = [c for c in ticket_convs if c.last_user_text and len(c.last_user_text.strip()) >= 10]
-
-        complaints = (
-            Message.objects.filter(
-                role=Message.Role.ACTION,
-                actions__icontains="open_complaint",
-                created_at__gte=cutoff_14,
-            )
-            .exclude(conversation__user__is_staff=True)
-            .exclude(conversation__user__is_superuser=True)
-            .select_related("conversation", "conversation__user")
-            .order_by("-created_at")[:20]
-        )
+        # Жалобы теперь являются полноценными общими диалогами, а не
+        # служебными ACTION-сообщениями. Разделяем их по назначению цепочки.
+        support_convs = [
+            c for c in support_convs
+            if c.last_user_text and len(c.last_user_text.strip()) >= 10
+        ]
+        complaint_convs = [c for c in support_convs if c.support_kind == "complaint"]
+        ticket_convs = [c for c in support_convs if c not in complaint_convs]
 
         cards = []
 
@@ -105,8 +107,8 @@ def support_home(params, user, role):
                 {"label": _("Обращений к оператору"), "value": str(len(ticket_convs)),
                  "tone": "warn" if ticket_convs else None,
                  "sub": _("с реальным вопросом за 14 дней")},
-                {"label": _("Жалоб на платформу"),   "value": str(complaints.count()),
-                 "tone": "bad" if complaints.count() else None,
+                {"label": _("Жалоб на платформу"),   "value": str(len(complaint_convs)),
+                 "tone": "bad" if complaint_convs else None,
                  "sub": _("поданных через форму за 14 дней")},
             ],
         }})
@@ -129,38 +131,27 @@ def support_home(params, user, role):
                 "items": rows,
             }})
 
-        if complaints:
+        if complaint_convs:
             rows = []
-            seen_convs = set()
-            for m in complaints:
-                if m.conversation_id in seen_convs: continue
-                seen_convs.add(m.conversation_id)
-                uname = m.conversation.user.username if m.conversation and m.conversation.user else "—"
-                # Берём текст жалобы из params открытия формы
-                complaint_text = ""
-                try:
-                    for a in (m.actions or []):
-                        if a.get("action") == "open_complaint":
-                            complaint_text = (a.get("params") or {}).get("text") or ""
-                            break
-                except Exception:
-                    pass
+            for c in complaint_convs[:10]:
+                uname = c.user.username if c.user else "—"
+                complaint_text = (c.last_user_text or "").strip()
                 snippet = complaint_text.strip().replace("\n", " ")[:90]
-                when = m.created_at.strftime("%d.%m %H:%M")
+                when = c.last_user_at.strftime("%d.%m %H:%M") if c.last_user_at else ""
                 rows.append({
                     "title":    f"🚨 {uname}",
                     "subtitle": (f"{when} · «{snippet}…»" if len(complaint_text) > 90
                                    else (f"{when} · «{snippet}»" if snippet
                                             else _("%(when)s · жалоба подана через форму") % {"when": when})),
                     "action":   "view_support_ticket",
-                    "params":   {"conversation_id": str(m.conversation_id)},
+                    "params":   {"conversation_id": str(c.id)},
                 })
             cards.append({"type": "list", "data": {
                 "title": _('🚨 Жалобы на платформу · %(p0)s') % {"p0": f'{len(rows)}'},
                 "items": rows,
             }})
 
-        if not (ticket_convs or complaints):
+        if not (ticket_convs or complaint_convs):
             cards.append({"type": "list", "data": {
                 "title": _("📥 Inbox поддержки"),
                 "items": [{"title": _("✅ Очередь поддержки пуста"),
@@ -288,7 +279,7 @@ def view_support_ticket(params, user, role):
     SECURITY: без role-check любой buyer/seller мог открыть чужой conv по ID
     и увидеть KYB-данные / email / phone других пользователей.
     """
-    if not ((role or "").startswith("operator") or role == "admin"):
+    if role not in {"operator", "operator_manager", "admin"}:
         return ActionResult(text=_("Доступно только оператору поддержки."))
     """Карточка тикета поддержки для оператора.
 
@@ -306,7 +297,11 @@ def view_support_ticket(params, user, role):
     if not conv_id:
         return ActionResult(text=_("Не указан тикет."))
     try:
-        conv = Conversation.objects.select_related("user").get(id=conv_id)
+        if role == "operator_manager":
+            from .conversation_access import accessible_conversations
+            conv = accessible_conversations(user, role).select_related("user").get(id=conv_id)
+        else:
+            conv = Conversation.objects.select_related("user").get(id=conv_id)
     except Conversation.DoesNotExist:
         return ActionResult(text=_("Тикет не найден."))
 
@@ -499,23 +494,19 @@ def view_support_ticket(params, user, role):
                 "items": [{"title": t, "tone": "info"} for t in topic_set],
             }})
 
-    # Кнопка «Связаться» — авто-доставка контекста через ask_operator
-    if ticket_kind == "browsing":
-        ctx_label = _("Просмотр поддержки · просто проверка наличия проблем")
-    elif ticket_kind == "complaint":
-        ctx_label = _("Жалоба пользователя в поддержку")
-    else:
-        ctx_label = (_("Вопрос в поддержку · «%(text)s»") % {"text": last_user_text[:80]}) if last_user_text else _("Вопрос в поддержку")
-
     actions = []
-    if target:
-        action_label = (_("💬 Написать %(name)s (профилактика)") % {"name": target_name}
-                          if ticket_kind == "browsing"
-                          else _("💬 Связаться с %(name)s") % {"name": target_name})
+    is_participant = conv.participant_links.filter(user=user, role=role).exists()
+    if is_participant:
         actions.append({
-            "label": action_label,
-            "action": "ask_operator",
-            "params": {"to_user_id": target.id, "context": ctx_label},
+            "label": _("Открыть диалог"),
+            "action": "open_conversation",
+            "params": {"conversation_id": str(conv.id)},
+        })
+    elif role in {"operator", "admin"}:
+        actions.append({
+            "label": _("Присоединиться к диалогу"),
+            "action": "join_support_ticket",
+            "params": {"conversation_id": str(conv.id)},
         })
     actions.append({
         "label": _("← Inbox поддержки"),
@@ -523,6 +514,50 @@ def view_support_ticket(params, user, role):
     })
 
     return ActionResult(text=intro, cards=cards, actions=actions)
+
+
+@register("join_support_ticket")
+def join_support_ticket(params, user, role):
+    """Добавляет уполномоченного оператора в существующую цепочку поддержки."""
+    if role not in {"operator", "admin"}:
+        return ActionResult(text=_("Недостаточно прав для подключения к обращению."))
+
+    from django.db import transaction
+    from .models import Conversation, ConversationParticipant
+
+    conversation_id = params.get("conversation_id")
+    if not conversation_id:
+        return ActionResult(text=_("Не указано обращение."))
+
+    with transaction.atomic():
+        try:
+            conv = Conversation.objects.select_for_update().get(
+                id=conversation_id,
+                category="support",
+                is_active=True,
+            )
+        except Conversation.DoesNotExist:
+            return ActionResult(text=_("Обращение не найдено."))
+        ConversationParticipant.objects.get_or_create(
+            conversation=conv,
+            user=user,
+            role=role,
+        )
+        fields = []
+        if not conv.assigned_operator_id:
+            conv.assigned_operator = user
+            fields.append("assigned_operator")
+        if conv.support_status == "closed":
+            conv.support_status = "waiting_operator"
+            fields.append("support_status")
+        if fields:
+            fields.append("updated_at")
+            conv.save(update_fields=fields)
+
+    return ActionResult(
+        text=_("Открываю обращение."),
+        navigate_conversation_id=str(conv.id),
+    )
 
 
 # ── 2. KB / FAQ ────────────────────────────────────────────────
@@ -1002,7 +1037,7 @@ def contact_operator(params, user, role):
     Phase 1: показать форму
     Phase 2 (confirmed=True): записать в operator's «Алерты оператора» conv.
     """
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     text = (params.get("text") or "").strip()
     topic = (params.get("topic") or "").strip()
 
@@ -1041,24 +1076,24 @@ def contact_operator(params, user, role):
     # Anti-collusion: проверяем нет ли в тексте попытки обмена off-platform контактами.
     flagged = _detect_offplatform_contact(text)
 
-    # Отправляем в admin-chat оператора через существующий notify_operator_alert.
+    # Создаём реальный общий разговор: сообщения обеих сторон сохраняются в
+    # одной цепочке, а следующий текст пользователя больше не уходит в ИИ.
     try:
-        from .order_events import notify_operator_alert
+        from .support_threads import create_support_conversation, post_support_message
         topic_label = {
             "billing": "💰 Оплата", "verification": "🛡 KYB",
             "order": "📦 Заказ", "complaint": "🚨 Жалоба",
             "feature": "💡 Предложение", "other": "❓ Другое",
         }.get(topic, topic)
-        flag_note = "\n⚠️ ВНИМАНИЕ: возможна попытка обмена off-platform контактами." if flagged else ""
-        notify_operator_alert(
-            user_obj=user, event="user_registered",  # переиспользуем event для рендера
-            text=(
-                _('💬 ОБРАЩЕНИЕ от @%(p0)s (%(p1)s)\nТема: %(p2)s\nТекст: %(p3)s%(p4)s%(p5)s') % {"p0": f'{user.username}', "p1": f'{role}', "p2": f'{topic_label}', "p3": f'{text[:500]}', "p4": f"{('…' if len(text) > 500 else '')}", "p5": f'{flag_note}'}
-            ),
-            extra={"role": role},
+        conv = create_support_conversation(
+            requester=user, requester_role=role,
+            context=_("обращение: %(topic)s") % {"topic": topic_label},
+            kind="request",
         )
+        post_support_message(conv, user, role, text[:1500])
     except Exception:
-        logger.exception("contact_operator: notify_operator_alert failed")
+        logger.exception("contact_operator: support conversation failed")
+        return ActionResult(text=_("Не удалось зарегистрировать обращение. Повторите позже."))
 
     response_text = (
         _("✅ Обращение отправлено оператору.\n"
@@ -1074,9 +1109,7 @@ def contact_operator(params, user, role):
 
     return ActionResult(
         text=response_text,
-        contextual_actions=[
-            {"action": "support_home", "label": _("← Поддержка")},
-        ],
+        navigate_conversation_id=str(conv.id),
     )
 
 
@@ -1089,7 +1122,7 @@ def open_complaint(params, user, role):
     НЕ путать с `create_claim` (рекламация по конкретному заказу).
     Эта — про qualifying процесса, поведения оператора, скрытых проблем.
     """
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     text = (params.get("text") or "").strip()
     against = (params.get("against") or "").strip()
 
@@ -1126,31 +1159,32 @@ def open_complaint(params, user, role):
 
     flagged = _detect_offplatform_contact(text)
     try:
-        from .order_events import notify_operator_alert
+        from .support_threads import create_support_conversation, post_support_message
         against_label = {
             "platform": "ПЛАТФОРМА", "operator": "ОПЕРАТОР",
             "seller": "ПОСТАВЩИК", "buyer": "ПОКУПАТЕЛЬ",
             "other": "ДРУГОЕ",
         }.get(against, against)
-        notify_operator_alert(
-            user_obj=user, event="user_registered",
-            text=(
-                _('🚨🚨 ЖАЛОБА от @%(p0)s (%(p1)s)\nПротив: %(p2)s\nТекст: %(p3)s%(p4)s%(p5)s') % {"p0": f'{user.username}', "p1": f'{role}', "p2": f'{against_label}', "p3": f'{text[:500]}', "p4": f"{('…' if len(text) > 500 else '')}", "p5": f"{(chr(10) + '⚠️ Обнаружены off-platform контакты' if flagged else '')}"}
-            ),
-            extra={"role": role},
+        conv = create_support_conversation(
+            requester=user, requester_role=role,
+            context=_("жалоба: %(against)s") % {"against": against_label},
+            kind="complaint",
         )
+        complaint_text = text[:1500]
+        if flagged:
+            complaint_text += _("\n\n[Автоматическая отметка: обнаружены контактные данные]")
+        post_support_message(conv, user, role, complaint_text)
     except Exception:
-        logger.exception("open_complaint: notify_operator_alert failed")
+        logger.exception("open_complaint: support conversation failed")
+        return ActionResult(text=_("Не удалось зарегистрировать жалобу. Повторите позже."))
 
     return ActionResult(
         text=(
-            _("✅ Жалоба зафиксирована в audit-log. Эскалирована супервайзеру.\n"
+            _("✅ Жалоба зарегистрирована и передана ответственному сотруднику.\n"
             "Ответ — в течение 24 ч в рабочий день. "
             "За false-flag жалобы платформа оставляет право снижать рейтинг.")
         ),
-        contextual_actions=[
-            {"action": "support_home", "label": _("← Поддержка")},
-        ],
+        navigate_conversation_id=str(conv.id),
     )
 
 

@@ -25,7 +25,11 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from assistant.management._seed_guard import ensure_dev_only
+from assistant.management._seed_guard import (
+    add_seed_password_argument,
+    ensure_dev_only,
+    require_seed_password,
+)
 
 User = get_user_model()
 
@@ -107,6 +111,7 @@ class Command(BaseCommand):
     help = "Seed 3 KYB companies covering all 3 ТЗ paths (green/yellow/red)."
 
     def add_arguments(self, parser):
+        add_seed_password_argument(parser)
         parser.add_argument("--reset", action="store_true",
                             help="Удалить ранее засеянные KYB-компании перед посевом.")
 
@@ -117,6 +122,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **opts):
         ensure_dev_only(self)
+        password = require_seed_password(opts)
         from assistant.kyb_api_checks import evaluate_risk, run_all_checks
         from marketplace.models import CompanyVerification, UserProfile
 
@@ -137,7 +143,7 @@ class Command(BaseCommand):
                           "first_name": c["legal_name"]},
             )
             if created:
-                user.set_password("demo12345")
+                user.set_password(password)
                 user.save()
             profile, _ = UserProfile.objects.get_or_create(
                 user=user, defaults={"role": "seller", "company_name": c["legal_name"]},

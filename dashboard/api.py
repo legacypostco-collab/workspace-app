@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from marketplace.models import UserProfile
+from assistant.permissions import detect_user_role
 
 from .models import DashboardProjection
 from .services import DashboardProjectionBuilder
@@ -19,8 +19,7 @@ class SupplierDashboardAPIView(APIView):
     stale_after = timedelta(minutes=5)
 
     def get(self, request):
-        profile = UserProfile.objects.filter(user=request.user).first()
-        if not profile or profile.role != "seller":
+        if detect_user_role(request.user, request=request) != "seller":
             return Response({"error": "seller role required"}, status=status.HTTP_403_FORBIDDEN)
 
         projection = DashboardProjection.objects.filter(supplier=request.user, user=request.user).first()

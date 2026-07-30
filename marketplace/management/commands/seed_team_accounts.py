@@ -29,11 +29,10 @@ from datetime import timedelta
 from uuid import uuid4
 
 from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand
+from django.conf import settings
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
-
-DEFAULT_PASSWORD = "Consol2026"
 
 # (display_name, username_base, role, operator_role, is_admin)
 # Логины по имени — узнаваемо и не громоздко.
@@ -66,6 +65,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--wallet", type=int, default=50000)
         parser.add_argument("--password", type=str, default="")
+        parser.add_argument(
+            "--allow-production",
+            action="store_true",
+            help="Явно разрешить создание и сброс паролей в боевой среде.",
+        )
         parser.add_argument("--no-data", action="store_true",
                             help="Не сеять тестовые данные (только аккаунты).")
 
@@ -73,8 +77,18 @@ class Command(BaseCommand):
         from marketplace.models import UserProfile, Customer
         from assistant.models import Wallet, WalletTx
 
-        password = (opts.get("password") or os.getenv("TEAM_PASSWORD")
-                    or DEFAULT_PASSWORD).strip()
+        if not settings.DEBUG and not opts.get("allow_production"):
+            raise CommandError(
+                "Команда меняет пароли и запрещена в боевой среде без "
+                "--allow-production."
+            )
+        password = (opts.get("password") or os.getenv("TEAM_PASSWORD") or "").strip()
+        if not password:
+            raise CommandError(
+                "Передайте уникальный пароль через --password или TEAM_PASSWORD."
+            )
+        if len(password) < 10:
+            raise CommandError("Пароль должен содержать не менее 10 символов.")
         wallet_amount = Decimal(str(opts.get("wallet") or 0))
         created_rows, updated_rows = [], []
         sellers, buyers, operators, kam_links = [], [], [], []

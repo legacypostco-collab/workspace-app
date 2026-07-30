@@ -25,6 +25,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _notify, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -585,7 +586,7 @@ def admin_ban_user(params, user, role):
                                  % {"username": target.username})
 
     reason = (params.get("reason") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed or not reason:
         return ActionResult(
             text=_("Заблокировать %(username)s?") % {"username": target.username},
@@ -632,7 +633,7 @@ def admin_unban_user(params, user, role):
         return ActionResult(text=_("%(username)s не заблокирован.")
                                  % {"username": target.username})
 
-    if not bool(params.get("confirmed")):
+    if not confirmation_is_true(params.get("confirmed")):
         return ActionResult(
             text=_("Разблокировать %(username)s?") % {"username": target.username},
             cards=[{"type": "draft", "data": {

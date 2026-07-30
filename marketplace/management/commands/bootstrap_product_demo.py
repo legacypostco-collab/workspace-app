@@ -10,7 +10,11 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
-from assistant.management._seed_guard import ensure_dev_only
+from assistant.management._seed_guard import (
+    add_seed_password_argument,
+    ensure_dev_only,
+    require_seed_password,
+)
 from marketplace.models import (
     RFQ,
     Brand,
@@ -30,13 +34,16 @@ class Command(BaseCommand):
     help = "Builds a complete demo product dataset: users, brands, parts, RFQ, invoices, and orders in multiple stages."
 
     def add_arguments(self, parser):
+        add_seed_password_argument(parser)
         parser.add_argument(
             "--reset",
             action="store_true",
             help="Delete previous demo entities for demo_buyer/demo_seller and recreate from scratch.",
         )
 
-    def _ensure_user(self, username: str, email: str, first_name: str, last_name: str, role: str, company: str) -> User:
+    def _ensure_user(
+        self, username, email, first_name, last_name, role, company, password
+    ) -> User:
         user, _ = User.objects.get_or_create(
             username=username,
             defaults={"email": email, "first_name": first_name, "last_name": last_name},
@@ -44,7 +51,7 @@ class Command(BaseCommand):
         user.email = email
         user.first_name = first_name
         user.last_name = last_name
-        user.set_password("demo12345")
+        user.set_password(password)
         user.save()
 
         profile, _ = UserProfile.objects.get_or_create(user=user, defaults={"role": role, "company_name": company})
@@ -234,6 +241,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         ensure_dev_only(self)
+        password = require_seed_password(options)
         with transaction.atomic():
             buyer = self._ensure_user(
                 username="demo_buyer",
@@ -242,6 +250,7 @@ class Command(BaseCommand):
                 last_name="Buyer",
                 role="buyer",
                 company="Demo Fleet LLC",
+                password=password,
             )
             seller = self._ensure_user(
                 username="demo_seller",
@@ -250,14 +259,16 @@ class Command(BaseCommand):
                 last_name="Seller",
                 role="seller",
                 company="Consolidator Supplier",
+                password=password,
             )
             op = self._ensure_user(
                 username="demo_operator",
                 email="operator@demo.com",
                 first_name="Demo",
                 last_name="Operator",
-                role="seller",
+                role="operator",
                 company="Consolidator Ops",
+                password=password,
             )
             # Operator needs is_staff so operator_required decorator passes
             if not op.is_staff:
@@ -329,12 +340,10 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS("Bootstrap complete: product demo is ready."))
-        self.stdout.write("Credentials:")
-        self.stdout.write("  buyer: demo_buyer / demo12345")
-        self.stdout.write("  seller: demo_seller / demo12345")
-        self.stdout.write("  operator: demo_operator / demo12345")
+        self.stdout.write("Users: demo_buyer, demo_seller, demo_operator")
+        self.stdout.write("Password: value supplied through --password or DEMO_PASSWORD.")
         self.stdout.write("Open pages:")
-        self.stdout.write("  /demo-center/")
+        self.stdout.write("  /chat/?workspace=1")
         self.stdout.write(f"  /rfq/{rfq.id}/proposal/")
         self.stdout.write(f"  /orders/{order_pending.id}/invoice/")
         self.stdout.write(f"  /orders/{order_progress.id}/")

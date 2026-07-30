@@ -96,7 +96,13 @@ def kyb_weekly_monitor():
                 # Уведомить оператора
                 try:
                     from django.contrib.auth import get_user_model
-                    for op in get_user_model().objects.filter(is_staff=True)[:5]:
+                    from marketplace.models import UserProfile
+                    operator_ids = UserProfile.objects.filter(
+                        role="operator",
+                    ).values_list("user_id", flat=True)
+                    for op in get_user_model().objects.filter(
+                        id__in=operator_ids, is_active=True,
+                    )[:5]:
                         _notify(op, kind="system",
                                 title=_('⚠️ KYB исключён: %(p0)s') % {"p0": f'{kyb.legal_name}'},
                                 body=_('Мониторинг выявил red signals: %(p0)s') % {"p0": f"{(reasons[0] if reasons else '?')}"},
@@ -126,6 +132,7 @@ def prune_old_audit(days: int = 1095):  # 3 года
 
     from django.utils import timezone
 
+    from .models import ActionExecution
     from marketplace.models import OrderEvent
     cutoff = timezone.now() - timedelta(days=days)
     # Только по завершённым / отменённым заказам — активные не трогаем
@@ -134,7 +141,26 @@ def prune_old_audit(days: int = 1095):  # 3 года
         order__status__in=("completed", "cancelled"),
     )
     deleted, _ = qs.delete()
-    return {"deleted_events": deleted, "cutoff": cutoff.isoformat()}
+
+    # Ключ нужен только для защиты короткого повторного запроса. Завершённые
+    # записи старше 90 дней и оборванные операции старше суток не несут
+    # прикладной истории и иначе бесконечно раздувают таблицу.
+    operation_cutoff = timezone.now() - timedelta(days=90)
+    stale_cutoff = timezone.now() - timedelta(days=1)
+    completed_deleted, _ = ActionExecution.objects.filter(
+        completed_at__isnull=False,
+        completed_at__lt=operation_cutoff,
+    ).delete()
+    stale_deleted, _ = ActionExecution.objects.filter(
+        completed_at__isnull=True,
+        created_at__lt=stale_cutoff,
+    ).delete()
+    return {
+        "deleted_events": deleted,
+        "deleted_completed_operations": completed_deleted,
+        "deleted_stale_operations": stale_deleted,
+        "cutoff": cutoff.isoformat(),
+    }
 
 
 @shared_task(bind=True, max_retries=0)

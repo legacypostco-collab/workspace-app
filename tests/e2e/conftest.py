@@ -1,28 +1,39 @@
 """Playwright fixtures for chat-first E2E tests.
 
-Тесты бьют по running Django dev server (по умолчанию http://127.0.0.1:8003).
-Запуск:
-  # Терминал 1:
-  python manage.py runserver 127.0.0.1:8003
-  # Терминал 2:
-  pytest tests/e2e/
-
-Или через runner: bash tests/e2e/run.sh
-
-Конвенции:
-  • Все тесты используют demo-аккаунты (demo_buyer, demo_seller, demo_operator)
-  • Аутентификация через GET /demo-login/?role=… (без UI)
-  • После login сразу на /chat/
+The suite targets a running Django server and is opt-in: use
+``tests/e2e/run.sh`` or set ``E2E_RUN=1``. Authenticated scenarios use the
+normal login action with credentials supplied through environment variables;
+there is no privileged test-only login route.
 """
 from __future__ import annotations
 
 import os
 
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Page, sync_playwright
+
+if os.getenv("E2E_RUN") != "1":
+    pytest.skip(
+        "browser E2E is opt-in; run tests/e2e/run.sh or set E2E_RUN=1",
+        allow_module_level=True,
+    )
+
+playwright_api = pytest.importorskip(
+    "playwright.sync_api",
+    reason="install requirements-e2e.txt before running browser E2E",
+)
+
+Browser = playwright_api.Browser
+BrowserContext = playwright_api.BrowserContext
+Page = playwright_api.Page
+sync_playwright = playwright_api.sync_playwright
 
 
 BASE_URL = os.getenv("E2E_BASE_URL", "http://127.0.0.1:8003")
+ROLE_ENV_PREFIX = {
+    "buyer": "E2E_BUYER",
+    "seller": "E2E_SELLER",
+    "operator": "E2E_OPERATOR",
+}
 
 
 @pytest.fixture(scope="session")
@@ -31,14 +42,19 @@ def base_url() -> str:
 
 
 @pytest.fixture(scope="session")
-def browser():
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=os.getenv("E2E_HEADED") != "1",
-            slow_mo=int(os.getenv("E2E_SLOW_MO", "0")),
-        )
-        yield browser
-        browser.close()
+def playwright_instance():
+    with sync_playwright() as playwright:
+        yield playwright
+
+
+@pytest.fixture(scope="session")
+def browser(playwright_instance):
+    browser = playwright_instance.chromium.launch(
+        headless=os.getenv("E2E_HEADED") != "1",
+        slow_mo=int(os.getenv("E2E_SLOW_MO", "0")),
+    )
+    yield browser
+    browser.close()
 
 
 @pytest.fixture
@@ -58,12 +74,66 @@ def page(context: BrowserContext) -> Page:
     p.close()
 
 
-# ── Auth helpers ─────────────────────────────────────────────
+# Auth helpers
 
-def login_demo(page: Page, role: str, base_url: str) -> None:
-    """Залогиниться как demo-юзер через /demo-login/?role=… ."""
-    assert role in ("buyer", "seller", "operator"), f"unknown role {role}"
-    page.goto(f"{base_url}/demo-login/?role={role}", wait_until="networkidle")
+def _role_credentials(role: str) -> tuple[str, str]:
+    prefix = ROLE_ENV_PREFIX.get(role)
+    if not prefix:
+        raise AssertionError(f"unknown role {role}")
+    username = os.getenv(f"{prefix}_USERNAME", "").strip()
+    password = os.getenv(f"{prefix}_PASSWORD") or os.getenv("E2E_PASSWORD", "")
+    if not username or not password:
+        pytest.skip(
+            f"{prefix}_USERNAME and {prefix}_PASSWORD (or E2E_PASSWORD) are required"
+        )
+    return username, password
+
+
+def login_role(page: Page, role: str, base_url: str) -> None:
+    """Authenticate through the same CSRF-protected action used by the UI."""
+    username, password = _role_credentials(role)
+    page.context.clear_cookies()
+    page.goto(f"{base_url}/chat/", wait_until="domcontentloaded")
+    result = page.evaluate(
+        """async ({username, password, role}) => {
+          const match = document.cookie.match(/(?:^|;\\s*)csrftoken=([^;]+)/);
+          const csrf = match ? decodeURIComponent(match[1]) : "";
+          const response = await fetch("/api/assistant/action/", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": csrf,
+            },
+            body: JSON.stringify({
+              action: "start_login",
+              params: {confirmed: true, role, username, password},
+            }),
+          });
+          let data = {};
+          try { data = await response.json(); } catch (_) {}
+          return {ok: response.ok, status: response.status, data};
+        }""",
+        {"username": username, "password": password, "role": role},
+    )
+    data = result.get("data") or {}
+    assert result.get("ok"), (
+        f"login for {role} failed with HTTP {result.get('status')}: "
+        f"{data.get('error') or data.get('text') or 'unknown response'}"
+    )
+    assert data.get("_post_action") == "reload", (
+        f"login for {role} was not completed: {data.get('text') or data}"
+    )
+    page.goto(f"{base_url}/chat/", wait_until="networkidle")
+
+
+@pytest.fixture
+def login_as(base_url: str):
+    """Return a login helper that works with any Playwright page."""
+    def _login(page: Page, role: str) -> None:
+        login_role(page, role, base_url)
+
+    return _login
 
 
 def _enter_fresh_chat(page: Page, base_url: str) -> Page:
@@ -90,17 +160,17 @@ def _enter_fresh_chat(page: Page, base_url: str) -> Page:
 
 @pytest.fixture
 def buyer_page(page: Page, base_url: str) -> Page:
-    login_demo(page, "buyer", base_url)
+    login_role(page, "buyer", base_url)
     return _enter_fresh_chat(page, base_url)
 
 
 @pytest.fixture
 def seller_page(page: Page, base_url: str) -> Page:
-    login_demo(page, "seller", base_url)
+    login_role(page, "seller", base_url)
     return _enter_fresh_chat(page, base_url)
 
 
 @pytest.fixture
 def operator_page(page: Page, base_url: str) -> Page:
-    login_demo(page, "operator", base_url)
+    login_role(page, "operator", base_url)
     return _enter_fresh_chat(page, base_url)

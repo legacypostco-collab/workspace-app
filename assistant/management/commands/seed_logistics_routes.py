@@ -109,7 +109,7 @@ class Command(BaseCommand):
 
             order = Order.objects.create(
                 customer_name=customer,
-                customer_email=buyer.email or "demo@consolidator.parts",
+                customer_email=buyer.email or "demo@example.invalid",
                 customer_phone="+7 (000) 000-00-00",
                 delivery_address=f"{dest} · г.Москва · ул.Промышленная, 17",
                 buyer=buyer,

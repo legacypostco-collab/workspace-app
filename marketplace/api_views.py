@@ -1,8 +1,10 @@
 from datetime import timedelta
+from decimal import Decimal
+import hmac
 
 from django.conf import settings
-from django.db import connection
-from django.db.models import Count, Q, Sum
+from django.db import connection, transaction
+from django.db.models import Count, DecimalField, F, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -13,8 +15,28 @@ from rest_framework.throttling import ScopedRateThrottle
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.types import OpenApiTypes
 
-from .models import RFQ, Category, Order, OrderClaim, OrderEvent, Part, RFQItem, WebhookDeliveryLog
+from .models import (
+    RFQ,
+    Category,
+    NewsletterSubscriber,
+    Order,
+    OrderClaim,
+    OrderEvent,
+    OrderItem,
+    Part,
+    RFQItem,
+    WebhookDeliveryLog,
+)
 from .serializers import CategorySerializer, OrderSerializer, PartSerializer
+from .order_access import (
+    seller_can_access_claim,
+    seller_company_user_ids,
+    seller_ids_for_order,
+    seller_principal,
+    seller_visible_claims,
+    seller_visible_documents,
+    seller_visible_events,
+)
 from .views import (
     ORDER_TRANSITIONS,
     _apply_seller_brand_scope,
@@ -49,7 +71,8 @@ def _refresh_seller_dashboard_projection(user):
 
 
 def _seller_parts_queryset(user):
-    return _apply_seller_brand_scope(user, Part.objects.filter(seller=user)).select_related("category", "brand")
+    seller = seller_principal(user)
+    return _apply_seller_brand_scope(user, Part.objects.filter(seller=seller)).select_related("category", "brand")
 
 
 def _serialize_seller_part(part: Part) -> dict:
@@ -60,7 +83,7 @@ def _serialize_seller_part(part: Part) -> dict:
 
 
 def _seller_requests_queryset(user):
-    return _seller_rfqs_qs(user)
+    return _seller_rfqs_qs(seller_principal(user))
 
 
 def _serialize_seller_rfq(rfq: RFQ, seller_user) -> dict:
@@ -96,8 +119,9 @@ def _serialize_seller_rfq(rfq: RFQ, seller_user) -> dict:
 
 
 def _seller_orders_queryset(user):
+    seller = seller_principal(user)
     return (
-        Order.objects.filter(items__part__seller=user)
+        Order.objects.filter(items__part__seller=seller)
         .distinct()
         .prefetch_related("items__part", "events", "documents", "claims")
         .order_by("-created_at")
@@ -105,8 +129,23 @@ def _seller_orders_queryset(user):
 
 
 def _serialize_seller_order(order: Order, seller_user) -> dict:
+    seller_user = seller_principal(seller_user)
     seller_items = [item for item in order.items.all() if item.part and item.part.seller_id == seller_user.id]
-    open_claims = [claim for claim in order.claims.all() if claim.status in {"open", "in_review"}]
+    seller_total = sum(
+        (item.total_price for item in seller_items),
+        Decimal("0.00"),
+    )
+    reserve_percent = Decimal(str(order.reserve_percent or 0))
+    seller_reserve = (
+        seller_total * reserve_percent / Decimal("100")
+    ).quantize(Decimal("0.01"))
+    visible_claims = seller_visible_claims(order, seller_user)
+    open_claims = [
+        claim
+        for claim in visible_claims
+        if claim.status in {"open", "in_review"}
+    ]
+    visible_documents = seller_visible_documents(order, seller_user)
     return {
         "id": order.id,
         "customer_name": order.customer_name,
@@ -118,13 +157,14 @@ def _serialize_seller_order(order: Order, seller_user) -> dict:
         "supplier_confirm_deadline": order.supplier_confirm_deadline.isoformat() if order.supplier_confirm_deadline else None,
         "ship_deadline": order.ship_deadline.isoformat() if order.ship_deadline else None,
         "invoice_number": order.invoice_number,
-        "total_amount": str(order.total_amount),
-        "reserve_amount": str(order.reserve_amount),
+        "total_amount": str(seller_total),
+        "seller_subtotal": str(seller_total),
+        "reserve_amount": str(seller_reserve),
         "reserve_percent": str(order.reserve_percent),
         "created_at": order.created_at.isoformat(),
         "items_count": len(seller_items),
         "units_total": sum(int(item.quantity) for item in seller_items),
-        "documents_count": len(order.documents.all()),
+        "documents_count": visible_documents.count(),
         "open_claims_count": len(open_claims),
         "seller_items": [
             {
@@ -193,7 +233,10 @@ def api_parts(request):
 @permission_classes([AllowAny])
 @throttle_classes([LookupThrottle])
 def api_part_detail(_request, part_id: int):
-    part = get_object_or_404(Part.objects.select_related("category", "brand", "seller"), id=part_id)
+    part = get_object_or_404(
+        _eligible_parts_qs().select_related("category", "brand"),
+        id=part_id,
+    )
     return Response(PartSerializer(part).data)
 
 
@@ -203,10 +246,17 @@ def api_part_detail(_request, part_id: int):
 def api_my_orders(request):
     role = _role_for(request.user)
     if role == "seller":
-        qs = Order.objects.filter(items__part__seller=request.user).distinct()
-    else:
-        qs = Order.objects.filter(buyer=request.user)
-    qs = qs.prefetch_related("items__part")
+        orders = _seller_orders_queryset(request.user)
+        return Response({
+            "items": [
+                _serialize_seller_order(order, request.user)
+                for order in orders[:100]
+            ],
+        })
+    qs = (
+        Order.objects.filter(buyer=request.user)
+        .prefetch_related("items__part")
+    )
     return Response({"items": OrderSerializer(qs[:100], many=True).data})
 
 
@@ -293,8 +343,12 @@ def api_seller_product_bulk_update(request):
 
     action = (request.data.get("action") or "").strip()
     ids = request.data.get("part_ids") or request.data.get("product_ids") or []
+    if not isinstance(ids, list):
+        return Response({"error": "part_ids must be a list"}, status=400)
+    if len(ids) > 500:
+        return Response({"error": "too many part_ids; maximum is 500"}, status=413)
     try:
-        selected_ids = [int(value) for value in ids]
+        selected_ids = list(dict.fromkeys(int(value) for value in ids))
     except (TypeError, ValueError):
         selected_ids = []
     if not selected_ids:
@@ -367,7 +421,8 @@ def api_seller_requests(request):
             | Q(items__matched_part__oem_number__icontains=q)
             | Q(items__matched_part__title__icontains=q)
         ).distinct()
-    items = [_serialize_seller_rfq(rfq, request.user) for rfq in rfqs[:100]]
+    seller = seller_principal(request.user)
+    items = [_serialize_seller_rfq(rfq, seller) for rfq in rfqs[:100]]
     return Response({"items": items})
 
 
@@ -378,7 +433,7 @@ def api_seller_request_detail(request, rfq_id: int):
     if _role_for(request.user) != "seller":
         return _seller_api_forbidden()
     rfq = get_object_or_404(_seller_requests_queryset(request.user), id=rfq_id)
-    return Response(_serialize_seller_rfq(rfq, request.user))
+    return Response(_serialize_seller_rfq(rfq, seller_principal(request.user)))
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -391,13 +446,16 @@ def api_seller_request_quote(request, rfq_id: int):
         return Response({"error": "orders permission required"}, status=403)
     rfq = get_object_or_404(_seller_requests_queryset(request.user), id=rfq_id)
     supplier_comment = (request.data.get("comment") or "").strip()
-    seller_items = RFQItem.objects.filter(rfq=rfq, matched_part__seller=request.user)
+    if len(supplier_comment) > 2_000:
+        return Response({"error": "comment is too long"}, status=400)
+    seller_items = RFQItem.objects.filter(
+        rfq=rfq,
+        matched_part__seller=seller_principal(request.user),
+    )
     seller_items.update(
         decision_reason=f"seller_quote:{supplier_comment}" if supplier_comment else "seller_quote",
         state="auto_matched",
     )
-    rfq.status = "quoted"
-    rfq.save(update_fields=["status"])
     _refresh_seller_dashboard_projection(request.user)
     return Response({"ok": True, "rfq_id": rfq.id, "status": rfq.status})
 
@@ -412,13 +470,16 @@ def api_seller_request_decline(request, rfq_id: int):
         return Response({"error": "orders permission required"}, status=403)
     rfq = get_object_or_404(_seller_requests_queryset(request.user), id=rfq_id)
     supplier_comment = (request.data.get("reason") or "").strip()
-    seller_items = RFQItem.objects.filter(rfq=rfq, matched_part__seller=request.user)
+    if len(supplier_comment) > 2_000:
+        return Response({"error": "reason is too long"}, status=400)
+    seller_items = RFQItem.objects.filter(
+        rfq=rfq,
+        matched_part__seller=seller_principal(request.user),
+    )
     seller_items.update(
         decision_reason=f"seller_decline:{supplier_comment}" if supplier_comment else "seller_decline",
         state="needs_review",
     )
-    rfq.status = "cancelled"
-    rfq.save(update_fields=["status"])
     _refresh_seller_dashboard_projection(request.user)
     return Response({"ok": True, "rfq_id": rfq.id, "status": rfq.status})
 
@@ -433,13 +494,16 @@ def api_seller_request_renegotiate(request, rfq_id: int):
         return Response({"error": "orders permission required"}, status=403)
     rfq = get_object_or_404(_seller_requests_queryset(request.user), id=rfq_id)
     supplier_comment = (request.data.get("comment") or "").strip()
-    seller_items = RFQItem.objects.filter(rfq=rfq, matched_part__seller=request.user)
+    if len(supplier_comment) > 2_000:
+        return Response({"error": "comment is too long"}, status=400)
+    seller_items = RFQItem.objects.filter(
+        rfq=rfq,
+        matched_part__seller=seller_principal(request.user),
+    )
     seller_items.update(
         decision_reason=f"seller_renegotiate:{supplier_comment}" if supplier_comment else "seller_renegotiate",
         state="needs_review",
     )
-    rfq.status = "needs_review"
-    rfq.save(update_fields=["status"])
     _refresh_seller_dashboard_projection(request.user)
     return Response({"ok": True, "rfq_id": rfq.id, "status": rfq.status})
 
@@ -468,7 +532,8 @@ def api_seller_orders(request):
             | Q(items__part__oem_number__icontains=q)
             | Q(items__part__title__icontains=q)
         ).distinct()
-    return Response({"items": [_serialize_seller_order(order, request.user) for order in orders[:100]]})
+    seller = seller_principal(request.user)
+    return Response({"items": [_serialize_seller_order(order, seller) for order in orders[:100]]})
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -479,19 +544,31 @@ def api_seller_order_detail(request, order_id: int):
         return _seller_api_forbidden()
     order = get_object_or_404(_seller_orders_queryset(request.user), id=order_id)
     _recalc_order_sla(order)
-    payload = _serialize_seller_order(order, request.user)
-    payload["events"] = [_serialize_order_event(event) for event in order.events.all()[:100]]
+    seller = seller_principal(request.user)
+    payload = _serialize_seller_order(order, seller)
+    payload["events"] = [
+        _serialize_order_event(event)
+        for event in seller_visible_events(order, seller)[:100]
+    ]
+    visible_documents = seller_visible_documents(order, seller)
     payload["documents"] = [
         {
             "id": doc.id,
             "doc_type": doc.doc_type,
             "title": doc.title,
-            "file_url": doc.file_url,
+            "file_url": (
+                f"/api/assistant/orders/{order.id}/documents/{doc.id}/file/"
+                if doc.file_obj
+                else ""
+            ),
             "created_at": doc.created_at.isoformat(),
         }
-        for doc in order.documents.all()[:100]
+        for doc in visible_documents[:100]
     ]
-    payload["claims"] = [_serialize_order_claim(claim) for claim in order.claims.all()[:100]]
+    payload["claims"] = [
+        _serialize_order_claim(claim)
+        for claim in seller_visible_claims(order, seller)[:100]
+    ]
     return Response(payload)
 
 
@@ -502,7 +579,14 @@ def api_seller_order_timeline(request, order_id: int):
     if _role_for(request.user) != "seller":
         return _seller_api_forbidden()
     order = get_object_or_404(_seller_orders_queryset(request.user), id=order_id)
-    return Response({"order_id": order.id, "items": [_serialize_order_event(event) for event in order.events.all()[:100]]})
+    seller = seller_principal(request.user)
+    return Response({
+        "order_id": order.id,
+        "items": [
+            _serialize_order_event(event)
+            for event in seller_visible_events(order, seller)[:100]
+        ],
+    })
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -513,27 +597,50 @@ def api_seller_order_action(request, order_id: int):
         return _seller_api_forbidden()
     if not _has_seller_permission(request.user, "can_manage_orders"):
         return Response({"error": "orders permission required"}, status=403)
-    order = get_object_or_404(_seller_orders_queryset(request.user), id=order_id)
     status = (request.data.get("status") or request.data.get("action") or "").strip()
     allowed = {key for key, _ in Order.STATUS_CHOICES}
-    seller_allowed_statuses = {"confirmed", "in_production", "ready_to_ship", "shipped", "delivered", "cancelled"}
+    seller_allowed_statuses = {"confirmed", "in_production", "ready_to_ship"}
     if status not in allowed:
         return Response({"error": "invalid status"}, status=400)
     if status not in seller_allowed_statuses:
         return Response({"error": "status cannot be changed by seller"}, status=400)
-    current = order.status
-    if status != current:
+
+    with transaction.atomic():
+        if not _seller_orders_queryset(request.user).filter(id=order_id).exists():
+            return Response({"detail": "Not found."}, status=404)
+        order = get_object_or_404(
+            Order.objects.select_for_update().prefetch_related("items__part"),
+            id=order_id,
+        )
+        if len(seller_ids_for_order(order)) > 1:
+            return Response(
+                {"error": "multi-supplier order status is managed per item"},
+                status=409,
+            )
+        current = order.status
+        if status == current:
+            return Response({
+                "ok": True,
+                "order_id": order.id,
+                "status": order.status,
+                "sla_status": order.sla_status,
+                "no_change": True,
+            })
         next_allowed = ORDER_TRANSITIONS.get(current, set())
         if status not in next_allowed:
             return Response({"error": f"invalid transition: {current} -> {status}"}, status=400)
-    update_fields = ["status"]
-    order.status = status
-    if status == "confirmed" and not order.ship_deadline:
-        order.ship_deadline = timezone.now() + timedelta(days=5)
-        update_fields.append("ship_deadline")
-    order.save(update_fields=update_fields)
-    _log_order_event(order, "status_changed", source="seller", actor=request.user, meta={"from": current, "to": status})
-    _recalc_order_sla(order)
+        update_fields = ["status"]
+        order.status = status
+        if status == "confirmed" and not order.ship_deadline:
+            order.ship_deadline = timezone.now() + timedelta(days=5)
+            update_fields.append("ship_deadline")
+        order.save(update_fields=update_fields)
+        _log_order_event(
+            order, "status_changed", source="seller", actor=request.user,
+            meta={"from": current, "to": status},
+        )
+        _recalc_order_sla(order)
+
     _refresh_seller_dashboard_projection(request.user)
     return Response({"ok": True, "order_id": order.id, "status": order.status, "sla_status": order.sla_status})
 
@@ -544,16 +651,23 @@ def api_seller_order_action(request, order_id: int):
 def api_seller_claims(request):
     if _role_for(request.user) != "seller":
         return _seller_api_forbidden()
+    seller = seller_principal(request.user)
     claims = (
-        OrderClaim.objects.filter(order__items__part__seller=request.user)
+        OrderClaim.objects.filter(order__items__part__seller=seller)
         .distinct()
         .select_related("order", "opened_by", "resolved_by")
+        .prefetch_related("order__items__part")
         .order_by("-created_at")
     )
     status = request.GET.get("status", "").strip()
     if status:
         claims = claims.filter(status=status)
-    return Response({"items": [_serialize_order_claim(claim) for claim in claims[:100]]})
+    visible = [
+        claim
+        for claim in claims[:300]
+        if seller_can_access_claim(seller, claim)
+    ][:100]
+    return Response({"items": [_serialize_order_claim(claim) for claim in visible]})
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -564,20 +678,43 @@ def api_seller_claim_respond(request, claim_id: int):
         return _seller_api_forbidden()
     if not _has_seller_permission(request.user, "can_manage_orders"):
         return Response({"error": "orders permission required"}, status=403)
+    seller = seller_principal(request.user)
     claim = get_object_or_404(
-        OrderClaim.objects.filter(order__items__part__seller=request.user).distinct(),
+        OrderClaim.objects.filter(order__items__part__seller=seller).distinct(),
         id=claim_id,
     )
+    if not seller_can_access_claim(seller, claim):
+        return Response({"error": "claim access denied"}, status=403)
     status = (request.data.get("status") or "").strip()
     comment = (request.data.get("comment") or "").strip()
-    allowed = {"in_review", "approved", "rejected", "closed"}
-    if status not in allowed:
-        return Response({"error": "invalid claim status"}, status=400)
-    claim.status = status
-    if comment:
-        claim.description = f"{claim.description}\n\nSeller response: {comment}".strip()
-    claim.resolved_by = request.user
-    claim.save(update_fields=["status", "description", "resolved_by", "updated_at"])
+    if status != "in_review":
+        return Response(
+            {"error": "claim resolution is managed by platform operator"},
+            status=403,
+        )
+    if len(comment) > 2_000:
+        return Response({"error": "comment is too long"}, status=400)
+    with transaction.atomic():
+        claim = (
+            OrderClaim.objects.select_for_update()
+            .select_related("order")
+            .get(id=claim.id)
+        )
+        if claim.status not in {"open", "in_review"}:
+            return Response(
+                {"error": "claim can no longer be accepted for review"},
+                status=409,
+            )
+        update_fields = ["updated_at"]
+        if claim.status == "open":
+            claim.status = "in_review"
+            update_fields.append("status")
+        if comment:
+            claim.description = (
+                f"{claim.description}\n\nSeller response: {comment}"
+            ).strip()
+            update_fields.append("description")
+        claim.save(update_fields=update_fields)
     _log_order_event(
         claim.order,
         "claim_status_changed",
@@ -595,12 +732,16 @@ def api_seller_claim_respond(request, claim_id: int):
 def api_dashboard_summary(request):
     role = _role_for(request.user)
     if role == "seller":
-        scoped = _apply_seller_brand_scope(request.user, Part.objects.filter(seller=request.user))
+        seller = seller_principal(request.user)
+        scoped = _apply_seller_brand_scope(
+            request.user,
+            Part.objects.filter(seller=seller),
+        )
         metrics = scoped.aggregate(
             parts_count=Count("id"),
             inventory_value=Sum("price"),
         )
-        order_count = Order.objects.filter(items__part__seller=request.user).distinct().count()
+        order_count = Order.objects.filter(items__part__seller=seller).distinct().count()
         return Response(
             {
                 "role": "seller",
@@ -633,23 +774,24 @@ def api_health(_request):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([LookupThrottle])
 def api_newsletter_subscribe(request):
-    """Newsletter subscribe (Bug-Round4: раньше JS бил в 404 и показывал
-    фейковый успех в catch). Минимальная реализация: валидируем email,
-    дедуплицируем, пишем в БД (если есть модель) или в лог.
-    """
-    import re
+    """Validate and persist a public newsletter subscription."""
+    from django.core.validators import validate_email
+    from django.core.exceptions import ValidationError
+
     email = (request.data.get("email") or "").strip().lower()
-    if not email or not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", email):
-        return Response({"ok": False, "error": "invalid_email"}, status=400)
     try:
-        from marketplace.models import NewsletterSubscriber  # optional
-        NewsletterSubscriber.objects.get_or_create(email=email)
-    except Exception:
-        # Модели может не быть — fallback в лог
-        import logging
-        logging.getLogger("marketplace.newsletter").info("newsletter_subscribe", extra={"email": email})
-    return Response({"ok": True, "email": email}, status=200)
+        validate_email(email)
+    except ValidationError:
+        return Response({"ok": False, "error": "invalid_email"}, status=400)
+
+    subscriber, created = NewsletterSubscriber.objects.get_or_create(email=email)
+    if not created and not subscriber.is_active:
+        subscriber.is_active = True
+        subscriber.save(update_fields=["is_active", "updated_at"])
+    # Do not reveal whether an address was already present in the database.
+    return Response({"ok": True}, status=202)
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -669,7 +811,7 @@ def api_readiness(request):
 
     token = (getattr(settings, "HEALTHCHECK_TOKEN", "") or "").strip()
     provided = (request.headers.get("X-Healthcheck-Token") or "").strip()
-    if token and provided == token:
+    if token and hmac.compare_digest(provided, token):
         payload = {"ok": ok, "checks": {"database": ok}}
         if detail:
             payload["error"] = detail
@@ -698,10 +840,35 @@ def api_hybrid_analytics(request):
     webhook_qs = WebhookDeliveryLog.objects.filter(created_at__gte=start)
 
     if role == "seller":
-        order_qs = order_qs.filter(items__part__seller=request.user).distinct()
-        rfq_qs = rfq_qs.filter(items__matched_part__seller=request.user).distinct()
-        claim_qs = claim_qs.filter(order__items__part__seller=request.user).distinct()
-        webhook_qs = webhook_qs.filter(order__items__part__seller=request.user).distinct()
+        seller = seller_principal(request.user)
+        company_ids = seller_company_user_ids(seller)
+        order_qs = order_qs.filter(items__part__seller=seller).distinct()
+        rfq_qs = rfq_qs.filter(items__matched_part__seller=seller).distinct()
+        claim_qs = (
+            claim_qs.filter(order__items__part__seller=seller)
+            .annotate(
+                order_seller_count=Count(
+                    "order__items__part__seller",
+                    distinct=True,
+                ),
+            )
+            .filter(
+                Q(order_seller_count=1)
+                | Q(opened_by_id__in=company_ids)
+            )
+            .distinct()
+        )
+        webhook_qs = (
+            webhook_qs.filter(order__items__part__seller=seller)
+            .annotate(
+                order_seller_count=Count(
+                    "order__items__part__seller",
+                    distinct=True,
+                ),
+            )
+            .filter(order_seller_count=1)
+            .distinct()
+        )
     elif role == "buyer":
         order_qs = order_qs.filter(buyer=request.user)
         rfq_qs = rfq_qs.filter(created_by=request.user)
@@ -712,7 +879,22 @@ def api_hybrid_analytics(request):
     rfq_total = rfq_qs.count()
     claims_open = claim_qs.exclude(status__in=["closed", "rejected"]).count()
     webhooks_failed = webhook_qs.filter(success=False).count()
-    revenue_total = order_qs.aggregate(total=Sum("total_amount"))["total"] or 0
+    if role == "seller":
+        revenue_total = (
+            OrderItem.objects.filter(order__in=order_qs, part__seller=seller)
+            .aggregate(
+                total=Sum(
+                    F("unit_price") * F("quantity"),
+                    output_field=DecimalField(
+                        max_digits=18,
+                        decimal_places=2,
+                    ),
+                ),
+            )["total"]
+            or 0
+        )
+    else:
+        revenue_total = order_qs.aggregate(total=Sum("total_amount"))["total"] or 0
 
     payload = {
         "window_days": days,
@@ -727,7 +909,7 @@ def api_hybrid_analytics(request):
         "webhooks_failed": webhooks_failed,
         "revenue_total": revenue_total,
     }
-    if role != "seller":
+    if role == "admin" or (role or "").startswith("operator"):
         payload["suppliers_at_risk"] = (
             Part.objects.filter(seller__profile__supplier_status__in=["risky", "rejected"], is_active=True)
             .values("seller_id")
@@ -759,9 +941,24 @@ def api_hybrid_funnel(request):
     claim_qs = OrderClaim.objects.filter(created_at__gte=start)
 
     if role == "seller":
-        rfq_qs = rfq_qs.filter(items__matched_part__seller=request.user).distinct()
-        order_qs = order_qs.filter(items__part__seller=request.user).distinct()
-        claim_qs = claim_qs.filter(order__items__part__seller=request.user).distinct()
+        seller = seller_principal(request.user)
+        company_ids = seller_company_user_ids(seller)
+        rfq_qs = rfq_qs.filter(items__matched_part__seller=seller).distinct()
+        order_qs = order_qs.filter(items__part__seller=seller).distinct()
+        claim_qs = (
+            claim_qs.filter(order__items__part__seller=seller)
+            .annotate(
+                order_seller_count=Count(
+                    "order__items__part__seller",
+                    distinct=True,
+                ),
+            )
+            .filter(
+                Q(order_seller_count=1)
+                | Q(opened_by_id__in=company_ids)
+            )
+            .distinct()
+        )
     elif role == "buyer":
         rfq_qs = rfq_qs.filter(created_by=request.user)
         order_qs = order_qs.filter(buyer=request.user)

@@ -20,7 +20,7 @@ from django.test import TestCase
 from assistant.actions import execute
 from assistant.models import Wallet, WalletTx
 from assistant.payments import _wallet_confirm_intent, create_payment_intent
-from marketplace.models import Brand, Category, Order, OrderItem, Part, UserProfile
+from marketplace.models import Brand, Category, Order, OrderItem, Part, RFQ, UserProfile
 
 User = get_user_model()
 
@@ -59,6 +59,21 @@ class P0MoneyFlowTests(TestCase):
         confirm_btn = next((a for a in (r.actions or []) if a.get("params", {}).get("confirmed")), None)
         self.assertIsNotNone(confirm_btn, "Должна быть кнопка с confirmed=True")
 
+    def test_false_string_cannot_confirm_quick_order(self):
+        result = execute(
+            "quick_order",
+            {
+                "product_ids": [self.part.id],
+                "quantity": 1,
+                "confirmed": "false",
+            },
+            self.buyer,
+            "buyer",
+        )
+
+        self.assertIn("Подтвердите заказ", result.text)
+        self.assertFalse(Order.objects.filter(buyer=self.buyer).exists())
+
     def test_p07_quick_order_with_confirmed_creates_order(self):
         r = execute("quick_order",
                     {"product_ids": [self.part.id], "quantity": 1, "confirmed": True},
@@ -67,6 +82,47 @@ class P0MoneyFlowTests(TestCase):
         # выполнен). Создание Order зависит от calc_logistics + dest_country и
         # может вернуть ActionResult с ошибкой расчёта — но preview явно нет.
         self.assertNotIn("Подтвердите заказ", r.text)
+
+    def test_quick_order_rejects_invalid_or_excessive_quantity(self):
+        for quantity in ("NaN", -1, 1_000_001):
+            with self.subTest(quantity=quantity):
+                result = execute(
+                    "quick_order",
+                    {"product_ids": [self.part.id], "quantity": quantity},
+                    self.buyer,
+                    "buyer",
+                )
+                self.assertIn("Количество", result.text)
+        self.assertFalse(Order.objects.filter(buyer=self.buyer).exists())
+
+    def test_quick_order_rejects_oversized_product_list(self):
+        result = execute(
+            "quick_order",
+            {"product_ids": list(range(1, 32)), "quantity": 1},
+            self.buyer,
+            "buyer",
+        )
+
+        self.assertIn("не более 30", result.text)
+        self.assertFalse(Order.objects.filter(buyer=self.buyer).exists())
+
+    def test_create_rfq_rejects_invalid_quantity_and_oversized_list(self):
+        invalid_quantity = execute(
+            "create_rfq",
+            {"articles": ["A-1"], "quantity": "NaN"},
+            self.buyer,
+            "buyer",
+        )
+        oversized = execute(
+            "create_rfq",
+            {"articles": [f"A-{i}" for i in range(101)], "quantity": 1},
+            self.buyer,
+            "buyer",
+        )
+
+        self.assertIn("Количество", invalid_quantity.text)
+        self.assertIn("не более 100", oversized.text)
+        self.assertFalse(RFQ.objects.filter(created_by=self.buyer).exists())
 
     def test_p07_confirm_delivery_without_confirmed_returns_preview(self):
         order = Order.objects.create(buyer=self.buyer, status="delivered",
@@ -154,6 +210,65 @@ class P0MoneyFlowTests(TestCase):
         order.refresh_from_db()
         self.assertEqual(order.payment_status, "reserve_paid")
 
+    def test_false_string_cannot_confirm_reserve_or_final_payment(self):
+        reserve_order = Order.objects.create(
+            buyer=self.buyer,
+            status="awaiting_reserve",
+            payment_status="awaiting_reserve",
+            total_amount=Decimal("1000"),
+            reserve_amount=Decimal("100"),
+            customer_name="False reserve",
+        )
+        OrderItem.objects.create(
+            order=reserve_order,
+            part=self.part,
+            quantity=1,
+            unit_price=Decimal("1000"),
+        )
+
+        reserve_result = execute(
+            "pay_reserve",
+            {"order_id": reserve_order.id, "confirmed": "false"},
+            self.buyer,
+            "buyer",
+        )
+
+        reserve_order.refresh_from_db()
+        self.assertIn("Готовлю списание", reserve_result.text)
+        self.assertEqual(reserve_order.payment_status, "awaiting_reserve")
+        self.assertFalse(
+            WalletTx.objects.filter(order_id=reserve_order.id).exists()
+        )
+
+        final_order = Order.objects.create(
+            buyer=self.buyer,
+            status="reserve_paid",
+            payment_status="reserve_paid",
+            total_amount=Decimal("1000"),
+            reserve_amount=Decimal("100"),
+            customer_name="False final",
+        )
+        OrderItem.objects.create(
+            order=final_order,
+            part=self.part,
+            quantity=1,
+            unit_price=Decimal("1000"),
+        )
+
+        final_result = execute(
+            "pay_final",
+            {"order_id": final_order.id, "confirmed": "false"},
+            self.buyer,
+            "buyer",
+        )
+
+        final_order.refresh_from_db()
+        self.assertIn("Готовлю списание остатка", final_result.text)
+        self.assertEqual(final_order.payment_status, "reserve_paid")
+        self.assertFalse(
+            WalletTx.objects.filter(order_id=final_order.id).exists()
+        )
+
     def test_pay_reserve_second_call_returns_already_paid(self):
         order = Order.objects.create(buyer=self.buyer, status="awaiting_reserve",
                                       payment_status="awaiting_reserve",
@@ -198,8 +313,9 @@ class P0PermissionsTests(TestCase):
     def test_p01_operator_can_keep_operator_role(self):
         from assistant.permissions import _override_allowed
         self.assertTrue(_override_allowed(self.real_operator, "operator"))
-        # И operator-подроли OK
-        self.assertTrue(_override_allowed(self.real_operator, "operator_logist"))
+        # Предметная подроль должна быть явно выдана, иначе общий оператор не
+        # может подменять свой серверный контекст через переключатель.
+        self.assertFalse(_override_allowed(self.real_operator, "operator_logist"))
 
     def test_p01_anyone_can_keep_own_role(self):
         from assistant.permissions import _override_allowed

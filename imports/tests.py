@@ -2,18 +2,18 @@ import json
 
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from unittest.mock import patch
 
 from files.models import StoredFile
 from files.storage import store_generated_file_bytes
-from marketplace.models import UserProfile
+from marketplace.models import UserProfile, UserRole
 
 from catalog.models import Product
 from offers.models import SupplierOffer
 
-from .models import ImportErrorReport, ImportJob, ImportRow
+from .models import ImportErrorReport, ImportJob, ImportPreviewSession, ImportRow
 
 
 class SupplierImportApiTests(TestCase):
@@ -38,6 +38,28 @@ class SupplierImportApiTests(TestCase):
         self.assertEqual(StoredFile.objects.count(), 1)
         self.assertEqual(ImportJob.objects.count(), 0)
 
+    @patch("imports.api.ImportParser.build_preview_from_bytes")
+    def test_upload_read_error_does_not_expose_internal_path(self, mock_preview):
+        mock_preview.side_effect = OSError("/private/data/imports/secret.csv")
+        file_obj = SimpleUploadedFile(
+            "prices.csv",
+            b"PartNumber,Price\nABC-123,100.00\n",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("supplier_import_file"),
+            data={"file": file_obj},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["error"],
+            "Не удалось безопасно прочитать файл.",
+        )
+        self.assertNotIn("/private/", response.content.decode())
+        self.assertEqual(StoredFile.objects.count(), 0)
+
     def test_google_sheet_invalid_url_returns_400(self):
         response = self.client.post(
             reverse("supplier_import_google_sheet"),
@@ -45,6 +67,196 @@ class SupplierImportApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(ImportJob.objects.count(), 0)
+
+    def test_google_sheet_lookalike_host_is_rejected(self):
+        response = self.client.post(
+            reverse("supplier_import_google_sheet"),
+            data={
+                "url": (
+                    "https://docs.google.com.evil.example/"
+                    "spreadsheets/d/abc123/edit"
+                ),
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(ImportJob.objects.count(), 0)
+
+    @patch("imports.google_sheets.download_get_with_checked_redirects")
+    def test_google_sheet_download_creates_real_preview_and_source_file(self, mock_download):
+        mock_download.return_value = (
+            200,
+            b"PartNumber,WarehouseAddress,Price_FOB_SEA\nABC-123,Shanghai CN,100.00\n",
+            "https://docs.google.com/spreadsheets/d/abc123/export?format=csv&gid=7",
+        )
+
+        response = self.client.post(
+            reverse("supplier_import_google_sheet"),
+            data={
+                "url": "https://docs.google.com/spreadsheets/d/abc123/edit#gid=7",
+            },
+        )
+
+        self.assertEqual(response.status_code, 201)
+        preview = ImportPreviewSession.objects.get(id=response.json()["preview_id"])
+        self.assertEqual(preview.source_type, ImportPreviewSession.SourceType.GOOGLE_SHEET)
+        self.assertIsNotNone(preview.source_file)
+        self.assertEqual(
+            preview.source_file.source_type,
+            StoredFile.SourceType.IMPORT_GOOGLE_SHEET,
+        )
+        self.assertEqual(preview.sample_rows[0]["PartNumber"], "ABC-123")
+        self.assertEqual(preview.detected_columns["oem"], "PartNumber")
+        requested_url = mock_download.call_args.args[0]
+        self.assertIn("format=csv", requested_url)
+        self.assertIn("gid=7", requested_url)
+
+    @patch("imports.google_sheets.download_get_with_checked_redirects")
+    def test_google_sheet_download_failure_creates_no_preview(self, mock_download):
+        mock_download.return_value = (
+            403,
+            b"",
+            "https://docs.google.com/spreadsheets/d/abc123/export?format=csv",
+        )
+
+        response = self.client.post(
+            reverse("supplier_import_google_sheet"),
+            data={"url": "https://docs.google.com/spreadsheets/d/abc123/edit"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(ImportPreviewSession.objects.count(), 0)
+        self.assertEqual(StoredFile.objects.count(), 0)
+
+    def test_csv_upload_rejects_executable_content(self):
+        file_obj = SimpleUploadedFile(
+            "prices.csv",
+            b"MZ\x90\x00malicious",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("supplier_import_file"),
+            data={"file": file_obj},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(StoredFile.objects.count(), 0)
+
+    def test_csv_upload_rejects_duplicate_headers_without_storing_file(self):
+        file_obj = SimpleUploadedFile(
+            "prices.csv",
+            b"PartNumber,PartNumber,Price_FOB_SEA\nABC-123,ABC-124,100.00\n",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("supplier_import_file"),
+            data={"file": file_obj},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(StoredFile.objects.count(), 0)
+
+    @override_settings(MAX_IMPORT_ROWS=1)
+    def test_csv_upload_enforces_row_limit_before_storing_file(self):
+        file_obj = SimpleUploadedFile(
+            "prices.csv",
+            (
+                b"PartNumber,WarehouseAddress,Price_FOB_SEA\n"
+                b"ABC-123,Shanghai CN,100.00\n"
+                b"ABC-124,Shanghai CN,101.00\n"
+            ),
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("supplier_import_file"),
+            data={"file": file_obj},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(StoredFile.objects.count(), 0)
+
+    def test_strict_import_rejects_buyer_role(self):
+        buyer = User.objects.create_user(username="strict_buyer", password="pass12345")
+        UserProfile.objects.create(user=buyer, role="buyer")
+        self.client.force_login(buyer)
+        upload = SimpleUploadedFile(
+            "prices.csv",
+            b"PartNumber\nABC-123\n",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("seller_strict_import"),
+            data={"file": upload},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(StoredFile.objects.count(), 0)
+
+    def test_strict_import_rejects_legacy_xls_before_storage(self):
+        upload = SimpleUploadedFile(
+            "prices.xls",
+            b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1legacy",
+            content_type="application/vnd.ms-excel",
+        )
+
+        response = self.client.post(
+            reverse("seller_strict_import"),
+            data={"file": upload},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(StoredFile.objects.count(), 0)
+
+    def test_strict_import_invalid_structure_leaves_no_stored_file(self):
+        upload = SimpleUploadedFile(
+            "prices.csv",
+            b"PartNumber,Price_EXW\nABC-123,100.00\n",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("seller_strict_import"),
+            data={"file": upload},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(StoredFile.objects.count(), 0)
+
+    def test_enabled_secondary_seller_role_can_use_import_api(self):
+        multi_role_user = User.objects.create_user(
+            username="buyer_with_seller_role",
+            password="pass12345",
+        )
+        UserProfile.objects.create(user=multi_role_user, role="buyer")
+        UserRole.objects.create(
+            user=multi_role_user,
+            role="seller",
+            is_enabled=True,
+        )
+        self.client.force_login(multi_role_user)
+        session = self.client.session
+        session["assistant_role_override"] = "seller"
+        session.save()
+        upload = SimpleUploadedFile(
+            "prices.csv",
+            b"PartNumber,WarehouseAddress,Price_FOB_SEA\nABC-123,Shanghai CN,100.00\n",
+            content_type="text/csv",
+        )
+
+        response = self.client.post(
+            reverse("supplier_import_file"),
+            data={"file": upload},
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(
+            ImportPreviewSession.objects.get().supplier,
+            multi_role_user,
+        )
 
     @patch("imports.api.process_import_job.delay")
     def test_confirm_mapping_and_start_creates_job(self, mock_delay):

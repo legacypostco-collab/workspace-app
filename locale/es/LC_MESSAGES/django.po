@@ -11341,8 +11341,8 @@ msgid "13 цифр (юр) или 15 (ИП)"
 msgstr "13 dígitos (jurídica) o 15 (autónomo)"
 
 #: assistant/onboarding.py:485
-msgid "Например 5022051 (RAKEZ / DED / IFZA)"
-msgstr "Por ejemplo 5022051 (RAKEZ / DED / IFZA)"
+msgid "Укажите номер из торговой лицензии"
+msgstr "Introduzca el número de la licencia comercial"
 
 #: assistant/onboarding.py:487
 msgid "15 цифр (если зарегистрирован для VAT)"
@@ -11516,12 +11516,12 @@ msgid "Например: Emirates NBD (Gold & Diamond Park Branch), ADCB, …"
 msgstr "Por ejemplo: Emirates NBD (Gold & Diamond Park Branch), ADCB, …"
 
 #: assistant/onboarding.py:692
-msgid "8 или 11 символов, например UNILAEAD"
-msgstr "8 u 11 caracteres, por ejemplo UNILAEAD"
+msgid "8 или 11 символов из банковских реквизитов"
+msgstr "8 u 11 caracteres de los datos bancarios"
 
 #: assistant/onboarding.py:695
-msgid "Например: AE34 0470 0000 0020 0830 094"
-msgstr "P. ej.: AE34 0470 0000 0020 0830 094"
+msgid "Введите IBAN в точности как в банковских реквизитах"
+msgstr "Introduzca el IBAN exactamente como aparece en los datos bancarios"
 
 #: assistant/onboarding.py:701
 msgid "Полное наименование банка-получателя"
@@ -36886,3 +36886,72 @@ msgstr "todos los días 8:00–22:00 MSK"
 
 #~ msgid "ETA · 30 апр · по графику"
 #~ msgstr "ETA · 30 abr · según calendario"
+
+msgid "B2B-платформа для поиска запчастей, сравнения предложений и контроля поставок."
+msgstr "Plataforma B2B para buscar repuestos, comparar ofertas y controlar los suministros."
+
+msgid "Поиск запчастей, сравнение предложений и контроль поставок в одном рабочем пространстве."
+msgstr "Búsqueda de repuestos, comparación de ofertas y control de suministros en un solo espacio de trabajo."
+
+msgid "Проверенная сеть"
+msgstr "Red verificada"
+
+msgid "Контроль сроков"
+msgstr "Control de plazos"
+
+msgid "предложений"
+msgstr "de ofertas"
+
+msgid "B2B-платформа, которая соединяет покупателей с поставщиками, производителями и логистическими партнёрами. Сравнивайте предложения и контролируйте поставку на каждом этапе."
+msgstr "Plataforma B2B que conecta a compradores con proveedores, fabricantes y socios logísticos. Compare ofertas y controle cada etapa del suministro."
+
+msgid "единое рабочее пространство для закупки"
+msgstr "un solo espacio de trabajo para compras"
+
+msgid "сравнение предложений по каждой позиции"
+msgstr "comparación de ofertas para cada posición"
+
+msgid "Международные маршруты, консолидация грузов и контроль документов в одном рабочем процессе."
+msgstr "Rutas internacionales, consolidación de carga y control documental en un solo proceso de trabajo."
+
+msgid "Предложения поставщиков по каждой позиции: цена, наличие, срок и условия поставки в одной таблице."
+msgstr "Ofertas de proveedores para cada posición: precio, disponibilidad, plazo y condiciones de entrega en una sola tabla."
+
+msgid "после ответа поставщика"
+msgstr "tras la respuesta del proveedor"
+
+msgid "Сравнивайте цену, наличие и условия поставки для оригинальных деталей и аналогов."
+msgstr "Compare el precio, la disponibilidad y las condiciones de entrega de piezas originales y alternativas."
+
+msgid "Условия и доступные способы оплаты фиксируются в счёте и договоре по конкретной поставке."
+msgstr "Las condiciones y los métodos de pago disponibles se indican en la factura y el contrato de cada suministro."
+
+msgid "Хабы"
+msgstr "Centros"
+
+msgid "и маршруты"
+msgstr "y rutas"
+
+msgid "Консолидация грузов, маршрутные документы и отслеживание этапов доставки."
+msgstr "Consolidación de carga, documentos de ruta y seguimiento de las etapas de entrega."
+
+msgid "Позиции из каталогов поставщиков с ценами, сроками и доступными аналогами."
+msgstr "Posiciones de catálogos de proveedores con precios, plazos y alternativas disponibles."
+
+msgid "Связь с командой и поддержкой доступна в рабочем чате."
+msgstr "El equipo y el soporte están disponibles en el chat de trabajo."
+
+msgid "Открыть поддержку"
+msgstr "Abrir soporte"
+
+msgid "Правовая информация"
+msgstr "Información legal"
+
+msgid "Расчёты"
+msgstr "Pagos"
+
+msgid "Способ, валюта и график оплаты согласуются для каждой поставки и фиксируются в документах сделки."
+msgstr "El método, la moneda y el calendario de pago se acuerdan para cada suministro y se registran en los documentos de la operación."
+
+msgid "Войдите в чат, чтобы подобрать запчасти и сравнить предложения поставщиков."
+msgstr "Abra el chat para buscar repuestos y comparar ofertas de proveedores."

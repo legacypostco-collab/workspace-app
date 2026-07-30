@@ -18,6 +18,7 @@ import logging
 from datetime import timedelta
 from decimal import Decimal
 
+from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
@@ -25,11 +26,79 @@ from .actions import (
     ActionResult, _anon_register_result, _is_anon, _log_event, _notify, register,
 )
 from .realtime import push_rfq_update as _push_rfq_update
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
+MAX_QUOTE_UNIT_PRICE = Decimal("9999999999.99")
+MAX_QUOTE_TOTAL = Decimal("999999999999.99")
+MAX_QUOTE_MESSAGE_LENGTH = 2_000
+MAX_QUOTE_DELIVERY_DAYS = 365
+MAX_QUOTE_VALID_DAYS = 90
+
 
 # ── Helpers ────────────────────────────────────────────────────
+
+def _seller_principal(user, role):
+    if role != "seller":
+        return user
+    from .seller_actions import _effective_seller
+
+    return _effective_seller(user)
+
+
+def _valid_quote_price(value: Decimal) -> bool:
+    return (
+        value.is_finite()
+        and Decimal("0") < value <= MAX_QUOTE_UNIT_PRICE
+    )
+
+
+def _quote_order_financials(quote):
+    """Return trusted order total/items or None for a malformed stored quote."""
+    try:
+        total = Decimal(str(quote.total_amount))
+    except Exception:
+        return None
+    if not total.is_finite() or total <= 0 or total > MAX_QUOTE_TOTAL:
+        return None
+    if (quote.currency or "").upper() != "USD":
+        return None
+
+    items = list(quote.items.select_related("rfq_item", "part"))
+    if not items:
+        return None
+
+    calculated = Decimal("0")
+    seen_rfq_items = set()
+    for item in items:
+        try:
+            quantity = int(item.quantity)
+            unit_price = Decimal(str(item.unit_price))
+        except Exception:
+            return None
+        if (
+            item.part_id is None
+            or item.rfq_item_id is None
+            or item.rfq_item.rfq_id != quote.rfq_id
+            or item.rfq_item_id in seen_rfq_items
+            or quantity < 1
+            or quantity > 1_000_000
+            or not _valid_quote_price(unit_price)
+        ):
+            return None
+        seen_rfq_items.add(item.rfq_item_id)
+        calculated += unit_price * quantity
+
+    try:
+        calculated = calculated.quantize(Decimal("0.01"))
+        total = total.quantize(Decimal("0.01"))
+    except Exception:
+        return None
+    if abs(calculated - total) > Decimal("0.01"):
+        return None
+    return total, items
+
 
 def _calc_quote_total(items: list[dict]) -> Decimal:
     """Sum of unit_price * quantity для списка items."""
@@ -49,6 +118,7 @@ def _next_round(rfq, seller_id: int) -> int:
     return (last.round_number + 1) if last else 1
 
 
+@transaction.atomic
 def auto_generate_quotes_from_catalog(rfq, recipients) -> int:
     """ТЗ §4.1 AUTO mode: для каждого trusted-продавца, у которого в каталоге
     есть Part с матчем по oem_number из RFQItem, мгновенно создаём Quote
@@ -56,7 +126,11 @@ def auto_generate_quotes_from_catalog(rfq, recipients) -> int:
 
     Возвращает кол-во созданных Quote'ов (по 1 на продавца).
     """
-    from marketplace.models import Part, Quote, QuoteItem
+    from marketplace.models import RFQ, Part, Quote, QuoteItem
+
+    rfq = RFQ.objects.select_for_update().get(pk=rfq.pk)
+    if rfq.status == "cancelled":
+        return 0
 
     rfq_items = list(rfq.items.all())
     oems = [it.query for it in rfq_items if it.query]
@@ -154,11 +228,18 @@ def send_rfq_to_suppliers(params, user, role):
 
     from marketplace.models import RFQ, CompanyVerification, UserProfile
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed_raw = params.get("confirmed")
+    confirmed = (
+        confirmed_raw is True
+        or confirmed_raw == 1
+        or str(confirmed_raw).strip().lower() in {"1", "true", "yes", "да"}
+    )
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("RFQ не найден."))
+    if rfq.status == "cancelled":
+        return ActionResult(text=_("Отменённый RFQ нельзя котировать."))
 
     # Авторы RFQ + операторы/админы могут рассылать
     is_operator = bool(role and (role.startswith("operator") or role == "admin"))
@@ -168,8 +249,18 @@ def send_rfq_to_suppliers(params, user, role):
         return ActionResult(text=_("RFQ #%(id)s отменён — нельзя рассылать.") % {"id": rfq.id})
 
     User = get_user_model()
-    min_trusted = int(params.get("min_trusted") or 3)
-    include_risky = bool(params.get("include_risky"))
+    try:
+        min_trusted = int(params.get("min_trusted") or 3)
+    except (TypeError, ValueError, OverflowError):
+        min_trusted = 3
+    min_trusted = min(max(min_trusted, 1), 50)
+    include_risky_raw = params.get("include_risky")
+    include_risky_requested = (
+        include_risky_raw is True
+        or include_risky_raw == 1
+        or str(include_risky_raw).strip().lower() in {"1", "true", "yes", "да"}
+    )
+    include_risky = include_risky_requested and is_operator
 
     # Все активные продавцы (исключая sentinel-эскроу)
     all_sellers = list(
@@ -265,7 +356,11 @@ def send_rfq_to_suppliers(params, user, role):
         try:
             _notify(
                 seller, kind="rfq",
-                title=_("Новый RFQ #%(id)s от %(who)s") % {"id": rfq.id, "who": rfq.customer_name or rfq.created_by.username},
+                title=_("Новый RFQ #%(id)s от %(who)s") % {
+                    "id": rfq.id,
+                    "who": rfq.customer_name
+                    or (rfq.created_by.username if rfq.created_by_id else _("гостя")),
+                },
                 body=_("%(n)s позиций · %(urg)s. Откройте чтобы ответить котировкой.") % {"n": rfq.items.count(), "urg": rfq.urgency or 'standard'},
                 url=f"/chat/rfq/{rfq.id}/?source=invite",
             )
@@ -487,24 +582,61 @@ def submit_quote(params, user, role):
 
     from .onboarding import kyb_required_for_seller
 
+    if role != "seller":
+        return ActionResult(text=_("Котировку может отправить только продавец."))
+    seller_user = _seller_principal(user, role)
+
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("RFQ не найден."))
 
     # KYB-gate (selling-action)
-    if role == "seller" and kyb_required_for_seller(user):
+    if kyb_required_for_seller(seller_user):
         return ActionResult(
             text=_("🛡 Котировки доступны только верифицированным продавцам."),
             actions=[{"action": "start_onboarding", "label": _("🚀 Начать верификацию")}],
         )
 
-    delivery_days = int(params.get("delivery_days") or 14)
-    valid_days = int(params.get("valid_days") or 7)
+    try:
+        delivery_days = int(params.get("delivery_days") or 14)
+        valid_days = int(params.get("valid_days") or 7)
+    except (TypeError, ValueError, OverflowError):
+        return ActionResult(text=_("Срок поставки или действия котировки указан неверно."))
+    if not 1 <= delivery_days <= MAX_QUOTE_DELIVERY_DAYS:
+        return ActionResult(
+            text=_("Срок поставки должен быть от 1 до 365 дней.")
+        )
+    if not 1 <= valid_days <= MAX_QUOTE_VALID_DAYS:
+        return ActionResult(
+            text=_("Срок действия котировки должен быть от 1 до 90 дней.")
+        )
     message = (params.get("message") or "").strip()
+    if len(message) > MAX_QUOTE_MESSAGE_LENGTH:
+        return ActionResult(
+            text=_("Комментарий к котировке слишком длинный.")
+        )
     parent_quote_id = params.get("parent_quote_id")
     direction = (params.get("direction") or "seller_to_buyer").strip()
-    confirmed = bool(params.get("confirmed"))
+    if direction != "seller_to_buyer":
+        return ActionResult(text=_("Некорректное направление котировки."))
+    confirmed = confirmation_is_true(params.get("confirmed"))
+
+    parent = None
+    if parent_quote_id:
+        try:
+            parent_id = int(parent_quote_id)
+        except (TypeError, ValueError):
+            return ActionResult(text=_("Контр-оффер не найден или уже обработан."))
+        parent = Quote.objects.filter(
+            id=parent_id,
+            rfq=rfq,
+            seller=seller_user,
+            direction="buyer_to_seller",
+            status="submitted",
+        ).first()
+        if parent is None:
+            return ActionResult(text=_("Контр-оффер не найден или уже обработан."))
 
     rfq_items = list(RFQItem.objects.filter(rfq=rfq))
 
@@ -529,7 +661,7 @@ def submit_quote(params, user, role):
         seller_parts_qs = None
         if role == "seller":
             from marketplace.models import Part
-            seller_parts_qs = Part.objects.filter(seller=user)
+            seller_parts_qs = Part.objects.filter(seller=seller_user)
 
         _COND_RU = {"oem": "OEM", "aftermarket": _("Аналог"), "used": _("Б/У"), "new": _("Новый")}
         for it in rfq_items:
@@ -653,7 +785,7 @@ def submit_quote(params, user, role):
         seller_rating = 90.0
         try:
             from marketplace.models import UserProfile
-            _prof = (UserProfile.objects.filter(user=user)
+            _prof = (UserProfile.objects.filter(user=seller_user)
                      .only("supplier_status", "rating").first())
             if _prof:
                 seller_status = _prof.supplier_status or "trusted"
@@ -687,14 +819,14 @@ def submit_quote(params, user, role):
         if role == "seller":
             try:
                 from .seller_speed import rfq_age_label, seller_speed_standing
-                seller_speed = seller_speed_standing(user)
+                seller_speed = seller_speed_standing(seller_user)
                 rfq_age = rfq_age_label(rfq)
             except Exception:
                 seller_speed = None
 
         return ActionResult(
             text=(_("💬 Котировка по RFQ #%(id)s") % {"id": rfq.id}
-                  + (_(" · ответ на counter (раунд %(r)s)") % {"r": _next_round(rfq, user.id)} if parent_quote_id else "")
+                  + (_(" · ответ на counter (раунд %(r)s)") % {"r": _next_round(rfq, seller_user.id)} if parent_quote_id else "")
                   + (f"\n{hint}" if hint else "")),
             cards=[{
                 "type": "quote_form",
@@ -750,13 +882,21 @@ def submit_quote(params, user, role):
         try:
             price = Decimal(str(raw))
         except Exception:
-            continue
+            return ActionResult(text=_("Одна из цен указана неверно."))
+        if not _valid_quote_price(price):
+            return ActionResult(
+                text=_("Цена должна быть положительной и не превышать допустимый предел.")
+            )
         # Per-позиционные: срок поставки (lead_<id>) и тип OEM/Аналог (cond_<id>)
         lead_raw = params.get(f"lead_{it.id}")
         try:
             lead = int(lead_raw) if lead_raw not in (None, "") else None
-        except (TypeError, ValueError):
-            lead = None
+        except (TypeError, ValueError, OverflowError):
+            return ActionResult(text=_("Срок по позиции указан неверно."))
+        if lead is not None and not 1 <= lead <= MAX_QUOTE_DELIVERY_DAYS:
+            return ActionResult(
+                text=_("Срок по позиции должен быть от 1 до 365 дней.")
+            )
         cond = params.get(f"cond_{it.id}")
         if cond not in ("oem", "analog"):
             cond = "oem"
@@ -771,47 +911,62 @@ def submit_quote(params, user, role):
     if not item_data:
         return ActionResult(text=_("⚠️ Не указано ни одной цены — котировка не создана."))
 
-    # parent linking
-    parent = None
-    if parent_quote_id:
-        parent = Quote.objects.filter(id=int(parent_quote_id)).first()
-
-    round_number = _next_round(rfq, user.id)
     total = _calc_quote_total([{"unit_price": d["unit_price"], "quantity": d["quantity"]} for d in item_data])
+    if not total.is_finite() or total <= 0 or total > MAX_QUOTE_TOTAL:
+        return ActionResult(text=_("Итоговая сумма котировки недопустима."))
     valid_until = timezone.now() + timedelta(days=valid_days)
 
-    quote = Quote.objects.create(
-        rfq=rfq,
-        seller=user if direction == "seller_to_buyer" else (parent.seller if parent else user),
-        direction=direction,
-        parent_quote=parent,
-        round_number=round_number,
-        status="submitted",
-        delivery_days=delivery_days,
-        valid_until=valid_until,
-        total_amount=total,
-        message=message,
-    )
-    for d in item_data:
-        QuoteItem.objects.create(
-            quote=quote,
-            rfq_item=d["rfq_item"],
-            part=d["rfq_item"].matched_part,
-            title_snapshot=d["rfq_item"].query[:300],
-            quantity=d["quantity"],
-            unit_price=d["unit_price"],
-            delivery_days=d.get("delivery_days"),
-            condition=d.get("condition", "oem"),
-        )
-
-    # Состояние RFQ — под блокировкой, только если ещё new (идемпотентно).
+    # RFQ, котировка, позиции и ответ на counter создаются одной транзакцией.
     from django.db import transaction as _txn
     with _txn.atomic():
         from marketplace.models import RFQ as _RFQ
-        _r = _RFQ.objects.select_for_update().get(id=rfq.id)
-        if _r.status == "new":
-            _r.status = "quoted"
-            _r.save(update_fields=["status"])
+        rfq = _RFQ.objects.select_for_update().get(id=rfq.id)
+        if rfq.status == "cancelled":
+            return ActionResult(text=_("Отменённый RFQ нельзя котировать."))
+        if parent_quote_id:
+            parent = Quote.objects.select_for_update().filter(
+                id=parent.id,
+                rfq=rfq,
+                seller=seller_user,
+                direction="buyer_to_seller",
+                status="submitted",
+            ).first()
+            if parent is None:
+                return ActionResult(
+                    text=_("Контр-оффер не найден или уже обработан.")
+                )
+        round_number = _next_round(rfq, seller_user.id)
+        quote = Quote.objects.create(
+            rfq=rfq,
+            seller=seller_user,
+            direction="seller_to_buyer",
+            parent_quote=parent,
+            round_number=round_number,
+            status="submitted",
+            delivery_days=delivery_days,
+            valid_until=valid_until,
+            total_amount=total,
+            message=message,
+        )
+        QuoteItem.objects.bulk_create([
+            QuoteItem(
+                quote=quote,
+                rfq_item=d["rfq_item"],
+                part=d["rfq_item"].matched_part,
+                title_snapshot=d["rfq_item"].query[:300],
+                quantity=d["quantity"],
+                unit_price=d["unit_price"],
+                delivery_days=d.get("delivery_days"),
+                condition=d.get("condition", "oem"),
+            )
+            for d in item_data
+        ])
+        if rfq.status == "new":
+            rfq.status = "quoted"
+            rfq.save(update_fields=["status"])
+        if parent is not None:
+            parent.status = "countered"
+            parent.save(update_fields=["status"])
 
     # Anti-collusion: если seller написал в message email/phone/messenger
     # с offplatform-намёком — флаг оператору (audit_log + admin-chat alert).
@@ -842,7 +997,7 @@ def submit_quote(params, user, role):
         _notify(
             rfq.created_by, kind="rfq",
             title=_("Котировка по RFQ #%(id)s") % {"id": rfq.id},
-            body=_("%(user)s: $%(amt)s · доставка %(d)s дн.") % {"user": user.username, "amt": f"{total:,.0f}", "d": delivery_days},
+            body=_("%(user)s: $%(amt)s · доставка %(d)s дн.") % {"user": seller_user.username, "amt": f"{total:,.0f}", "d": delivery_days},
             url=f"/chat/?rfq={rfq.id}",
         )
 
@@ -857,7 +1012,7 @@ def submit_quote(params, user, role):
             ev_type, resp_min = response_event_for(rfq, quote)
             if ev_type:
                 record_rating_event(
-                    user, event_type=ev_type,
+                    seller_user, event_type=ev_type,
                     meta={"rfq_id": rfq.id, "quote_id": quote.id,
                           "response_minutes": resp_min},
                 )
@@ -869,7 +1024,7 @@ def submit_quote(params, user, role):
     # изменения (снизил цену) НЕ штрафуются. Сравниваем с прошлой котировкой продавца.
     elif round_number > 1:
         try:
-            prev = (Quote.objects.filter(rfq=rfq, seller=user, direction="seller_to_buyer")
+            prev = (Quote.objects.filter(rfq=rfq, seller=seller_user, direction="seller_to_buyer")
                     .exclude(id=quote.id).order_by("-round_number", "-created_at").first())
             if prev is not None:
                 worse = {}
@@ -883,16 +1038,11 @@ def submit_quote(params, user, role):
                 if worse:
                     from .rating import record_rating_event
                     record_rating_event(
-                        user, event_type="terms_worsened",
+                        seller_user, event_type="terms_worsened",
                         meta={"rfq_id": rfq.id, "quote_id": quote.id, **worse},
                     )
         except Exception:
             logger.exception("terms_worsened rating event failed")
-
-    # Если это counter-respond — пометить parent как countered → submitted (он ответил)
-    if parent and parent.direction == "buyer_to_seller":
-        parent.status = "submitted"
-        parent.save(update_fields=["status"])
 
     _push_rfq_update(rfq, event="quote_submitted", quote_id=quote.id)
 
@@ -1043,7 +1193,8 @@ def view_quote(params, user, role):
         return _anon_register_result()
 
     is_buyer = (q.rfq.created_by_id == user.id)
-    is_seller = (q.seller_id == user.id)
+    seller_user = _seller_principal(user, role)
+    is_seller = role == "seller" and q.seller_id == seller_user.id
     if not (is_buyer or is_seller or (role and role.startswith("operator")) or role == "admin"):
         return ActionResult(text=_("Доступ к котировке ограничен."))
 
@@ -1159,8 +1310,13 @@ def view_quote(params, user, role):
 
 @register("accept_quote")
 def accept_quote(params, user, role):
-    from marketplace.models import Order, OrderItem, Quote
-    confirmed = bool(params.get("confirmed"))
+    from marketplace.models import Order, OrderItem, Quote, RFQ
+    confirmed_raw = params.get("confirmed")
+    confirmed = (
+        confirmed_raw is True
+        or confirmed_raw == 1
+        or str(confirmed_raw).strip().lower() in {"1", "true", "yes", "да"}
+    )
     try:
         q = Quote.objects.select_related("rfq", "seller").get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
@@ -1172,6 +1328,12 @@ def accept_quote(params, user, role):
 
     if q.rfq.created_by_id != user.id:
         return ActionResult(text=_("Принять котировку может только заказчик RFQ."))
+    if q.rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — принять котировку нельзя."))
+    if q.direction != "seller_to_buyer":
+        return ActionResult(text=_("Принять можно только котировку поставщика."))
+    if not q.seller_id or not q.seller.is_active:
+        return ActionResult(text=_("Поставщик этой котировки недоступен."))
     if q.status not in ("submitted", "finalized"):
         return ActionResult(text=_("Эту котировку нельзя принять (статус: %(st)s).") % {"st": q.get_status_display()})
 
@@ -1183,10 +1345,20 @@ def accept_quote(params, user, role):
             % {"when": q.valid_until.strftime("%d.%m.%Y %H:%M")}
         ))
 
+    financials = _quote_order_financials(q)
+    if financials is None:
+        return ActionResult(
+            text=_(
+                "В котировке обнаружены некорректные позиции или сумма. "
+                "Запросите исправленное предложение."
+            )
+        )
+    quote_total, _quote_items = financials
+
     # Бизнес-правило: минимальная сумма заказа. Блокируем И на preview,
     # И на confirm — buyer должен сразу понять что котировку нельзя принять.
     from .order_limits import check_min_order
-    block = check_min_order(q.total_amount)
+    block = check_min_order(quote_total)
     if block:
         return ActionResult(**block)
 
@@ -1216,9 +1388,9 @@ def accept_quote(params, user, role):
                 "title": _("✓ Принять котировку #%(id)s") % {"id": q.id},
                 "rows": [
                     {"label": _("Продавец"), "value": seller_label},
-                    {"label": _("Сумма"), "value": f"${q.total_amount:,.2f}", "primary": True},
+                    {"label": _("Сумма"), "value": f"${quote_total:,.2f}", "primary": True},
                     {"label": _("Доставка"), "value": _("%(d)s дней") % {"d": q.delivery_days}},
-                    {"label": _("Резерв 10%"), "value": f"${(q.total_amount * Decimal('0.10')):,.2f}"},
+                    {"label": _("Резерв 10%"), "value": f"${(quote_total * Decimal('0.10')):,.2f}"},
                 ],
                 "warnings": warnings,
                 "confirm_action": "accept_quote",
@@ -1228,26 +1400,41 @@ def accept_quote(params, user, role):
             }}],
         )
 
-    # Защита от «пустого» заказа: позиции без part пропускаются в цикле ниже,
-    # поэтому если матча по каталогу нет НИ У ОДНОЙ — Order вышел бы из 0 позиций,
-    # а резерв списался бы с полной суммы. Не создаём Order, отдаём на матч/оператора.
-    if not q.items.filter(part__isnull=False).exists():
-        return ActionResult(text=(
-            _("По этой котировке нет позиций для оформления — нужен матч по каталогу или оператор.")
-        ))
-
     # Шаг 2: создаём Order — ПОД БЛОКИРОВКОЙ котировки + re-check статуса, чтобы
-    # два параллельных accept_quote не создали два заказа с двойным резервом.
+    # параллельное принятие любых двух котировок RFQ не создало два заказа.
     from django.db import transaction as _txn
     reserve_pct = Decimal("10.00")
-    reserve_amount = (q.total_amount * reserve_pct / Decimal("100")).quantize(Decimal("0.01"))
     with _txn.atomic():
+        locked_rfq = RFQ.objects.select_for_update().get(id=q.rfq_id)
         q = (Quote.objects.select_for_update(of=("self",))
              .select_related("rfq", "seller").get(id=q.id))
+        if locked_rfq.status == "cancelled":
+            return ActionResult(
+                text=_("RFQ отменён — принять котировку нельзя.")
+            )
+        if q.direction != "seller_to_buyer":
+            return ActionResult(text=_("Принять можно только котировку поставщика."))
+        if not q.seller_id or not q.seller.is_active:
+            return ActionResult(text=_("Поставщик этой котировки недоступен."))
         if q.status not in ("submitted", "finalized"):
             return ActionResult(
                 text=_("Котировка уже обработана (статус: %(st)s).") % {"st": q.get_status_display()},
             )
+        financials = _quote_order_financials(q)
+        if financials is None:
+            return ActionResult(
+                text=_(
+                    "В котировке обнаружены некорректные позиции или сумма. "
+                    "Запросите исправленное предложение."
+                )
+            )
+        quote_total, quote_items = financials
+        block = check_min_order(quote_total)
+        if block:
+            return ActionResult(**block)
+        reserve_amount = (
+            quote_total * reserve_pct / Decimal("100")
+        ).quantize(Decimal("0.01"))
         order = Order.objects.create(
             customer_name=user.get_full_name() or user.username,
             customer_email=user.email or f"{user.username}@chat.local",
@@ -1259,12 +1446,10 @@ def accept_quote(params, user, role):
             payment_scheme="simple",
             reserve_percent=reserve_pct,
             reserve_amount=reserve_amount,
-            total_amount=q.total_amount,
+            total_amount=quote_total,
         )
         items_count = 0
-        for qi in q.items.all():
-            if not qi.part:
-                continue
+        for qi in quote_items:
             OrderItem.objects.create(
                 order=order, part=qi.part,
                 quantity=qi.quantity, unit_price=qi.unit_price,
@@ -1277,16 +1462,17 @@ def accept_quote(params, user, role):
         Quote.objects.filter(rfq=q.rfq).exclude(id=q.id).filter(
             status__in=("submitted", "finalized", "countered"),
         ).update(status="declined")
-        q.rfq.status = "quoted"
-        q.rfq.save(update_fields=["status"])
+        locked_rfq.status = "quoted"
+        locked_rfq.save(update_fields=["status"])
+        q.rfq = locked_rfq
 
     _log_event(order, "order_created", actor=user, source="buyer",
-               meta={"items": items_count, "total": float(q.total_amount),
+               meta={"items": items_count, "total": float(quote_total),
                      "from_quote": q.id, "rfq_id": q.rfq_id})
     if q.seller:
         _notify(q.seller, kind="order",
                 title=_("Котировка #%(qid)s принята — заказ #%(oid)s") % {"qid": q.id, "oid": order.id},
-                body=_("Покупатель оформил заказ на $%(amt)s. Можно начинать.") % {"amt": f"{q.total_amount:,.2f}"},
+                body=_("Покупатель оформил заказ на $%(amt)s. Можно начинать.") % {"amt": f"{quote_total:,.2f}"},
                 url=f"/chat/?order={order.id}")
 
     _push_rfq_update(q.rfq, event="quote_accepted", quote_id=q.id)
@@ -1295,7 +1481,7 @@ def accept_quote(params, user, role):
         text=(
             _("✓ Котировка #%(qid)s принята · создан заказ #%(oid)s на $%(amt)s.\n"
               "Следующий шаг — оплатить резерв 10%% ($%(res)s).")
-            % {"qid": q.id, "oid": order.id, "amt": f"{q.total_amount:,.2f}", "res": f"{reserve_amount:,.0f}"}
+            % {"qid": q.id, "oid": order.id, "amt": f"{quote_total:,.2f}", "res": f"{reserve_amount:,.0f}"}
         ),
         actions=[
             {"action": "pay_reserve", "label": _("💳 Оплатить резерв $%(res)s") % {"res": f"{reserve_amount:,.0f}"},
@@ -1322,7 +1508,7 @@ def auto_accept_and_pay_reserve(params, user, role):
 
     from .actions import pay_reserve as _pay_reserve
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
@@ -1330,6 +1516,8 @@ def auto_accept_and_pay_reserve(params, user, role):
 
     if rfq.created_by_id != user.id:
         return ActionResult(text=_("Принять КП может только заказчик RFQ."))
+    if rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — принять КП нельзя."))
 
     # Выбираем самое дешёвое submitted/finalized КП
     best = (Quote.objects.filter(rfq=rfq, direction="seller_to_buyer",
@@ -1403,7 +1591,10 @@ def auto_accept_and_pay_reserve(params, user, role):
 @register("counter_offer")
 def counter_offer(params, user, role):
     from marketplace.models import Quote, QuoteItem
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
+    message = (params.get("message") or "").strip()
+    if len(message) > MAX_QUOTE_MESSAGE_LENGTH:
+        return ActionResult(text=_("Комментарий к контр-офферу слишком длинный."))
     try:
         q = Quote.objects.select_related("rfq", "seller").get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
@@ -1411,6 +1602,8 @@ def counter_offer(params, user, role):
 
     if q.rfq.created_by_id != user.id:
         return ActionResult(text=_("Контр-оффер может предлагать только заказчик RFQ."))
+    if q.rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — контр-оффер недоступен."))
     if q.is_final:
         return ActionResult(text=(
             _("Котировка #%(id)s помечена как финальная — переторжка невозможна. "
@@ -1442,50 +1635,76 @@ def counter_offer(params, user, role):
         )
 
     # Шаг 2: создаём новый Quote (direction=buyer_to_seller, status=submitted)
-    new_round = q.round_number + 1
+    quote_items = list(q.items.select_related("rfq_item", "part").all())
     items_data = []
-    for qi in q.items.all():
+    for qi in quote_items:
         raw = params.get(f"price_{qi.id}")
         if raw in (None, ""):
-            continue
+            return ActionResult(
+                text=_("Укажите новую цену для каждой позиции.")
+            )
         try:
             new_price = Decimal(str(raw))
         except Exception:
-            continue
+            return ActionResult(text=_("Одна из цен указана неверно."))
+        if not _valid_quote_price(new_price):
+            return ActionResult(
+                text=_("Цена должна быть положительной и не превышать допустимый предел.")
+            )
         items_data.append({"qi": qi, "unit_price": new_price})
 
-    if not items_data:
+    if not items_data or len(items_data) != len(quote_items):
         return ActionResult(text=_("⚠️ Не указано ни одной новой цены."))
 
     new_total = sum(
         (d["unit_price"] * d["qi"].quantity for d in items_data), Decimal("0")
     ).quantize(Decimal("0.01"))
+    if not new_total.is_finite() or new_total <= 0 or new_total > MAX_QUOTE_TOTAL:
+        return ActionResult(text=_("Итоговая сумма контр-оффера недопустима."))
 
-    counter_q = Quote.objects.create(
-        rfq=q.rfq,
-        seller=q.seller,  # сохраняем привязку — это контр-оффер ИХ котировке
-        direction="buyer_to_seller",
-        parent_quote=q,
-        round_number=new_round,
-        status="submitted",
-        delivery_days=q.delivery_days,
-        valid_until=timezone.now() + timedelta(days=3),
-        total_amount=new_total,
-        message=(params.get("message") or "").strip(),
-    )
-    for d in items_data:
-        QuoteItem.objects.create(
-            quote=counter_q,
-            rfq_item=d["qi"].rfq_item,
-            part=d["qi"].part,
-            title_snapshot=d["qi"].title_snapshot,
-            quantity=d["qi"].quantity,
-            unit_price=d["unit_price"],
+    from django.db import transaction
+
+    with transaction.atomic():
+        q = (
+            Quote.objects.select_for_update(of=("self",))
+            .select_related("rfq", "seller")
+            .get(id=q.id)
         )
-
-    # Помечаем оригинал как countered
-    q.status = "countered"
-    q.save(update_fields=["status"])
+        if (
+            q.rfq.created_by_id != user.id
+            or q.rfq.status == "cancelled"
+            or q.is_final
+            or q.status != "submitted"
+        ):
+            return ActionResult(
+                text=_("Котировка уже обработана или недоступна.")
+            )
+        new_round = q.round_number + 1
+        counter_q = Quote.objects.create(
+            rfq=q.rfq,
+            seller=q.seller,
+            direction="buyer_to_seller",
+            parent_quote=q,
+            round_number=new_round,
+            status="submitted",
+            delivery_days=q.delivery_days,
+            valid_until=timezone.now() + timedelta(days=3),
+            total_amount=new_total,
+            message=message,
+        )
+        QuoteItem.objects.bulk_create([
+            QuoteItem(
+                quote=counter_q,
+                rfq_item=d["qi"].rfq_item,
+                part=d["qi"].part,
+                title_snapshot=d["qi"].title_snapshot,
+                quantity=d["qi"].quantity,
+                unit_price=d["unit_price"],
+            )
+            for d in items_data
+        ])
+        q.status = "countered"
+        q.save(update_fields=["status"])
 
     if q.seller:
         _notify(q.seller, kind="rfq",
@@ -1521,6 +1740,15 @@ def respond_to_counter(params, user, role):
         return ActionResult(text=_("Котировка не найдена."))
     if q.direction != "buyer_to_seller":
         return ActionResult(text=_("Это не контр-оффер."))
+    seller_user = _seller_principal(user, role)
+    if (
+        role != "seller"
+        or q.seller_id != seller_user.id
+        or q.status != "submitted"
+    ):
+        return ActionResult(
+            text=_("Контр-оффер не найден или уже обработан.")
+        )
 
     # Делегируем в submit_quote с parent_quote_id
     return submit_quote({
@@ -1541,7 +1769,8 @@ def mark_quote_final(params, user, role):
         q = Quote.objects.get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Котировка не найдена."))
-    if q.seller_id != user.id:
+    seller_user = _seller_principal(user, role)
+    if role != "seller" or q.seller_id != seller_user.id:
         return ActionResult(text=_("Зафиксировать может только автор котировки."))
     if q.status != "submitted" or q.direction != "seller_to_buyer":
         return ActionResult(text=_("Эту котировку нельзя зафиксировать в текущем состоянии."))
@@ -1551,7 +1780,7 @@ def mark_quote_final(params, user, role):
     if q.rfq.created_by:
         _notify(q.rfq.created_by, kind="rfq",
                 title=_("🔒 Финальная котировка по RFQ #%(id)s") % {"id": q.rfq_id},
-                body=_("%(user)s: $%(amt)s. Переторжка невозможна — принять или отклонить.") % {"user": user.username, "amt": f"{q.total_amount:,.0f}"},
+                body=_("%(user)s: $%(amt)s. Переторжка невозможна — принять или отклонить.") % {"user": seller_user.username, "amt": f"{q.total_amount:,.0f}"},
                 url=f"/chat/?rfq={q.rfq_id}")
     _push_rfq_update(q.rfq, event="quote_finalized", quote_id=q.id)
     return ActionResult(

@@ -24,6 +24,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from .actions import ActionResult, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -80,9 +81,11 @@ def setup_2fa(params, user, role):
     # Новый secret каждый раз когда юзер запросил setup
     secret = pyotp.random_base32()
     twofa.secret = secret
-    # Backup codes — 8 одноразовых, разделённых запятой
+    # Plain values are returned once; only keyed digests are stored.
     backup = [secrets.token_hex(4) for _u1 in range(8)]
-    twofa.backup_codes = ",".join(backup)
+    from .security import encode_backup_codes
+
+    twofa.backup_codes = encode_backup_codes(user, backup)
     twofa.save(update_fields=["secret", "backup_codes"])
 
     issuer = "Consolidator"
@@ -113,6 +116,11 @@ def setup_2fa(params, user, role):
         actions=[
             {"action": "verify_2fa", "label": _("✓ Ввести код из приложения")},
         ],
+        storage_text=_(
+            "🔐 Настройка 2FA начата. QR-код, секрет и резервные коды "
+            "были показаны один раз и не сохраняются в истории чата."
+        ),
+        storage_cards=[],
     )
 
 
@@ -133,7 +141,7 @@ def verify_2fa(params, user, role):
         )
 
     code = (params.get("code") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed or not code:
         return ActionResult(
             text=_("🔐 Введите 6-значный код из вашего authenticator-приложения."),
@@ -176,7 +184,7 @@ def disable_2fa(params, user, role):
         return ActionResult(text=_("2FA не активирован."))
 
     code = (params.get("code") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed or not code:
         return ActionResult(
             text=_("🔓 Подтвердите выключение 2FA вашим OTP-кодом."),
@@ -209,11 +217,11 @@ def disable_2fa(params, user, role):
 def create_api_token(params, user, role):
     """Сгенерировать API-токен. Полный токен виден один раз."""
     from marketplace.models import ApiToken
-    if role != "admin" and not getattr(user, "is_staff", False):
+    if role != "admin":
         return ActionResult(text=_("Управление API-токенами доступно только администратору."))
     label = (params.get("label") or "").strip()
     permissions = (params.get("permissions") or "read").strip().lower()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not label:
         return ActionResult(
@@ -234,6 +242,12 @@ def create_api_token(params, user, role):
                 ],
                 "fixed_params": {"confirmed": True},
             }}],
+        )
+
+    allowed_permissions = {"read", "read,write", "read,write,admin"}
+    if permissions not in allowed_permissions:
+        return ActionResult(
+            text=_("Недопустимый набор разрешений для ключа API.")
         )
 
     full, prefix = _generate_token()
@@ -263,6 +277,21 @@ def create_api_token(params, user, role):
         contextual_actions=[
             {"action": "list_api_tokens", "label": _("📋 Все токены")},
         ],
+        storage_text=(
+            _("✓ Ключ API создан · ID #%(id)s\n\n"
+              "Полное значение было показано один раз и не сохраняется "
+              "в истории чата.")
+            % {"id": token.id}
+        ),
+        storage_cards=[{"type": "draft", "data": {
+            "title": _("🔑 Ключ API · %(label)s") % {"label": label},
+            "rows": [
+                {"label": _("Префикс"), "value": prefix},
+                {"label": _("Разрешения"), "value": permissions, "primary": True},
+            ],
+            "warnings": [_("Полное значение не хранится в истории.")],
+            "confirm_label": "—",
+        }}],
     )
 
 
@@ -270,7 +299,7 @@ def create_api_token(params, user, role):
 def list_api_tokens(params, user, role):
     """Список активных и отозванных токенов."""
     from marketplace.models import ApiToken
-    if role != "admin" and not getattr(user, "is_staff", False):
+    if role != "admin":
         return ActionResult(text=_("Управление API-токенами доступно только администратору."))
     tokens = list(ApiToken.objects.filter(user=user).order_by("-created_at")[:20])
     if not tokens:
@@ -302,7 +331,7 @@ def list_api_tokens(params, user, role):
 @register("revoke_api_token")
 def revoke_api_token(params, user, role):
     from marketplace.models import ApiToken
-    if role != "admin" and not getattr(user, "is_staff", False):
+    if role != "admin":
         return ActionResult(text=_("Управление API-токенами доступно только администратору."))
     try:
         token = ApiToken.objects.get(id=int(params.get("token_id") or 0), user=user)
@@ -310,7 +339,7 @@ def revoke_api_token(params, user, role):
         return ActionResult(text=_("Токен не найден."))
     if not token.is_active:
         return ActionResult(text=_("Токен %(prefix)s уже отозван.") % {"prefix": token.prefix})
-    if not bool(params.get("confirmed")):
+    if not confirmation_is_true(params.get("confirmed")):
         return ActionResult(
             text=_("Отозвать токен %(label)s?") % {"label": token.label},
             cards=[{"type": "draft", "data": {

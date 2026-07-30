@@ -1,8 +1,10 @@
-"""KYB API checks — mock implementations of external sources from ТЗ §3.
+"""KYB checks with explicit, test-only external-source fixtures.
 
-Each function returns a deterministic dict (snapshot of "API response") for
-testing. In production these would be HTTP calls to Контур.Фокус /
-OpenCorporates / VIES / OpenSanctions / Yandex Maps / Google Maps.
+The project does not currently implement live calls to Контур.Фокус,
+OpenCorporates, VIES, OpenSanctions or map providers. Production therefore
+fails closed and routes every application to manual review. Deterministic
+fixtures are available only when ``KYB_ALLOW_TEST_FIXTURES`` is explicitly
+enabled by a test or a development seed command.
 
 The dict shape is stable: every result has `{ok, fetched_at, source, data, signals}`
 where:
@@ -14,29 +16,17 @@ where:
        red / yellow / green markers, with reasons.
 
 ────────────────────────────────────────────────────────────────────
-PRODUCTION SWAP POINTS — каждая check_* функция изолирована, чтобы
-заменить mock на реальный API вызов точечно. Ниже env-переменные,
-которые активируют real-режим (если присутствуют):
-
-  KONTUR_FOCUS_TOKEN   → check_ru_aggregator()    https://focus-api.kontur.ru
-  OPENCORPORATES_KEY   → check_opencorporates()   https://api.opencorporates.com
-  VIES_USE_REAL=1      → check_vies()             https://ec.europa.eu/taxation_customs/vies (public, no key)
-  OPENSANCTIONS_KEY    → check_sanctions()        https://api.opensanctions.org
-  YANDEX_MAPS_KEY      → check_address() (RU)     https://geocode-maps.yandex.ru
-  GOOGLE_MAPS_KEY      → check_address() (world)  https://maps.googleapis.com
-  WA_BUSINESS_TOKEN    → check_messengers()       WhatsApp Business API
-  TG_BOT_TOKEN         → check_messengers()       Telegram Bot API
-
-Каждая mock-функция содержит # SWAP-POINT комментарий — реальный
-HTTP-вызов с парсингом ответа в наш стандартный shape. Сигнатуры
-функций менять НЕ нужно — `run_all_checks()` оркестрирует их.
+PRODUCTION SWAP POINTS — each ``check_*`` function is isolated so a live
+provider can replace the fixture without changing ``run_all_checks()``.
+Until that implementation exists, no API key is advertised or interpreted
+as enabling a provider.
 ────────────────────────────────────────────────────────────────────
 """
 from __future__ import annotations
 
-import hashlib
 from typing import Any
 
+from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
@@ -47,8 +37,8 @@ from django.utils.translation import gettext as _
 #   GREEN → быстро в Песочницу
 #   YELLOW → ручная проверка
 #   RED    → автоотказ
-# Any unknown ID falls back to deterministic "synthesized" data based on
-# hash of the number (always GREEN-ish), so we don't crash on real input.
+# Unknown identifiers never receive synthesized company data or a green
+# result: they are marked unavailable and require manual review.
 # ──────────────────────────────────────────────────────────────────────
 
 _FIXTURES: dict[tuple[str, str], dict[str, Any]] = {
@@ -68,6 +58,7 @@ _FIXTURES: dict[tuple[str, str], dict[str, Any]] = {
             "court_cases": 0,
             "risk_indicator": "green",
         },
+        "sanctions": {"matches": []},
     },
     # ── ПУТЬ B: Зарубежная компания (UAE) с не подтверждённым VAT —
     # требует уточнения у оператора
@@ -80,6 +71,7 @@ _FIXTURES: dict[tuple[str, str], dict[str, Any]] = {
             "address": "RAKEZ Business Zone, Ras Al Khaimah, UAE",
             "directors": [{"name": "Ahmed Al-Mansoori", "since": "2019-11-04"}],
         },
+        "sanctions": {"matches": []},
     },
     # VIES-fixture идёт по ключу (country, digits-only VAT)
     ("AE", "100123456700003"): {
@@ -124,33 +116,35 @@ def _wrap(source: str, ok: bool, data: Any, signals: list[dict]) -> dict:
             "data": data, "signals": signals}
 
 
+def _fixtures_allowed() -> bool:
+    return bool(getattr(settings, "KYB_ALLOW_TEST_FIXTURES", False))
+
+
+def _unavailable(source: str, message: str | None = None) -> dict:
+    return _wrap(
+        source,
+        False,
+        None,
+        [{
+            "level": "yellow",
+            "msg": message or _("Внешний источник не настроен; требуется ручная проверка"),
+        }],
+    )
+
+
 # ──────────────────────────────────────────────────────────────────────
 # §3.1 — Российский агрегатор (Контур.Фокус / СПАРК / CheckCo)
 # ──────────────────────────────────────────────────────────────────────
 
 def check_ru_aggregator(inn: str, country: str = "RU") -> dict:
-    # SWAP-POINT: if os.environ.get("KONTUR_FOCUS_TOKEN"):
-    #   call https://focus-api.kontur.ru/api3/req?inn={inn}&key={token}
-    #   parse → same shape {status, ogrn, kpp, directors, legal_address,
-    #                       egrul_unreliable, mass_director_flag, ...}
     if country != "RU":
         return _wrap("kontur-focus", False, None,
                      [{"level": "info", "msg": "Not applicable for non-RU"}])
+    if not _fixtures_allowed():
+        return _unavailable("kontur-focus")
     fx = _FIXTURES.get((country, inn), {}).get("aggregator")
     if fx is None:
-        # Fallback synthesis: deterministic green for unknown INNs
-        h = int(hashlib.sha256(inn.encode()).hexdigest()[:6], 16)
-        synthesized = {
-            "status": "active", "registered_at": "2018-01-01",
-            "ogrn": "10" + inn.ljust(13, "0")[:13], "kpp": (inn[:4] + "01001"),
-            "directors": [{"name": "Тестовый Директор", "since": "2018-01-01"}],
-            "legal_address": "г. Москва, тест-адрес",
-            "okved": ["45.31.1"],
-            "egrul_unreliable": False, "mass_director_flag": False,
-            "mass_address_flag": False, "tax_debt": 0, "court_cases": h % 3,
-            "risk_indicator": "green",
-        }
-        fx = synthesized
+        return _unavailable("kontur-focus", _("Компания отсутствует в тестовом наборе; требуется ручная проверка"))
 
     signals = []
     if fx["status"] == "liquidation":
@@ -183,12 +177,11 @@ def check_opencorporates(company_number: str, country: str) -> dict:
     if country == "RU":
         return _wrap("opencorporates", False, None,
                      [{"level": "info", "msg": _("Использовать ru-aggregator для РФ")}])
+    if not _fixtures_allowed():
+        return _unavailable("opencorporates")
     fx = _FIXTURES.get((country, company_number), {}).get("opencorporates")
     if fx is None:
-        fx = {"status": "active", "registered_at": "2020-01-01",
-              "company_number": company_number, "company_type": "Unknown",
-              "name": "Synthesized Co", "address": f"{country} (test address)",
-              "directors": []}
+        return _unavailable("opencorporates", _("Компания отсутствует в тестовом наборе; требуется ручная проверка"))
     signals = []
     if fx["status"] in ("dissolved", "struck_off"):
         signals.append({"level": "red", "msg": _("Компания %(status)s") % {"status": fx['status']}})
@@ -205,10 +198,11 @@ EU_COUNTRIES = {"AT","BE","BG","CY","CZ","DE","DK","EE","ES","FI","FR","GR",
 
 
 def check_vies(vat_number: str, country: str) -> dict:
+    if not _fixtures_allowed():
+        return _unavailable("vies")
     fx = _FIXTURES.get((country, _strip_inn(vat_number) or ""), {}).get("vies")
     if fx is None:
-        # Default: valid VAT for any test number with country prefix
-        fx = {"valid": True, "vat_number": vat_number, "name": "(verified via VIES)"}
+        return _unavailable("vies", _("VAT отсутствует в тестовом наборе; требуется ручная проверка"))
     signals = []
     if not fx["valid"]:
         # Для не-EU стран VIES не применим — это yellow (требует ручной
@@ -230,11 +224,13 @@ def _strip_inn(vat: str) -> str:
 
 def check_sanctions(company_name: str, directors: list[str], country: str = "",
                      fixture_key: tuple[str, str] | None = None) -> dict:
+    if not _fixtures_allowed():
+        return _unavailable("opensanctions")
     fx = None
     if fixture_key:
         fx = _FIXTURES.get(fixture_key, {}).get("sanctions")
     if fx is None:
-        fx = {"matches": []}
+        return _unavailable("opensanctions", _("Компания отсутствует в тестовом наборе; требуется ручная проверка"))
     signals = []
     for m in fx.get("matches", []):
         if m.get("match_score", 0) >= 0.85:
@@ -253,7 +249,11 @@ def check_sanctions(company_name: str, directors: list[str], country: str = "",
 # ──────────────────────────────────────────────────────────────────────
 
 def check_address(address: str, country: str = "RU") -> dict:
-    # Deterministic mock: классифицируем по ключевым словам в адресе.
+    if not _fixtures_allowed():
+        return _unavailable("address-check")
+
+    # Test-only local classifier. It does not claim geocoding, reviews,
+    # coordinates, Street View availability or provider verification.
     addr_l = (address or "").lower()
     if any(k in addr_l for k in ("ул. промышленная", "industrial", "промзона", "logistics park")):
         kind = "industrial"
@@ -267,18 +267,18 @@ def check_address(address: str, country: str = "RU") -> dict:
     data = {
         "found": bool(address),
         "kind": kind,
-        "coordinates": {"lat": 55.7558 + (hash(address) % 100) / 1000.0,
-                          "lng": 37.6173 + (hash(address) % 100) / 1000.0},
-        "streetview_url": f"https://maps.example.com/streetview?q={hash(address)}",
-        "reviews_count": (hash(address) % 80),
-        "rating": 4.2 if kind in ("industrial", "commercial") else None,
+        "coordinates": None,
+        "streetview_url": "",
+        "reviews_count": None,
+        "rating": None,
+        "verification": "test_fixture",
     }
     signals = []
     if not address:
         signals.append({"level": "yellow", "msg": _("Адрес не указан")})
     elif kind == "residential":
         signals.append({"level": "yellow", "msg": _("Адрес склада — жилой дом")})
-    return _wrap("yandex-maps", True, data, signals)
+    return _wrap("fixture-address-classifier", True, data, signals)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -286,26 +286,27 @@ def check_address(address: str, country: str = "RU") -> dict:
 # ──────────────────────────────────────────────────────────────────────
 
 def check_website(url: str) -> dict:
+    """Validate URL shape locally without claiming network reachability."""
     ok = bool(url) and ("://" in url)
     signals = []
-    data = {"reachable": ok, "url": url, "http_status": 200 if ok else None}
+    data = {"valid_format": ok, "reachable": None, "url": url, "http_status": None}
     if not ok:
         signals.append({"level": "yellow", "msg": _("Сайт не указан или не валиден")})
-    return _wrap("http-probe", True, data, signals)
+    return _wrap("local-url-validation", True, data, signals)
 
 
 def check_messengers(whatsapp: str, telegram: str, phone: str) -> dict:
     has_any = bool(whatsapp or telegram)
     data = {
-        "whatsapp": {"present": bool(whatsapp), "registered": bool(whatsapp)},
-        "telegram": {"present": bool(telegram), "registered": bool(telegram)},
+        "whatsapp": {"present": bool(whatsapp), "registered": None},
+        "telegram": {"present": bool(telegram), "registered": None},
         "phone": {"present": bool(phone), "valid_format": phone.startswith("+") if phone else False},
     }
     signals = []
     if not has_any:
         signals.append({"level": "yellow",
                          "msg": _("Не указан ни один мессенджер для оперативной связи")})
-    return _wrap("messenger-api", True, data, signals)
+    return _wrap("local-contact-validation", True, data, signals)
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -318,6 +319,32 @@ def run_all_checks(kyb) -> dict:
 
     ТЗ §3: «автомат за 10 секунд делает 5–7 API-запросов».
     """
+    if not _fixtures_allowed():
+        message = _("Автоматический внешний источник не настроен; требуется ручная проверка")
+        sources = {
+            "aggregator": "kontur-focus",
+            "opencorporates": "opencorporates",
+            "vies": "vies",
+            "sanctions": "opensanctions",
+            "maps": "address-check",
+        }
+        unavailable = {
+            key: _wrap(
+                source,
+                False,
+                None,
+                [{"level": "yellow", "msg": message}],
+            )
+            for key, source in sources.items()
+        }
+        unavailable["site"] = check_website(kyb.website)
+        unavailable["messenger"] = check_messengers(
+            kyb.whatsapp,
+            kyb.telegram,
+            kyb.phone,
+        )
+        return unavailable
+
     country = (kyb.country or "RU").upper()
     fixture_key = (country, kyb.inn or kyb.vat_number or "")
 

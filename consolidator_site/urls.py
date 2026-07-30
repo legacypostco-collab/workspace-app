@@ -1,8 +1,8 @@
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
-from django.http import HttpResponse
-from django.urls import include, path, reverse
+from django.http import HttpResponse, HttpResponseNotFound
+from django.urls import include, path, re_path, reverse
 from django.utils import timezone
 from django.views.decorators.cache import cache_control
 from django.views.i18n import JavaScriptCatalog
@@ -27,7 +27,6 @@ def robots_txt(request):
         "Disallow: /admin/\n"
         "Disallow: /api/\n"
         "Disallow: /chat/\n"           # chat-first SPA, нет смысла индексировать
-        "Disallow: /demo-login/\n"
         "Disallow: /password_reset/\n"
         f"Sitemap: {base}/sitemap.xml\n"
     )
@@ -59,6 +58,10 @@ def sitemap_xml(request):
     return HttpResponse(xml, content_type="application/xml")
 
 
+def private_media_not_found(_request, _path=""):
+    return HttpResponseNotFound()
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("i18n/", include("django.conf.urls.i18n")),
@@ -74,6 +77,12 @@ urlpatterns = [
         url_name="schema", permission_classes=[IsAdminUser]), name="swagger-ui"),
     path("api/redoc/", SpectacularRedocView.as_view(
         url_name="schema", permission_classes=[IsAdminUser]), name="redoc"),
+    re_path(
+        r"^media/(?:kyb|projects|order_documents|signed_documents|drawings|"
+        r"pricelists|pricelist_outputs|imports|proforma_invoices)(?:/|$)(?P<_path>.*)$",
+        private_media_not_found,
+        name="private-media-block",
+    ),
     path("", include("marketplace.urls")),
 ]
 

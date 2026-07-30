@@ -1,21 +1,48 @@
 import logging
 import time
+from urllib.parse import parse_qs, urlparse
 
 from django.db.models import Q as _Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
-from django.utils.translation import gettext_lazy as _lazy
 from rest_framework import status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
 _PENDING_2FA_SESSION_KEY = "assistant_pending_2fa_login"
 _PENDING_2FA_TTL_SECONDS = 5 * 60
 _PENDING_2FA_MAX_ATTEMPTS = 5
+
+
+def _safe_local_url(value) -> str:
+    url = str(value or "").strip()
+    if not url.startswith("/") or url.startswith("//"):
+        return ""
+    if not url_has_allowed_host_and_scheme(url, allowed_hosts=set()):
+        return ""
+    return url
+
+
+def _notification_targets_rfq(url: str, rfq_id: int) -> bool:
+    """Match an RFQ notification link by an exact id, never by prefix."""
+    parsed = urlparse(str(url or ""))
+    target = str(rfq_id)
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if target in query.get("rfq", []) or target in query.get("rfq_id", []):
+        return True
+
+    parts = [part for part in parsed.path.split("/") if part]
+    return any(
+        part == "rfq" and parts[index + 1] == target
+        for index, part in enumerate(parts[:-1])
+    )
 
 
 def _begin_pending_2fa(request, user, *, flow, role):
@@ -81,6 +108,7 @@ from .models import Conversation, Feedback, Message
 from .permissions import detect_user_role, user_allowed_role_tabs
 from .rag import execute_action, process_query_sync
 from .serializers import (
+    ActionRequestSerializer,
     ChatRequestSerializer,
     ConversationListSerializer,
     ConversationSerializer,
@@ -109,12 +137,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
         # Anon: пустой queryset (UI покажет «Нет проектов / Недавнее пусто»)
         if not self.request.user.is_authenticated:
             return Conversation.objects.none()
+        from .conversation_access import accessible_conversations
         role = detect_user_role(self.request.user, request=self.request)
-        return Conversation.objects.filter(
-            user=self.request.user,
-            role=role,
-            is_active=True,
-        )
+        return accessible_conversations(self.request.user, role)
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -125,12 +150,21 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user,
                         role=detect_user_role(self.request.user, request=self.request))
 
+    def perform_update(self, serializer):
+        if serializer.instance.participant_links.exists():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Общий разговор поддержки нельзя изменять.")
+        serializer.save()
+
     def perform_destroy(self, instance):
         # Hard delete: пользователь явно нажал «Удалить» в UI и ожидает,
         # что чат пропадёт навсегда (а не вернётся при следующем
         # order-event / WS-reconnect через find_or_create_conv,
         # который фильтрует по is_active=True). Messages удаляются по
         # CASCADE из FK в models.Message.
+        if instance.participant_links.exclude(user=self.request.user).exists():
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Общий разговор поддержки нельзя удалить из истории.")
         instance.delete()
 
 
@@ -213,9 +247,9 @@ class ChatView(APIView):
                 }})
             try:
                 result = execute_action(None, action_name, {**params, "_request": request}, request.user, role="buyer")
-            except Exception as e:
+            except Exception:
                 logger.exception("anon fast_path action failed")
-                return Response({"error": str(e)},
+                return Response({"error": _("Не удалось выполнить запрос.")},
                                  status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return Response({
                 "conversation_id": None,
@@ -230,24 +264,43 @@ class ChatView(APIView):
         # ── Authenticated flow (как раньше) ──
         current_role = detect_user_role(request.user, request=request)
         if conv_id:
-            conv = get_object_or_404(
-                Conversation,
-                id=conv_id,
-                user=request.user,
-                role=current_role,
-                is_active=True,
-            )
+            from .conversation_access import accessible_conversations
+            try:
+                conv = get_object_or_404(
+                    accessible_conversations(request.user, current_role),
+                    id=conv_id,
+                )
+            except Http404:
+                raise
         else:
             conv = Conversation.objects.create(
                 user=request.user,
                 role=current_role,
             )
 
+        from .support_threads import is_human_support, post_support_message
+        if is_human_support(conv):
+            try:
+                msg = post_support_message(conv, request.user, current_role, message)
+            except PermissionError as exc:
+                return Response({"error": str(exc)}, status=403)
+            return Response({
+                "conversation_id": str(conv.id),
+                "response": _("Сообщение отправлено участникам обращения."),
+                "cards": [], "actions": [], "contextual_actions": [],
+                "context_refs": [], "suggestions": [],
+                "message_id": str(msg.id), "human_support": True,
+            })
+
         try:
             result = process_query_sync(conv, message, request.user,
                                        ui_lang=getattr(request, "LANGUAGE_CODE", "ru"))
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception:
+            logger.exception("chat query processing failed")
+            return Response(
+                {"error": _("Не удалось обработать сообщение.")},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response({
             "conversation_id": str(conv.id),
@@ -352,8 +405,18 @@ def _handle_start_registration(request, params):
     from django.contrib.auth import login
     from . import buyer_registration as bureg
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     role = (params.get("role") or "buyer").lower()
+
+    if confirmed:
+        from marketplace.views import _rl_consume
+
+        if not _rl_consume(request, "register", 5, 3600):
+            return {
+                "text": _("Слишком много попыток регистрации. Попробуйте через час."),
+                "actions": [], "cards": [], "suggestions": [],
+                "contextual_actions": [],
+            }
 
     # ── Seller — простой flow + KYB-onboarding после регистрации ─
     if role == "seller":
@@ -365,6 +428,8 @@ def _handle_start_registration(request, params):
     result = bureg.attempt_register(request, params)
     if result["ok"]:
         user = result["user"]
+        if not result.get("login_allowed", True):
+            return result["response"]
         user.backend = "django.contrib.auth.backends.ModelBackend"
         login(request, user, backend="django.contrib.auth.backends.ModelBackend")
         try:
@@ -380,24 +445,22 @@ def _handle_start_registration(request, params):
         except Exception:
             logger.exception("attach anonymous RFQs failed")
         # Resume pending action (если до регистрации юзер нажал pay_reserve)
-        pending = request.session.pop("pending_action", None)
+        pending = request.session.get("pending_action")
         if pending and pending.get("action"):
             continuing = (
                 _("Продолжаю создание заявки...")
                 if pending["action"] == "create_rfq"
                 else _("Продолжаю оформление заказа...")
             )
-            # Возвращаем resume-карточку: фронт сам кликнет action в чате
+            # Намерение заберёт widget-config после перезагрузки уже в
+            # авторизованном контексте. Так форма не теряется и не выполняется
+            # в старом гостевом состоянии страницы.
             return {
                 "text": (result["response"].get("text", "") + "\n\n"
                          + continuing),
-                "actions": [{
-                    "action": pending["action"],
-                    "label": _("Продолжить"),
-                    "params": pending.get("params", {}),
-                }],
+                "actions": [],
                 "cards": [], "suggestions": [], "contextual_actions": [],
-                "_post_action": "auto_resume",
+                "_post_action": "reload",
             }
     return result["response"]
 
@@ -433,11 +496,13 @@ def _handle_seller_quick_registration(request, params):
     Полные реквизиты компании поставщик заполняет в `start_onboarding`
     (отдельный многошаговый flow в assistant/onboarding.py).
     """
+    from django.conf import settings
     from django.contrib.auth import login
+    from django.db import transaction
     from marketplace.forms import RegisterForm
     from marketplace.models import UserProfile
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed:
         return {
             "text": _(
@@ -454,7 +519,7 @@ def _handle_seller_quick_registration(request, params):
                 "data": {
                     "title": _("Шаг 1 из 2 · Аккаунт поставщика"),
                     "submit_action": "start_registration",
-                    "submit_label": _("Шаг 2: к KYB-анкете →"),
+                        "submit_label": _("Создать аккаунт"),
                     "fields": [
                         {"name": "username", "label": _("Логин"),
                          "required": True, "placeholder": "myshop_2026"},
@@ -490,10 +555,43 @@ def _handle_seller_quick_registration(request, params):
             "cards": [], "suggestions": [], "contextual_actions": [],
         }
     user = form.save(commit=False)
-    user.email = params.get("email")
-    user.save()
-    UserProfile.objects.create(user=user, role="seller", language="ru",
-                                company_name="")
+    user.email = form.cleaned_data["email"]
+    email_verification_required = bool(
+        getattr(settings, "EMAIL_VERIFICATION_REQUIRED", not settings.DEBUG)
+    )
+    if email_verification_required:
+        user.is_active = False
+    with transaction.atomic():
+        user.save()
+        UserProfile.objects.create(
+            user=user,
+            role="seller",
+            language="ru",
+            company_name="",
+        )
+    if email_verification_required:
+        from marketplace.views import _send_verification_email
+
+        delivered = _send_verification_email(request, user)
+        return {
+            "text": (
+                _("Аккаунт создан. Мы отправили ссылку подтверждения на %(email)s. "
+                  "После подтверждения e-mail войдите в аккаунт и заполните KYB-анкету.")
+                % {"email": user.email}
+                if delivered
+                else _(
+                    "Аккаунт создан, но письмо подтверждения отправить не удалось. "
+                    "Аккаунт пока не активирован; обратитесь в поддержку через чат."
+                )
+            ),
+            "cards": [],
+            "actions": (
+                []
+                if delivered
+                else [{"action": "contact_operator", "label": _("Поддержка")}]
+            ),
+            "suggestions": [], "contextual_actions": [],
+        }
     user.backend = "django.contrib.auth.backends.ModelBackend"
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     try:
@@ -561,7 +659,7 @@ def _handle_switch_role_login(request, params):
         "admin":    (_("Вход администратора"),   _("Введите логин и пароль административного аккаунта.")),
     }
     title, greeting = ROLE_META[role]
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     def _registration_actions():
         reg_actions = []
@@ -783,7 +881,7 @@ def _handle_add_account_role(request, params):
             "_post_action": "reload",
         }
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if role == "buyer":
         if not confirmed:
             return {
@@ -896,7 +994,7 @@ def _handle_start_login(request, params):
     кабинеты. Для buyer/seller есть кнопка регистрации, для operator её нет
     (оператора заводит только админ).
     """
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     role = (params.get("role") or "buyer").lower()
 
     LOGIN_META = {
@@ -1026,7 +1124,7 @@ def _handle_start_login(request, params):
         _attach_anonymous_rfqs_to_user(request, user)
     except Exception:
         logger.exception("attach anonymous RFQs failed on login")
-    pending = request.session.pop("pending_action", None)
+    pending = request.session.get("pending_action")
     if pending and pending.get("action"):
         continuing = (
             _("Продолжаю создание заявки...")
@@ -1035,13 +1133,9 @@ def _handle_start_login(request, params):
         )
         return {
             "text": _("Вы вошли как «%(u)s».") % {"u": user.username} + " " + continuing,
-            "actions": [{
-                "action": pending["action"],
-                "label": _("Продолжить оформление"),
-                "params": pending.get("params", {}),
-            }],
+            "actions": [],
             "cards": [], "suggestions": [], "contextual_actions": [],
-            "_post_action": "auto_resume",
+            "_post_action": "reload",
         }
     return {
         "text": _("Привет, %(u)s! Перезагружу чат — увидите свои данные.") % {"u": user.username},
@@ -1064,20 +1158,17 @@ class ActionView(APIView):
     permission_classes = [AllowAny]  # гость может звать read-only actions
 
     def post(self, request):
-        action = request.data.get("action") or ""
-        params = request.data.get("params") or {}
-        if not action:
-            return Response({"error": "action required"}, status=400)
+        serializer = ActionRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        action = serializer.validated_data["action"]
+        params = dict(serializer.validated_data.get("params") or {})
 
         # Клиентский IP (XFF-aware) для ленты важных событий админа: экшены
         # создания заказа/RFQ читают params['_client_ip'] и пишут его в
         # ActivityEvent. Underscore-ключ = UI/meta-параметр (как _label/_url).
-        if isinstance(params, dict):
-            _xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
-            params["_client_ip"] = (
-                _xff.split(",")[0].strip() if _xff
-                else request.META.get("REMOTE_ADDR", "")
-            )[:64]
+        from .security import client_ip
+
+        params["_client_ip"] = client_ip(request)[:64]
 
         # ── Anon gate ────────────────────────────────────────
         if not request.user.is_authenticated:
@@ -1098,7 +1189,7 @@ class ActionView(APIView):
                                   **_payment_requires_registration_response(action, params)})
             # Phase 2 accept_quote (confirmed=True) тоже требует регистрации,
             # потому что создаёт Order и сразу ведёт к pay_reserve.
-            if action == "accept_quote" and bool(params.get("confirmed")):
+            if action == "accept_quote" and confirmation_is_true(params.get("confirmed")):
                 request.session["pending_action"] = {"action": action, "params": params}
                 request.session.modified = True
                 return Response({"conversation_id": None,
@@ -1117,8 +1208,12 @@ class ActionView(APIView):
                 result = execute_action(
                     None, action, {**params, "_request": request}, request.user, role="buyer",
                 )
-            except Exception as e:
-                return Response({"error": str(e)}, status=500)
+            except Exception:
+                logger.exception("anonymous action failed: %s", action)
+                return Response(
+                    {"error": _("Не удалось выполнить действие.")},
+                    status=500,
+                )
             return Response({"conversation_id": None, **result})
 
         # ── Authenticated flow ──────────────────────────────
@@ -1145,20 +1240,68 @@ class ActionView(APIView):
                 "cards": [], "suggestions": [], "contextual_actions": [],
             })
 
-        conv_id = request.data.get("conversation_id")
+        execution = None
+        operation_id = serializer.validated_data.get("operation_id")
+        if operation_id:
+            import uuid
+
+            from django.db import transaction
+
+            from .models import ActionExecution
+
+            try:
+                operation_id = uuid.UUID(str(operation_id))
+            except (TypeError, ValueError, AttributeError):
+                return Response({"error": "invalid operation_id"}, status=400)
+            with transaction.atomic():
+                execution, created = ActionExecution.objects.get_or_create(
+                    user=request.user,
+                    operation_id=operation_id,
+                    defaults={"action": action},
+                )
+                if not created:
+                    execution = ActionExecution.objects.select_for_update().get(
+                        pk=execution.pk,
+                    )
+                    if execution.action != action:
+                        return Response(
+                            {"error": "operation_id belongs to another action"},
+                            status=409,
+                        )
+                    if execution.completed_at:
+                        return Response(execution.response)
+                    return Response(
+                        {"error": "operation is already in progress"},
+                        status=409,
+                    )
+
+        conv_id = serializer.validated_data.get("conversation_id")
 
         from .conv_category import category_for_action, title_for_action
         label = (params.get("_label") or "").strip() or action
         current_role = detect_user_role(request.user, request=request)
 
         if conv_id:
-            conv = get_object_or_404(
-                Conversation,
-                id=conv_id,
-                user=request.user,
-                role=current_role,
-                is_active=True,
+            from .conversation_access import accessible_conversations
+            conv = (
+                accessible_conversations(request.user, current_role)
+                .filter(id=conv_id)
+                .first()
             )
+            if conv is None:
+                if execution:
+                    execution.delete()
+                raise Http404
+            # Служебная команда не должна менять категорию общего обращения
+            # или отправлять его историю в ИИ. Для команды создаём отдельный
+            # обычный разговор, а текстовые сообщения остаются в поддержке.
+            if conv.category == "support" and conv.participant_links.exists():
+                conv = Conversation.objects.create(
+                    user=request.user,
+                    role=current_role,
+                    category=category_for_action(action),
+                    title=title_for_action(action, label)[:200],
+                )
         else:
             # Явное действие вне открытого диалога начинает новый диалог.
             # Повторное использование "похожего" чата делало кнопку
@@ -1186,17 +1329,37 @@ class ActionView(APIView):
             result = execute_action(
                 conv, action, {**params, "_request": request}, request.user, role=current_role,
             )
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+        except Exception:
+            if execution:
+                execution.delete()
+            logger.exception("assistant action failed: %s", action)
+            return Response(
+                {"error": _("Не удалось выполнить действие.")},
+                status=500,
+            )
 
         # Авто-reload после переключения view-as / выхода — чтобы middleware
         # подхватил новую сессию и подменил request.user.
         if action in ("op_view_as_supplier", "op_exit_view_as"):
             result = {**result, "_post_action": "reload"}
-        return Response({
+        storage_response = result.pop("_storage_response", None)
+        payload = {
             "conversation_id": str(conv.id),
             **result,
-        })
+        }
+        if execution:
+            import json
+
+            from django.utils import timezone
+            from rest_framework.utils.encoders import JSONEncoder
+
+            stored_payload = json.loads(json.dumps(payload, cls=JSONEncoder))
+            if storage_response:
+                stored_payload.update(storage_response)
+            execution.response = stored_payload
+            execution.completed_at = timezone.now()
+            execution.save(update_fields=["response", "completed_at"])
+        return Response(payload)
 
 
 class FeedbackView(APIView):
@@ -1211,9 +1374,12 @@ class FeedbackView(APIView):
         ser = FeedbackSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         msg = get_object_or_404(
-            Message,
-            id=ser.validated_data["message_id"],
-            conversation__user=request.user,
+            Message.objects.filter(
+                id=ser.validated_data["message_id"],
+            ).filter(
+                _Q(conversation__user=request.user)
+                | _Q(conversation__participant_links__user=request.user)
+            ).distinct(),
         )
         Feedback.objects.update_or_create(
             message=msg,
@@ -1232,51 +1398,13 @@ class SuggestView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    SUGGESTIONS = {
-        "buyer": [
-            _lazy("Покажи мои активные RFQ"),
-            _lazy("Какие гусеничные цепи есть для Komatsu?"),
-            _lazy("Статус моих заказов за последний месяц"),
-            _lazy("Сравни поставщиков по SLA"),
-        ],
-        "seller": [
-            _lazy("Новые RFQ за сегодня"),
-            _lazy("Какие запчасти ищут чаще всего?"),
-            _lazy("Мои просроченные заказы"),
-            _lazy("KPI за этот месяц"),
-        ],
-        "operator_logist": [
-            _lazy("Какие отгрузки сейчас в пути?"),
-            _lazy("Есть ли нарушения SLA?"),
-            _lazy("Контейнеры на таможне"),
-        ],
-        "operator_customs": [
-            _lazy("Грузы ожидающие растаможки"),
-            _lazy("Документы для контейнера"),
-            _lazy("Просроченные декларации"),
-        ],
-        "operator_payment": [
-            _lazy("Неоплаченные инвойсы"),
-            _lazy("Просроченные платежи"),
-            _lazy("Эскроу-счета по заказам"),
-        ],
-        "operator_manager": [
-            _lazy("Конверсия RFQ → заказ за месяц"),
-            _lazy("Топ покупатели по выручке"),
-            _lazy("Неактивные клиенты"),
-        ],
-        "admin": [
-            _lazy("Метрики платформы за неделю"),
-            _lazy("Поставщики на верификации"),
-            _lazy("Просроченные SLA"),
-        ],
-    }
-
     def get(self, request):
+        from .commands import suggestions_for_role
+
         role = request.query_params.get("role") or detect_user_role(request.user, request=request)
         return Response({
             "role": role,
-            "suggestions": self.SUGGESTIONS.get(role, self.SUGGESTIONS["buyer"]),
+            "suggestions": suggestions_for_role(role),
         })
 
 
@@ -1291,7 +1419,7 @@ class WidgetConfigView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        from .commands import commands_for_role
+        from .commands import commands_for_role, suggestions_for_role
 
         if not request.user.is_authenticated:
             return Response({
@@ -1304,19 +1432,20 @@ class WidgetConfigView(APIView):
                 "anonymous": True,
             })
         role = detect_user_role(request.user, request=request)
-        latest = Conversation.objects.filter(
-            user=request.user,
-            role=role,
-            is_active=True,
-        ).order_by("-updated_at").first()
+        from .conversation_access import accessible_conversations
+        latest = accessible_conversations(request.user, role).order_by("-updated_at").first()
+        pending_action = request.session.pop("pending_action", None)
+        if pending_action:
+            request.session.modified = True
         return Response({
             "role": role,
             "role_override": (request.session.get("assistant_role_override") if hasattr(request, "session") else None),
             "roles": user_allowed_role_tabs(request.user),
             "user_name": request.user.get_full_name() or request.user.username,
-            "suggestions": SuggestView.SUGGESTIONS.get(role, SuggestView.SUGGESTIONS["buyer"]),
+            "suggestions": suggestions_for_role(role),
             "commands": commands_for_role(role),
             "latest_conversation_id": str(latest.id) if latest else None,
+            "pending_action": pending_action,
         })
 
 
@@ -1374,6 +1503,64 @@ class RoleSwitchView(APIView):
 from .models import Project
 
 
+_PROJECT_TEXT_LIMITS = {
+    "name": 200,
+    "code": 50,
+    "customer": 200,
+    "description": 5_000,
+}
+_PROJECT_DOT_COLORS = {choice for choice, _label in Project.DOT_COLORS}
+_PROJECT_MAX_TAGS = 20
+_PROJECT_MAX_TAG_LENGTH = 80
+
+
+def _clean_project_payload(data, *, partial: bool) -> dict:
+    if not hasattr(data, "get"):
+        raise ValueError(_("Тело запроса должно быть объектом."))
+    cleaned = {}
+    for field, max_length in _PROJECT_TEXT_LIMITS.items():
+        if partial and field not in data:
+            continue
+        value = data.get(field)
+        if value is None:
+            value = _("Новый проект") if field == "name" and not partial else ""
+        if not isinstance(value, str):
+            raise ValueError(_("Поля проекта должны содержать текст."))
+        value = value.strip()
+        if field == "name" and not value:
+            raise ValueError(_("Название проекта не может быть пустым."))
+        if len(value) > max_length:
+            raise ValueError(
+                _("Поле «%(field)s» слишком длинное.") % {"field": field}
+            )
+        cleaned[field] = value
+
+    if not partial or "tags" in data:
+        tags = data.get("tags", [])
+        if not isinstance(tags, list) or len(tags) > _PROJECT_MAX_TAGS:
+            raise ValueError(
+                _("Допускается не более %(count)s тегов.")
+                % {"count": _PROJECT_MAX_TAGS}
+            )
+        clean_tags = []
+        for tag in tags:
+            if not isinstance(tag, str):
+                raise ValueError(_("Каждый тег должен содержать текст."))
+            tag = tag.strip()
+            if len(tag) > _PROJECT_MAX_TAG_LENGTH:
+                raise ValueError(_("Тег проекта слишком длинный."))
+            if tag and tag not in clean_tags:
+                clean_tags.append(tag)
+        cleaned["tags"] = clean_tags
+
+    if not partial or "dot_color" in data:
+        color = data.get("dot_color", "green")
+        if color not in _PROJECT_DOT_COLORS:
+            raise ValueError(_("Неизвестный цвет проекта."))
+        cleaned["dot_color"] = color
+    return cleaned
+
+
 class ProjectListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1395,16 +1582,11 @@ class ProjectListView(APIView):
         return Response({"projects": items})
 
     def post(self, request):
-        data = request.data
-        p = Project.objects.create(
-            owner=request.user,
-            name=data.get("name", _("Новый проект"))[:200],
-            code=data.get("code", "")[:50],
-            customer=data.get("customer", "")[:200],
-            tags=data.get("tags", []),
-            description=data.get("description", ""),
-            dot_color=data.get("dot_color", "green"),
-        )
+        try:
+            values = _clean_project_payload(request.data, partial=False)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
+        p = Project.objects.create(owner=request.user, **values)
         return Response({"id": str(p.id), "name": p.name}, status=201)
 
 
@@ -1414,14 +1596,14 @@ class ProjectUpdateView(APIView):
 
     def patch(self, request, project_id):
         p = get_object_or_404(Project, id=project_id, owner=request.user, is_active=True)
-        data = request.data or {}
-        allowed = ("name", "code", "customer", "description", "dot_color")
-        for f in allowed:
-            if f in data:
-                setattr(p, f, (data.get(f) or "")[:500] if f != "name" else (data.get(f) or _("Новый проект"))[:200])
-        if "tags" in data and isinstance(data.get("tags"), list):
-            p.tags = data["tags"]
-        p.save()
+        try:
+            values = _clean_project_payload(request.data, partial=True)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
+        for field, value in values.items():
+            setattr(p, field, value)
+        if values:
+            p.save(update_fields=[*values.keys(), "updated_at"])
         return Response({"id": str(p.id), "name": p.name})
 
 
@@ -1449,8 +1631,14 @@ class KYBDocUploadView(APIView):
                 allowed_ext={".pdf", ".png", ".jpg", ".jpeg", ".heic"},
                 max_bytes=10 * 1024 * 1024,
             )
-        except Exception as exc:
+        except ValueError as exc:
             return Response({"error": str(exc)}, status=400)
+        except Exception:
+            logger.exception("KYB document validation failed user_id=%s", request.user.id)
+            return Response(
+                {"error": _("Не удалось проверить файл.")},
+                status=400,
+            )
         try:
             from marketplace.models import CompanyVerification
             kyb, _created = CompanyVerification.objects.get_or_create(user=request.user)
@@ -1463,10 +1651,61 @@ class KYBDocUploadView(APIView):
                 "kind": kind,
                 "name": name,
                 "size_kb": round((f.size or 0) / 1024, 1),
-                "url": saved.url if saved else None,
+                "url": (
+                    f"/api/assistant/kyb/{request.user.id}/doc/{kind}/file/"
+                    if saved
+                    else None
+                ),
             }, status=201)
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+        except Exception:
+            logger.exception("KYB document storage failed")
+            return Response({"error": _("Не удалось сохранить документ.")}, status=500)
+
+
+class KYBDocumentFileView(APIView):
+    """Download a KYB document after owner/operator authorization."""
+
+    permission_classes = [IsAuthenticated]
+    KIND_FIELD = {
+        "charter": "doc_charter",
+        "egrul": "doc_egrul",
+        "passport": "doc_passport",
+        "dealership": "doc_dealership",
+        "bank": "doc_bank",
+    }
+
+    def get(self, request, user_id, kind):
+        import os
+
+        from django.http import FileResponse
+        from marketplace.models import CompanyVerification
+
+        field_name = self.KIND_FIELD.get(kind)
+        if not field_name:
+            return Response({"error": _("Неизвестный тип документа.")}, status=404)
+        role = detect_user_role(request.user, request=request)
+        if (
+            request.user.id != user_id
+            and not request.user.is_staff
+            and role != "admin"
+            and not role.startswith("operator")
+        ):
+            return Response({"error": _("нет доступа")}, status=403)
+
+        verification = get_object_or_404(CompanyVerification, user_id=user_id)
+        stored_file = getattr(verification, field_name)
+        if not stored_file:
+            return Response({"error": _("файл не найден")}, status=404)
+        try:
+            response = FileResponse(
+                stored_file.open("rb"),
+                as_attachment=True,
+                filename=os.path.basename(stored_file.name) or f"{kind}.bin",
+            )
+            response["Cache-Control"] = "private, no-store"
+            return response
+        except Exception:
+            return Response({"error": _("файл не найден")}, status=404)
 
 
 class ProjectDocumentUploadView(APIView):
@@ -1493,8 +1732,18 @@ class ProjectDocumentUploadView(APIView):
                 },
                 max_bytes=50 * 1024 * 1024,
             )
-        except Exception as exc:
+        except ValueError as exc:
             return Response({"error": str(exc)}, status=400)
+        except Exception:
+            logger.exception(
+                "project document validation failed user_id=%s project_id=%s",
+                request.user.id,
+                p.id,
+            )
+            return Response(
+                {"error": _("Не удалось проверить файл.")},
+                status=400,
+            )
         # Простая эвристика типа по расширению
         name = f.name or "document"
         ext = (name.rsplit(".", 1)[-1] if "." in name else "").lower()
@@ -1530,10 +1779,11 @@ class ProjectDocumentUploadView(APIView):
                     FMT = {"dwg": "dwg", "dxf": "dxf", "pdf": "pdf", "step": "step",
                            "stp": "step", "iges": "iges", "igs": "iges", "stl": "stl",
                            "png": "png", "jpg": "jpg", "jpeg": "jpg"}
-                    try:
-                        d_url = doc.file.url
-                    except Exception:
-                        d_url = ""
+                    d_url = (
+                        f"/media/{str(doc.file.name).lstrip('/')}"
+                        if doc.file
+                        else ""
+                    )
                     Drawing.objects.create(
                         seller=request.user, project=p, project_doc=doc,
                         title=name[:255], file_url=d_url, file_name=name[:255],
@@ -1551,8 +1801,9 @@ class ProjectDocumentUploadView(APIView):
                 "status": doc.status,
                 "size_kb": round((doc.size_bytes or 0) / 1024, 1),
             }, status=201)
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
+        except Exception:
+            logger.exception("project document storage failed")
+            return Response({"error": _("Не удалось сохранить документ.")}, status=500)
 
 
 class ProjectDocumentFileView(APIView):
@@ -1568,8 +1819,13 @@ class ProjectDocumentFileView(APIView):
         if not doc.file:
             return Response({"error": _("файл не найден")}, status=404)
         try:
-            return FileResponse(doc.file.open("rb"), as_attachment=False,
-                                filename=doc.name or "document")
+            response = FileResponse(
+                doc.file.open("rb"),
+                as_attachment=False,
+                filename=doc.name or "document",
+            )
+            response["Cache-Control"] = "private, no-store"
+            return response
         except Exception:
             return Response({"error": _("файл не найден")}, status=404)
 
@@ -1585,30 +1841,44 @@ class OrderDocumentFileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, order_id, doc_id):
+        import os
+
         from django.http import FileResponse
-        from marketplace.models import Order, OrderDocument, OrderItem
+        from marketplace.models import Order, OrderDocument
         order = get_object_or_404(Order, id=order_id)
-        # Доступ: покупатель-владелец, продавец с позициями в заказе, оператор/staff.
-        # ВАЖНО: операторы у нас is_staff=False — роль лежит в profile.role. Без этой
-        # проверки оператор мог СОЗДАТЬ документ (доступ по роли в action), но получал
-        # 403 при открытии PDF («не открывается»).
-        _role = getattr(getattr(request.user, "profile", None), "role", None)
-        allowed = (
-            request.user.is_staff
-            or _role in ("operator", "admin")
-            or order.buyer_id == request.user.id
-            or OrderItem.objects.filter(order=order, part__seller=request.user).exists()
-        )
+        doc = get_object_or_404(OrderDocument, id=doc_id, order=order)
+        # Доступ: покупатель-владелец, продавец с позициями в заказе или
+        # пользователь с явно выданной операторской ролью.
+        _role = detect_user_role(request.user, request=request)
+        if _role == "seller":
+            from assistant.seller_actions import _effective_seller
+            from marketplace.order_access import seller_can_access_document
+
+            allowed = seller_can_access_document(
+                _effective_seller(request.user),
+                doc,
+            )
+        else:
+            allowed = (
+                _role.startswith("operator")
+                or _role == "admin"
+                or order.buyer_id == request.user.id
+            )
         if not allowed:
             return Response({"error": _("нет доступа")}, status=403)
-        doc = get_object_or_404(OrderDocument, id=doc_id, order=order)
         if not doc.file_obj:
             return Response({"error": _("файл не найден")}, status=404)
         try:
-            return FileResponse(
+            response = FileResponse(
                 doc.file_obj.open("rb"), as_attachment=False,
-                filename=(doc.title or f"ORD-{order_id}-document") + ".pdf",
+                filename=(
+                    os.path.basename(doc.file_obj.name)
+                    or doc.title
+                    or f"ORD-{order_id}-document"
+                ),
             )
+            response["Cache-Control"] = "private, no-store"
+            return response
         except Exception:
             return Response({"error": _("файл не найден")}, status=404)
 
@@ -1672,7 +1942,11 @@ class ProjectDetailView(APIView):
                 "doctype_label": d.get_doctype_display(),
                 "status": d.status,
                 "size_kb": round(d.size_bytes / 1024, 1) if d.size_bytes else None,
-                "url": (d.file.url if d.file else None),
+                "url": (
+                    f"/api/assistant/projects/{p.id}/documents/{d.id}/file/"
+                    if d.file
+                    else None
+                ),
                 "meta": d.meta,
                 "uploaded_at": d.uploaded_at.strftime("%d.%m.%Y"),
                 "drawing_id": None,
@@ -1681,10 +1955,11 @@ class ProjectDetailView(APIView):
             if d.doctype == "drawing":
                 dr = Drawing.objects.filter(project_doc=d).first()
                 if not dr:  # backfill для старых документов
-                    try:
-                        d_url = d.file.url if d.file else ""
-                    except Exception:
-                        d_url = ""
+                    d_url = (
+                        f"/media/{str(d.file.name).lstrip('/')}"
+                        if d.file
+                        else ""
+                    )
                     ext = (d.name.rsplit(".", 1)[-1] if "." in d.name else "").lower()
                     dr = Drawing.objects.create(
                         seller=request.user, project=p, project_doc=d,
@@ -1879,22 +2154,30 @@ class RFQDetailView(APIView):
         # SECURITY (IDOR fix): доступ к RFQ имеют только:
         #  • владелец (создатель RFQ),
         #  • продавец-адресат (получивший Notification по этому RFQ),
-        #  • staff/superuser.
+        #  • пользователь с явно выданной ролью оператора/администратора.
         # Для остальных — 404 (не 403), чтобы не утекало само наличие RFQ.
         is_owner = (rfq.created_by_id == request.user.id)
-        is_staff = bool(getattr(request.user, "is_staff", False))
+        access_role = detect_user_role(request.user, request=request)
+        is_operator = access_role.startswith("operator") or access_role == "admin"
         is_recipient = False
-        if not (is_owner or is_staff):
-            is_recipient = Notification.objects.filter(
-                kind="rfq", user_id=request.user.id,
-            ).filter(
-                _Q(url__contains=f"rfq={rfq.id}") | _Q(url__contains=f"/rfq/{rfq.id}/")
-            ).exists()
-        if not (is_owner or is_staff or is_recipient):
+        if not (is_owner or is_operator):
+            recipient_urls = (
+                Notification.objects.filter(
+                    kind="rfq",
+                    user_id=request.user.id,
+                    url__contains=str(rfq.id),
+                )
+                .values_list("url", flat=True)
+            )
+            is_recipient = any(
+                _notification_targets_rfq(url, rfq.id)
+                for url in recipient_urls
+            )
+        if not (is_owner or is_operator or is_recipient):
             raise Http404("RFQ not found")
 
         # Для не-владельцев скрываем чувствительные поля покупателя
-        redact_pii = not (is_owner or is_staff)
+        redact_pii = not (is_owner or is_operator)
 
         from marketplace.fx import to_usd_float  # живой бирж. курс
         items = []
@@ -1929,11 +2212,17 @@ class RFQDetailView(APIView):
         #   /chat/?rfq=<id>           — общая ссылка (старый формат)
         #   /chat/rfq/<id>/?source=…  — детальная страница (новый формат)
         # Считаем оба варианта, по distinct user_id.
-        sent_count = (
-            Notification.objects.filter(kind="rfq")
-            .filter(_Q(url__contains=f"rfq={rfq.id}") | _Q(url__contains=f"/rfq/{rfq.id}/"))
-            .values_list("user_id", flat=True).distinct().count()
-        )
+        sent_count = len({
+            user_id
+            for user_id, url in (
+                Notification.objects.filter(
+                    kind="rfq",
+                    url__contains=str(rfq.id),
+                )
+                .values_list("user_id", "url")
+            )
+            if _notification_targets_rfq(url, rfq.id)
+        })
 
         # Состояние «что делать дальше»
         if rfq.status == "cancelled":
@@ -2000,7 +2289,7 @@ class DrawingFileView(APIView):
     def get(self, request, drawing_id):
         from marketplace.models import Drawing
 
-        from .drawings_access import apply_watermark_url, can_access, record_access
+        from .drawings_access import build_watermarked_copy, can_access, record_access
         try:
             drawing = Drawing.objects.get(id=drawing_id)
         except Drawing.DoesNotExist:
@@ -2014,21 +2303,22 @@ class DrawingFileView(APIView):
             record_access(request.user, drawing, "denied", request=request, note=reason)
             return Response({"ok": False, "error": reason}, status=403)
 
-        record_access(request.user, drawing, action, request=request)
-        # Старые записи могут ссылаться на внешний защищённый файловый
-        # сервис. После проверки прав возвращаем совместимую ссылку с
-        # персональным водяным знаком; локальные /media/ ниже по-прежнему
-        # отдаются только через контролируемый FileResponse.
+        # Внешняя ссылка после проверки всё равно остаётся общей и может быть
+        # переслана другому человеку. Такие записи нужно перенести в закрытое
+        # хранилище; выдавать фиктивный ?wm= параметр небезопасно.
         file_url = (drawing.file_url or "").strip()
         if file_url.startswith(("http://", "https://")) and "/media/" not in file_url:
-            watermarked_url = apply_watermark_url(file_url, request.user, drawing)
             record_access(
                 request.user,
                 drawing,
-                "watermark_added",
+                "denied",
                 request=request,
+                note="external file must be migrated to protected storage",
             )
-            return Response({"ok": True, "file_url": watermarked_url})
+            return Response(
+                {"ok": False, "error": "Файл нужно перенести в защищённое хранилище."},
+                status=409,
+            )
 
         # Стримим САМ файл (после проверки доступа выше), а не JSON со ссылкой
         # на /media/: иначе приватный чертёж открыт всем по прямой ссылке.
@@ -2043,8 +2333,33 @@ class DrawingFileView(APIView):
         if not rel or not default_storage.exists(rel):
             return Response({"ok": False, "error": "файл чертежа не найден"}, status=404)
         fname = drawing.file_name or rel.rsplit("/", 1)[-1]
+        source = default_storage.open(rel, "rb")
+        try:
+            protected = build_watermarked_copy(source, fname, request.user, drawing)
+        except Exception:
+            source.close()
+            logger.exception("drawing watermark failed drawing=%s", drawing.id)
+            return Response(
+                {"ok": False, "error": "Не удалось подготовить защищённую копию файла."},
+                status=503,
+            )
+        if protected:
+            source.close()
+            protected_file, content_type = protected
+            record_access(request.user, drawing, action, request=request)
+            record_access(request.user, drawing, "watermark_added", request=request)
+            return FileResponse(
+                protected_file,
+                as_attachment=(action == "download"),
+                filename=fname,
+                content_type=content_type,
+            )
+        # CAD-файлы нельзя визуально маркировать без изменения их структуры.
+        # Они остаются защищены проверкой доступа и потоковой выдачей, но в
+        # журнале не утверждается, что водяной знак был нанесён.
+        record_access(request.user, drawing, action, request=request)
         return FileResponse(
-            default_storage.open(rel, "rb"),
+            source,
             as_attachment=(action == "download"),
             filename=fname,
         )
@@ -2087,8 +2402,14 @@ class DrawingUploadView(APIView):
                 allowed_ext={".pdf", ".dwg", ".dxf", ".step", ".stp", ".iges", ".igs", ".stl", ".png", ".jpg", ".jpeg"},
                 max_bytes=50 * 1024 * 1024,
             )
-        except Exception as exc:
+        except ValueError as exc:
             return Response({"ok": False, "error": str(exc)}, status=400)
+        except Exception:
+            logger.exception("drawing validation failed user_id=%s", request.user.id)
+            return Response(
+                {"ok": False, "error": _("Не удалось проверить файл.")},
+                status=400,
+            )
         FMT = {"pdf": "pdf", "dwg": "dwg", "dxf": "dxf", "step": "step",
                "stp": "step", "iges": "iges", "igs": "iges", "stl": "stl",
                "png": "png", "jpg": "jpg", "jpeg": "jpg"}
@@ -2096,10 +2417,10 @@ class DrawingUploadView(APIView):
 
         safe_name = get_valid_filename(f.name)[:200] or "drawing"
         path = default_storage.save(f"drawings/{request.user.id}/{safe_name}", f)
-        try:
-            file_url = default_storage.url(path)
-        except Exception:
-            file_url = f"/media/{path}"
+        # Храним стабильную внутреннюю ссылку, а не временный S3 presigned URL.
+        # /media/ закрыт на reverse proxy; DrawingFileView извлекает storage key
+        # и выдаёт файл только после проверки доступа.
+        file_url = f"/media/{str(path).lstrip('/')}"
 
         oem = (request.data.get("oem_number") or "").strip()
         part = None
@@ -2173,7 +2494,7 @@ class NotificationListView(APIView):
                     "kind": n.kind,
                     "title": n.title,
                     "body": n.body,
-                    "url": n.url,
+                    "url": _safe_local_url(n.url),
                     "is_read": n.is_read,
                     "created_at": n.created_at.isoformat() if n.created_at else None,
                 }
@@ -2193,22 +2514,61 @@ class PaymentsWebhookView(APIView):
     Stripe-style webhook receiver. Принимает JSON-event с полями
     {type, data} и роутит через assistant.payments.dispatch_webhook().
 
-    HMAC: если задан STRIPE_WEBHOOK_SECRET — проверяем Stripe-Signature.
-    Если не задан — demo-режим, верим на слово (фронт-демо без реального
-    Stripe). Это безопасно потому что body всё равно идёт через
-    dispatch_webhook → registered handlers, без права писать в БД от
-    лица пользователя.
+    Запрос всегда проверяется по Stripe-Signature. Без
+    STRIPE_WEBHOOK_SECRET обработчик закрыт во всех режимах.
     """
     permission_classes = []
     authentication_classes = []
 
     def post(self, request):
+        import json
+
+        from django.conf import settings
+        from django.core.exceptions import RequestDataTooBig
+
         from .payments import dispatch_webhook
         from .payments_engines import verify_webhook_signature
+
+        max_body_bytes = int(
+            getattr(settings, "PAYMENT_CALLBACK_MAX_BODY_BYTES", 64 * 1024)
+        )
+        try:
+            content_length = int(request.META.get("CONTENT_LENGTH") or 0)
+        except (TypeError, ValueError):
+            content_length = 0
+        if content_length > max_body_bytes:
+            return Response(
+                {"received": False, "error": "payload too large"},
+                status=413,
+            )
+        try:
+            raw_body = request.body
+        except RequestDataTooBig:
+            return Response(
+                {"received": False, "error": "payload too large"},
+                status=413,
+            )
+        if len(raw_body) > max_body_bytes:
+            return Response(
+                {"received": False, "error": "payload too large"},
+                status=413,
+            )
         signature = request.META.get("HTTP_STRIPE_SIGNATURE", "")
-        if not verify_webhook_signature(request.body, signature):
+        if not verify_webhook_signature(raw_body, signature):
             return Response({"received": False, "error": "invalid signature"}, status=400)
-        result = dispatch_webhook(request.data or {})
+        try:
+            event = json.loads(raw_body.decode("utf-8") or "{}")
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return Response(
+                {"received": False, "error": "invalid payload"},
+                status=400,
+            )
+        if not isinstance(event, dict):
+            return Response(
+                {"received": False, "error": "invalid payload"},
+                status=400,
+            )
+        result = dispatch_webhook(event)
         return Response(result)
 
 

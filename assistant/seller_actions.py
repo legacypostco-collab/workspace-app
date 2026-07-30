@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 from decimal import Decimal
 
 from django.utils import timezone
@@ -13,8 +14,41 @@ from django.utils.translation import gettext as _, gettext_lazy as _l, ngettext
 
 from .actions import ActionResult, register
 from .rfq_mode_badge import mode_badge_with_sla
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
+MAX_CATALOG_PRICE = Decimal("9999999999.99")
+MAX_CATALOG_STOCK = 1_000_000_000
+
+
+def _catalog_decimal(value, *, minimum, maximum=MAX_CATALOG_PRICE):
+    try:
+        parsed = Decimal(str(value))
+    except Exception:
+        return None
+    if not parsed.is_finite() or parsed < minimum or parsed > maximum:
+        return None
+    return parsed
+
+
+def _get_or_create_brand(name, seller_user):
+    from django.utils.text import slugify
+    from marketplace.models import Brand
+
+    brand = Brand.objects.filter(name__iexact=name).first()
+    if brand is not None:
+        return brand
+    slug_base = slugify(name)[:160] or "brand"
+    slug = f"{slug_base}-{seller_user.id}"[:180]
+    suffix = 2
+    while Brand.objects.filter(slug=slug).exists():
+        slug = f"{slug_base[:170]}-{suffix}"[:180]
+        suffix += 1
+    return Brand.objects.create(name=name, slug=slug)
+
+
+def _invite_token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def _effective_seller(user):
@@ -91,7 +125,7 @@ def referral_program(params, user, role):
     # Детерминированный код на основе user_id + username
     seed = f"{user.id}:{user.username}".encode()
     code = "REF-" + hashlib.sha256(seed).hexdigest()[:8].upper()
-    link = f"https://consolidator.parts/?ref={code}"
+    link = f"https://consolidatorparts.com/?ref={code}"
 
     # Реальная статистика будет когда подключим UTM-tracking. Пока — заглушка.
     invited = 0
@@ -359,99 +393,52 @@ def forecast_demand(params, user, role):
 
 @register("sync_1c")
 def sync_1c(params, user, role):
-    """Двусторонний обмен с 1С / ERP по правилам ТЗ.
-
-    Без переменной окружения ONEC_ENDPOINT работает в demo-режиме:
-    показывает что бы обменялось. С настроенным OData-эндпоинтом —
-    реальный обмен через стандартный 1С OData REST.
-
-    params:
-      direction: 'pull' (1С → платформа), 'push' (платформа → 1С), 'both'
-      since_days: int (по умолчанию 7)
-    """
+    """Показать состояние подключения 1С без имитации обмена данными."""
     import os
-    from datetime import timedelta
-
-    from marketplace.models import Order, Part
-
-    direction = (params.get("direction") or "both").lower()
-    since_days = min(int(params.get("since_days") or 7), 90)
-    now = timezone.now()
-    since = now - timedelta(days=since_days)
 
     endpoint = os.getenv("ONEC_ENDPOINT", "").strip()
     onec_user = os.getenv("ONEC_USER", "").strip()
-    is_demo = not (endpoint and onec_user)
+    onec_password = os.getenv("ONEC_PASSWORD", "").strip()
+    credentials_present = bool(endpoint and onec_user and onec_password)
 
-    # Что бы выгрузилось в 1С (push)
-    push_orders = (
-        Order.objects.filter(items__part__seller=user, created_at__gte=since)
-        .distinct().count()
-    )
-    push_statuses = (
-        Order.objects.filter(items__part__seller=user, status__in=[
-            "ready_to_ship", "transit_abroad", "customs", "transit_rf",
-            "issuing", "delivered",
-        ]).distinct().count()
-    )
-    # Что бы пришло из 1С (pull) — остатки и цены по моим товарам
-    pull_parts = Part.objects.filter(seller=user, is_active=True).count()
-
-    if is_demo:
-        log_lines = [
-            _("▸ ONEC_ENDPOINT не настроен — обмен в demo-режиме (без реального запроса)."),
-            _("  Платформа → 1С: %(orders)s заказа(ов) и %(statuses)s статусов за %(days)s дн.") % {
-                "orders": push_orders, "statuses": push_statuses, "days": since_days},
-            _("  1С → Платформа: %(parts)s позиций для синхронизации остатков и цен.") % {
-                "parts": pull_parts},
-            _("▸ Чтобы включить реальный обмен, задайте ONEC_ENDPOINT, ONEC_USER, ONEC_PASSWORD."),
-        ]
+    if credentials_present:
+        status = _("Требуется настройка схемы обмена")
+        text = _(
+            "Подключение 1С ещё не завершено. Реквизиты заданы, но соответствие "
+            "справочников и документов не настроено. Запросы в 1С не отправлялись "
+            "и данные платформы не изменялись."
+        )
     else:
-        # Реальный обмен через OData (минимальный stub — серверу нужен 1С со схемой)
-        try:
-            log_lines = []
-            ok_push, ok_pull = 0, 0
-            if direction in ("push", "both"):
-                # Здесь должен быть POST в 1С OData с заказами
-                log_lines.append(_("▸ Push в 1С: отправил %(orders)s заказа(ов) и %(statuses)s статусов.") % {
-                    "orders": push_orders, "statuses": push_statuses})
-                ok_push = push_orders
-            if direction in ("pull", "both"):
-                # GET с остатками и ценами
-                log_lines.append(_("▸ Pull из 1С: обновил остатки и цены по %(parts)s позициям.") % {
-                    "parts": pull_parts})
-                ok_pull = pull_parts
-            log_lines.append(_("▸ Эндпоинт: %(endpoint)s") % {"endpoint": endpoint})
-        except Exception as exc:
-            log_lines = [_("⚠️ Ошибка обмена с 1С: %(exc)s") % {"exc": exc}]
+        status = _("Не подключено")
+        text = _(
+            "Интеграция с 1С не настроена. Обмен данными не выполнялся. "
+            "Для подключения нужны адрес OData, отдельная служебная учётная "
+            "запись и согласованная схема справочников и документов."
+        )
 
-    text = _("🔄 Синхронизация с 1С / ERP\n") + "\n".join(log_lines)
     return ActionResult(
         text=text,
         cards=[{
-            "type": "kpi_grid",
+            "type": "details",
             "data": {
-                "title": _("Обмен с 1С"),
-                "kpis": [
-                    {"label": _("Push заказов"),  "value": push_orders,
-                     "sub": _("за %(days)s дн.") % {"days": since_days}},
-                    {"label": _("Push статусов"), "value": push_statuses,
-                     "sub": _("активные отгрузки")},
-                    {"label": _("Pull остатков"), "value": pull_parts,
-                     "sub": _("позиций каталога")},
-                    {"label": _("Режим"),         "value": ("Demo" if is_demo else "Live"),
-                     "sub": (_("Без эндпоинта") if is_demo else endpoint[:24])},
+                "title": _("Интеграция с 1С"),
+                "rows": [
+                    {"label": _("Состояние"), "value": status},
+                    {
+                        "label": _("Передача данных"),
+                        "value": _("Не выполнялась"),
+                    },
                 ],
             },
         }],
         actions=[
-            {"label": _("Только push"), "action": "sync_1c",
-             "params": {"direction": "push"}},
-            {"label": _("Только pull"), "action": "sync_1c",
-             "params": {"direction": "pull"}},
-            {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
+            {
+                "label": _("Интеграции"),
+                "action": "seller_integrations",
+                "params": {},
+            },
         ],
-        suggestions=[_("Что в 1С прилетит?"), _("Как настроить?"), _("Расписание обмена")],
+        suggestions=[_("Какие данные нужны для подключения 1С?")],
     )
 
 
@@ -507,10 +494,7 @@ def notifications(params, user, role):
 
 @register("generate_qr")
 def generate_qr(params, user, role):
-    """Генерация QR-кода для заказа: payload содержит order_id + token,
-    логируется как событие. По ТЗ: «каждое сканирование — событие».
-    """
-    import secrets
+    """Генерация подписанного QR-кода для заказа."""
 
     from marketplace.models import Order, OrderItem
     order_id = params.get("order_id")
@@ -529,27 +513,32 @@ def generate_qr(params, user, role):
     ).exists():
         return ActionResult(text=_("В заказе нет ваших товаров."))
 
-    # Генерируем токен и сохраняем в logistics_meta
-    meta = dict(order.logistics_meta or {})
-    if not meta.get("qr_token"):
-        meta["qr_token"] = secrets.token_urlsafe(12)
-        order.logistics_meta = meta
-        order.save(update_fields=["logistics_meta"])
-        from .actions import _log_event
-        _log_event(order, "document_uploaded", actor=user, source=role,
-                   meta={"kind": "qr", "token": meta["qr_token"]})
-
     # ТЗ §6.2: scan-URL ведёт на /api/assistant/qr/scan/<code>/ —
     # мобильник сканирует, открывается страница, оператор подтверждает событие.
     from .qr_scan import encode_qr_code
     code = encode_qr_code(order.id)
-    import os
-    site = os.getenv("SITE_URL", "http://72.56.234.89").rstrip("/")
+    from django.conf import settings
+    site = (getattr(settings, "SITE_URL", "") or "").strip().rstrip("/")
+    request = params.get("_request")
+    if not site and request is not None:
+        site = request.build_absolute_uri("/").rstrip("/")
+    if not site and settings.DEBUG:
+        site = "http://testserver"
+    if not site:
+        return ActionResult(
+            text=_("QR не создан: адрес сервиса не настроен.")
+        )
     payload = f"{site}/api/assistant/qr/scan/{code}/"
-    from urllib.parse import quote
-    qr_url = (
-        f"https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={quote(payload)}"
-    )
+    import base64
+    from io import BytesIO
+
+    import qrcode
+
+    qr_buffer = BytesIO()
+    qrcode.make(payload, box_size=6, border=2).save(qr_buffer, format="PNG")
+    qr_url = "data:image/png;base64," + base64.b64encode(
+        qr_buffer.getvalue(),
+    ).decode("ascii")
     return ActionResult(
         text=(
             _("QR для заказа #%(id)s готов. Распечатайте и приклейте на упаковку. "
@@ -1338,13 +1327,14 @@ def product_detail(params, user, role):
 def edit_product(params, user, role):
     """Редактирование товара: без полей → форма с текущими значениями;
     с полями → сохраняем."""
-    from marketplace.models import Brand, Part
+    from marketplace.models import Part
+    seller_user = _effective_seller(user)
     pid = params.get("part_id")
     if not pid:
         return ActionResult(text=_("Не указан товар."))
     try:
-        p = Part.objects.select_related("brand").get(id=pid, seller=user)
-    except Part.DoesNotExist:
+        p = Part.objects.select_related("brand").get(id=pid, seller=seller_user)
+    except (Part.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Товар не найден или не ваш."))
 
     # Все редактируемые поля (inline-редактор каталога шлёт их через data-field).
@@ -1378,6 +1368,7 @@ def edit_product(params, user, role):
         )
 
     changed = 0
+    validation_errors = []
 
     def _txt(field, attr, required=False, maxlen=None):
         nonlocal changed
@@ -1392,16 +1383,24 @@ def edit_product(params, user, role):
         if getattr(p, attr) != v:
             setattr(p, attr, v); changed += 1
 
-    def _num(field, attr, integer=False):
+    def _num(field, attr, integer=False, minimum=Decimal("0")):
         nonlocal changed
         v = params.get(field)
         if v in (None, ""):
             return
-        try:
-            # клампим целочисленные поля снизу: stock_quantity — PositiveIntegerField,
-            # отрицательное значение → IntegrityError на Postgres
-            nv = max(0, int(v)) if integer else Decimal(str(v))
-        except Exception:
+        if integer:
+            try:
+                nv = int(v)
+            except (TypeError, ValueError, OverflowError):
+                validation_errors.append(field)
+                return
+            if nv < int(minimum) or nv > MAX_CATALOG_STOCK:
+                validation_errors.append(field)
+                return
+        else:
+            nv = _catalog_decimal(v, minimum=minimum)
+        if nv is None:
+            validation_errors.append(field)
             return
         if getattr(p, attr) != nv:
             setattr(p, attr, nv); changed += 1
@@ -1422,13 +1421,18 @@ def edit_product(params, user, role):
     _txt("sea_port", "sea_port", maxlen=120)
     _txt("air_port", "air_port", maxlen=120)
     _txt("warehouse_address", "warehouse_address", maxlen=255)
-    _num("price", "price")
+    _num("price", "price", minimum=Decimal("0.01"))
     _num("stock_qty", "stock_quantity", integer=True)
     _num("price_fob_sea", "price_fob_sea")
     _num("price_fob_air", "price_fob_air")
-    _num("weight", "gross_weight_kg")
+    _num("weight", "gross_weight_kg", minimum=Decimal("0.001"))
     _choice("condition", "condition", {"oem", "aftermarket", "reman"})
     _choice("availability", "availability", {"in_stock", "backorder"})
+
+    if validation_errors:
+        return ActionResult(
+            text=_("Одно или несколько числовых полей указаны неверно.")
+        )
 
     cur = params.get("currency")
     # только валюты с реальным курсом в marketplace/fx.py; прочие → молчаливый 1:1 USD
@@ -1439,7 +1443,8 @@ def edit_product(params, user, role):
 
     nb = params.get("brand")
     if nb is not None and str(nb).strip():
-        b, _created = Brand.objects.get_or_create(name=str(nb).strip())
+        brand_name = str(nb).strip()[:140]
+        b = _get_or_create_brand(brand_name, seller_user)
         if p.brand_id != b.id:
             p.brand = b; changed += 1
 
@@ -1465,7 +1470,7 @@ def seller_qr(params, user, role):
 
     qs = (
         Order.objects.filter(items__part__seller=user,
-                             status__in=["ready_to_ship", "transit_abroad"])
+                             status__in=["ready_to_ship", "shipped", "transit_abroad"])
         .distinct().order_by("-created_at")[:10]
     )
     rows = [{
@@ -1596,7 +1601,7 @@ def upload_pricelist(params, user, role):
 
     user = _effective_seller(user)
     csv_data = (params.get("csv_data") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     # Шаг 1: инструктивная карточка с тремя действиями
     if not csv_data:
@@ -1845,7 +1850,6 @@ def seller_warehouses(params, user, role):
         - warehouse_id + action='delete': удалить (Parts → orphan)
         - warehouse_id only: каталог этого склада
     """
-    from django.db import connection
     from django.db.models import Count
 
     from marketplace.models import Part, SellerWarehouse
@@ -1862,14 +1866,9 @@ def seller_warehouses(params, user, role):
         except (SellerWarehouse.DoesNotExist, ValueError, TypeError):
             return ActionResult(text=_("Склад не найден."))
         name = w.name
-        # Bulk UPDATE Part.warehouse_id = NULL для всех позиций склада
-        with connection.cursor() as cur:
-            cur.execute(
-                f"UPDATE {Part._meta.db_table} SET warehouse_id = NULL "
-                f"WHERE warehouse_id = %s AND seller_id = %s",
-                [w.id, user.id],
-            )
-            unlinked = cur.rowcount
+        unlinked = Part.objects.filter(warehouse=w, seller=user).update(
+            warehouse=None
+        )
         w.delete()
         return ActionResult(
             text=(f"✓ Склад «{name}» удалён." +
@@ -2249,17 +2248,25 @@ def _build_warehouses_card(user, active_id=None) -> dict | None:
 def toggle_product(params, user, role):
     """Активация/деактивация товара. params: {part_id, active?}"""
     from marketplace.models import Part
+    seller_user = _effective_seller(user)
     pid = params.get("part_id")
     if not pid:
         return ActionResult(text=_("Не указан ID товара."))
     try:
-        p = Part.objects.get(id=pid, seller=user)
-    except Part.DoesNotExist:
+        p = Part.objects.get(id=pid, seller=seller_user)
+    except (Part.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_('Товар #%(p0)s не найден или не ваш.') % {"p0": f'{pid}'})
     new_state = params.get("active")
     if new_state is None:
         new_state = not p.is_active
-    p.is_active = bool(new_state)
+    elif isinstance(new_state, str):
+        normalized_state = new_state.strip().lower()
+        if normalized_state not in {"1", "0", "true", "false"}:
+            return ActionResult(text=_("Некорректное состояние товара."))
+        new_state = normalized_state in {"1", "true"}
+    else:
+        new_state = bool(new_state)
+    p.is_active = new_state
     p.save(update_fields=["is_active"])
     return ActionResult(
         text=(_('✓ Товар «%(p0)s» (%(p1)s) %(p2)s.') % {"p0": f'{p.title}', "p1": f'{p.oem_number}', "p2": f"{('активирован' if p.is_active else 'скрыт из каталога')}"}),
@@ -2276,10 +2283,11 @@ def toggle_product(params, user, role):
 @register("add_product")
 def add_product(params, user, role):
     """Двухфазный: без полей → форма, с полями → создаём Part."""
-    from marketplace.models import Brand, Category, Part
+    from marketplace.models import Category, Part
 
-    article = (params.get("article") or "").strip()
-    title = (params.get("title") or "").strip()
+    seller_user = _effective_seller(user)
+    article = str(params.get("article") or "").strip()
+    title = str(params.get("title") or "").strip()
     price = params.get("price")
     if not (article and title and price is not None):
         return ActionResult(
@@ -2307,26 +2315,47 @@ def add_product(params, user, role):
             }],
         )
 
-    try:
-        price_d = Decimal(str(price))
-    except Exception:
+    if len(article) > 100 or len(title) > 255:
+        return ActionResult(text=_("Артикул или название товара слишком длинные."))
+    price_d = _catalog_decimal(price, minimum=Decimal("0.01"))
+    if price_d is None:
         return ActionResult(text=_("Некорректная цена."))
+    try:
+        stock_quantity = int(params.get("stock_qty") or 1)
+    except (TypeError, ValueError, OverflowError):
+        return ActionResult(text=_("Некорректный остаток на складе."))
+    if not 0 <= stock_quantity <= MAX_CATALOG_STOCK:
+        return ActionResult(text=_("Некорректный остаток на складе."))
 
-    brand_name = (params.get("brand") or "").strip()
+    from django.utils.text import slugify
+
+    brand_name = str(params.get("brand") or "").strip()[:140]
     brand = None
     if brand_name:
-        brand, _created = Brand.objects.get_or_create(name=brand_name)
-    category = Category.objects.first()  # дефолтная категория
+        brand = _get_or_create_brand(brand_name, seller_user)
+    category = Category.objects.first()
+    if category is None:
+        category, _created = Category.objects.get_or_create(
+            name=_("Запчасти"),
+            defaults={"slug": "parts"},
+        )
 
-    if Part.objects.filter(seller=user, oem_number=article).exists():
+    if Part.objects.filter(seller=seller_user, oem_number__iexact=article).exists():
         return ActionResult(text=_('⚠️ Товар с артикулом %(p0)s у вас уже есть.') % {"p0": f'{article}'})
 
+    slug_base = slugify(f"{article}-{seller_user.username}")[:260] or "part"
+    slug = slug_base
+    suffix = 2
+    while Part.objects.filter(slug=slug).exists():
+        slug = f"{slug_base[:270]}-{suffix}"
+        suffix += 1
     p = Part.objects.create(
-        seller=user,
+        seller=seller_user,
         oem_number=article,
         title=title,
+        slug=slug,
         price=price_d,
-        stock_quantity=int(params.get("stock_qty") or 1),
+        stock_quantity=stock_quantity,
         brand=brand,
         category=category,
         is_active=True,
@@ -3041,7 +3070,11 @@ def invite_customer(params, user, role):
     """Пригласить заказчика на платформу → ссылка (без id — общий инвайт, для любой роли)."""
     import secrets
     from django.utils import timezone as _tz
-    base = _invite_base_url()
+    base = _invite_base_url(params)
+    if not base:
+        return ActionResult(
+            text=_("Ссылки-приглашения временно недоступны: адрес сервиса не настроен.")
+        )
     c = _get_customer(user, params)
     if not c:
         # Реферальный инвайт (для всех ролей): ссылка с ПОДПИСАННЫМ токеном
@@ -3077,11 +3110,11 @@ def invite_customer(params, user, role):
                 {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
             ],
         )
-    if not c.invite_token:
-        c.invite_token = secrets.token_urlsafe(20)
+    raw_token = secrets.token_urlsafe(20)
+    c.invite_token = _invite_token_hash(raw_token)
     c.invited_at = _tz.now()
     c.save(update_fields=["invite_token", "invited_at"])
-    link = f"{base}/chat/?invite_customer={c.invite_token}"
+    link = f"{base}/chat/?invite_customer={raw_token}"
     status = _("✅ привязан") if c.user_id else "ожидает принятия"
     return ActionResult(
         text=(_('📨 Приглашение для «%(p0)s» готово (%(p1)s). Отправьте ссылку — заказчик войдёт/зарегистрируется и привяжется к вам; его заказы попадут в ваши отгрузки и начисления:\n%(p2)s') % {"p0": f'{c.name}', "p1": f'{status}', "p2": f'{link}'}),
@@ -3094,26 +3127,46 @@ def invite_customer(params, user, role):
             {"label": _("👤 Карточка заказчика"), "action": "customer_detail", "params": {"id": str(c.id)}},
             {"label": _("👥 К заказчикам"), "action": "seller_customers", "params": {}},
         ],
+        storage_text=(
+            _("📨 Приглашение для «%(name)s» создано. "
+              "Ссылка была показана один раз и не сохраняется в истории.")
+            % {"name": c.name}
+        ),
+        storage_cards=[],
     )
 
 
 @register("accept_customer_invite")
 def accept_customer_invite(params, user, role):
     """Принять приглашение заказчика по токену → привязать аккаунт к Customer."""
+    from datetime import timedelta
+    from django.db import transaction
+    from django.utils import timezone as _tz
     from marketplace.models import Customer
     token = (params.get("token") or "").strip()
     if not token:
         return ActionResult(text=_("Ссылка-приглашение недействительна."))
-    c = Customer.objects.filter(invite_token=token).first()
-    if not c:
-        return ActionResult(text=_("Приглашение не найдено или уже отозвано."))
     if not (user and getattr(user, "is_authenticated", False)):
         return ActionResult(
-            text=_('Чтобы принять приглашение «%(p0)s», войдите или зарегистрируйтесь — после входа вы автоматически привяжетесь к вашему персональному менеджеру (KAM).') % {"p0": f'{c.name}'},
+            text=_("Чтобы принять приглашение, войдите или зарегистрируйтесь."),
             actions=[{"label": _("Войти / регистрация"), "action": "start_login", "params": {}}],
         )
-    c.user = user
-    c.save(update_fields=["user"])
+
+    with transaction.atomic():
+        c = (
+            Customer.objects.select_for_update()
+            .filter(invite_token=_invite_token_hash(token), is_active=True)
+            .first()
+        )
+        if not c:
+            return ActionResult(text=_("Приглашение не найдено или уже отозвано."))
+        if not c.invited_at or c.invited_at < _tz.now() - timedelta(days=7):
+            return ActionResult(text=_("Срок действия приглашения истек."))
+        if c.user_id and c.user_id != user.id:
+            return ActionResult(text=_("Приглашение уже принято другой учетной записью."))
+        c.user = user
+        c.invite_token = ""
+        c.save(update_fields=["user", "invite_token"])
     return ActionResult(
         text=(_('✅ Готово! Вы привязаны как заказчик «%(p0)s». Ваши заказы теперь видны вашему KAM, а сопровождение идёт через платформу.') % {"p0": f'{c.name}'}),
         actions=[{"label": _("🏠 В кабинет"), "action": "go_home", "params": {}}],
@@ -3440,7 +3493,7 @@ def kam_message(params, user, role):
     Phase 1 — форма сообщения. Phase 2 (confirmed) — доставка в чат менеджера.
     """
     from marketplace.models import Customer
-    from .models import Conversation, Message
+    from .models import Conversation
     if not (user and getattr(user, "is_authenticated", False)):
         return ActionResult(text=_("Войдите, чтобы написать менеджеру."),
                             actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
@@ -3456,7 +3509,7 @@ def kam_message(params, user, role):
     mgr = kam.get_full_name() or kam.username
     text = (params.get("text") or "").strip()
 
-    if not params.get("confirmed"):
+    if not confirmation_is_true(params.get("confirmed")):
         return ActionResult(
             text=_('💬 Напишите вашему менеджеру — %(p0)s получит сообщение и ответит здесь.') % {"p0": f'{mgr}'},
             cards=[{"type": "form", "data": {
@@ -3475,49 +3528,43 @@ def kam_message(params, user, role):
                             actions=[{"label": _("← Назад"), "action": "kam_message",
                                       "params": {"id": str(c.id)}}])
 
-    delivered = False
     try:
-        conv = Conversation.objects.filter(
-            user=kam, category="support", title=_("Сообщения клиентов"),
-            is_active=True).order_by("-updated_at").first()
-        if not conv:
-            conv = Conversation.objects.create(
-                user=kam, role="operator", category="support",
-                title=_("Сообщения клиентов"))
-        buyer_name = user.get_full_name() or user.username
-        Message.objects.create(
-            conversation=conv, role=Message.Role.SYSTEM,
-            content=f"💬 Клиент {buyer_name} (@{user.username}): {text[:1500]}",
-            actions=[{"action": "admin_user_detail", "label": _("👤 Профиль клиента"),
-                      "params": {"user_id": user.id}}],
+        from .support_threads import create_support_conversation, post_support_message
+        conv = (
+            Conversation.objects.filter(
+                user=user,
+                category="support",
+                assigned_operator=kam,
+                support_kind="kam",
+                support_status__in=("open", "waiting_user", "waiting_operator"),
+                participant_links__user=kam,
+                participant_links__role="operator_manager",
+                is_active=True,
+            )
+            .distinct()
+            .order_by("-updated_at")
+            .first()
         )
-        delivered = True
-        try:
-            from asgiref.sync import async_to_sync
-            from channels.layers import get_channel_layer
-            layer = get_channel_layer()
-            if layer:
-                async_to_sync(layer.group_send)(
-                    f"notif_user_{kam.id}",
-                    {"type": "operator_alert", "event": "kam_message",
-                     "rfq_id": None, "order_id": None, "claim_id": None})
-        except Exception:
-            pass
+        if not conv:
+            conv = create_support_conversation(
+                requester=user,
+                requester_role=role,
+                context=_("разговор с персональным менеджером"),
+                operator=kam,
+                kind="kam",
+            )
+        post_support_message(
+            conv, user, role, text[:1500],
+        )
     except Exception:
         logger.exception("kam_message: deliver failed")
-
-    if not delivered:
         return ActionResult(
             text=_("⚠️ Не удалось отправить сообщение. Попробуйте ещё раз."),
             actions=[{"label": _("🔁 Повторить"), "action": "kam_message", "params": {"id": str(c.id)}},
                      {"label": _("← К менеджеру"), "action": "my_kam", "params": {}}])
     return ActionResult(
-        text=_('✅ Сообщение отправлено менеджеру (%(p0)s). Он получит его в чате и ответит вам.') % {"p0": f'{mgr}'},
-        actions=[
-            {"label": _("✍️ Написать ещё"), "action": "kam_message", "params": {"id": str(c.id)}},
-            {"label": _("← К менеджеру"), "action": "my_kam", "params": {}},
-            {"label": _("🏠 Главная"), "action": "go_home", "params": {}},
-        ],
+        text=_('Открываю общий разговор с менеджером %(manager)s.') % {"manager": mgr},
+        navigate_conversation_id=str(conv.id),
     )
 
 
@@ -3535,7 +3582,7 @@ def change_manager(params, user, role):
                      {"label": _("🏠 Главная"), "action": "go_home", "params": {}}])
     mgr = (c.owner.get_full_name() or c.owner.username) if c.owner_id else "менеджер"
 
-    if not params.get("confirmed"):
+    if not confirmation_is_true(params.get("confirmed")):
         return ActionResult(
             text=(_('Сменить менеджера (%(p0)s)? Мы назначим вам другого персонального менеджера из пула. Ваши заказы и история сохранятся.') % {"p0": f'{mgr}'}),
             actions=[
@@ -4070,10 +4117,18 @@ def _can_manage_team(user):
     return _team_role_of(user) in ("owner", "admin")
 
 
-def _invite_base_url():
+def _invite_base_url(params=None):
     from django.conf import settings
+
     base = (getattr(settings, "SITE_URL", "") or "").strip().rstrip("/")
-    return base or "https://consolidatorparts.com"
+    if base:
+        return base
+    request = (params or {}).get("_request")
+    if request is not None:
+        return request.build_absolute_uri("/").rstrip("/")
+    if settings.DEBUG:
+        return "http://testserver"
+    return ""
 
 
 def _company_name_of(owner):
@@ -4170,21 +4225,33 @@ def invite_team_member(params, user, role):
             }],
         )
 
+    base = _invite_base_url(params)
+    if not base:
+        return ActionResult(
+            text=_("Приглашение не создано: адрес сервиса не настроен.")
+        )
+
     owner = _company_owner(user)
     token = secrets.token_urlsafe(24)
+    token_hash = _invite_token_hash(token)
     tm, created = TeamMember.objects.get_or_create(
         owner=owner, invited_email=email,
-        defaults={"role": role_in, "status": "invited", "invite_token": token, "invited_at": _tz.now()},
+        defaults={
+            "role": role_in,
+            "status": "invited",
+            "invite_token": token_hash,
+            "invited_at": _tz.now(),
+        },
     )
     if not created:
         tm.role = role_in
-        tm.invite_token = token
+        tm.invite_token = token_hash
         if tm.status != "active":
             tm.status = "invited"
         tm.invited_at = _tz.now()
         tm.save(update_fields=["role", "invite_token", "status", "invited_at"])
 
-    link = f"{_invite_base_url()}/chat/?join_team={token}"
+    link = f"{base}/chat/?join_team={token}"
     rlabel = TEAM_ROLE_LABELS.get(role_in, role_in)
     return ActionResult(
         text=(_('✓ Приглашение для %(p0)s (%(p1)s) создано.\nОтправьте сотруднику ссылку — действует %(p2)s дней:\n%(p3)s\n\nОн откроет ссылку, войдёт или зарегистрируется и получит доступ к данным компании.') % {"p0": f'{email}', "p1": f'{rlabel}', "p2": f'{TEAM_INVITE_TTL_DAYS}', "p3": f'{link}'}),
@@ -4192,6 +4259,12 @@ def invite_team_member(params, user, role):
             {"label": _("👥 К команде"), "action": "seller_team", "params": {}},
             {"label": _("➕ Ещё приглашение"), "action": "invite_team_member", "params": {}},
         ],
+        storage_text=(
+            _("✓ Приглашение для %(email)s создано. "
+              "Ссылка была показана один раз и не сохраняется в истории.")
+            % {"email": email}
+        ),
+        storage_cards=[],
     )
 
 
@@ -4199,18 +4272,13 @@ def invite_team_member(params, user, role):
 def accept_team_invite(params, user, role):
     """Принять приглашение в команду по токену из ссылки ?join_team=…"""
     from datetime import timedelta
+    from django.db import transaction
     from django.utils import timezone as _tz
-    from marketplace.models import TeamMember, UserProfile
+    from marketplace.models import TeamMember, UserProfile, UserRole
 
     token = (params.get("token") or params.get("join_team") or "").strip()
     if not token:
         return ActionResult(text=_("Ссылка-приглашение недействительна (нет токена)."))
-
-    tm = TeamMember.objects.filter(invite_token=token).select_related("owner").first()
-    if not tm or tm.status == "disabled":
-        return ActionResult(text=_("Приглашение не найдено или отозвано. Попросите руководителя выслать новое."))
-    if tm.invited_at and tm.invited_at < _tz.now() - timedelta(days=TEAM_INVITE_TTL_DAYS):
-        return ActionResult(text=_('Срок действия приглашения истёк (%(p0)s дней). Попросите руководителя выслать новое.') % {"p0": f'{TEAM_INVITE_TTL_DAYS}'})
 
     if not getattr(user, "is_authenticated", False):
         return ActionResult(
@@ -4218,19 +4286,39 @@ def accept_team_invite(params, user, role):
             actions=[{"label": _("Войти / зарегистрироваться"), "action": "start_login", "params": {}}],
         )
 
-    if tm.status == "active" and tm.user_id == user.id:
-        return ActionResult(text=_("Вы уже в команде этой компании."),
-                            actions=[{"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}}])
+    with transaction.atomic():
+        tm = (
+            TeamMember.objects.select_for_update()
+            .filter(invite_token=_invite_token_hash(token), status="invited")
+            .select_related("owner")
+            .first()
+        )
+        if not tm:
+            return ActionResult(text=_("Приглашение не найдено или отозвано. Попросите руководителя выслать новое."))
+        if tm.invited_at and tm.invited_at < _tz.now() - timedelta(days=TEAM_INVITE_TTL_DAYS):
+            return ActionResult(text=_('Срок действия приглашения истёк (%(p0)s дней). Попросите руководителя выслать новое.') % {"p0": f'{TEAM_INVITE_TTL_DAYS}'})
+        if (user.email or "").strip().lower() != tm.invited_email.strip().lower():
+            return ActionResult(text=_("Войдите под учетной записью с адресом, на который отправлено приглашение."))
 
-    tm.user = user
-    tm.status = "active"
-    tm.accepted_at = _tz.now()
-    tm.save(update_fields=["user", "status", "accepted_at"])
+        tm.user = user
+        tm.status = "active"
+        tm.accepted_at = _tz.now()
+        tm.invite_token = ""
+        tm.save(update_fields=["user", "status", "accepted_at", "invite_token"])
 
-    prof, _created = UserProfile.objects.get_or_create(user=user, defaults={"role": "seller"})
-    if prof.role != "seller":
-        prof.role = "seller"
-        prof.save(update_fields=["role"])
+    prof, _created = UserProfile.objects.get_or_create(
+        user=user,
+        defaults={"role": "seller"},
+    )
+    extra_role, _role_created = UserRole.objects.get_or_create(
+        user=user,
+        role="seller",
+        operator_role="",
+        defaults={"is_enabled": True},
+    )
+    if not extra_role.is_enabled:
+        extra_role.is_enabled = True
+        extra_role.save(update_fields=["is_enabled", "updated_at"])
     UserProfile.objects.filter(user=user).update(can_manage_team=(tm.role == "admin"))
 
     company = _company_name_of(tm.owner)
@@ -4265,10 +4353,29 @@ def team_member(params, user, role):
     st = {"invited": _("приглашён"), "disabled": _("отключён"), "active": _("активен")}.get(tm.status, tm.status)
 
     if tm.status == "invited":
-        link = f"{_invite_base_url()}/chat/?join_team={tm.invite_token}"
+        import secrets
+        from django.utils import timezone as _tz
+
+        base = _invite_base_url(params)
+        if not base:
+            return ActionResult(
+                text=_("Новая ссылка не создана: адрес сервиса не настроен.")
+            )
+        raw_token = secrets.token_urlsafe(24)
+        tm.invite_token = _invite_token_hash(raw_token)
+        tm.invited_at = _tz.now()
+        tm.save(update_fields=["invite_token", "invited_at"])
+        link = f"{base}/chat/?join_team={raw_token}"
         return ActionResult(
             text=_('👤 %(p0)s\nРоль: %(p1)s · статус: %(p2)s\n\nСсылка-приглашение (7 дней):\n%(p3)s') % {"p0": f'{name}', "p1": f'{rlabel}', "p2": f'{st}', "p3": f'{link}'},
             actions=[{"label": _("👥 К команде"), "action": "seller_team", "params": {}}],
+            storage_text=(
+                _("👤 %(name)s\nРоль: %(role)s · статус: %(status)s\n\n"
+                  "Новая ссылка была показана один раз и не сохраняется "
+                  "в истории.")
+                % {"name": name, "role": rlabel, "status": st}
+            ),
+            storage_cards=[],
         )
 
     acts = []
@@ -4479,24 +4586,30 @@ def connect_gsheet(params, user, role):
         f"/export?format=csv&gid={gid}"
     )
     try:
-        import requests
-        resp = requests.get(csv_url, timeout=20, allow_redirects=True)
-    except Exception as e:
-        return ActionResult(text=_('⚠️ Не удалось скачать таблицу: %(p0)s') % {"p0": f'{e}'})
-    if resp.status_code == 401 or resp.status_code == 403:
+        from marketplace.external_downloads import (
+            ExternalDownloadError,
+            download_get_with_checked_redirects,
+        )
+
+        status_code, blob, _final_url = download_get_with_checked_redirects(
+            csv_url,
+            allowed_hosts_setting="GOOGLE_SHEETS_ALLOWED_HOSTS",
+            allow_private_setting="GOOGLE_SHEETS_ALLOW_PRIVATE_IPS",
+            allow_insecure_setting="GOOGLE_SHEETS_ALLOW_INSECURE_HTTP",
+            max_bytes=MAX_FILE_BYTES,
+            timeout=20,
+        )
+    except (ExternalDownloadError, OSError, TimeoutError):
+        return ActionResult(text=_("⚠️ Не удалось безопасно скачать таблицу. Проверьте ссылку и доступ."))
+    if status_code == 401 or status_code == 403:
         return ActionResult(text=(
             "⚠️ Таблица не доступна публично. Откройте доступ "
             "«Все, у кого есть ссылка → Читатель» в настройках Google Sheets "
             "и попробуйте снова."
         ))
-    if resp.status_code != 200:
+    if status_code != 200:
         return ActionResult(text=(
-            _('⚠️ Google вернул HTTP %(p0)s. Проверьте ссылку и доступ.') % {"p0": f'{resp.status_code}'}
-        ))
-    blob = resp.content
-    if len(blob) > MAX_FILE_BYTES:
-        return ActionResult(text=(
-            _('⚠️ Таблица слишком большая (%(p0)s МБ). Максимум %(p1)s МБ.') % {"p0": f'{len(blob) // 1024 // 1024}', "p1": f'{MAX_FILE_BYTES // 1024 // 1024}'}
+            _('⚠️ Google вернул HTTP %(p0)s. Проверьте ссылку и доступ.') % {"p0": f'{status_code}'}
         ))
     try:
         headers, sample = _read_preview("gsheet.csv", blob)

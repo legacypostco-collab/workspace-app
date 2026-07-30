@@ -18,7 +18,12 @@ class ImportServicesTests(TestCase):
         self.seller = User.objects.create_user(username="seller_services", password="pass12345")
         UserProfile.objects.create(user=self.seller, role="seller")
 
-    def _create_csv_job(self, content: bytes) -> ImportJob:
+    def _create_csv_job(
+        self,
+        content: bytes,
+        *,
+        source_type: str = ImportJob.SourceType.CSV,
+    ) -> ImportJob:
         uploaded = SimpleUploadedFile("phase3.csv", content, content_type="text/csv")
         stored = store_import_source_file(uploaded)
         stored_file = StoredFile.objects.create(
@@ -32,7 +37,7 @@ class ImportServicesTests(TestCase):
         )
         return ImportJob.objects.create(
             supplier=self.seller,
-            source_type=ImportJob.SourceType.CSV,
+            source_type=source_type,
             source_file=stored_file,
             status=ImportJob.Status.QUEUED,
             idempotency_key=stored.checksum_sha256,
@@ -46,6 +51,17 @@ class ImportServicesTests(TestCase):
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0][0], 2)
         self.assertEqual(rows[0][1]["OEM"], "ABC-1")
+
+    def test_pipeline_processes_saved_google_sheet_snapshot(self):
+        job = self._create_csv_job(
+            b"OEM,WarehouseAddress,Price\nABC-1,Shanghai CN,10.5\n",
+            source_type=ImportJob.SourceType.GOOGLE_SHEET,
+        )
+
+        summary = ImportRowPipeline().process_job(job)
+
+        self.assertEqual(summary.total_rows, 1)
+        self.assertEqual(summary.valid_rows, 1)
 
     def test_validator_requires_oem_and_positive_price(self):
         validator = ImportValidator()

@@ -25,7 +25,10 @@ def min_order_usd() -> Decimal:
     """Минимальная сумма заказа (USD). Можно переопределить через env."""
     raw = getattr(settings, "MIN_ORDER_USD", None) or "7000"
     try:
-        return Decimal(str(raw))
+        value = Decimal(str(raw))
+        if not value.is_finite() or value < 0:
+            raise ValueError("invalid minimum order")
+        return value
     except Exception:
         return Decimal("7000")
 
@@ -44,7 +47,9 @@ def check_min_order(total_usd: Decimal | float | int):
     try:
         total = Decimal(str(total_usd))
     except Exception:
-        return None  # неизвестная сумма — не блокируем (защита от false-positive)
+        total = Decimal("-1")
+    if not total.is_finite() or total < 0:
+        total = Decimal("0")
     limit = min_order_usd()
     if total >= limit:
         return None

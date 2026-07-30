@@ -7,9 +7,9 @@
 ## 0. Pre-flight (T-1 день)
 
 ### Сервер готов?
-- [ ] Ubuntu 22.04+ / Debian 12 на `72.56.234.89`
+- [ ] Ubuntu 22.04+ / Debian 12 на узле из закрытого реестра инфраструктуры
 - [ ] `sudo ufw`: открыты 22, 80, 443; всё остальное закрыто
-- [ ] DNS: `consolidator.parts` и `www.consolidator.parts` → IP сервера
+- [ ] DNS: `consolidatorparts.com` и `www.consolidatorparts.com` → рабочий узел
 - [ ] User `deploy` существует, в `sudo` группе, SSH-ключ загружен
 
 ### Софт установлен?
@@ -48,14 +48,14 @@ chmod 600 .env
 **Особо критично:**
 - [ ] `SECRET_KEY` — сгенерируй заново: `python -c "import secrets;print(secrets.token_urlsafe(60))"`
 - [ ] `PAYMENT_CALLBACK_SECRET` — random 64+ chars (P0-2: без него callback вернёт 503)
-- [ ] `STRIPE_WEBHOOK_SECRET` — из Stripe Dashboard → Webhooks
-- [ ] `DEBUG=False`
-- [ ] `ALLOWED_HOSTS=consolidator.parts,www.consolidator.parts`
+- [ ] `PAYMENT_ENGINE=wallet` — Stripe запрещён до завершения возвратов и сверки
+- [ ] `DEBUG_MODE=False`
+- [ ] `ALLOWED_HOSTS=consolidatorparts.com,www.consolidatorparts.com`
 
 ### HTTPS-сертификат?
 ```bash
-sudo certbot --nginx -d consolidator.parts -d www.consolidator.parts \
-             --non-interactive --agree-tos -m admin@consolidator.parts
+sudo certbot --nginx -d consolidatorparts.com -d www.consolidatorparts.com \
+             --non-interactive --agree-tos -m admin@consolidatorparts.com
 ```
 
 ### Бэкап?
@@ -69,7 +69,7 @@ sudo certbot --nginx -d consolidator.parts -d www.consolidator.parts \
 
 ### Команда (с локальной машины)
 ```bash
-ssh deploy@72.56.234.89 'cd /var/www/workspace-app && bash deploy/deploy.sh'
+ssh deploy@<PRODUCTION_HOST> 'cd /var/www/workspace-app && bash deploy/deploy.sh'
 ```
 
 Скрипт сделает:
@@ -97,7 +97,7 @@ ssh deploy@72.56.234.89 'cd /var/www/workspace-app && bash deploy/deploy.sh'
 ### Если что-то упало
 ```bash
 # Сразу откат
-ssh deploy@72.56.234.89 'cd /var/www/workspace-app && bash deploy/deploy.sh --rollback'
+ssh deploy@<PRODUCTION_HOST> 'cd /var/www/workspace-app && bash deploy/deploy.sh --rollback'
 # Логи
 journalctl -u daphne -n 100 --no-pager
 tail -100 /var/log/nginx/consolidator-error.log
@@ -110,7 +110,7 @@ tail -100 /var/log/nginx/consolidator-error.log
 **6 P0-сценариев — каждый ≤ 2 мин, ручной запуск через браузер на проде.**
 
 ### S1 — Buyer покупает (escrow hold)
-1. Открыть https://consolidator.parts → login `demo_buyer`/`demo12345`
+1. Открыть https://consolidatorparts.com и войти под временным покупателем из закрытого хранилища доступов
 2. Pill «🛒 Найти запчасть» → ввести `2W1223` → click первой карточки
 3. Кнопка «Купить» → должна показаться **preview-карточка** (P0-7)
 4. Кнопка «✓ Подтвердить заказ» → создан заказ, статус `awaiting_reserve`
@@ -135,10 +135,10 @@ fetch('/api/assistant/role/', {
 2. Должен вернуться `{"error": "forbidden: ...", "role": "buyer"}` со статусом 403
 
 ### S4 — Seller KYB → approve
-1. Login `demo_seller`/`demo12345` → должно открыться окно KYB
+1. Войти под временным продавцом из закрытого хранилища доступов → должно открыться окно KYB
 2. Пройти 4 шага: company / legal_address / bank / director
 3. «Submit for review»
-4. Open `demo_operator` в incognito → pill «🛡 KYB» → найти заявку → «Approve»
+4. В отдельном профиле войти под временным оператором → открыть KYB, найти заявку и подтвердить
 5. Вернуться в seller-сессию → reload → kyb_status должен показать «✓ Верифицирован»
 
 ### S5 — Confirm delivery (P0-7)
@@ -173,8 +173,8 @@ fetch('/api/assistant/role/', {
 ### Что смотреть каждые 30 мин
 - `journalctl -u daphne -p err -n 50 --no-pager` — должно быть пусто
 - `tail -50 /var/log/nginx/consolidator-error.log` — 5xx ≤ 0
-- В чате `demo_operator`: pill «💰 Финансы и эскроу» → «Сверка баланс vs холды» = ✓
-- В чате `demo_operator`: pill «⏱ SLA» → SLA здоровье > 90%
+- Под временным оператором: «Финансы и эскроу» → «Сверка баланс vs холды» = ✓
+- Под временным оператором: «SLA» → здоровье SLA > 90%
 
 ### Алёрты (минимум на день первый)
 - UptimeRobot на `/` каждые 5 минут → Telegram
@@ -185,13 +185,24 @@ fetch('/api/assistant/role/', {
 ```bash
 # /etc/cron.hourly/wallet-recon.sh
 psql -U consolidator -d consolidator -c "
+WITH platform_wallet AS (
+  SELECT w.id, w.balance
+  FROM assistant_wallet w
+  JOIN auth_user u ON u.id = w.user_id
+  WHERE u.username = '__platform_escrow__'
+)
 SELECT
-  (SELECT SUM(balance) FROM assistant_wallet WHERE user_id IS NULL) AS platform_balance,
-  (SELECT
-     COALESCE(SUM(CASE WHEN kind='escrow_hold' AND wallet_id=(SELECT id FROM assistant_wallet WHERE user_id IS NULL) THEN amount
-                       WHEN kind IN ('escrow_release','escrow_refund') AND wallet_id=(SELECT id FROM assistant_wallet WHERE user_id IS NULL) THEN -amount
-                       ELSE 0 END), 0)
-   FROM assistant_wallettx) AS computed_balance;
+  pw.balance AS platform_balance,
+  COALESCE(SUM(
+    CASE
+      WHEN tx.kind = 'escrow_hold' THEN tx.amount
+      WHEN tx.kind IN ('escrow_release', 'escrow_refund') THEN -tx.amount
+      ELSE 0
+    END
+  ), 0) AS computed_balance
+FROM platform_wallet pw
+LEFT JOIN assistant_wallettx tx ON tx.wallet_id = pw.id
+GROUP BY pw.balance;
 "
 # Если platform_balance != computed_balance → ALERT
 ```
@@ -224,27 +235,22 @@ bash deploy/deploy.sh --rollback
 - Проверь nginx.conf: `proxy_set_header Upgrade $http_upgrade` в `/ws/`
 
 ### Симптом: payment_callback не работает
-- Проверь `.env`: `PAYMENT_CALLBACK_SECRET` есть и совпадает с тем, что в Stripe Dashboard
+- Проверь `.env`: `PAYMENT_CALLBACK_SECRET` задан и совпадает с секретом платёжного провайдера
 - Лог: `grep payment_callback /var/log/nginx/consolidator-access.log | tail -10`
 
 ---
 
-## 6. Что отложено на «спринт после релиза»
+## 6. Условия, которые нельзя считать закрытыми автоматически
 
-Из pre-prod аудита, не блокеры:
+Перед публичным выпуском отдельно подтвердить:
 
 | Тема | Файл | Приоритет |
 |---|---|---|
-| `add_product`/`edit_product` без confirmed-gate | `assistant/seller_actions.py:2344,1464` | P1 |
-| `create_rfq` auto-dispatch без подтверждения | `assistant/actions.py:1878` | P1 |
-| RAG-инъекция через имена поставщиков (нет XML-разделителей) | `assistant/prompts.py:163` | P1 |
-| Утечка % наценки в seller-ответе AI | `assistant/seller_actions.py:1066` | P2 |
-| Nonce-based CSP (убрать `unsafe-inline`) | `consolidator_site/middleware.py` | P2 |
-| Wallet reconciliation cron (Issue 8 от data-integrity) | новый management command | P1 |
-| `_log_event` в `op_resolve_dispute` | `operator_actions.py:1501` | P2 |
-| 6 P0 e2e payment-тестов | новые в `e2e/tests/` | P1 |
-| База64 → WebP, gzip/brotli уже есть в nginx.conf | `templates/landing.html` | P2 |
-| Sentry / Plausible | новый | P1 |
+| Реальный платёжный провайдер и возвраты проверены на тестовой среде провайдера | Блокирует выпуск |
+| Политика защиты содержимого переведена с `unsafe-inline` на одноразовые метки | Высокий |
+| Сверка кошелька и проводок запускается по расписанию и отправляет оповещение | Высокий |
+| Зависимости проверены актуальной базой уязвимостей в закрытом контуре сборки | Высокий |
+| Полный набор браузерных сценариев оплаты и возврата проходит без пропусков | Высокий |
 
 ---
 
@@ -253,9 +259,9 @@ bash deploy/deploy.sh --rollback
 - **Dev on-call:** ___
 - **Ops on-call:** ___
 - **Anthropic support:** support@anthropic.com (если AI лежит)
-- **Stripe support:** Dashboard → Support
+- **Платёжный провайдер:** канал поддержки из действующего договора
 - **Hosting (Timeweb):** support@timeweb.com / +7 ___
 
 ---
 
-**Last update:** 2026-05-21 (после audit-цикла 6 агентов)
+**Последнее обновление:** 2026-07-29 (после повторного аудита безопасности)

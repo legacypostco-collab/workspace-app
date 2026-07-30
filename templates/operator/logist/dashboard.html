@@ -246,7 +246,11 @@ function cmrFileSelected(input) {
   var name = input.files[0].name;
   var card = input.closest('.op-card-elevated') || input.parentElement.parentElement.parentElement;
   var div = input.closest('.cmr-upload');
-  div.innerHTML = '<div style="font-size:12px;color:#66BB6A;padding:6px 10px;background:rgba(102,187,106,0.08);border-radius:8px;border:1px solid rgba(102,187,106,0.2);">✓ ' + name + '{% trans " загружен</div>" %}';
+  div.replaceChildren();
+  var uploaded = document.createElement('div');
+  uploaded.style.cssText = 'font-size:12px;color:#66BB6A;padding:6px 10px;background:rgba(102,187,106,0.08);border-radius:8px;border:1px solid rgba(102,187,106,0.2);';
+  uploaded.textContent = '✓ ' + name + ' {% trans "загружен" %}';
+  div.appendChild(uploaded);
   card.style.borderColor = 'rgba(102,187,106,0.25)';
   opToast('{% trans 'CMR загружен: ' %}' + name, 2000, 'success');
 }

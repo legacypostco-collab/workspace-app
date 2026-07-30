@@ -16,8 +16,20 @@ OUT = os.path.join(HERE, "og-card.png")
 SVG = os.path.join(HERE, "logo-icon-white.svg")
 
 W, H = 1200, 630
-FONT_BOLD = "/System/Library/Fonts/Supplemental/Arial Bold.ttf"
-FONT_REG = "/System/Library/Fonts/Supplemental/Arial.ttf"
+FONT_BOLD = next(path for path in (
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+) if os.path.exists(path))
+FONT_REG = next(path for path in (
+    "/System/Library/Fonts/Supplemental/Arial.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+) if os.path.exists(path))
 
 # ---- размеры (чуть крупнее лого + название) ----
 LOGO = 122            # было 100
@@ -129,13 +141,13 @@ def main():
 
     # --- подзаголовок ---
     draw.text((MARGIN + 2, 338),
-              "AI-консолидатор: одно RFQ → 200+ проверенных поставщиков → лучшая цена",
+              "Поиск, сравнение предложений и контроль поставки в одном окне",
               font=f_sub, fill=(176, 176, 178, 255))
 
     # --- плашки ---
     px = MARGIN
     py = 412
-    for label in ("200+ поставщиков", "ETA 2.3 ч", "−18% к рынку"):
+    for label in ("Поиск по спецификации", "Сравнение предложений", "Контроль поставки"):
         w, h = rounded_pill(draw, px, py, label, f_pill)
         px += w + 16
 

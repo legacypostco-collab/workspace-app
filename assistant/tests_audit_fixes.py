@@ -68,6 +68,46 @@ class AuditFixesTests(TestCase):
         r = execute("generate_proposal", {"rfq_id": self.rfqA.id}, self.buyerB, "buyer")
         self.assertIn("не найден", r.text.lower())
 
+    def test_generate_proposal_uses_real_quote_and_private_pdf(self):
+        r = execute(
+            "generate_proposal",
+            {"rfq_id": self.rfqA.id},
+            self.buyerA,
+            "buyer",
+        )
+
+        self.assertIn(f"PRO-{self.rfqA.id}/{self.quoteA.id}", r.text)
+        self.assertTrue(r.cards)
+        self.assertIn(
+            f"/api/assistant/rfq/{self.rfqA.id}/quotes/{self.quoteA.id}/proforma.pdf",
+            str(r.actions),
+        )
+        self.assertNotIn("/chat/proposal/", str(r.actions))
+        self.assertNotIn("/proposal/pdf/", str(r.actions))
+
+    def test_legacy_rfq_checkout_and_proposal_routes_cannot_mutate(self):
+        self.client.force_login(self.buyerA)
+        before = Order.objects.filter(buyer=self.buyerA).count()
+        expected = f"/chat/?action=get_rfq_status&rfq_id={self.rfqA.id}"
+
+        for suffix in (
+            "",
+            "proposal/",
+            "proposal/pdf/",
+            "proposal/logistics/",
+            "checkout/",
+        ):
+            url = f"/rfq/{self.rfqA.id}/{suffix}"
+            with self.subTest(url=url):
+                response = self.client.post(url, {"customer_name": "Bypass"})
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response["Location"], expected)
+
+        response = self.client.get(f"/chat/proposal/{self.rfqA.id}/")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], expected)
+        self.assertEqual(Order.objects.filter(buyer=self.buyerA).count(), before)
+
     def test_owner_get_rfq_status_ok(self):
         # Контроль: сам владелец видит свой RFQ
         r = execute("get_rfq_status", {"rfq_id": self.rfqA.id}, self.buyerA, "buyer")
@@ -96,8 +136,50 @@ class AuditFixesTests(TestCase):
                                  title_snapshot="свободная позиция без матча")
         before = Order.objects.filter(buyer=self.buyerA).count()
         r = execute("accept_quote", {"quote_id": q.id, "confirmed": True}, self.buyerA, "buyer")
-        self.assertIn("нет позиций", r.text.lower())
+        self.assertIn("некорректные", r.text.lower())
         self.assertEqual(Order.objects.filter(buyer=self.buyerA).count(), before)
+
+    def test_accept_quote_rejects_tampered_total_and_unmatched_item(self):
+        before = Order.objects.filter(buyer=self.buyerA).count()
+        self.quoteA.total_amount = Decimal("9000")
+        self.quoteA.save(update_fields=["total_amount"])
+
+        bad_total = execute(
+            "accept_quote",
+            {"quote_id": self.quoteA.id, "confirmed": True},
+            self.buyerA,
+            "buyer",
+        )
+
+        self.quoteA.total_amount = Decimal("8000")
+        self.quoteA.save(update_fields=["total_amount"])
+        quote_item = self.quoteA.items.get()
+        quote_item.part = None
+        quote_item.save(update_fields=["part"])
+        unmatched = execute(
+            "accept_quote",
+            {"quote_id": self.quoteA.id, "confirmed": True},
+            self.buyerA,
+            "buyer",
+        )
+
+        self.assertIn("некорректные", bad_total.text.lower())
+        self.assertIn("некорректные", unmatched.text.lower())
+        self.assertEqual(Order.objects.filter(buyer=self.buyerA).count(), before)
+
+    def test_accept_quote_rejects_buyer_counter_direction(self):
+        self.quoteA.direction = "buyer_to_seller"
+        self.quoteA.save(update_fields=["direction"])
+
+        result = execute(
+            "accept_quote",
+            {"quote_id": self.quoteA.id, "confirmed": True},
+            self.buyerA,
+            "buyer",
+        )
+
+        self.assertIn("только котировку поставщика", result.text.lower())
+        self.assertFalse(Order.objects.filter(buyer=self.buyerA).exists())
 
     # ── Двойной клик confirm_kp_and_reserve ───────────────────────
     def test_confirm_kp_double_click_one_order(self):
@@ -112,3 +194,92 @@ class AuditFixesTests(TestCase):
         t = r2.text.lower()
         self.assertTrue("уже создан" in t or "нельзя принять" in t or "принята" in t,
                         f"Второй клик должен быть заблокирован, а получили: {r2.text}")
+
+    def test_confirm_kp_ignores_tampered_negative_logistics_cost(self):
+        params = {
+            "rfq_id": self.rfqA.id,
+            "quote_id": self.quoteA.id,
+            "logistics_cost": "-7999.99",
+        }
+
+        result = execute("confirm_kp_and_reserve", params, self.buyerA, "buyer")
+
+        self.assertIn("сделка перешла", result.text.lower())
+        order = Order.objects.get(buyer=self.buyerA)
+        self.assertGreaterEqual(order.total_amount, self.quoteA.total_amount)
+        self.assertGreaterEqual(order.logistics_cost, Decimal("0"))
+        self.assertEqual(
+            order.reserve_amount,
+            (order.total_amount * Decimal("0.10")).quantize(Decimal("0.01")),
+        )
+
+    def test_kp_rejects_quote_total_that_does_not_match_items(self):
+        self.quoteA.total_amount = Decimal("9000")
+        self.quoteA.save(update_fields=["total_amount"])
+
+        shown = execute(
+            "present_kp_to_buyer",
+            {"rfq_id": self.rfqA.id},
+            self.buyerA,
+            "buyer",
+        )
+        confirmed = execute(
+            "confirm_kp_and_reserve",
+            {"rfq_id": self.rfqA.id, "quote_id": self.quoteA.id},
+            self.buyerA,
+            "buyer",
+        )
+
+        self.assertIn("некорректные", shown.text.lower())
+        self.assertIn("некорректные", confirmed.text.lower())
+        self.assertFalse(Order.objects.filter(buyer=self.buyerA).exists())
+
+    def test_cancelled_rfq_blocks_all_operator_kp_mutations(self):
+        from assistant.kp_workflow import (
+            op_approve_kp,
+            op_compose_kp,
+            op_dispatch_manual_rfq,
+        )
+
+        self.rfqA.mode = "semi"
+        self.rfqA.status = "cancelled"
+        self.rfqA.notes = "before"
+        self.rfqA.save(update_fields=["mode", "status", "notes"])
+
+        approved = op_approve_kp(
+            {"rfq_id": self.rfqA.id, "confirmed": True},
+            self.buyerA,
+            "admin",
+        )
+        composed = op_compose_kp(
+            {"rfq_id": self.rfqA.id, "quote_id": self.quoteA.id},
+            self.buyerA,
+            "admin",
+        )
+        self.rfqA.mode = "manual"
+        self.rfqA.save(update_fields=["mode"])
+        dispatched = op_dispatch_manual_rfq(
+            {"rfq_id": self.rfqA.id, "confirmed": True},
+            self.buyerA,
+            "admin",
+        )
+
+        self.rfqA.refresh_from_db()
+        self.assertIn("отмен", approved.text.lower())
+        self.assertIn("отмен", composed.text.lower())
+        self.assertIn("отмен", dispatched.text.lower())
+        self.assertEqual(self.rfqA.notes, "before")
+
+    def test_confirm_kp_rejects_cancelled_rfq(self):
+        self.rfqA.status = "cancelled"
+        self.rfqA.save(update_fields=["status"])
+
+        result = execute(
+            "confirm_kp_and_reserve",
+            {"rfq_id": self.rfqA.id, "quote_id": self.quoteA.id},
+            self.buyerA,
+            "buyer",
+        )
+
+        self.assertIn("отмен", result.text.lower())
+        self.assertFalse(Order.objects.filter(buyer=self.buyerA).exists())

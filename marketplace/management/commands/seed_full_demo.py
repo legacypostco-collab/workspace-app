@@ -8,7 +8,11 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.utils.text import slugify
 
-from assistant.management._seed_guard import ensure_dev_only
+from assistant.management._seed_guard import (
+    add_seed_password_argument,
+    ensure_dev_only,
+    require_seed_password,
+)
 from marketplace.models import (
     RFQ,
     Brand,
@@ -28,8 +32,12 @@ from marketplace.models import (
 class Command(BaseCommand):
     help = "Seed database with rich demo data for all admin tabs"
 
+    def add_arguments(self, parser):
+        add_seed_password_argument(parser)
+
     def handle(self, *args, **options):
         ensure_dev_only(self)
+        password = require_seed_password(options)
         now = timezone.now()
 
         # ── Users ──────────────────────────────────────────────
@@ -56,7 +64,7 @@ class Command(BaseCommand):
                     "date_joined": now - timedelta(days=random.randint(5, 180)),
                 },
             )
-            u.set_password("demo12345")
+            u.set_password(password)
             u.save()
             profile, _ = UserProfile.objects.get_or_create(
                 user=u, defaults={"role": "buyer", "company_name": company}
@@ -84,7 +92,7 @@ class Command(BaseCommand):
                     "date_joined": now - timedelta(days=random.randint(30, 365)),
                 },
             )
-            u.set_password("demo12345")
+            u.set_password(password)
             u.save()
             profile, _ = UserProfile.objects.get_or_create(
                 user=u,

@@ -8,7 +8,6 @@ import uuid
 
 from django.conf import settings
 from django.db import models
-from django.utils.translation import gettext as _
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -35,6 +34,7 @@ class Conversation(models.Model):
         ("operator_customs", _("Таможенный брокер")),
         ("operator_payment", _("Платёжный агент")),
         ("operator_manager", _("Менеджер по продажам")),
+        ("operator", _("Оператор")),
         ("admin", _("Администратор")),
     ]
     # Категория группирует похожие действия в один долгий чат, чтобы не плодить
@@ -69,6 +69,38 @@ class Conversation(models.Model):
     )
     title = models.CharField(max_length=200, blank=True)
     is_active = models.BooleanField(default=True)
+    support_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("", _("Не является обращением")),
+            ("open", _("Открыто")),
+            ("waiting_user", _("Ожидает пользователя")),
+            ("waiting_operator", _("Ожидает оператора")),
+            ("closed", _("Закрыто")),
+        ],
+        blank=True,
+        default="",
+        db_index=True,
+    )
+    support_kind = models.CharField(
+        max_length=20,
+        choices=[
+            ("", _("Не является обращением")),
+            ("request", _("Обращение")),
+            ("complaint", _("Жалоба")),
+            ("kam", _("Разговор с менеджером")),
+        ],
+        blank=True,
+        default="",
+        db_index=True,
+    )
+    assigned_operator = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_support_conversations",
+    )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -83,6 +115,37 @@ class Conversation(models.Model):
         return f"Conv[{self.id}]:{self.user_id}:{self.title or 'untitled'}"
 
 
+class ConversationParticipant(models.Model):
+    """A user and the exact role through which they access a shared chat."""
+
+    conversation = models.ForeignKey(
+        Conversation,
+        on_delete=models.CASCADE,
+        related_name="participant_links",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="assistant_conversation_links",
+    )
+    role = models.CharField(max_length=30, choices=Conversation.ROLE_CHOICES)
+    joined_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["conversation", "user", "role"],
+                name="uniq_conversation_participant_role",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["user", "role", "conversation"],
+                name="assistant_c_user_id_d2569e_idx",
+            ),
+        ]
+
+
 class Message(models.Model):
     class Role(models.TextChoices):
         USER = "user", _("Пользователь")
@@ -93,6 +156,13 @@ class Message(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(
         Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assistant_messages",
     )
     role = models.CharField(max_length=10, choices=Role.choices)
     content = models.TextField(help_text="Markdown text + ::: card blocks")
@@ -114,6 +184,36 @@ class Message(models.Model):
     class Meta:
         ordering = ["created_at"]
         indexes = [models.Index(fields=["conversation", "created_at"])]
+
+
+class ActionExecution(models.Model):
+    """Durable idempotency record for state-changing chat actions."""
+
+    id = models.BigAutoField(primary_key=True)
+    operation_id = models.UUIDField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="assistant_action_executions",
+    )
+    action = models.CharField(max_length=100)
+    response = models.JSONField(default=dict, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "operation_id"],
+                name="uniq_action_operation_per_user",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["user", "-created_at"],
+                name="assistant_a_user_id_05ae2b_idx",
+            ),
+        ]
 
 
 class KnowledgeChunk(models.Model):
@@ -265,10 +365,16 @@ class Wallet(models.Model):
 
     @classmethod
     def for_user(cls, user, *, demo_seed_amount=50000):
-        """Get-or-create. Демо-аккаунтам (demo_*) выдаём стартовый баланс."""
+        """Get-or-create. Тестовый баланс разрешён только в DEBUG."""
         from decimal import Decimal
+        from django.conf import settings
+
         wallet, created = cls.objects.get_or_create(user=user)
-        if created and (user.username or "").startswith("demo_"):
+        if (
+            created
+            and settings.DEBUG
+            and (user.username or "").startswith("demo_")
+        ):
             wallet.balance = Decimal(str(demo_seed_amount))
             wallet.save(update_fields=["balance", "updated_at"])
             WalletTx.objects.create(

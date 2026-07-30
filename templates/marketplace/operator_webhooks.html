@@ -62,7 +62,7 @@
       <article class="list-row">
         <div>
           <h3>
-            Order #{{ log.order_id }} • {{ log.endpoint }}
+            Order #{{ log.order_id }} • {{ log.safe_endpoint }}
           </h3>
           <p class="muted">
             Attempt {{ log.attempt }} • status_code {{ log.status_code|default:"—" }} •

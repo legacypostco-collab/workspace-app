@@ -7,7 +7,6 @@
             ensure_dev_only(self)
             ...
 
-Прод-разрешение: env-флаг ALLOW_SEED_IN_PROD=1 (для разовых миграций).
 """
 import os
 
@@ -15,17 +14,27 @@ from django.conf import settings
 from django.core.management.base import CommandError
 
 
+def add_seed_password_argument(parser) -> None:
+    parser.add_argument(
+        "--password",
+        help="Пароль тестовых учетных записей. Можно передать через DEMO_PASSWORD.",
+    )
+
+
+def require_seed_password(options) -> str:
+    password = (options.get("password") or os.environ.get("DEMO_PASSWORD") or "").strip()
+    if len(password) < 10:
+        raise CommandError(
+            "Для тестовых учетных записей передайте --password или DEMO_PASSWORD "
+            "длиной не менее 10 символов."
+        )
+    return password
+
+
 def ensure_dev_only(cmd) -> None:
-    """Throws CommandError if DEBUG=False and ALLOW_SEED_IN_PROD не выставлен."""
+    """Raise CommandError whenever a seed command runs with DEBUG=False."""
     if settings.DEBUG:
         return
-    if os.environ.get("ALLOW_SEED_IN_PROD", "").strip() in ("1", "true", "yes"):
-        cmd.stdout.write(cmd.style.WARNING(
-            "⚠  ALLOW_SEED_IN_PROD set — seed-команда выполняется в production. "
-            "Будь уверен что это намеренно."
-        ))
-        return
     raise CommandError(
-        f"{cmd.__class__.__module__} disabled in production "
-        "(DEBUG=False). Set ALLOW_SEED_IN_PROD=1 to override for one-off use."
+        f"{cmd.__class__.__module__} disabled in production (DEBUG=False)."
     )

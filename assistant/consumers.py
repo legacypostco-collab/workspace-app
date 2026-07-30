@@ -12,39 +12,21 @@ from .rag import process_query_stream
 
 logger = logging.getLogger(__name__)
 
+MAX_WS_FRAME_CHARS = 16_384
+MAX_WS_MESSAGE_CHARS = 4_000
+WS_MESSAGES_PER_MINUTE = 60
+
 
 def push_notification_to_user(user_id: int, payload: dict):
-    """Sync helper — отправляет уведомление во все realtime-каналы пользователя.
-
-    Сейчас в проекте есть две WebSocket-ветки:
-      • /ws/assistant/      → group notif_user_<id>, формат {"type":"notification","payload":...}
-      • /ws/notifications/  → group user_<id>, формат {"type":"notification","data":...}
-
-    База Notification остаётся источником правды, а этот helper только
-    доставляет live-дубликат в открытые вкладки. Если channel-layer не
-    настроен, функция тихо игнорирует — основной flow не ломается.
-    """
+    """Deliver a DB-backed notification to the single assistant channel."""
     try:
         from asgiref.sync import async_to_sync
         layer = get_channel_layer()
         if not layer:
             return
-        legacy_data = {
-            "id": payload.get("id"),
-            "kind": payload.get("kind"),
-            "title": payload.get("title"),
-            "body": (payload.get("body") or "")[:120],
-            "url": payload.get("url") or "",
-            "is_read": False,
-            "created_at": payload.get("created_at") or "",
-        }
         async_to_sync(layer.group_send)(
             f"notif_user_{user_id}",
             {"type": "notify", "payload": payload},
-        )
-        async_to_sync(layer.group_send)(
-            f"user_{user_id}",
-            {"type": "notification.message", "data": legacy_data},
         )
     except Exception:
         logger.exception("push_notification_to_user failed")
@@ -161,10 +143,19 @@ class AssistantConsumer(AsyncWebsocketConsumer):
         })
 
     async def receive(self, text_data=None, bytes_data=None):
+        if bytes_data is not None:
+            await self.close(code=1003)
+            return
+        if not isinstance(text_data, str) or len(text_data) > MAX_WS_FRAME_CHARS:
+            await self.close(code=1009)
+            return
         try:
-            data = json.loads(text_data or "{}")
+            data = json.loads(text_data)
         except json.JSONDecodeError:
             await self.send_json({"type": "error", "message": "Invalid JSON"})
+            return
+        if not isinstance(data, dict):
+            await self.send_json({"type": "error", "message": "Invalid message"})
             return
 
         if data.get("type") == "ping":
@@ -174,9 +165,25 @@ class AssistantConsumer(AsyncWebsocketConsumer):
         if data.get("type") != "message":
             return
 
-        msg = (data.get("content") or "").strip()
+        content = data.get("content")
+        if not isinstance(content, str):
+            await self.send_json({"type": "error", "message": "Invalid message"})
+            return
+        msg = content.strip()
         if not msg:
             await self.send_json({"type": "error", "message": "Empty message"})
+            return
+        if len(msg) > MAX_WS_MESSAGE_CHARS:
+            await self.send_json({
+                "type": "error",
+                "message": "Сообщение слишком длинное.",
+            })
+            return
+        if not await self._message_rate_ok():
+            await self.send_json({
+                "type": "error",
+                "message": "Слишком много сообщений. Повторите через минуту.",
+            })
             return
 
         # Lazy creation: only spawn a new Conversation row when the user
@@ -190,12 +197,23 @@ class AssistantConsumer(AsyncWebsocketConsumer):
                 "role": self.conversation.role,
             })
 
+        if await self._is_human_support():
+            try:
+                await self._post_support_message(msg)
+                await self.send_json({"type": "support_sent"})
+            except PermissionError as exc:
+                await self.send_json({"type": "error", "message": str(exc)})
+            return
+
         try:
             async for event in self._stream_response(msg):
                 await self.send_json(event)
-        except Exception as e:
+        except Exception:
             logger.exception("Assistant stream error")
-            await self.send_json({"type": "error", "message": str(e)})
+            await self.send_json({
+                "type": "error",
+                "message": "Не удалось обработать сообщение. Повторите попытку.",
+            })
 
     async def send_json(self, payload):
         await self.send(text_data=json.dumps(payload))
@@ -208,13 +226,9 @@ class AssistantConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def _get_existing_conversation(self, conv_id):
+        from .conversation_access import get_accessible_conversation
         try:
-            return Conversation.objects.get(
-                id=conv_id,
-                user=self.user,
-                role=self.active_role,
-                is_active=True,
-            )
+            return get_accessible_conversation(self.user, self.active_role, conv_id)
         except Conversation.DoesNotExist:
             return None
 
@@ -222,8 +236,31 @@ class AssistantConsumer(AsyncWebsocketConsumer):
     def _create_conversation(self):
         return Conversation.objects.create(user=self.user, role=self.active_role)
 
+    @database_sync_to_async
+    def _message_rate_ok(self):
+        from .ai_credits import rate_ok
+
+        return rate_ok(
+            self.user,
+            "chat_ws_message",
+            WS_MESSAGES_PER_MINUTE,
+            60,
+        )
+
+    @database_sync_to_async
+    def _is_human_support(self):
+        from .support_threads import is_human_support
+        return is_human_support(self.conversation)
+
+    @database_sync_to_async
+    def _post_support_message(self, content):
+        from .support_threads import post_support_message
+        return post_support_message(
+            self.conversation, self.user, self.active_role, content,
+        )
+
     async def _stream_response(self, message):
-        """Wrap sync generator process_query_stream into async."""
+        """Pull the sync generator one event at a time without buffering it."""
         # i18n keystone: WebSocket НЕ проходит Django LocaleMiddleware, поэтому
         # явно активируем язык пользователя (UserProfile.language) на время
         # генерации ответа — иначе gettext-строки ассистента всегда по-русски.
@@ -250,10 +287,19 @@ class AssistantConsumer(AsyncWebsocketConsumer):
                 except Exception:
                     lang = "ru"
             with translation.override(lang):
-                return list(process_query_stream(self.conversation, message, ui_lang=lang))
-        # Convert sync generator → async via database_sync_to_async pulls
-        gen = await database_sync_to_async(_run)()
-        for ev in gen:
+                yield from process_query_stream(self.conversation, message, ui_lang=lang)
+
+        def _next_event(gen):
+            try:
+                return False, next(gen)
+            except StopIteration:
+                return True, None
+
+        gen = _run()
+        while True:
+            done, ev = await database_sync_to_async(_next_event)(gen)
+            if done:
+                break
             # Map internal event → WS protocol
             if ev["type"] == "token":
                 yield {"type": "stream", "content": ev["text"]}

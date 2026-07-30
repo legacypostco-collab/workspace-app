@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+from urllib.parse import urlparse
+
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
@@ -23,12 +26,58 @@ class Command(BaseCommand):
             errors.append("DEBUG must be disabled in production.")
 
         secret = str(getattr(settings, "SECRET_KEY", "") or "")
-        if not secret or "dev-secret" in secret or "django-insecure" in secret:
+        if (
+            len(secret) < 50
+            or "dev-secret" in secret
+            or "django-insecure" in secret
+            or "CHANGE_ME" in secret
+        ):
             errors.append("SECRET_KEY must be set to a strong non-default value.")
+        qr_secret = str(getattr(settings, "QR_SECRET", "") or "")
+        if len(qr_secret) < 32 or "CHANGE_ME" in qr_secret or "dev-only" in qr_secret:
+            errors.append("QR_SECRET must be set to a strong non-default value.")
+        payment_callback_secret = str(
+            getattr(settings, "PAYMENT_CALLBACK_SECRET", "") or ""
+        )
+        if len(payment_callback_secret) < 32 or "CHANGE_ME" in payment_callback_secret:
+            errors.append(
+                "PAYMENT_CALLBACK_SECRET must be set to a strong non-default value."
+            )
 
         allowed_hosts = list(getattr(settings, "ALLOWED_HOSTS", []) or [])
         if not allowed_hosts:
             errors.append("ALLOWED_HOSTS is empty.")
+        elif "*" in allowed_hosts:
+            errors.append("ALLOWED_HOSTS must not contain a wildcard.")
+        csrf_origins = list(
+            getattr(settings, "CSRF_TRUSTED_ORIGINS", []) or []
+        )
+        if not csrf_origins:
+            errors.append("CSRF_TRUSTED_ORIGINS is empty.")
+        elif not allow_no_tls and any(
+            not str(origin).startswith("https://")
+            for origin in csrf_origins
+        ):
+            errors.append(
+                "CSRF_TRUSTED_ORIGINS must contain only HTTPS origins."
+            )
+
+        site_url = str(getattr(settings, "SITE_URL", "") or "").strip()
+        parsed_site = urlparse(site_url)
+        if not site_url:
+            errors.append("SITE_URL is required for email and invitation links.")
+        elif (
+            not parsed_site.scheme
+            or not parsed_site.hostname
+            or parsed_site.username
+            or parsed_site.password
+            or parsed_site.query
+            or parsed_site.fragment
+            or parsed_site.path not in {"", "/"}
+        ):
+            errors.append("SITE_URL must be a clean absolute origin.")
+        elif not allow_no_tls and parsed_site.scheme != "https":
+            errors.append("SITE_URL must use HTTPS.")
 
         if not allow_no_tls:
             if not bool(getattr(settings, "SESSION_COOKIE_SECURE", False)):
@@ -40,37 +89,91 @@ class Command(BaseCommand):
             if not behind_proxy and not bool(getattr(settings, "SECURE_SSL_REDIRECT", False)):
                 warnings.append("SECURE_SSL_REDIRECT is False and BEHIND_PROXY is not set — ensure TLS termination happens elsewhere.")
             if int(getattr(settings, "SECURE_HSTS_SECONDS", 0) or 0) <= 0:
-                warnings.append("SECURE_HSTS_SECONDS is 0 — consider enabling HSTS once TLS is confirmed stable.")
+                errors.append("SECURE_HSTS_SECONDS must be greater than zero.")
         else:
             warnings.append("TLS checks skipped due to --allow-no-tls.")
 
         # Database engine check
         db_engine = str(settings.DATABASES.get("default", {}).get("ENGINE", ""))
         if "sqlite" in db_engine:
-            warnings.append("Using SQLite — switch to PostgreSQL for production (set DB_ENGINE).")
+            errors.append("Using SQLite is not allowed for production.")
+
+        cache_backend = str(
+            settings.CACHES.get("default", {}).get("BACKEND", "")
+        ).lower()
+        if "redis" not in cache_backend:
+            errors.append(
+                "The default cache must use Redis so rate limits and locks are "
+                "shared by every application process."
+            )
 
         # Email configuration
         email_host = str(getattr(settings, "EMAIL_HOST", "") or "")
-        if not email_host:
-            warnings.append("EMAIL_HOST is not set — email verification and notifications are disabled.")
+        if not email_host and bool(
+            getattr(settings, "EMAIL_VERIFICATION_REQUIRED", False)
+        ):
+            errors.append(
+                "EMAIL_HOST is required while email verification is enabled."
+            )
+        elif not email_host:
+            warnings.append(
+                "EMAIL_HOST is not set; email verification and notifications are disabled."
+            )
+        elif not (
+            bool(getattr(settings, "EMAIL_USE_TLS", False))
+            or bool(getattr(settings, "EMAIL_USE_SSL", False))
+        ):
+            errors.append(
+                "SMTP transport encryption must be enabled with EMAIL_USE_TLS "
+                "or EMAIL_USE_SSL."
+            )
+        elif (
+            bool(getattr(settings, "EMAIL_USE_TLS", False))
+            and bool(getattr(settings, "EMAIL_USE_SSL", False))
+        ):
+            errors.append(
+                "EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be enabled."
+            )
 
         # Admin password via env
-        import os
         if not os.getenv("DJANGO_ADMIN_PASSWORD"):
-            warnings.append("DJANGO_ADMIN_PASSWORD not set — admin account has no password until set manually.")
+            warnings.append(
+                "DJANGO_ADMIN_PASSWORD not set; automatic administrator provisioning "
+                "is unavailable."
+            )
 
         webhook_secret = str(getattr(settings, "WEBHOOK_SECRET", "") or "")
-        if not webhook_secret:
-            warnings.append("WEBHOOK_SECRET is empty; webhook authenticity checks are weaker.")
+        if getattr(settings, "WEBHOOK_ENDPOINTS", "") and len(webhook_secret) < 32:
+            errors.append(
+                "WEBHOOK_SECRET must contain at least 32 characters when outgoing webhooks are enabled."
+            )
+        if (
+            getattr(settings, "WEBHOOK_ENDPOINTS", "")
+            and not getattr(settings, "WEBHOOK_ALLOWED_HOSTS", "")
+        ):
+            errors.append(
+                "WEBHOOK_ALLOWED_HOSTS is required when outgoing webhooks are enabled."
+            )
+
+        if not bool(getattr(settings, "ENABLE_VIRUS_SCAN", False)):
+            errors.append("ENABLE_VIRUS_SCAN must be enabled in production.")
+        if not bool(getattr(settings, "VIRUS_SCAN_REQUIRED", False)):
+            errors.append("VIRUS_SCAN_REQUIRED must be enabled in production.")
+
+        if os.getenv("PAYMENT_ENGINE", "wallet").strip().lower() == "stripe":
+            errors.append(
+                "PAYMENT_ENGINE=stripe is not production-ready: refunds and payment "
+                "reconciliation are incomplete."
+            )
 
         payment_url = str(getattr(settings, "PAYMENT_PROVIDER_URL", "") or "")
         if not payment_url:
             warnings.append("PAYMENT_PROVIDER_URL not set — payment gateway is not configured.")
 
         if int(getattr(settings, "MAX_IMPORT_ROWS", 0) or 0) > 10000:
-            warnings.append("MAX_IMPORT_ROWS is high; consider <= 10000 for safer defaults.")
+            errors.append("MAX_IMPORT_ROWS must not exceed 10000.")
         if int(getattr(settings, "MAX_QUOTE_ITEMS", 0) or 0) > 500:
-            warnings.append("MAX_QUOTE_ITEMS is high; consider <= 500.")
+            errors.append("MAX_QUOTE_ITEMS must not exceed 500.")
 
         if errors:
             self.stdout.write(self.style.ERROR("Deploy readiness: FAILED"))

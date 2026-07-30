@@ -9,7 +9,7 @@
   4. Возвращает простую страницу с подтверждением
 
 QR-коды формата ORD-<id>-<hash> где hash = HMAC-SHA256(secret, order_id)[:32].
-В production QR_SECRET обязателен; dev-fallback работает только при DEBUG=True.
+QR_SECRET обязателен во всех режимах.
 
 API:
   GET  /api/assistant/qr/scan/<code>/  — простая HTML-страница «вы успешно
@@ -28,6 +28,7 @@ import re
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse, JsonResponse
+from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.views.generic import View
 
@@ -43,8 +44,6 @@ def _secret() -> str | None:
     secret = (os.getenv("QR_SECRET") or getattr(settings, "QR_SECRET", "") or "").strip()
     if secret:
         return secret
-    if settings.DEBUG:
-        return "dev-only-qr-secret-change-me"
     return None
 
 
@@ -52,7 +51,7 @@ def encode_qr_code(order_id: int) -> str:
     """ORD-<id>-<hmac32>."""
     secret = _secret()
     if not secret:
-        raise RuntimeError("QR_SECRET is required outside DEBUG")
+        raise RuntimeError("QR_SECRET is required")
     h = hmac.new(secret.encode(), str(order_id).encode(), hashlib.sha256).hexdigest()[:32]
     return f"ORD-{order_id}-{h}"
 
@@ -85,6 +84,34 @@ SCAN_TRANSITIONS = {
 }
 
 
+def _scan_permission(user, order, action: str) -> tuple[bool, str]:
+    from assistant.permissions import user_allowed_roles
+    from marketplace.order_access import seller_ids_for_order, seller_principal
+
+    roles = set(user_allowed_roles(user))
+    is_operator = "admin" in roles or any(
+        role == "operator" or role.startswith("operator_")
+        for role in roles
+    )
+    is_buyer = order.buyer_id == user.id
+    sellers = seller_ids_for_order(order)
+    is_seller = seller_principal(user).id in sellers
+
+    if action == "received":
+        return is_buyer, "buyer"
+    if action in {"transit", "customs", "delivered"}:
+        return is_operator, "operator"
+    if action == "shipped":
+        allowed = is_operator or (is_seller and len(sellers) == 1)
+        return allowed, "operator" if is_operator else "seller"
+    if action == "inspected":
+        allowed = is_operator or is_buyer or is_seller
+        if is_operator:
+            return allowed, "operator"
+        return allowed, "buyer" if is_buyer else "seller"
+    return False, ""
+
+
 # ── View ─────────────────────────────────────────────────────
 
 class QRScanView(View):
@@ -106,17 +133,26 @@ class QRScanView(View):
             order = Order.objects.get(id=order_id)
         except Order.DoesNotExist:
             return self._html_error(f"Заказ #{order_id} не найден")
+        if not request.user.is_authenticated:
+            return self._html_error(
+                "Войдите в систему под аккаунтом участника поставки.",
+                status=401,
+            )
+        if not _scan_permission(request.user, order, "inspected")[0]:
+            return self._html_error("Доступ к заказу запрещён.", status=403)
 
         # Какие действия доступны на этом этапе
         available = []
         for action, (need_status, _) in SCAN_TRANSITIONS.items():
-            if need_status is None or order.status == need_status:
+            allowed = _scan_permission(request.user, order, action)[0]
+            if allowed and (need_status is None or order.status == need_status):
                 available.append(action)
 
+        csrf_token = get_token(request)
         action_buttons = "".join(
             f'<form method="post" style="display:inline;margin:4px;">'
             f'<input type="hidden" name="action" value="{a}">'
-            f'<input type="hidden" name="csrfmiddlewaretoken" value="{request.META.get("CSRF_COOKIE", "")}">'
+            f'<input type="hidden" name="csrfmiddlewaretoken" value="{csrf_token}">'
             f'<button type="submit" style="padding:14px 22px;background:#1a1a1a;color:#fff;'
             f'border:none;border-radius:10px;font-size:16px;font-weight:700;'
             f'font-family:system-ui,sans-serif;cursor:pointer;">'
@@ -131,8 +167,7 @@ class QRScanView(View):
 <h1>📦 Заказ #{order_id}</h1>
 <p style="color:#666;">Статус: {order.get_status_display()}</p>
 <hr style="margin:24px 0;border:none;border-top:1px solid #ddd;">
-<p style="font-weight:600;">Для фиксации действия войдите в систему под аккаунтом участника поставки.</p>
-{action_buttons if request.user.is_authenticated else ''}
+{action_buttons}
 </body></html>""",
             content_type="text/html; charset=utf-8",
         )
@@ -166,27 +201,89 @@ class QRScanView(View):
                     f"текущий '{order.status}'."
                 ),
             }, status=409)
-
-        # Записать event
-        actor = request.user if request.user.is_authenticated else None
-        OrderEvent.objects.create(
-            order=order, event_type="status_changed", source="system",
-            actor=actor,
-            meta={"qr_scan_action": scan_action,
-                  "from": order.status, "to": target_status,
-                  "ip": request.META.get("REMOTE_ADDR", "")[:64]},
+        allowed, actor_source = _scan_permission(
+            request.user,
+            order,
+            scan_action,
         )
+        if not allowed:
+            return JsonResponse(
+                {"ok": False, "error": "action not allowed"},
+                status=403,
+            )
+        if scan_action == "shipped" and order.payment_status != "paid":
+            return JsonResponse(
+                {"ok": False, "error": "order is not fully paid"},
+                status=409,
+            )
+        from .security import client_ip
 
-        # Сменить статус если transition определён
-        if target_status:
-            order.status = target_status
-            order.save(update_fields=["status"])
+        if scan_action == "received":
+            from .actions import confirm_delivery
+
+            result = confirm_delivery(
+                {"order_id": order.id, "confirmed": True},
+                request.user,
+                "buyer",
+            )
+            order.refresh_from_db(fields=["status"])
+            if order.status != "completed":
+                return JsonResponse(
+                    {"ok": False, "error": str(result.text)},
+                    status=409,
+                )
+            OrderEvent.objects.create(
+                order=order,
+                event_type="quality_confirmed",
+                source="buyer",
+                actor=request.user,
+                meta={
+                    "qr_scan_action": scan_action,
+                    "ip": client_ip(request)[:64],
+                },
+            )
+            return JsonResponse({
+                "ok": True,
+                "order_id": order_id,
+                "scan_action": scan_action,
+                "from_status": "delivered",
+                "to_status": "completed",
+                "scanned_at": timezone.now().isoformat(),
+            })
+
+        # Записать event и статус атомарно: параллельные сканы не должны
+        # дважды провести один этап.
+        from django.db import transaction
+
+        with transaction.atomic():
+            order = Order.objects.select_for_update().get(id=order.id)
+            if need_status and order.status != need_status:
+                return JsonResponse(
+                    {"ok": False, "error": "order status already changed"},
+                    status=409,
+                )
+            old_status = order.status
+            OrderEvent.objects.create(
+                order=order,
+                event_type="status_changed",
+                source=actor_source,
+                actor=request.user,
+                meta={
+                    "qr_scan_action": scan_action,
+                    "from": old_status,
+                    "to": target_status,
+                    "ip": client_ip(request)[:64],
+                },
+            )
+            if target_status:
+                order.status = target_status
+                order.save(update_fields=["status"])
 
         return JsonResponse({
             "ok": True,
             "order_id": order_id,
             "scan_action": scan_action,
-            "from_status": need_status or order.status,
+            "from_status": need_status or old_status,
             "to_status": target_status or order.status,
             "scanned_at": timezone.now().isoformat(),
         })
@@ -200,7 +297,9 @@ class QRScanView(View):
             return ""
 
     def _rate_limited(self, request, code: str) -> bool:
-        ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR", "")
+        from .security import client_ip
+
+        ip = client_ip(request)
         key = f"qr-scan:{ip}:{hashlib.sha256((code or '').encode()).hexdigest()[:16]}"
         try:
             hits = cache.get(key, 0)

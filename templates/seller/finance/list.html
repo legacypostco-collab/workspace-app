@@ -451,8 +451,8 @@
         <div class="fin-doc-type">{{ doc.get_doc_type_display }}</div>
       </div>
       <div class="fin-doc-date">{{ doc.created_at|date:"d.m.Y" }}</div>
-      {% if doc.file_url %}
-      <a href="{{ doc.file_url }}" class="fin-doc-link" target="_blank" rel="noopener noreferrer">{% trans "Открыть" %}</a>
+      {% if doc.file_obj %}
+      <a href="/api/assistant/orders/{{ row.order.id }}/documents/{{ doc.id }}/file/" class="fin-doc-link" target="_blank" rel="noopener noreferrer">{% trans "Открыть" %}</a>
       {% endif %}
     </div>
     {% endfor %}

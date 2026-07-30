@@ -364,10 +364,7 @@
         <a class="order-btn secondary" href="{% url 'chat' %}">В чат</a>
         <a class="order-btn" href="{% url 'order_invoice' order.id %}">Открыть счёт</a>
         {% if is_buyer and order.status == 'delivered' and order.payment_status == 'paid' %}
-          <form method="post" action="{% url 'order_confirm_quality' order.id %}">
-            {% csrf_token %}
-            <button class="order-btn" type="submit">Подтвердить качество</button>
-          </form>
+          <a class="order-btn" href="/chat/?action=confirm_delivery&amp;order_id={{ order.id }}">Подтвердить приёмку</a>
         {% endif %}
       </div>
     </section>
@@ -432,9 +429,7 @@
                 </div>
                 <div class="order-actions">
                   {% if doc.file_obj %}
-                    <a class="order-btn secondary" href="{{ doc.file_obj.url }}" target="_blank" rel="noopener">Открыть</a>
-                  {% elif doc.file_url %}
-                    <a class="order-btn secondary" href="{{ doc.file_url }}" target="_blank" rel="noopener">Открыть</a>
+                    <a class="order-btn secondary" href="/api/assistant/orders/{{ order.id }}/documents/{{ doc.id }}/file/" target="_blank" rel="noopener">Открыть</a>
                   {% endif %}
                 </div>
               </article>
@@ -458,10 +453,7 @@
                   <input type="text" name="title" placeholder="Invoice / Packing list" required />
                 </label>
                 <label>Файл
-                  <input type="file" name="file_obj" />
-                </label>
-                <label>URL файла
-                  <input type="url" name="file_url" placeholder="https://..." />
+                  <input type="file" name="file_obj" required />
                 </label>
               </div>
               <div class="order-actions">

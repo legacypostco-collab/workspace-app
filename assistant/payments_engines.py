@@ -3,12 +3,9 @@
 `payments.py` API остаётся стабильным; engines подключаются через
 переменную окружения PAYMENT_ENGINE:
 
-  PAYMENT_ENGINE=wallet    — встроенная Wallet-эскроу (по умолчанию,
-                              работает в demo и на проде если Stripe
-                              не настроен)
-  PAYMENT_ENGINE=stripe    — реальный Stripe Connect destination_charge.
-                              Требует STRIPE_SECRET_KEY и
-                              STRIPE_WEBHOOK_SECRET в env.
+  PAYMENT_ENGINE=wallet    — встроенная Wallet-эскроу (по умолчанию)
+  PAYMENT_ENGINE=stripe    — зарезервирован и отклоняется до завершения
+                              полного цикла возвратов и сверки платежей.
 
 Оба движка реализуют один и тот же интерфейс — calling-сайты в
 actions.py / operator_actions.py не меняются при переключении.
@@ -165,24 +162,23 @@ _ENGINE_INSTANCE: PaymentEngine | None = None
 def get_engine() -> PaymentEngine:
     """Возвращает активный engine (singleton).
 
-    PAYMENT_ENGINE=stripe → StripeEngine, иначе → WalletEngine.
-    Если выбран stripe, но он сломан (нет ключей / нет SDK) — fallback на wallet
-    с предупреждением в лог.
+    PAYMENT_ENGINE=wallet → WalletEngine.
+    Незавершённые и неизвестные движки отклоняются без запасного режима.
     """
     global _ENGINE_INSTANCE
     if _ENGINE_INSTANCE is not None:
         return _ENGINE_INSTANCE
-    name = (os.getenv("PAYMENT_ENGINE") or "wallet").lower()
+    name = (os.getenv("PAYMENT_ENGINE") or "wallet").strip().lower()
+    if name == "wallet":
+        _ENGINE_INSTANCE = WalletEngine()
+        logger.info("payments engine: wallet")
+        return _ENGINE_INSTANCE
     if name == "stripe":
-        try:
-            _ENGINE_INSTANCE = StripeEngine()
-            logger.info("payments engine: stripe")
-            return _ENGINE_INSTANCE
-        except Exception:
-            logger.exception("stripe engine init failed → falling back to wallet")
-    _ENGINE_INSTANCE = WalletEngine()
-    logger.info("payments engine: wallet (default)")
-    return _ENGINE_INSTANCE
+        raise RuntimeError(
+            "PAYMENT_ENGINE=stripe is disabled: refunds and payment reconciliation "
+            "are not implemented end to end."
+        )
+    raise RuntimeError(f"Unsupported PAYMENT_ENGINE: {name}")
 
 
 # ── Webhook signature verification ──────────────────────────
@@ -190,17 +186,12 @@ def get_engine() -> PaymentEngine:
 def verify_webhook_signature(raw_body: bytes, signature_header: str) -> bool:
     """Проверка Stripe-Signature заголовка (без парсинга event'а).
 
-    SECURITY P1: в проде (DEBUG=False) STRIPE_WEBHOOK_SECRET обязателен —
-    без него возвращаем False (fail-closed). Иначе любой может POSTить
-    «события» оплаты и менять состояние заказов. В DEBUG/dev — пропускаем
-    для удобства локальной разработки.
+    STRIPE_WEBHOOK_SECRET обязателен во всех режимах. Иначе случайно
+    опубликованный отладочный стенд примет поддельное событие оплаты.
     """
-    from django.conf import settings as _s
     secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     if not secret:
-        if getattr(_s, "DEBUG", False):
-            return True  # dev/demo mode — без секрета пропускаем
-        logger.warning("STRIPE_WEBHOOK_SECRET not configured in prod — rejecting webhook")
+        logger.warning("STRIPE_WEBHOOK_SECRET not configured — rejecting webhook")
         return False
     try:
         from stripe import WebhookSignature

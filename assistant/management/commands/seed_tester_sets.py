@@ -14,13 +14,12 @@ Usage:
     python manage.py seed_tester_sets --testers 10
     python manage.py seed_tester_sets --testers 10 --purge-old     # снести legacy buyer_N/seller_N
     python manage.py seed_tester_sets --testers 10 --reset          # пересоздать t* набор
-    python manage.py seed_tester_sets --testers 10 --force-prod     # разрешить запуск при DEBUG=False
-
-Печатает таблицу учёток в stdout + CSV (--out). Идемпотентно.
+Сохраняет таблицу учетных записей в защищенный CSV (--out). Идемпотентно.
 """
 from __future__ import annotations
 
 import csv
+import os
 import random
 import secrets
 import string
@@ -28,12 +27,13 @@ from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 from django.utils.text import slugify
+
+from assistant.management._seed_guard import ensure_dev_only
 
 User = get_user_model()
 
@@ -56,16 +56,11 @@ class Command(BaseCommand):
                             help="Удалить legacy buyer_1..N / seller_1..N + их данные")
         parser.add_argument("--reset", action="store_true",
                             help="Удалить ранее созданные t* комплекты перед посевом")
-        parser.add_argument("--force-prod", action="store_true",
-                            help="Разрешить запуск при DEBUG=False (прод)")
-        parser.add_argument("--fixed", action="store_true",
-                            help="Детерминированные пароли TestNNCons26 (вместо случайных)")
         parser.add_argument("--out", default="tester_sets.csv")
 
     @transaction.atomic
     def handle(self, *args, **opts):
-        if not settings.DEBUG and not opts["force_prod"]:
-            raise CommandError("DEBUG=False. Для прода добавь --force-prod (осознанный посев тест-данных).")
+        ensure_dev_only(self)
 
         from assistant.models import Wallet
         from marketplace.models import (
@@ -131,10 +126,10 @@ class Command(BaseCommand):
         def mkuser(username, role, full):
             u, _ = User.objects.get_or_create(
                 username=username,
-                defaults={"email": f"{username}@tester.consolidator.parts",
+                defaults={"email": f"{username}@tester.invalid",
                           "date_joined": now - timedelta(days=random.randint(3, 120))},
             )
-            u.is_staff = (role == "operator")
+            u.is_staff = False
             u.save()
             tag = "FULL" if full else "EMPTY"
             prof_defaults = {"role": role, "company_name": f"{username} ({tag})"}
@@ -215,7 +210,7 @@ class Command(BaseCommand):
         rows = []
         for i in range(1, N + 1):
             tp = f"{prefix}{i:02d}"
-            pw = f"Test{i:02d}Cons26" if opts["fixed"] else _gen_password()
+            pw = _gen_password()
             accts = []
             for role in ROLES:
                 for variant in VARIANTS:
@@ -235,7 +230,9 @@ class Command(BaseCommand):
 
         # CSV
         out_path = Path(opts["out"])
-        with out_path.open("w", newline="", encoding="utf-8") as f:
+        fd = os.open(out_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["tester", "password", "username", "role", "variant"])
             for r in rows:
@@ -245,14 +242,6 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(
             f"\n✓ Создано {len(rows)} комплектов × 6 = {len(rows)*6} аккаунтов. CSV → {out_path.resolve()}\n"))
-        self.stdout.write("─" * 78)
-        self.stdout.write(f"{'tester':7s} {'password':12s} accounts")
-        self.stdout.write("─" * 78)
-        for r in rows:
-            self.stdout.write(f"{r['tester']:7s} {r['password']:12s} {tp_join(r['accounts'])}")
-        self.stdout.write("─" * 78)
-        self.stdout.write(self.style.WARNING("⚠ Один пароль на 6 аккаунтов тестера. Раздай таблицу/CSV."))
-
-
-def tp_join(accts):
-    return ", ".join(a.split("_", 1)[1] for a in accts)
+        self.stdout.write(self.style.WARNING(
+            "Пароли записаны только в CSV с правами доступа владельца файла."
+        ))

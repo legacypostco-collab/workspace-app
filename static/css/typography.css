@@ -1,3 +1,5 @@
+@import url("./fonts.css");
+
 :root {
   --cp-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --cp-font-display: 'Golos Text', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

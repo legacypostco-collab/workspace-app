@@ -31,6 +31,12 @@ class RegisterForm(UserCreationForm):
         model = User
         fields = ("username", "email", "first_name", "last_name", "role", "company_name", "language")
 
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError(_("Аккаунт с таким e-mail уже существует."))
+        return email
+
 
 class LoginForm(AuthenticationForm):
     username = forms.CharField(label="Username or email")
@@ -44,6 +50,8 @@ class CheckoutForm(forms.Form):
 
 
 class SellerPartForm(forms.ModelForm):
+    image_url = forms.URLField(required=False, assume_scheme="https")
+
     class Meta:
         model = Part
         fields = [

@@ -2,7 +2,7 @@
 
 Два режима работы:
 
-  • PROD: webhook /api/tg/webhook/<SECRET>/  — Telegram сам шлёт нам POST
+  • PROD: webhook /api/assistant/tg/webhook/ с секретным заголовком
     Установка: см. README.deploy (нужен публичный HTTPS URL).
 
   • DEV: management command `python manage.py tg_poll` — long-polling,
@@ -25,6 +25,7 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 
 logger = logging.getLogger(__name__)
@@ -33,10 +34,15 @@ logger = logging.getLogger(__name__)
 def _find_user_by_chat_id(chat_id: int | str) -> Optional[object]:
     """Кто из юзеров привязал этот chat_id?"""
     U = get_user_model()
-    return (U.objects.filter(
+    matches = list(U.objects.filter(
         profile__notif_telegram_chat_id=str(chat_id),
         is_active=True,
-    ).select_related("profile").first())
+    ).select_related("profile")[:2])
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        logger.error("duplicate telegram chat binding detected")
+    return None
 
 
 def _send(chat_id: int | str, text: str) -> bool:
@@ -47,8 +53,47 @@ def _send(chat_id: int | str, text: str) -> bool:
 
 # ── Обработчики команд ─────────────────────────────────────────
 
-def cmd_start(chat_id: int | str, _user) -> None:
-    """/start — если уже привязан, объясняем что есть; если нет — гайд."""
+def _site_link(path: str = "/chat/") -> str:
+    site = str(getattr(settings, "SITE_URL", "") or "").rstrip("/")
+    return f"{site}{path}" if site else path
+
+
+def cmd_start(
+    chat_id: int | str,
+    _user,
+    argument: str = "",
+    chat_type: str = "private",
+) -> None:
+    """/start — подтверждает одноразовую привязку или показывает гайд."""
+    if argument:
+        if chat_type != "private":
+            _send(
+                chat_id,
+                "Подключение аккаунта доступно только в личном диалоге с ботом.",
+            )
+            return
+        from .tg_linking import consume_link_token
+
+        linked_user, result = consume_link_token(argument, chat_id)
+        if linked_user:
+            _send(
+                chat_id,
+                (
+                    f"Telegram подключён к аккаунту {linked_user.username}.\n\n"
+                    "Теперь сюда будут приходить выбранные уведомления. "
+                    "Доступные команды: /status, /claims, /help."
+                ),
+            )
+            return
+        message = {
+            "expired": "Ссылка истекла или уже использована. Создайте новую в настройках уведомлений.",
+            "already_linked": "Этот Telegram уже подключён к другому аккаунту.",
+            "busy": "Привязка уже обрабатывается. Повторите через несколько секунд.",
+            "profile_missing": "Профиль аккаунта не найден. Обратитесь в поддержку.",
+        }.get(result, "Ссылка подключения недействительна.")
+        _send(chat_id, message)
+        return
+
     u = _find_user_by_chat_id(chat_id)
     if u:
         _send(chat_id, (
@@ -64,16 +109,18 @@ def cmd_start(chat_id: int | str, _user) -> None:
         return
     _send(chat_id, (
         "👋 Привет! Это бот Consolidator Parts.\n\n"
-        f"Твой chat_id: <code>{chat_id}</code>\n\n"
-        "Чтобы привязать этот Telegram к твоему аккаунту:\n"
-        "1. Зайди в чат: https://consolidator.parts/chat/\n"
-        "2. Меню → ✈️ Подключить Telegram\n"
-        f"3. Вставь chat_id: <code>{chat_id}</code>\n\n"
-        "После этого сюда будут прилетать уведомления о заказах."
+        f"Чтобы подключить аккаунт, открой {_site_link()} и выбери "
+        "«Подключить Telegram» в настройках уведомлений. "
+        "Сайт выдаст одноразовую ссылку для подтверждения."
     ))
 
 
-def cmd_status(chat_id: int | str, user) -> None:
+def cmd_status(
+    chat_id: int | str,
+    user,
+    _argument: str = "",
+    _chat_type: str = "private",
+) -> None:
     """/status — 5 последних заказов юзера."""
     if not user:
         _send(chat_id, "⚠️ Сначала привяжи TG к аккаунту: /start")
@@ -96,11 +143,16 @@ def cmd_status(chat_id: int | str, user) -> None:
         lines.append(
             f"{status_emoji} ORD-{o.id} · {o.get_status_display()} · ${o.total_amount:,.0f}"
         )
-    lines.append("\n🔗 Полный список: https://consolidator.parts/chat/")
+    lines.append(f"\n🔗 Полный список: {_site_link()}")
     _send(chat_id, "\n".join(lines))
 
 
-def cmd_claims(chat_id: int | str, user) -> None:
+def cmd_claims(
+    chat_id: int | str,
+    user,
+    _argument: str = "",
+    _chat_type: str = "private",
+) -> None:
     """/claims — открытые рекламации."""
     if not user:
         _send(chat_id, "⚠️ Сначала привяжи TG к аккаунту: /start")
@@ -123,19 +175,24 @@ def cmd_claims(chat_id: int | str, user) -> None:
             f"• #{c.id} · {c.get_kind_display()} · ORD-{c.order.id} · "
             f"{c.get_status_display()} · {age_d}д"
         )
-    lines.append("\n🔗 Подробнее: https://consolidator.parts/chat/")
+    lines.append(f"\n🔗 Подробнее: {_site_link()}")
     _send(chat_id, "\n".join(lines))
 
 
-def cmd_help(chat_id: int | str, _user) -> None:
+def cmd_help(
+    chat_id: int | str,
+    _user,
+    _argument: str = "",
+    _chat_type: str = "private",
+) -> None:
     _send(chat_id, (
         "📚 Команды бота:\n"
         "  /start    — привязать TG к аккаунту\n"
         "  /status   — последние 5 заказов\n"
         "  /claims   — открытые рекламации\n"
         "  /help     — это сообщение\n\n"
-        "📖 База знаний: https://consolidator.parts/help/\n"
-        "💬 Чат с оператором: https://consolidator.parts/chat/"
+        f"📖 База знаний: {_site_link('/help/')}\n"
+        f"💬 Чат с оператором: {_site_link()}"
     ))
 
 
@@ -162,13 +219,15 @@ def handle_update(update: dict) -> None:
         return
 
     # Поддерживаем команды с @bot_username (мобильный TG так делает в группах)
-    cmd = text.split("@", 1)[0].split()[0].lower()
+    parts = text.split(maxsplit=1)
+    cmd = parts[0].split("@", 1)[0].lower()
+    argument = parts[1].strip() if len(parts) > 1 else ""
     handler = COMMANDS.get(cmd)
     user = _find_user_by_chat_id(chat_id)
 
     if handler:
         try:
-            handler(chat_id, user)
+            handler(chat_id, user, argument, str(chat.get("type") or ""))
         except Exception:
             logger.exception("tg_bot: handler %s failed", cmd)
             _send(chat_id, "⚠️ Ошибка обработки команды. Оператор уже знает.")

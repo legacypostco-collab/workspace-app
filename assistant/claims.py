@@ -28,6 +28,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _log_event, _notify, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ def open_claim(params, user, role):
     """
     from marketplace.models import Order, OrderClaim
 
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     try:
         order = Order.objects.get(id=int(params.get("order_id") or 0), buyer=user)
     except (Order.DoesNotExist, ValueError, TypeError):
@@ -123,7 +124,7 @@ def open_claim(params, user, role):
 def start_claim_review(params, user, role):
     if not _is_operator(role) and role != "admin":
         return ActionResult(text=_("Доступно только оператору."))
-    from marketplace.models import OrderClaim
+    from marketplace.models import Order, OrderClaim
     from django.db import transaction as _txn
     try:
         _cid = int(params.get("claim_id") or 0)
@@ -173,7 +174,7 @@ def approve_claim(params, user, role):
     if not _is_operator(role) and role != "admin":
         return ActionResult(text=_("Доступно только оператору."))
     from marketplace.models import OrderClaim, OrderItem
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     try:
         claim = OrderClaim.objects.get(id=int(params.get("claim_id") or 0))
     except (OrderClaim.DoesNotExist, ValueError, TypeError):
@@ -305,7 +306,7 @@ def reject_claim(params, user, role):
                                  % {"status": claim.get_status_display()})
 
     reason = (params.get("reason") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed or not reason:
         return ActionResult(
             text=_("Отклонить рекламацию #%(id)s?") % {"id": claim.id},
@@ -358,7 +359,7 @@ def apply_corrective(params, user, role):
                                  % {"status": claim.get_status_display()})
 
     resolution = (params.get("resolution_kind") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed or resolution not in ("repair", "reproduce"):
         return ActionResult(
             text=_("🔧 Корректирующие действия по #%(id)s") % {"id": claim.id},
@@ -412,7 +413,7 @@ def apply_corrective(params, user, role):
 def apply_settlement(params, user, role):
     if not _is_operator(role) and role != "admin":
         return ActionResult(text=_("Доступно только оператору."))
-    from marketplace.models import OrderClaim
+    from marketplace.models import Order, OrderClaim
 
     from . import payments as _pay
     try:
@@ -425,7 +426,7 @@ def apply_settlement(params, user, role):
 
     resolution = (params.get("resolution_kind") or "").strip()
     refund_raw = params.get("refund_amount") or "0"
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or resolution not in ("partial_refund", "full_refund"):
         return ActionResult(
@@ -451,68 +452,137 @@ def apply_settlement(params, user, role):
         refund_amount = Decimal(str(refund_raw))
     except Exception:
         refund_amount = Decimal("0")
+    if not refund_amount.is_finite():
+        refund_amount = Decimal("0")
 
     # P0 (гонка-деньги): claim под select_for_update + re-check статуса ВНУТРИ
     # транзакции. Без этого два параллельных apply_settlement оба проходят guard
     # `status != approved` и дважды зовут refund_to_buyer → двойной возврат.
     from django.db import transaction as _txn
     with _txn.atomic():
-        claim = (OrderClaim.objects.select_for_update(of=("self",))
-                 .select_related("order", "order__buyer").get(id=claim.id))
+        claim = OrderClaim.objects.select_for_update(of=("self",)).get(id=claim.id)
         if claim.status != "approved":
             return ActionResult(text=_("Уже обработано — статус %(status)s.")
                                      % {"status": claim.get_status_display()})
+        order = Order.objects.select_for_update(of=("self",)).get(pk=claim.order_id)
+        claim.order = order
 
         if resolution == "full_refund":
-            refund_amount = Decimal(str(claim.order.total_amount or 0))
+            refund_amount = Decimal(str(order.total_amount or 0))
+        elif refund_amount <= 0:
+            return ActionResult(text=_("Сумма частичного возврата должна быть больше нуля."))
+        if refund_amount <= 0:
+            return ActionResult(text=_("Для заказа не определена сумма возврата."))
+        order_total = Decimal(str(order.total_amount or 0))
+        if resolution == "partial_refund" and order_total > 0 and refund_amount > order_total:
+            return ActionResult(
+                text=_("Частичный возврат не может превышать сумму заказа.")
+            )
 
-        # Эскроу → buyer; если эскроу пуст — пропускаем (claim всё равно
-        # переходит в financial_settlement для аудита, операторы потом разберутся
-        # как вернуть напрямую через банк)
-        if claim.order.buyer and refund_amount > 0:
+        escrow_available = max(
+            Decimal("0"),
+            _pay.escrow_balance_for_order(order.id),
+        )
+        escrow_attempt = min(refund_amount, escrow_available)
+        refunded_from_escrow = Decimal("0")
+        if order.buyer_id and escrow_attempt > 0:
             try:
-                res = _pay.refund_to_buyer(order=claim.order, buyer=claim.order.buyer,
-                                            amount=refund_amount)
+                res = _pay.refund_to_buyer(
+                    order=order,
+                    buyer=order.buyer,
+                    amount=escrow_attempt,
+                )
             except _pay.InsufficientEscrow:
-                res = {"ok": False, "reason": _("Эскроу пуст — возврат внешним способом")}
-                logger.info("apply_settlement: escrow empty for order #%s", claim.order_id)
+                res = {"ok": False}
+                logger.info(
+                    "apply_settlement: escrow changed for order #%s",
+                    claim.order_id,
+                )
+            if res.get("ok"):
+                refunded_from_escrow = Decimal(str(res.get("amount") or 0))
+                if (
+                    not refunded_from_escrow.is_finite()
+                    or refunded_from_escrow < 0
+                    or refunded_from_escrow > escrow_attempt
+                ):
+                    raise ValueError("payment engine returned an invalid refund amount")
         else:
             res = {"ok": False}
+        outstanding_refund = max(
+            Decimal("0"),
+            refund_amount - refunded_from_escrow,
+        )
 
         claim.status = "financial_settlement"
         claim.resolution_kind = resolution
-        # refund_amount = РЕШЕНИЕ о возврате (обязательство). Даже при пустом
-        # эскроу claim переходит в financial_settlement, операторы возвращают
-        # внешне — поэтому фиксируем полную решённую сумму, а не факт перевода.
+        # refund_amount хранит всё обязательство по решению, а фактическое
+        # движение и остаток фиксируются в OrderEvent ниже.
         claim.refund_amount = refund_amount
         claim.save(update_fields=["status", "resolution_kind", "refund_amount", "updated_at"])
-    # FIX (HIGH): синхронизируем Order.payment_status — иначе финансовая сверка
-    # не находит возвраты. resolution=full_refund → 'refunded', partial → 'refund_pending'.
-    try:
-        if resolution == "full_refund":
-            claim.order.payment_status = "refunded"
-            claim.order.save(update_fields=["payment_status"])
-        elif resolution == "partial_refund":
-            claim.order.payment_status = "refund_pending"
-            claim.order.save(update_fields=["payment_status"])
-    except Exception:
-        logger.exception("apply_settlement: failed to update payment_status")
-    _log_event(claim.order, "claim_status_changed", actor=user, source="operator",
-               meta={"claim_id": claim.id, "from": "approved", "to": "financial_settlement",
-                     "resolution": resolution, "amount": float(refund_amount)})
+        order.payment_status = (
+            "refunded"
+            if resolution == "full_refund" and outstanding_refund == 0
+            else "refund_pending"
+        )
+        order.save(update_fields=["payment_status"])
+        _log_event(
+            order,
+            "claim_status_changed",
+            actor=user,
+            source="operator",
+            meta={
+                "claim_id": claim.id,
+                "from": "approved",
+                "to": "financial_settlement",
+                "resolution": resolution,
+                "amount": float(refund_amount),
+                "escrow_refunded": float(refunded_from_escrow),
+                "outstanding_refund": float(outstanding_refund),
+            },
+        )
+
     _amount_fmt = f"{refund_amount:,.2f}"
+    _refunded_fmt = f"{refunded_from_escrow:,.2f}"
+    _outstanding_fmt = f"{outstanding_refund:,.2f}"
+    if outstanding_refund > 0:
+        result_text = _(
+            "Финансовое урегулирование зафиксировано: возврат $%(amount)s. "
+            "Из эскроу перечислено $%(refunded)s; остаток $%(outstanding)s "
+            "ожидает возврата внешним способом."
+        ) % {
+            "amount": _amount_fmt,
+            "refunded": _refunded_fmt,
+            "outstanding": _outstanding_fmt,
+        }
+        notification_body = _(
+            "%(resolution)s: из эскроу возвращено $%(refunded)s, "
+            "остаток $%(outstanding)s находится в обработке."
+        ) % {
+            "resolution": claim.get_resolution_kind_display(),
+            "refunded": _refunded_fmt,
+            "outstanding": _outstanding_fmt,
+        }
+    else:
+        result_text = _(
+            "✓ Финансовое урегулирование выполнено: %(resolution)s "
+            "$%(amount)s возвращено покупателю."
+        ) % {
+            "resolution": claim.get_resolution_kind_display(),
+            "amount": _amount_fmt,
+        }
+        notification_body = _(
+            "%(resolution)s выполнен, средства возвращены."
+        ) % {"resolution": claim.get_resolution_kind_display()}
+
     if claim.opened_by:
         _notify(claim.opened_by, kind="claim",
                 title=_("💸 Рекламация #%(id)s — возврат $%(amount)s")
                       % {"id": claim.id, "amount": _amount_fmt},
-                body=_("%(res)s применён.") % {"res": claim.get_resolution_kind_display()},
+                body=notification_body,
                 url=f"/chat/?order={claim.order_id}")
 
     return ActionResult(
-        text=(
-            _("✓ Финансовое урегулирование: %(res)s $%(amount)s → buyer.")
-            % {"res": claim.get_resolution_kind_display(), "amount": _amount_fmt}
-        ),
+        text=result_text,
         contextual_actions=[
             {"action": "close_claim", "label": _("🔒 Закрыть рекламацию"),
              "params": {"claim_id": claim.id}},

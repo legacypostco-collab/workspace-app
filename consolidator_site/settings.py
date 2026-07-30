@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -12,28 +13,6 @@ TESTING = (
     or "pytest" in sys.modules
     or bool(os.getenv("PYTEST_CURRENT_TEST"))
 )
-
-# Кэши. "default" — LocMem (в пределах одного процесса). "pricelist" — Redis:
-# фоновый импорт прайса исполняется в Celery-воркере (отдельный процесс), а
-# прогресс/результат поллит daphne — им нужен ОБЩИЙ стор, LocMem (per-process)
-# не подходит. В тестах "pricelist" тоже LocMem: Celery не задействуется
-# (импорт идёт inline в той же транзакции), Redis в CI может быть недоступен.
-CACHES = {
-    "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-    },
-    "pricelist": (
-        {
-            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-            "LOCATION": "pricelist-locmem",
-        }
-        if TESTING
-        else {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": os.getenv("PRICELIST_CACHE_URL", "redis://127.0.0.1:6379/4"),
-        }
-    ),
-}
 
 
 def _load_env_file(env_path: Path) -> None:
@@ -55,6 +34,58 @@ def _load_env_file(env_path: Path) -> None:
 
 
 _load_env_file(BASE_DIR / ".env")
+
+
+def _redis_url_for_db(url: str, database: int) -> str:
+    """Keep Redis credentials/host while selecting a dedicated logical DB."""
+    parsed = urlsplit((url or "").strip())
+    if parsed.scheme not in {"redis", "rediss"} or not parsed.netloc:
+        return ""
+    return parsed._replace(path=f"/{database}").geturl()
+
+
+DEFAULT_CACHE_URL = (
+    os.getenv("DEFAULT_CACHE_URL", "").strip()
+    or _redis_url_for_db(
+        os.getenv("CELERY_BROKER_URL")
+        or os.getenv("CHANNELS_REDIS_URL")
+        or os.getenv("PRICELIST_CACHE_URL")
+        or "redis://127.0.0.1:6379/2",
+        2,
+    )
+)
+
+# Кэши. В обычном режиме оба кэша общие для всех web/worker-процессов.
+# Это важно не только для прогресса импорта, но и для rate-limit, одноразовых
+# операций и блокировок: LocMem позволял обходить их через другой процесс.
+# В тестах оставляем LocMem, чтобы CI не зависел от внешнего Redis.
+CACHES = {
+    "default": (
+        {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "default-test-cache",
+        }
+        if TESTING
+        else {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": DEFAULT_CACHE_URL,
+        }
+    ),
+    "pricelist": (
+        {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "pricelist-locmem",
+        }
+        if TESTING
+        else {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.getenv(
+                "PRICELIST_CACHE_URL",
+                "redis://127.0.0.1:6379/4",
+            ),
+        }
+    ),
+}
 
 
 def _env(name: str, default: str = "") -> str:
@@ -93,6 +124,10 @@ if not SECRET_KEY:
     else:
         raise RuntimeError("SECRET_KEY is required")
 
+# Separate material is recommended so TOTP data can be rotated independently.
+# SECRET_KEY remains a compatible fallback for existing installations.
+TOTP_ENCRYPTION_KEY = _env("TOTP_ENCRYPTION_KEY", SECRET_KEY)
+
 
 # FIX (HIGH): .localhost.run / .lhr.life — публичные tunneling-TLD, через них
 # можно перехватить CSRF/session если поднять malicious subdomain. По умолчанию
@@ -103,15 +138,13 @@ ALLOWED_HOSTS = _env_list(
 )
 CSRF_TRUSTED_ORIGINS = _env_list(
     "CSRF_TRUSTED_ORIGINS",
-    "http://127.0.0.1,http://127.0.0.1:8001,http://localhost,http://localhost:8001",
+    (
+        "http://127.0.0.1,http://127.0.0.1:8001,"
+        "http://localhost,http://localhost:8001"
+    )
+    if DEBUG
+    else "",
 )
-# Прод-домен ВСЕГДА доверенный для CSRF Origin-проверки POST-форм (например
-# /logout/). После ухода с Cloudflare на прямой ориджин POST падал с «Ошибка
-# проверки CSRF» — Origin «https://consolidatorparts.com» не совпадал с тем,
-# что Django вычислял (схема из X-Forwarded-Proto). Идемпотентно.
-for _o in ("https://consolidatorparts.com", "https://www.consolidatorparts.com"):
-    if _o not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(_o)
 
 INSTALLED_APPS = [
     # Daphne MUST come before django.contrib.staticfiles to provide ASGI runserver
@@ -165,6 +198,7 @@ MIDDLEWARE = [
     "marketplace.middleware.UserLanguageMiddleware",
     # View-as: оператор → кабинет поставщика для контроля (read-only)
     "marketplace.middleware.OperatorViewAsMiddleware",
+    "marketplace.middleware.ActiveRoleContextMiddleware",
     # Старые кабинеты → /chat/ (chat-first — единственный UI)
     "marketplace.middleware.LegacyCabinetRedirectMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -296,7 +330,8 @@ LOGOUT_REDIRECT_URL = "/"
 
 # ── Email backend ─────────────────────────────────────────
 # Production: set EMAIL_HOST, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD env vars (SMTP)
-# Local dev: emails print to console
+# Local dev: emails print to console. Production never writes login/reset
+# links to logs if SMTP is missing.
 EMAIL_HOST = os.getenv("EMAIL_HOST", "")
 if EMAIL_HOST:
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -305,10 +340,16 @@ if EMAIL_HOST:
     EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
     EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", True)
     EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", False)
-else:
+elif DEBUG:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Consolidator Parts <noreply@consolidator.parts>")
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.dummy.EmailBackend"
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    "Consolidator Parts <noreply@consolidatorparts.com>",
+)
 SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+EMAIL_VERIFICATION_REQUIRED = _env_bool("EMAIL_VERIFICATION_REQUIRED", not DEBUG)
 ADMINS = [tuple(a.split(":", 1)) for a in _env_list("ADMINS", "") if ":" in a]
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24  # 24 hours
 # FIX (HIGH): по умолчанию prod-режим = HTTPS. В DEBUG можно явно отключить
@@ -332,8 +373,24 @@ SECURE_HSTS_PRELOAD = _env_bool("SECURE_HSTS_PRELOAD", False)
 SECURE_CONTENT_TYPE_NOSNIFF = _env_bool("SECURE_CONTENT_TYPE_NOSNIFF", True)
 SECURE_REFERRER_POLICY = os.getenv("SECURE_REFERRER_POLICY", "same-origin")
 X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "DENY")
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.getenv("DATA_UPLOAD_MAX_MEMORY_SIZE", str(2 * 1024 * 1024))
+)
+DATA_UPLOAD_MAX_NUMBER_FIELDS = int(
+    os.getenv("DATA_UPLOAD_MAX_NUMBER_FIELDS", "1000")
+)
+DATA_UPLOAD_MAX_NUMBER_FILES = int(
+    os.getenv("DATA_UPLOAD_MAX_NUMBER_FILES", "20")
+)
+FILE_UPLOAD_MAX_MEMORY_SIZE = int(
+    os.getenv("FILE_UPLOAD_MAX_MEMORY_SIZE", str(2 * 1024 * 1024))
+)
 
 BEHIND_PROXY = _env_bool("BEHIND_PROXY", False)
+TRUSTED_PROXY_NETWORKS = _env_list(
+    "TRUSTED_PROXY_NETWORKS",
+    "127.0.0.1/32,::1/128",
+)
 if BEHIND_PROXY:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
     USE_X_FORWARDED_HOST = True
@@ -412,26 +469,11 @@ STORAGES = {
 # на event delegation (~37 мест в chat-first.js + шаблонах).
 CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
-        # unpkg.com + cdnjs — React, Leaflet, QRCode (seller/buyer dashboard, qr/, logistics/)
-        "script-src": [
-            "'self'", "'unsafe-inline'",
-            "https://unpkg.com",
-            "https://cdnjs.cloudflare.com",
-        ],
-        # unpkg.com — Leaflet CSS; fonts.googleapis.com — Google Fonts CSS
-        "style-src": [
-            "'self'", "'unsafe-inline'",
-            "https://fonts.googleapis.com",
-            "https://unpkg.com",
-        ],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
         "img-src": ["'self'", "data:", "https:"],
-        # cdn.jsdelivr.net — Geist woff2; fonts.gstatic.com — Google Fonts files
-        "font-src": [
-            "'self'", "data:",
-            "https://fonts.gstatic.com",
-            "https://cdn.jsdelivr.net",
-        ],
-        "connect-src": ["'self'", "wss:", "https:"],  # WebSocket + AI APIs
+        "font-src": ["'self'", "data:"],
+        "connect-src": ["'self'", "ws:" if DEBUG else "wss:"],
         "media-src": ["'self'", "blob:"],
         "frame-ancestors": ["'none'"],
         "base-uri": ["'self'"],
@@ -460,9 +502,18 @@ except ImportError as exc:
     warnings.warn("django-csp не установлен — CSP-заголовок отключён (dev/test).")
 
 # ── KYB feature flag ───────────────────────────────────────────────
-# По умолчанию в production выключаем onboarding (мок-API могут автоодобрить
-# опасные компании). В dev — включено. Переключается env KYB_ENABLED=1.
+# По умолчанию в production выключаем onboarding. В dev он доступен, но
+# внешние проверки всё равно fail-closed и уходят оператору на ручную проверку.
 KYB_ENABLED = _env_bool("KYB_ENABLED", DEBUG)
+# Детерминированные KYB-ответы разрешены только для изолированных тестов и
+# явно запущенных демонстрационных посевов. DEBUG сам по себе их не включает.
+KYB_ALLOW_TEST_FIXTURES = _env_bool("KYB_ALLOW_TEST_FIXTURES", False)
+
+# В рабочем режиме каждая загрузка должна пройти ClamAV. Локальную разработку
+# можно вести без демона, но отключение сканера в production требует явного
+# изменения обеих переменных и должно считаться осознанным снижением защиты.
+ENABLE_VIRUS_SCAN = _env_bool("ENABLE_VIRUS_SCAN", not DEBUG)
+VIRUS_SCAN_REQUIRED = _env_bool("VIRUS_SCAN_REQUIRED", not DEBUG)
 
 # ── AI cost controls ───────────────────────────────────────────────
 # Дневной лимит на пользователя ($, после превышения AI handler'ы возвращают
@@ -474,33 +525,28 @@ AI_DAILY_BUDGET_USD = float(_env("AI_DAILY_BUDGET_USD", "5.00"))
 # Получить токен у @BotFather. Без токена — send_telegram() тихо no-op.
 # Базовый URL для ссылок в email/Telegram-уведомлениях.
 # Без него фолбэк на ALLOWED_HOSTS[0] (см. assistant/channels.py:_build_email_link).
-# Prod: https://consolidator.parts · Dev: http://localhost:8001
+# Prod: https://consolidatorparts.com · Dev: http://localhost:8001
 SITE_URL = os.getenv("SITE_URL", "").strip()
 
-# ──────────────────────────────────────────────────────────────
-# Реквизиты для пополнения депозита (банковский перевод).
-# Сейчас платежи идут на нашу дубайскую компанию INNOVATION IDEA FZ LLC.
-# В production переопределяй через env, если поменяется юр.лицо/счёт.
-# ──────────────────────────────────────────────────────────────
-TOPUP_BANK_BENEFICIARY      = os.getenv("TOPUP_BANK_BENEFICIARY",      "INNOVATION IDEA FZ LLC")
-TOPUP_BANK_BENEFICIARY_ADDR = os.getenv("TOPUP_BANK_BENEFICIARY_ADDR",
-    "Compass Building, Al Shohada Road, Al Hamra Industrial Zone-FZ, "
-    "Ras Al Khaimah, UAE, P.O. Box 10055")
-TOPUP_BANK_TRADE_LICENSE    = os.getenv("TOPUP_BANK_TRADE_LICENSE",    "5022051")  # RAKEZ
-TOPUP_BANK_TAX_NO           = os.getenv("TOPUP_BANK_TAX_NO",           "104683265300001")
-TOPUP_BANK_NAME             = os.getenv("TOPUP_BANK_NAME",             "Emirates NBD (Gold & Diamond Park Branch, Dubai)")
-TOPUP_BANK_BRANCH_CODE      = os.getenv("TOPUP_BANK_BRANCH_CODE",      "0919")
-TOPUP_BANK_SWIFT            = os.getenv("TOPUP_BANK_SWIFT",            "UNILAEAD")
-TOPUP_BANK_IBAN             = os.getenv("TOPUP_BANK_IBAN",             "AE34 0470 0000 0020 0830 094")
-TOPUP_BANK_ACCOUNT          = os.getenv("TOPUP_BANK_ACCOUNT",          "200830094")
-TOPUP_BANK_CURRENCY         = os.getenv("TOPUP_BANK_CURRENCY",         "AED")  # счёт в дирхамах; USD-переводы конвертируются банком
-# Контактная информация для подтверждения / вопросов по платежу
-TOPUP_BANK_CONTACT_NAME     = os.getenv("TOPUP_BANK_CONTACT_NAME",     "Ali Abdul Rahman Mohammad Awwad")
-TOPUP_BANK_CONTACT_PHONE    = os.getenv("TOPUP_BANK_CONTACT_PHONE",    "+971 551009394")
-TOPUP_BANK_CONTACT_EMAIL    = os.getenv("TOPUP_BANK_CONTACT_EMAIL",    "contact@innovationidea.ae")
+# Deposit details are deployment secrets. Missing values disable the method.
+TOPUP_BANK_BENEFICIARY = os.getenv("TOPUP_BANK_BENEFICIARY", "").strip()
+TOPUP_BANK_BENEFICIARY_ADDR = os.getenv("TOPUP_BANK_BENEFICIARY_ADDR", "").strip()
+TOPUP_BANK_TRADE_LICENSE = os.getenv("TOPUP_BANK_TRADE_LICENSE", "").strip()
+TOPUP_BANK_TAX_NO = os.getenv("TOPUP_BANK_TAX_NO", "").strip()
+TOPUP_BANK_NAME = os.getenv("TOPUP_BANK_NAME", "").strip()
+TOPUP_BANK_BRANCH_CODE = os.getenv("TOPUP_BANK_BRANCH_CODE", "").strip()
+TOPUP_BANK_SWIFT = os.getenv("TOPUP_BANK_SWIFT", "").strip()
+TOPUP_BANK_IBAN = os.getenv("TOPUP_BANK_IBAN", "").strip()
+TOPUP_BANK_ACCOUNT = os.getenv("TOPUP_BANK_ACCOUNT", "").strip()
+TOPUP_BANK_CURRENCY = os.getenv("TOPUP_BANK_CURRENCY", "").strip()
+TOPUP_BANK_CONTACT_NAME = os.getenv("TOPUP_BANK_CONTACT_NAME", "").strip()
+TOPUP_BANK_CONTACT_PHONE = os.getenv("TOPUP_BANK_CONTACT_PHONE", "").strip()
+TOPUP_BANK_CONTACT_EMAIL = os.getenv("TOPUP_BANK_CONTACT_EMAIL", "").strip()
+TOPUP_USDT_ADDRESS = os.getenv("TOPUP_USDT_ADDRESS", "").strip()
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-# Secret в URL вебхука (защита от подделки). Длинная random-строка.
+TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
+# Secret Telegram sends in X-Telegram-Bot-Api-Secret-Token.
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
 
 # Per-category SLA эскалаций рекламаций (в днях).
@@ -557,9 +603,9 @@ TEUSTAT_API_URL = os.getenv("TEUSTAT_API_URL", "").strip()
 TEUSTAT_API_KEY = os.getenv("TEUSTAT_API_KEY", "").strip()
 TEUSTAT_TIMEOUT_SEC = float(os.getenv("TEUSTAT_TIMEOUT_SEC", "8"))
 TEUSTAT_CONTRACT_VERSION = os.getenv("TEUSTAT_CONTRACT_VERSION", "teustat_v1").strip() or "teustat_v1"
-TEUSTAT_STRICT_MODE = os.getenv("TEUSTAT_STRICT_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
+TEUSTAT_STRICT_MODE = _env_bool("TEUSTAT_STRICT_MODE", not DEBUG)
 LOGISTICS_PROVIDER = os.getenv("LOGISTICS_PROVIDER", "teustat").strip().lower() or "teustat"
-LOGISTICS_STRICT_MODE = os.getenv("LOGISTICS_STRICT_MODE", "0").strip().lower() in {"1", "true", "yes", "on"}
+LOGISTICS_STRICT_MODE = _env_bool("LOGISTICS_STRICT_MODE", not DEBUG)
 
 SEARATES_API_URL = os.getenv("SEARATES_API_URL", "").strip()
 SEARATES_API_KEY = os.getenv("SEARATES_API_KEY", "").strip()
@@ -594,10 +640,16 @@ LOGISTICS_ALLOW_INSECURE_HTTP = _env_bool("LOGISTICS_ALLOW_INSECURE_HTTP", False
 FX_ALLOWED_HOSTS = os.getenv("FX_ALLOWED_HOSTS", "open.er-api.com").strip()
 FX_ALLOW_PRIVATE_IPS = _env_bool("FX_ALLOW_PRIVATE_IPS", False)
 FX_ALLOW_INSECURE_HTTP = _env_bool("FX_ALLOW_INSECURE_HTTP", False)
-GOOGLE_SHEETS_ALLOWED_HOSTS = os.getenv("GOOGLE_SHEETS_ALLOWED_HOSTS", "docs.google.com").strip()
+GOOGLE_SHEETS_ALLOWED_HOSTS = os.getenv(
+    "GOOGLE_SHEETS_ALLOWED_HOSTS",
+    "docs.google.com,*.googleusercontent.com",
+).strip()
 GOOGLE_SHEETS_ALLOW_PRIVATE_IPS = _env_bool("GOOGLE_SHEETS_ALLOW_PRIVATE_IPS", False)
 GOOGLE_SHEETS_ALLOW_INSECURE_HTTP = _env_bool("GOOGLE_SHEETS_ALLOW_INSECURE_HTTP", False)
 PAYMENT_CALLBACK_SECRET = os.getenv("PAYMENT_CALLBACK_SECRET", "").strip()
+PAYMENT_CALLBACK_MAX_BODY_BYTES = int(
+    os.getenv("PAYMENT_CALLBACK_MAX_BODY_BYTES", str(64 * 1024))
+)
 
 MAX_IMPORT_FILE_BYTES = int(os.getenv("MAX_IMPORT_FILE_BYTES", str(2 * 1024 * 1024)))
 MAX_IMPORT_ROWS = int(os.getenv("MAX_IMPORT_ROWS", "5000"))
@@ -615,17 +667,33 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
-# Default periodic tasks (можно переопределить через admin → django-celery-beat).
-# Это «hardcoded fallback», beat ещё подтянет всё из БД.
+# Единственный кодовый источник расписания. DatabaseScheduler дополнительно
+# подхватывает управляемые записи django-celery-beat, не затирая этот набор.
+from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
+    "check-sla-breaches-every-15min": {
+        "task": "marketplace.tasks.check_sla_breaches",
+        "schedule": crontab(minute="*/15"),
+    },
+    "send-pending-notifications-every-5min": {
+        "task": "marketplace.tasks.send_pending_email_notifications",
+        "schedule": crontab(minute="*/5"),
+    },
+    "cleanup-expired-tokens-daily": {
+        "task": "marketplace.tasks.cleanup_expired_tokens",
+        "schedule": crontab(hour=3, minute=0),
+    },
+    "reindex-assistant-nightly": {
+        "task": "assistant.tasks.reindex_all_task",
+        "schedule": crontab(hour=2, minute=30),
+    },
     "kyb_weekly_monitor": {
         "task": "assistant.tasks.kyb_weekly_monitor",
-        # Раз в неделю — понедельник 03:00 Europe/Moscow
-        "schedule": 60 * 60 * 24 * 7,
+        "schedule": crontab(hour=3, minute=0, day_of_week="monday"),
     },
     "prune_old_audit_monthly": {
         "task": "assistant.tasks.prune_old_audit",
-        "schedule": 60 * 60 * 24 * 30,  # раз в 30 дней
+        "schedule": crontab(hour=4, minute=0, day_of_month="1"),
         "kwargs": {"days": int(_env("AUDIT_RETENTION_DAYS", "1095"))},
     },
 }

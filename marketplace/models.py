@@ -1,9 +1,32 @@
 from decimal import Decimal
+import re
 
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+
+from .encrypted_fields import EncryptedSecretField
+
+
+def normalize_oem_number(value: str | None) -> str:
+    """Canonical OEM key used by all regular and bulk Part writes."""
+    return re.sub(r"[\s\-_./]+", "", (value or "").strip()).upper()[:100]
+
+
+class PartQuerySet(models.QuerySet):
+    def bulk_create(self, objs, *args, **kwargs):
+        for obj in objs:
+            obj.oem_clean = normalize_oem_number(obj.oem_number)
+        return super().bulk_create(objs, *args, **kwargs)
+
+    def bulk_update(self, objs, fields, *args, **kwargs):
+        fields = list(fields)
+        for obj in objs:
+            obj.oem_clean = normalize_oem_number(obj.oem_number)
+        if "oem_clean" not in fields:
+            fields.append("oem_clean")
+        return super().bulk_update(objs, fields, *args, **kwargs)
 
 
 class HSCode(models.Model):
@@ -211,6 +234,7 @@ class Part(models.Model):
     oem_number = models.CharField(max_length=100, db_index=True)
     oem_clean = models.CharField(max_length=100, blank=True, default="", db_index=True,
         help_text="OEM без спецсимволов, uppercase — для кроссреференса")
+    objects = PartQuerySet.as_manager()
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=12, decimal_places=2)
     stock_quantity = models.PositiveIntegerField(default=0)
@@ -282,6 +306,13 @@ class Part(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title} ({self.oem_number})"
+
+    def save(self, *args, **kwargs):
+        self.oem_clean = normalize_oem_number(self.oem_number)
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "oem_clean" not in update_fields:
+            kwargs["update_fields"] = [*update_fields, "oem_clean"]
+        return super().save(*args, **kwargs)
 
     def mandatory_missing_fields(self) -> list[str]:
         missing: list[str] = []
@@ -383,7 +414,7 @@ class Drawing(models.Model):
     part = models.ForeignKey(Part, on_delete=models.CASCADE, related_name="drawings", null=True, blank=True)
     seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name="drawings")
     file_format = models.CharField(max_length=10, choices=FORMAT_CHOICES, default="pdf")
-    file_url = models.URLField(blank=True)
+    file_url = models.URLField(blank=True, max_length=500)
     file_name = models.CharField(max_length=255, blank=True)
     file_size_kb = models.PositiveIntegerField(default=0)
     revision = models.CharField(max_length=20, default="A")
@@ -1020,7 +1051,23 @@ class WebhookDeliveryLog(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
-        return f"Webhook {self.endpoint} order#{self.order_id} success={self.success} attempt={self.attempt}"
+        return (
+            f"Webhook {self.safe_endpoint} order#{self.order_id} "
+            f"success={self.success} attempt={self.attempt}"
+        )
+
+    @property
+    def safe_endpoint(self) -> str:
+        from urllib.parse import urlsplit
+
+        try:
+            parsed = urlsplit(self.endpoint or "")
+            if not parsed.hostname:
+                return "<invalid>"
+            port = f":{parsed.port}" if parsed.port else ""
+            return f"{parsed.scheme}://{parsed.hostname}{port}"
+        except (TypeError, ValueError):
+            return "<invalid>"
 
 
 class UserProfile(models.Model):
@@ -1298,6 +1345,10 @@ class Notification(models.Model):
     body = models.TextField(blank=True)
     url = models.CharField(max_length=400, blank=True, help_text="Optional click target")
     is_read = models.BooleanField(default=False, db_index=True)
+    email_claimed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    email_sent_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    email_attempts = models.PositiveSmallIntegerField(default=0)
+    email_last_error = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:
@@ -1798,7 +1849,11 @@ class BuyerVolumeYearly(models.Model):
 class TwoFactorAuth(models.Model):
     """TOTP-based 2FA. Stored separately for security."""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="twofa")
-    secret = models.CharField(max_length=64, blank=True, help_text="Base32-encoded TOTP secret")
+    secret = EncryptedSecretField(
+        max_length=255,
+        blank=True,
+        help_text="Encrypted Base32-encoded TOTP secret",
+    )
     enabled = models.BooleanField(default=False)
     backup_codes = models.TextField(blank=True, help_text="One-time backup codes, comma-separated")
     enabled_at = models.DateTimeField(null=True, blank=True)
@@ -2136,6 +2191,21 @@ class ErpSyncLog(models.Model):
 
     def __str__(self):
         return f"ErpSync[{self.id}] {self.direction}/{self.kind} {self.status}"
+
+
+class NewsletterSubscriber(models.Model):
+    email = models.EmailField(unique=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Подписчик рассылки"
+        verbose_name_plural = "Подписчики рассылки"
+
+    def __str__(self):
+        return self.email
 
 
 # ── Knowledge Base ─────────────────────────────────────────────

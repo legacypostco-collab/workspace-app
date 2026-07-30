@@ -56,6 +56,7 @@ class Command(BaseCommand):
                     f"{api}/getUpdates",
                     params={"offset": last_id + 1, "timeout": 25},
                     timeout=30,
+                    allow_redirects=False,
                 )
                 if r.status_code != 200:
                     self.stdout.write(self.style.WARNING(
@@ -66,11 +67,7 @@ class Command(BaseCommand):
                 data = r.json()
                 for u in data.get("result", []):
                     last_id = max(last_id, u.get("update_id", 0))
-                    self.stdout.write(
-                        f"  → update #{u.get('update_id')} "
-                        f"chat={u.get('message',{}).get('chat',{}).get('id')} "
-                        f"text={(u.get('message',{}).get('text') or '')[:50]!r}"
-                    )
+                    self.stdout.write(f"  → update #{u.get('update_id')}")
                     try:
                         handle_update(u)
                     except Exception as e:

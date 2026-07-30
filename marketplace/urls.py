@@ -11,6 +11,15 @@ from . import views
 def legacy_to_chat(request, *args, **kwargs):
     return redirect("/chat/")
 
+
+def public_workspace(request, *args, **kwargs):
+    return redirect("/chat/?workspace=1")
+
+
+def legacy_rfq_to_chat(request, rfq_id, *args, **kwargs):
+    return redirect(f"/chat/?action=get_rfq_status&rfq_id={rfq_id}")
+
+
 urlpatterns = [
     # ── Healthchecks (k8s / nginx / Yandex MK) ─────────────────
     path("healthz/", _health.liveness,  name="healthz"),
@@ -37,8 +46,8 @@ urlpatterns = [
 
     path("", views.home, name="home"),
     path("landing/", views.landing_view, name="landing"),
-    path("demo-center/", views.demo_center, name="demo_center"),
-    path("demo/", views.demo_center),  # alias
+    path("demo-center/", public_workspace, name="demo_center"),
+    path("demo/", public_workspace),
     path("directory/brands/", legacy_to_chat, name="brands_directory"),
     path("brands/", legacy_to_chat),  # alias
     path("directory/suppliers/", legacy_to_chat, name="suppliers_directory"),
@@ -55,7 +64,7 @@ urlpatterns = [
     path("i/<str:code>/", views.invite_redirect, name="invite_redirect"),
     path("chat/project/<uuid:project_id>/", views.chat_project_view, name="chat_project"),
     path("chat/rfq/<int:rfq_id>/", views.chat_rfq_view, name="chat_rfq"),
-    path("chat/proposal/<int:rfq_id>/", views.chat_proposal_view, name="chat_proposal"),
+    path("chat/proposal/<int:rfq_id>/", legacy_rfq_to_chat, name="chat_proposal"),
     path("faq/", views.help_view),  # alias
     path("register/", views.register_view, name="register"),
     path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),
@@ -67,15 +76,14 @@ urlpatterns = [
     # ratelimited вариант выше, эти алиасы редиректят на него.
     path("password-reset/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset")),
     path("password-reset/done/", lambda r: __import__("django.shortcuts", fromlist=["redirect"]).redirect("password_reset_done")),
-    path("demo-login/", views.demo_login, name="demo_login"),
     path("catalog/", legacy_to_chat, name="catalog"),
     path("rfq/", legacy_to_chat, name="rfq_list"),
     path("rfq/new/", legacy_to_chat, name="rfq_new"),
-    path("rfq/<int:rfq_id>/", views.rfq_detail, name="rfq_detail"),
-    path("rfq/<int:rfq_id>/proposal/", views.rfq_proposal, name="rfq_proposal"),
-    path("rfq/<int:rfq_id>/proposal/pdf/", views.rfq_proposal_pdf, name="rfq_proposal_pdf"),
-    path("rfq/<int:rfq_id>/proposal/logistics/", views.rfq_logistics_estimate, name="rfq_logistics_estimate"),
-    path("rfq/<int:rfq_id>/checkout/", views.rfq_checkout, name="rfq_checkout"),
+    path("rfq/<int:rfq_id>/", legacy_rfq_to_chat, name="rfq_detail"),
+    path("rfq/<int:rfq_id>/proposal/", legacy_rfq_to_chat, name="rfq_proposal"),
+    path("rfq/<int:rfq_id>/proposal/pdf/", legacy_rfq_to_chat, name="rfq_proposal_pdf"),
+    path("rfq/<int:rfq_id>/proposal/logistics/", legacy_rfq_to_chat, name="rfq_logistics_estimate"),
+    path("rfq/<int:rfq_id>/checkout/", legacy_rfq_to_chat, name="rfq_checkout"),
     path("operator/queue/", views.operator_queue, name="operator_queue"),
     path("operator/webhooks/", views.operator_webhooks, name="operator_webhooks"),
     path("operator/webhooks/retry-all/", views.operator_retry_failed_webhooks, name="operator_retry_failed_webhooks"),
@@ -113,7 +121,6 @@ urlpatterns = [
     path("payments/callback/", views.payment_callback, name="payment_callback"),
     path("orders/<int:order_id>/claims/open/", views.order_open_claim, name="order_open_claim"),
     path("claims/<int:claim_id>/status/", views.order_update_claim_status, name="order_update_claim_status"),
-    path("seller/orders/<int:order_id>/status/", views.seller_order_status_update, name="seller_order_status_update"),
     path("seller/", views.seller_dashboard, name="seller_dashboard"),
     path("seller/dashboard/", views.seller_dashboard, name="seller_dashboard_page"),
     path("seller/products/", views.seller_product_list, name="seller_product_list"),
@@ -229,8 +236,6 @@ urlpatterns = [
     path("kyb/", views.kyb_view, name="kyb"),
 
     # Team management (multi-user company accounts)
-    path("team/", views.team_list, name="team_management"),
-    path("team/accept/<str:token>/", views.team_accept, name="team_accept"),
 
     # 2FA
     path("2fa/", views.twofa_setup, name="twofa_setup"),

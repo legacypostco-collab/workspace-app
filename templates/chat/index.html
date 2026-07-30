@@ -7,17 +7,15 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>{% trans 'Чат' %} · Consolidator Parts</title>
-  <meta name="description" content="{% trans 'AI-чат закупщика: ищет запчасть в каталоге 200+ поставщиков, формирует RFQ и отслеживает доставку.' %}">
+  <meta name="description" content="{% trans 'B2B-платформа для поиска запчастей, сравнения предложений и контроля поставок.' %}">
   <meta name="robots" content="noindex,nofollow"> {# Chat-first SPA — не индексируем #}
   {# ── Фирменная share-карточка (визитка) для инвайт/реф-ссылок ?ref= ── #}
   <meta property="og:site_name" content="Consolidator Parts">
   <meta property="og:title" content="{% trans 'Consolidator Parts — запчасти для спецтехники' %}">
-  <meta property="og:description" content="{% trans 'AI-консолидатор: одно RFQ → 200+ проверенных поставщиков → лучшая цена. Присоединяйтесь.' %}">
+  <meta property="og:description" content="{% trans 'Поиск запчастей, сравнение предложений и контроль поставок в одном рабочем пространстве.' %}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}/">
-  {# og:image с jsDelivr (CDN поверх GitHub) — домен под SNI-фильтрацией РФ, #}
-  {# отдаём картинку с глобального CDN, чтобы краулер Telegram её дотянул.   #}
-  <meta property="og:image" content="https://cdn.jsdelivr.net/gh/legacypostco-collab/workspace-app@8bca1317c2e75b319911401da06e8e28c9bcfe2b/static/brand/og-card.png">
+  <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:type" content="image/png">
@@ -25,18 +23,8 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Consolidator Parts">
   <meta name="twitter:description" content="{% trans 'AI-консолидатор запчастей для спецтехники' %}">
-  <meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/legacypostco-collab/workspace-app@8bca1317c2e75b319911401da06e8e28c9bcfe2b/static/brand/og-card.png">
+  <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Шрифты грузим НЕ блокируя рендер: РФ-ТСПУ душит fonts.googleapis.com, и
-       render-blocking <link rel=stylesheet> вешал страницу на минуты до таймаута.
-       media=print → не применяется к экрану (не блокирует); onload → включаем.
-       Заблокирован — страница рендерится на системном фолбэке, без зависания. -->
-  <link rel="stylesheet" media="print" onload="this.media='all'"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap">
-  <noscript><link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Golos+Text:wght@500;600;700;800&display=swap"></noscript>
   {% comment %}javascript-catalog — defer чтобы не блокировал FCP. Глобал gettext() не нужен
      для первичного рендера, чат-first.js использует его позже.{% endcomment %}
   <script src="{% url 'javascript-catalog' %}" defer></script>
@@ -231,7 +219,7 @@
     .settings-row input[type=checkbox]:checked{background:#1a1a1a;}
     .settings-row input[type=checkbox]:checked::after{left:16px;}
     .settings-row-block select{font-family:inherit;font-size:13px;padding:4px 8px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;cursor:pointer;}
-    /* Вторичный текст-значение в строках настроек (consolidator.parts, JSON, username) */
+    /* Вторичный текст-значение в строках настроек (домен, JSON, имя пользователя) */
     .settings-row-meta{color:rgba(0,0,0,0.62);font-size:11px;}
     .settings-sep{border-top:1px solid rgba(0,0,0,0.08);margin:6px 0;}
     body.dark-mode .settings-row-meta{color:rgba(255,255,255,0.55);}
@@ -298,6 +286,7 @@
 
     /* Role toggle (Claude-style segmented control) */
     .role-toggle{display:flex;align-items:center;gap:2px;padding:3px;background:rgba(0,0,0,0.06);backdrop-filter:blur(10px);border-radius:10px;}
+    .role-tabs{display:contents;}
     .role-tab{flex:1;padding:6px 8px;background:transparent;border:none;border-radius:8px;color:rgba(0,0,0,0.6);font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;transition:all 0.12s;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;}
     .role-tab:hover{color:#1a1a1a;}
     .role-tab.active{background:#fff;color:#1a1a1a;font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.04);}
@@ -311,7 +300,6 @@
     .top-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
     .top-classic{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;background:rgba(255,255,255,0.5);color:#1a1a1a;font-size:12px;font-weight:600;text-decoration:none;}
     .top-classic:hover{background:rgba(255,255,255,0.7);text-decoration:none;}
-    .top-avatar{width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
     @media(max-width:600px){.top-classic span{display:none;}}
 
     /* ── Home button ── */
@@ -2938,7 +2926,6 @@
     .top-home:focus-visible,
     .top-bell:focus-visible,
     .top-theme:focus-visible,
-    .top-avatar:focus-visible,
     .role-tab:focus-visible,
     .sg-chip:focus-visible {
       outline: 2px solid #E84A21;
@@ -4083,10 +4070,12 @@
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
       {% if user.is_authenticated %}
-        <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
-          {% for tab in auth_role_tabs %}
-            <button type="button" class="role-tab{% if tab.role == auth_base_role %} active{% endif %}" data-role="{{ tab.role }}" role="tab">{{ tab.label }}</button>
-          {% endfor %}
+        <div class="role-toggle role-toggle-side" id="roleToggle">
+          <div class="role-tabs" role="tablist" aria-label="{% trans 'Роль' %}">
+            {% for tab in auth_role_tabs %}
+              <button type="button" class="role-tab{% if tab.role == auth_base_role %} active{% endif %}" data-role="{{ tab.role }}" role="tab" aria-selected="{% if tab.role == auth_base_role %}true{% else %}false{% endif %}">{{ tab.label }}</button>
+            {% endfor %}
+          </div>
           <button type="button" class="role-tab role-tab-add" data-add-role="1" aria-label="{% trans 'Добавить роль' %}" title="{% trans 'Добавить роль' %}">+</button>
         </div>
       {% endif %}
@@ -4208,7 +4197,7 @@
         <div class="settings-sep"></div>
         <a class="settings-row" href="/" style="text-decoration:none;color:inherit;">
           <span>🌐 <span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
-          <span class="settings-row-meta">consolidator.parts</span>
+          <span class="settings-row-meta">consolidatorparts.com</span>
         </a>
         {% if user.is_authenticated %}
         {# ── Команда компании (руководитель приглашает сотрудников) ── #}
@@ -4369,7 +4358,7 @@
       <div class="welcome-text">
         {% if auth_welcome_title %}
         <h1 id="welcomeTitle" data-i18n="{{ auth_welcome_title_key }}">{{ auth_welcome_title }}</h1>
-        <p id="welcomeSubtitle">{{ auth_welcome_subtitle|safe }}</p>
+        <p id="welcomeSubtitle">{{ auth_welcome_subtitle }}</p>
         {% else %}
         <h1 id="welcomeTitle" data-i18n="welcome.guest.title">{% trans "Какую запчасть найти?" %}</h1>
         <p id="welcomeSubtitle" data-i18n="welcome.guest.subtitle">{% trans "Введите артикул, название или загрузите спецификацию. Поиск и сравнение доступны без регистрации; аккаунт понадобится для сохранения заявки и оформления заказа." %}</p>
@@ -4411,11 +4400,11 @@
 
       <div class="pills{% if not auth_pills %} wp-guest{% endif %}" id="welcomePills">
         {% if auth_pills %}{# Залогиненный: пилюли его роли серверно (совпадают с ROLE_WELCOME в JS) — нет «пустой» главной до JS. #}
-        {% for p in auth_pills %}<button class="pill" type="button" onclick='quickAction("{{ p.action }}", {{ p.params|safe }})'><span class="pill-del" aria-label="{% trans 'Убрать' %}" title="{% trans 'Убрать' %}">×</span><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>{% endfor %}<button class="pill-add" type="button" aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль' %}" onclick="window.__openPillMaster&&window.__openPillMaster()">+</button>
+        {% for p in auth_pills %}<button class="pill" type="button" data-pill-action="{{ p.action }}" data-pill-params="{{ p.params }}"><span class="pill-del" aria-label="{% trans 'Убрать' %}" title="{% trans 'Убрать' %}">×</span><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>{% endfor %}<button class="pill-add" type="button" data-pill-master aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль' %}">+</button>
         {% else %}{# Аноним: статичный fallback (в т.ч. для no-JS). #}
-        <button class="pill" onclick="quickAction('search_parts', {})">🔍 {% trans "Найти запчасть" %}</button>
-        <button class="pill" onclick="quickAction('compare_suppliers', {})">🏭 {% trans "Сравнить поставщиков" %}</button>
-        <button class="pill" onclick="quickAction('kb_search', {})">📚 {% trans "База знаний" %}</button>
+        <button class="pill" type="button" data-pill-action="search_parts" data-pill-params="{}">🔍 {% trans "Найти запчасть" %}</button>
+        <button class="pill" type="button" data-pill-action="compare_suppliers" data-pill-params="{}">🏭 {% trans "Сравнить поставщиков" %}</button>
+        <button class="pill" type="button" data-pill-action="kb_search" data-pill-params="{}">📚 {% trans "База знаний" %}</button>
         {% endif %}
       </div>
     </div>
@@ -4496,9 +4485,9 @@
   <div id="sidePreviewBody" class="side-preview-body"></div>
 </div>
 
-<script id="role-actions-data" type="application/json">{{ role_actions_json|safe }}</script>
+{{ role_actions_data|json_script:"role-actions-data" }}
 <script>try{window.__roleActions=JSON.parse(document.getElementById('role-actions-data').textContent)||null;}catch(e){window.__roleActions=null;}</script>
-<script id="role-commands-data" type="application/json">{{ role_commands_json|safe }}</script>
+{{ role_commands_data|json_script:"role-commands-data" }}
 <script>try{window.__roleCommands=JSON.parse(document.getElementById('role-commands-data').textContent)||{};}catch(e){window.__roleCommands={};}</script>
 
 <div class="command-popover" id="commandPalette" hidden role="dialog" aria-label="{% trans 'Команды' %}">

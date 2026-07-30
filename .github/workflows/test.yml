@@ -113,16 +113,28 @@ jobs:
       DEBUG_MODE: "False"
       USE_HTTPS: "True"
       SECRET_KEY: "deploy-check-key-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      ALLOWED_HOSTS: "consolidator.parts"
-      CSRF_TRUSTED_ORIGINS: "https://consolidator.parts"
+      QR_SECRET: "deploy-check-qr-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      PAYMENT_CALLBACK_SECRET: "deploy-check-payment-cccccccccccccccccccccccccccccccc"
+      ALLOWED_HOSTS: "consolidatorparts.com"
+      CSRF_TRUSTED_ORIGINS: "https://consolidatorparts.com"
+      DATABASE_URL: "postgres://test:test@localhost:5432/test"
+      BEHIND_PROXY: "True"
       SECURE_HSTS_SECONDS: "31536000"
       SESSION_COOKIE_SECURE: "True"
       CSRF_COOKIE_SECURE: "True"
       SECURE_SSL_REDIRECT: "True"
+      EMAIL_HOST: "smtp.example.invalid"
+      EMAIL_VERIFICATION_REQUIRED: "True"
+      VIRUS_SCAN_REQUIRED: "True"
+      PAYMENT_ENGINE: "wallet"
+      PAYMENT_PROVIDER_URL: "https://payments.example.invalid"
+      MAX_IMPORT_ROWS: "10000"
+      DJANGO_ADMIN_PASSWORD: "ci-readiness-only"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12", cache: pip }
       - run: |
           pip install -r requirements.txt
-          python manage.py check --deploy --fail-level WARNING || echo "::warning::Deploy check has warnings"
+          python manage.py check --deploy --fail-level ERROR
+          python manage.py check_deploy_readiness

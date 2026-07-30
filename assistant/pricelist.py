@@ -46,13 +46,65 @@ from django.utils.text import slugify
 from django.utils.translation import gettext as _
 from django.utils.translation import gettext_lazy as _lazy
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from marketplace.export_security import safe_spreadsheet_row
+
 from .actions import ActionResult, register
+from .permissions import detect_user_role
+
+
+class CanManageSellerPricelist(BasePermission):
+    message = "seller assortment permission required"
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if user.is_superuser:
+            return True
+        if detect_user_role(user, request=request) != "seller":
+            return False
+        from marketplace.models import UserProfile
+
+        profile = UserProfile.objects.filter(user=user).first()
+        return bool(profile and profile.can_manage_assortment)
 
 logger = logging.getLogger(__name__)
+
+
+def _apply_ai_measurement_overrides(current, overrides):
+    """Apply bounded, finite user corrections to generated measurements."""
+    result = dict(current) if isinstance(current, dict) else {}
+    if not isinstance(overrides, dict):
+        return result
+    for index, (raw_oem, fields) in enumerate(overrides.items()):
+        if index >= 5_000:
+            break
+        if not isinstance(fields, dict):
+            continue
+        oem = str(raw_oem or "").strip()
+        if not oem or len(oem) > 200:
+            continue
+        cur = dict(result.get(oem) or {})
+        changed = False
+        for key in ("weight_kg", "length_cm", "width_cm", "height_cm"):
+            if key not in fields:
+                continue
+            try:
+                value = Decimal(str(fields[key]))
+            except Exception:
+                continue
+            if not value.is_finite() or value < 0 or value > Decimal("1000000"):
+                continue
+            cur[key] = float(value)
+            changed = True
+        if changed:
+            cur["confidence"] = 1.0
+            result[oem] = cur
+    return result
 
 
 # ── Standard fields ──────────────────────────────────────────────
@@ -436,22 +488,17 @@ def _read_csv_rows(blob: bytes, max_rows: int | None = None):
 
 
 def _detect_format(filename: str, blob: bytes) -> str:
-    """Определяет формат файла. Magic-байты приоритетнее расширения —
-    бывает что seller сохраняет xlsx с расширением .csv (или наоборот).
-    """
-    # Magic: zip-архив (xlsx) — приоритет над расширением
+    """Определяет формат файла после проверки расширения и сигнатуры."""
     if blob[:4] == b"PK\x03\x04":
         return "xlsx"
-    # Magic: BIFF-Excel (старый .xls) — у нас не поддерживается, но
-    # пометим как xlsx чтобы openpyxl выдал понятную ошибку.
     if blob[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":
-        return "xlsx"
+        raise ValueError("legacy xls is not supported")
     name = (filename or "").lower()
-    if name.endswith(".xlsx") or name.endswith(".xlsm") or name.endswith(".xls"):
+    if name.endswith(".xlsx"):
         return "xlsx"
-    if name.endswith(".csv") or name.endswith(".tsv") or name.endswith(".txt"):
+    if name.endswith(".csv"):
         return "csv"
-    return "csv"
+    raise ValueError("unsupported file format")
 
 
 def _find_header_idx(rows: list) -> int:
@@ -1883,7 +1930,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
     ]
     table = Part._meta.db_table
     placeholders = ", ".join(["%s"] * len(insert_cols))
-    insert_sql = (f"INSERT INTO {table} ({', '.join(insert_cols)}) "
+    # Table and column names come only from Django metadata and fixed lists.
+    insert_sql = (f"INSERT INTO {table} ({', '.join(insert_cols)}) "  # nosec B608
                    f"VALUES ({placeholders})")
 
     def _val(obj, attr, default):
@@ -1946,7 +1994,10 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 logger.exception("bulk INSERT failed for %d rows (batch %d)",
                                   len(rows), batch_start)
                 failed += len(rows) - created
-                err_entry = {"row": 0, "reason": f"raw insert: {type(e).__name__}: {str(e)[:200]}"}
+                err_entry = {
+                    "row": 0,
+                    "reason": "Не удалось записать пакет строк в каталог.",
+                }
                 errors.insert(0, err_entry)
             cache.set(progress_key, {
                 "current": created, "total": len(payloads), "running": True,
@@ -1969,7 +2020,8 @@ def _import_file(import_obj, mapping: dict[str, str], blob: bytes,
                 "warehouse_id", "source_import_id",
                 "data_updated_at", "updated_at",
             ]
-            update_sql = (f"UPDATE {table} SET "
+            # Table and column names come only from Django metadata and fixed lists.
+            update_sql = (f"UPDATE {table} SET "  # nosec B608
                            + ", ".join(f"{c} = %s" for c in upd_cols)
                            + " WHERE id = %s")
             upd_rows = []
@@ -2038,7 +2090,7 @@ class MySuppliersView(APIView):
     реквизитами и логистикой — для быстрой повторной загрузки с подстановкой.
     Группируем по supplier_tax_id (иначе по имени), берём последний склад.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def get(self, request):
         from marketplace.models import SellerWarehouse
@@ -2071,7 +2123,7 @@ class PricelistUploadView(APIView):
     2) AI/heuristic предлагает mapping
     3) сохраняем PricelistImport(status='preview') + ChatMessage с формой
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
     parser_classes = [MultiPartParser]
 
     def post(self, request):
@@ -2091,11 +2143,30 @@ class PricelistUploadView(APIView):
                     "size": f.size // 1024 // 1024, "max": mb}},
                 status=400,
             )
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+
+            validate_uploaded_file(
+                f,
+                allowed_ext={".csv", ".xlsx"},
+                max_bytes=MAX_FILE_BYTES,
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
         blob = f.read()
         try:
             headers, sample = _read_preview(f.name, blob)
-        except Exception as e:
-            return Response({"error": _("Не удалось прочитать файл: %(err)s") % {"err": e}}, status=400)
+        except Exception:
+            logger.warning(
+                "pricelist preview parse failed user_id=%s filename=%s",
+                request.user.pk,
+                f.name,
+                exc_info=True,
+            )
+            return Response(
+                {"error": _("Не удалось безопасно прочитать файл.")},
+                status=400,
+            )
         if not headers or not any(str(h).strip() for h in headers):
             return Response({"error": _("Первая строка пустая — нет заголовков.")}, status=400)
         non_empty = [h for h in headers if str(h).strip()]
@@ -2331,7 +2402,10 @@ def _execute_import_job(import_id, mapping, transform_rules, constants,
     warehouse = None
     if warehouse_id:
         try:
-            warehouse = SellerWarehouse.objects.get(id=warehouse_id)
+            warehouse = SellerWarehouse.objects.get(
+                id=warehouse_id,
+                seller=seller,
+            )
         except SellerWarehouse.DoesNotExist:
             warehouse = None
 
@@ -2454,22 +2528,23 @@ def _execute_import_job(import_id, mapping, transform_rules, constants,
             "phase": "done", "running": False,
         }, 600)
         return result
-    except Exception as e:  # noqa: BLE001
+    except Exception:  # noqa: BLE001
         logging.getLogger("pricelist").exception(
             "Import job failed for import_id=%s", import_id)
+        public_error = _("Импорт завершился с внутренней ошибкой.")
         try:
             imp.status = "failed"
-            imp.error_details = [{"row": 0, "oem": "", "reason": str(e)[:300]}]
+            imp.error_details = [{"row": 0, "oem": "", "reason": public_error}]
             imp.save(update_fields=["status", "error_details"])
         except Exception:
             pass
         # Импорт упал → пустой склад-husk удаляем (пустых складов быть не должно).
         _drop_empty_warehouse()
-        err = {"ok": False, "import_id": import_id, "error": str(e)[:300]}
+        err = {"ok": False, "import_id": import_id, "error": public_error}
         plc.set(f"import_result_{import_id}", err, 3600)
         plc.set(f"import_progress_{import_id}", {
             "current": 0, "total": 0, "phase": "failed",
-            "running": False, "error": str(e)[:300],
+            "running": False, "error": public_error,
         }, 600)
         return err
 
@@ -2479,7 +2554,7 @@ class PricelistCommitView(APIView):
 
     body: {"mapping": {std_field: source_column}}
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def post(self, request, import_id):
         from marketplace.models import (
@@ -2520,20 +2595,10 @@ class PricelistCommitView(APIView):
         # Применяются поверх ai_estimates как human-in-the-loop корректировка
         ai_overrides = request.data.get("ai_estimates_override") or {}
         if isinstance(ai_overrides, dict) and ai_overrides:
-            current = imp.ai_estimates or {}
-            for oem, fields in ai_overrides.items():
-                if not isinstance(fields, dict):
-                    continue
-                cur = current.get(oem, {})
-                for k in ("weight_kg", "length_cm", "width_cm", "height_cm"):
-                    if k in fields:
-                        try:
-                            cur[k] = float(fields[k])
-                        except (TypeError, ValueError):
-                            pass
-                cur["confidence"] = 1.0  # юзер подтвердил → 100%
-                current[oem] = cur
-            imp.ai_estimates = current
+            imp.ai_estimates = _apply_ai_measurement_overrides(
+                imp.ai_estimates,
+                ai_overrides,
+            )
             imp.save(update_fields=["ai_estimates"])
 
         if not isinstance(mapping, dict):
@@ -2692,9 +2757,9 @@ class PricelistCommitView(APIView):
         # Лента важных событий админа: загрузка прайса продавцом + IP/кабинет.
         try:
             from assistant.actions import _log_activity
-            _xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
-            _ip = (_xff.split(",")[0].strip() if _xff
-                   else request.META.get("REMOTE_ADDR", ""))[:64]
+            from assistant.security import client_ip
+
+            _ip = client_ip(request)[:64]
             _log_activity(
                 "pricelist", actor=request.user, ip=_ip,
                 title=_("Загрузка прайса #%(id)s · %(rows)s строк · %(file)s") % {
@@ -2823,7 +2888,15 @@ def _generate_marketplace_xlsx(import_obj, mapping: dict, transform_rules: dict,
     # constant_memory=True пишет напрямую в файл (не накапливает в RAM).
     import xlsxwriter
     buf = io.BytesIO()
-    wb = xlsxwriter.Workbook(buf, {"constant_memory": True, "in_memory": True})
+    wb = xlsxwriter.Workbook(
+        buf,
+        {
+            "constant_memory": True,
+            "in_memory": True,
+            "strings_to_formulas": False,
+            "strings_to_urls": False,
+        },
+    )
     ws = wb.add_worksheet("Pricelist")
 
     hdr_fmt = wb.add_format({
@@ -3404,7 +3477,7 @@ class PricelistAiEstimateView(APIView):
     батчами параллельно (5 workers). Сохраняет в imp.ai_estimates.
     При commit'е применяются как per-part overrides.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     MAX_ROWS = 1000       # покрываем большинство реальных прайсов
     BATCH_SIZE = 10       # компромисс: плавный прогресс vs много API calls
@@ -3447,8 +3520,16 @@ class PricelistAiEstimateView(APIView):
         try:
             with imp.file_obj.open("rb") as fh:
                 blob = fh.read()
-        except Exception as e:
-            return Response({"error": f"file unavailable: {e}"}, status=500)
+        except Exception:
+            logger.exception(
+                "pricelist source unavailable import_id=%s seller_id=%s",
+                imp.id,
+                request.user.id,
+            )
+            return Response(
+                {"error": _("Файл прайс-листа временно недоступен.")},
+                status=500,
+            )
 
         items: list[dict] = []
         for row in _read_all(imp.filename, blob):
@@ -3561,7 +3642,7 @@ class PricelistImportProgressView(APIView):
 
     Возвращает текущий прогресс импорта (commit) для polling из UI.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def get(self, request, import_id):
         # Общий Redis-кэш: коммит исполняется в Celery-воркере (др. процесс),
@@ -3608,11 +3689,17 @@ class PricelistGenerateOutputProgressView(APIView):
 
     Polling endpoint для прогресс-бара генерации output XLSX.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def get(self, request, import_id):
         from django.core.cache import cache
-        progress = cache.get(f"generate_output_progress_{import_id}") or {}
+        from marketplace.models import PricelistImport
+
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+        progress = cache.get(f"generate_output_progress_{imp.id}") or {}
         return Response({
             "current": progress.get("current", 0),
             "total": progress.get("total", 0),
@@ -3626,7 +3713,7 @@ class PricelistOutputPreviewView(APIView):
     Возвращает HTML preview сгенерированного output_file (XLSX).
     Используется для side panel в чате (как у claude.ai).
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     PREVIEW_ROWS = 100  # ограничиваем превью
 
@@ -3652,15 +3739,26 @@ class PricelistOutputPreviewView(APIView):
                 '<!doctype html><html><head><meta charset="utf-8"></head>'
                 '<body>' + body + '</body></html>'
             )
-            return HttpResponse(html, content_type="text/html; charset=utf-8")
+            response = HttpResponse(html, content_type="text/html; charset=utf-8")
+            response["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+            response["Cache-Control"] = "private, no-store"
+            return response
 
         from openpyxl import load_workbook
         try:
             with imp.output_file.open("rb") as fh:
                 wb = load_workbook(io.BytesIO(fh.read()), read_only=True, data_only=True)
             ws = wb.worksheets[0]
-        except Exception as e:
-            return Response({"error": f"cannot read XLSX: {e}"}, status=500)
+        except Exception:
+            logger.exception(
+                "pricelist output preview failed import_id=%s seller_id=%s",
+                imp.id,
+                request.user.id,
+            )
+            return Response(
+                {"error": _("Не удалось открыть подготовленный файл.")},
+                status=500,
+            )
 
         rows_html = []
         total = 0
@@ -3671,9 +3769,12 @@ class PricelistOutputPreviewView(APIView):
                 continue
             cells = []
             for col_idx, val in enumerate(row):
+                from html import escape
+
                 v = "" if val is None else str(val)
                 if len(v) > 50:
                     v = v[:50] + "…"
+                v = escape(v)
                 tag = "th" if row_idx == 1 else "td"
                 cls = ' class="opx-num"' if row_idx == 1 else ''
                 cells.append(f"<{tag}{cls}>{v}</{tag}>")
@@ -3704,7 +3805,37 @@ class PricelistOutputPreviewView(APIView):
             + '<tbody>' + ''.join(rows_html[1:]) + '</tbody>'
             + '</table></body></html>'
         )
-        return HttpResponse(html, content_type="text/html; charset=utf-8")
+        response = HttpResponse(html, content_type="text/html; charset=utf-8")
+        response["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class PricelistOutputFileView(APIView):
+    """Download a generated pricelist only for its owner."""
+
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
+
+    def get(self, request, import_id):
+        from django.http import FileResponse
+        from marketplace.models import PricelistImport
+
+        try:
+            imp = PricelistImport.objects.get(id=import_id, seller=request.user)
+        except PricelistImport.DoesNotExist:
+            return Response({"error": "import not found"}, status=404)
+        if not imp.output_file:
+            return Response({"error": "output file not generated"}, status=404)
+        try:
+            response = FileResponse(
+                imp.output_file.open("rb"),
+                as_attachment=True,
+                filename=os.path.basename(imp.output_file.name),
+            )
+            response["Cache-Control"] = "private, no-store"
+            return response
+        except Exception:
+            return Response({"error": "output file not found"}, status=404)
 
 
 class PricelistGenerateOutputView(APIView):
@@ -3714,7 +3845,7 @@ class PricelistGenerateOutputView(APIView):
     Body: {mapping, transform_rules, constants, ai_estimates_override}
     Returns: {filename, size, download_url}
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def post(self, request, import_id):
         from django.core.files.base import ContentFile
@@ -3732,28 +3863,21 @@ class PricelistGenerateOutputView(APIView):
 
         # Применяем ai_overrides поверх ai_estimates
         if isinstance(ai_overrides, dict) and ai_overrides:
-            current = imp.ai_estimates or {}
-            for oem, fields in ai_overrides.items():
-                if not isinstance(fields, dict):
-                    continue
-                cur = current.get(oem, {})
-                for k in ("weight_kg", "length_cm", "width_cm", "height_cm"):
-                    if k in fields:
-                        try:
-                            cur[k] = float(fields[k])
-                        except (TypeError, ValueError):
-                            pass
-                cur["confidence"] = 1.0
-                current[oem] = cur
-            imp.ai_estimates = current
+            imp.ai_estimates = _apply_ai_measurement_overrides(
+                imp.ai_estimates,
+                ai_overrides,
+            )
 
         try:
             xlsx_bytes = _generate_marketplace_xlsx(
                 imp, mapping, transform_rules, constants,
             )
-        except Exception as e:
+        except Exception:
             logger.exception("XLSX generation failed")
-            return Response({"error": f"Не удалось сгенерировать XLSX: {e}"}, status=500)
+            return Response(
+                {"error": _("Не удалось подготовить файл. Попробуйте позже.")},
+                status=500,
+            )
 
         # Сохраняем в FileField
         base_name = (imp.filename or "pricelist").rsplit(".", 1)[0]
@@ -3763,7 +3887,11 @@ class PricelistGenerateOutputView(APIView):
         return Response({
             "filename": out_name,
             "size": len(xlsx_bytes),
-            "download_url": imp.output_file.url if imp.output_file else "",
+            "download_url": (
+                f"/api/assistant/upload-pricelist/{imp.id}/output-file/"
+                if imp.output_file
+                else ""
+            ),
             "rows_generated": xlsx_bytes.count(b"<row") if False else None,
         })
 
@@ -3775,7 +3903,7 @@ class PricelistSmartQuestionsView(APIView):
     сразу после upload параллельно с показом базовой формы — чтобы
     upload-ответ не блокировался на 4 секундах Claude API.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def get(self, request, import_id):
         from . import ai_credits as _aic
@@ -3803,7 +3931,7 @@ class PricelistAiEstimateProgressView(APIView):
 
     Возвращает текущий прогресс AI-оценки для polling из UI.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def get(self, request, import_id):
         from django.core.cache import cache
@@ -3885,7 +4013,7 @@ class PricelistTemplateView(APIView):
 
 class PricelistCancelView(APIView):
     """POST /api/assistant/upload-pricelist/<id>/cancel/  — отменить превью."""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def post(self, request, import_id):
         from marketplace.models import PricelistImport
@@ -3986,7 +4114,7 @@ class PricelistErrorsCsvView(APIView):
     Скачать список проблемных строк (строка, артикул, что не так) — чтобы
     поставщик исправил их в своём файле и загрузил заново.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, CanManageSellerPricelist]
 
     def get(self, request, import_id):
         from django.http import HttpResponse
@@ -3999,8 +4127,15 @@ class PricelistErrorsCsvView(APIView):
         w = csv.writer(out)
         w.writerow([_("Строка"), _("Артикул"), _("Проблема")])
         for e in (imp.error_details or []):
-            w.writerow([e.get("row", ""), e.get("oem", ""),
-                        e.get("comment") or e.get("reason", "")])
+            w.writerow(
+                safe_spreadsheet_row(
+                    [
+                        e.get("row", ""),
+                        e.get("oem", ""),
+                        e.get("comment") or e.get("reason", ""),
+                    ]
+                )
+            )
         resp = HttpResponse(out.getvalue(), content_type="text/csv; charset=utf-8")
         resp["Content-Disposition"] = f'attachment; filename="errors_{imp.id}.csv"'
         return resp

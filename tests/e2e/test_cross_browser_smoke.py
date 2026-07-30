@@ -15,7 +15,7 @@
 Что покрывается:
   / (landing)        — заголовок + CTA «стать поставщиком»
   /chat/             — anon SPA: кнопки «Войти» / «Регистрация»
-  /chat/ + login     — авторизация: топбар с topAvatar
+  /chat/ + login     — авторизация: уведомления и рабочие команды
   /parts/{slug}/     — карточка товара + Schema.org Product JSON-LD
 """
 from __future__ import annotations
@@ -24,7 +24,6 @@ import os
 import pathlib
 
 import pytest
-from playwright.sync_api import sync_playwright
 
 BASE_URL = os.getenv("E2E_BASE_URL", "http://127.0.0.1:8003")
 HEADLESS = os.getenv("E2E_HEADED") != "1"
@@ -35,12 +34,6 @@ SCREENSHOT_DIR.mkdir(exist_ok=True)
 _ENV_BROWSER = os.getenv("E2E_BROWSER", "").strip().lower()
 ALL_BROWSERS = ["chromium", "firefox", "webkit"]
 BROWSERS = [_ENV_BROWSER] if _ENV_BROWSER in ALL_BROWSERS else ALL_BROWSERS
-
-
-@pytest.fixture(scope="session")
-def playwright_instance():
-    with sync_playwright() as p:
-        yield p
 
 
 @pytest.fixture(scope="session", params=BROWSERS)
@@ -118,26 +111,25 @@ def test_chat_anonymous(xb_page, xb_browser_name):
     assert not errors, f"JS-ошибки на /chat/ (anon): {errors}"
 
 
-def test_chat_authenticated(xb_page, xb_browser_name):
-    """Логин через chat-action → topAvatar появляется, нет ошибок."""
+def test_chat_authenticated(xb_page, xb_browser_name, login_as):
+    """Логин через штатное действие → авторизованный topbar без ошибок."""
     errors: list[str] = []
     xb_page.on("pageerror", lambda exc: errors.append(str(exc)))
 
-    # Авторизуемся через demo-login (быстрее чем заполнять форму)
-    xb_page.goto(BASE_URL + "/demo-login/?role=buyer", wait_until="domcontentloaded")
-    xb_page.goto(BASE_URL + "/chat/", wait_until="domcontentloaded")
+    login_as(xb_page, "buyer")
 
-    # Залогиненный: видим topAvatar и НЕТ кнопок Войти/Регистрация
-    avatar = xb_page.locator("#topAvatar")
-    assert avatar.is_visible(timeout=5000), "topAvatar не виден после demo-login"
+    assert xb_page.evaluate("window.IS_AUTHENTICATED === true")
+    assert xb_page.locator("#topBell").is_visible(timeout=5000)
+    assert xb_page.locator('button:has-text("Войти")').count() == 0
+    assert xb_page.locator('button:has-text("Регистрация")').count() == 0
 
     _shot(xb_page, xb_browser_name, "chat_auth")
     assert not errors, f"JS-ошибки на /chat/ (auth): {errors}"
 
 
-def test_part_detail_with_schema(xb_page, xb_browser_name):
+def test_part_detail_with_schema(xb_page, xb_browser_name, login_as):
     """/parts/{slug}/ → JSON-LD Product присутствует в DOM."""
-    xb_page.goto(BASE_URL + "/demo-login/?role=buyer", wait_until="domcontentloaded")
+    login_as(xb_page, "buyer")
 
     # Достанем любой slug через DB? Нет — лучше через каталог.
     # Берём первый part из каталога:

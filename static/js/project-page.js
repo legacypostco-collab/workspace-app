@@ -127,14 +127,11 @@
       $('projectsList').innerHTML = list.map(p => {
         const dot = DOT_BG[p.dot_color] || DOT_BG.green;
         const active = (p.id === PID) ? ' active' : '';
-        const pidStr = String(p.id).replace(/'/g, "&#39;");
-        const nameStr = String(p.name || '').replace(/'/g, "&#39;").replace(/"/g, '&quot;');
-        // Inline onclick на самой кнопке — гарантированно стопает навигацию по <a>
         return `<a href="/chat/project/${esc(p.id)}/" class="side-item side-item-proj${active}" data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}" style="text-decoration:none;">
           <span class="side-item-dot" style="background:${dot};"></span>
           <span class="side-item-text">${esc(p.name)}</span>
           <span class="side-item-meta">${esc(p.chats || 0)}</span>
-          <button class="side-item-del" type="button" title="Удалить проект" aria-label="Удалить" onclick="event.preventDefault();event.stopPropagation();window.__deleteProject&amp;&amp;window.__deleteProject('${pidStr}','${nameStr}');return false;">×</button>
+          <button class="side-item-del" type="button" title="Удалить проект" aria-label="Удалить" data-delete-project data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}">×</button>
         </a>`;
       }).join('');
     } catch(e) {
@@ -395,7 +392,7 @@
   // Глобальный helper для inline-onclick (более надёжно чем capture-listener
   // на anchor-tag — в Chrome иногда anchor вообще не пропускает click до handler'а).
   window.__deleteProject = async function(pid, name) {
-    if (!pid) return;
+    if (!/^[0-9a-f-]{36}$/i.test(String(pid || ''))) return;
     if (!window.confirm(`Удалить проект «${name || 'проект'}»?`)) return;
     try {
       const r = await fetch('/api/assistant/projects/' + pid + '/', {
@@ -410,6 +407,13 @@
       alert('Ошибка: ' + (err && err.message ? err.message : err));
     }
   };
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest && event.target.closest('[data-delete-project]');
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    window.__deleteProject(button.dataset.projectId, button.dataset.projectName);
+  });
 
   // ── Список чатов с группировкой (как в /chat/) ──────────────
   // Иконки категорий — те же, что в chat-first.js.

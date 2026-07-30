@@ -1,8 +1,8 @@
 {% extends "seller/base_seller.html" %}
-{% load i18n %}
+{% load static i18n %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{% static 'vendor/leaflet/1.9.4/dist/leaflet.css' %}" />
 <style>
 /* Leaflet overrides for dark theme */
 .leaflet-container { background:#111!important; }
@@ -856,6 +856,11 @@ function requestManualCalc(btn) {
   var weight = document.getElementById('calcWeight') ? document.getElementById('calcWeight').value : '—';
   var volume = document.getElementById('calcVolume') ? document.getElementById('calcVolume').value : '—';
   var value = document.getElementById('calcValue') ? document.getElementById('calcValue').value : '—';
+  var safeText = function(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function(ch) {
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+    });
+  };
 
   btn.disabled = true;
   btn.style.background = 'rgba(232,74,33,0.12)';
@@ -866,8 +871,8 @@ function requestManualCalc(btn) {
   var conf = document.createElement('div');
   conf.style.cssText = 'margin-top:12px;padding:14px 16px;background:rgba(232,74,33,0.06);border:1px solid rgba(232,74,33,0.18);border-radius:10px;font-size:12px;line-height:1.8;';
   conf.innerHTML = '<div style="color:#E84A21;font-weight:700;margin-bottom:8px;font-size:13px;">✓ Запрос передан менеджеру</div>'
-    + '<div style="color:#919191;">Маршрут: <span style="color:#ECECEC;font-weight:600;">' + from + ' → ' + to + '</span></div>'
-    + '<div style="color:#919191;">Способ: <span style="color:#ECECEC;">' + mode + '</span> · Вес: <span style="color:#ECECEC;">' + weight + ' кг</span> · Объём: <span style="color:#ECECEC;">' + volume + ' м³</span></div>'
+    + '<div style="color:#919191;">Маршрут: <span style="color:#ECECEC;font-weight:600;">' + safeText(from) + ' → ' + safeText(to) + '</span></div>'
+    + '<div style="color:#919191;">Способ: <span style="color:#ECECEC;">' + safeText(mode) + '</span> · Вес: <span style="color:#ECECEC;">' + safeText(weight) + ' кг</span> · Объём: <span style="color:#ECECEC;">' + safeText(volume) + ' м³</span></div>'
     + '<div style="color:#919191;">Стоимость товара: <span style="color:#ECECEC;">$' + Number(value).toLocaleString() + '</span></div>'
     + '<div style="color:#6A6A6A;margin-top:8px;font-size:11px;">Менеджер свяжется с вами в течение 1 рабочего часа</div>';
   btn.parentNode.appendChild(conf);
@@ -1052,7 +1057,7 @@ lgTab = function(el, panel) {
 // Load Leaflet and init first map
 (function loadLeaflet() {
   const s = document.createElement('script');
-  s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  s.src = '{% static "vendor/leaflet/1.9.4/dist/leaflet.js" %}';
   s.onload = () => setTimeout(initPortsMap, 200);
   document.head.appendChild(s);
 })();

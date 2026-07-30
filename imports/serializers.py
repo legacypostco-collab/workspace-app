@@ -23,6 +23,16 @@ class UploadImportFileSerializer(serializers.Serializer):
         max_bytes = int(settings.MAX_IMPORT_FILE_BYTES)
         if int(getattr(value, "size", 0) or 0) > max_bytes:
             raise serializers.ValidationError(f"Файл слишком большой. Максимум: {max_bytes} байт.")
+        try:
+            from marketplace.upload_security import validate_uploaded_file
+
+            validate_uploaded_file(
+                value,
+                allowed_ext={".csv"},
+                max_bytes=max_bytes,
+            )
+        except ValueError as exc:
+            raise serializers.ValidationError(str(exc)) from exc
         return value
 
 
@@ -31,9 +41,9 @@ class UploadGoogleSheetSerializer(serializers.Serializer):
 
     def validate_url(self, value: str) -> str:
         parsed = urlparse(value)
-        host = (parsed.netloc or "").lower()
+        host = (parsed.hostname or "").lower().rstrip(".")
         path = parsed.path or ""
-        if "docs.google.com" not in host or "/spreadsheets/" not in path:
+        if parsed.scheme != "https" or host != "docs.google.com" or "/spreadsheets/" not in path:
             raise serializers.ValidationError("Нужна корректная ссылка Google Sheets.")
         return value
 

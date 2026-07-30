@@ -25,6 +25,7 @@ staticfiles/
 !.env.example
 
 .DS_Store
+._*
 Thumbs.db
 
 .idea/
@@ -34,6 +35,10 @@ Thumbs.db
 node_modules/
 e2e/node_modules/
 e2e/.lighthouseci/
+e2e/playwright-report/
+e2e/test-results/
+playwright-report/
+test-results/
 
 # Local audit/test artifacts
 reports/

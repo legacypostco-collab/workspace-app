@@ -33,7 +33,7 @@ def _user_real_role(user) -> str:
     """Реальная роль пользователя из БД / superuser-флага. Без override."""
     if not user or not user.is_authenticated:
         return "anon"
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser:
         return "admin"
     profile = getattr(user, "userprofile", None) or getattr(user, "profile", None)
     if profile:
@@ -41,16 +41,10 @@ def _user_real_role(user) -> str:
         if role in ("seller", "buyer"):
             return role
         if role == "operator" or getattr(profile, "operator_role", None):
-            return "operator"
-    # Demo-аккаунты: только в DEBUG/test — см. _is_demo_account ниже.
-    name = (user.username or "").lower()
-    if name.startswith(("demo_", "test_")):
-        if "operator" in name or "logist" in name:
-            return "operator"
-        if "seller" in name:
-            return "seller"
-        if "buyer" in name:
-            return "buyer"
+            operator_role = (getattr(profile, "operator_role", "") or "").strip()
+            return f"operator_{operator_role}" if operator_role else "operator"
+    # Имя пользователя не является источником полномочий. Даже в режиме
+    # разработки роль берётся из профиля или явно выданной UserRole.
     return "buyer"
 
 
@@ -69,12 +63,12 @@ def user_allowed_roles(user) -> list[str]:
     """
     if not user or not getattr(user, "is_authenticated", False):
         return ["buyer"]
-    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
+    if getattr(user, "is_superuser", False):
         return ["admin", "buyer", "seller", "operator"]
 
     roles: list[str] = []
     primary = _user_real_role(user)
-    if primary in SWITCHABLE_ROLES:
+    if _role_base(primary) in SWITCHABLE_ROLES:
         roles.append(primary)
 
     try:
@@ -109,8 +103,7 @@ def user_allowed_role_tabs(user) -> list[dict[str, str]]:
 
 
 def _is_demo_account(user) -> bool:
-    """В DEBUG-режиме demo-аккаунты могут переключаться между ролями
-    (нужно для демонстраций без плодения пользователей)."""
+    """Определить тестовую учётную запись только в режиме разработки."""
     from django.conf import settings as _s
     if not getattr(_s, "DEBUG", False):
         return False
@@ -131,19 +124,37 @@ def _override_allowed(user, requested: str) -> bool:
     """
     if not requested:
         return False
-    requested_base = _role_base(requested)
     allowed = user_allowed_roles(user)
-    allowed_bases = {_role_base(role) for role in allowed}
     real = _user_real_role(user)
     if real == "admin":
         return True
-    if requested in allowed or requested_base in allowed_bases:
+    if requested in allowed:
+        return True
+    # Вкладка интерфейса называется просто «Оператор». Для пользователя с
+    # предметной подролью она означает возврат именно в его подроль, а не
+    # повышение до общего оператора с полным набором команд.
+    if requested == "operator" and any(
+        role.startswith("operator_") for role in allowed
+    ):
         return True
     # SECURITY: даже demo-аккаунты НЕ должны переключать роль (buyer→seller→operator)
     # без явного логина. Раньше тут было `if _is_demo_account(user): return True`,
     # что позволяло demo_buyer одним кликом смотреть кабинет оператора.
     # Теперь любая смена роли = смена аккаунта = ввод пароля.
     return False
+
+
+def _resolve_override(user, requested: str) -> str:
+    """Map the generic operator tab back to an actually granted subrole."""
+    if requested != "operator":
+        return requested
+    allowed = user_allowed_roles(user)
+    if "operator" in allowed:
+        return "operator"
+    return next(
+        (role for role in allowed if role.startswith("operator_")),
+        requested,
+    )
 
 
 def detect_user_role(user, *, request=None, override: str | None = None) -> str:
@@ -160,11 +171,11 @@ def detect_user_role(user, *, request=None, override: str | None = None) -> str:
             or _normalize_override(getattr(request, "session", {}).get("assistant_role_override"))
         )
     if explicit and _override_allowed(user, explicit):
-        return explicit
+        return _resolve_override(user, explicit)
 
     if not user or not user.is_authenticated:
         return "buyer"
-    if user.is_superuser or user.is_staff:
+    if user.is_superuser:
         return "admin"
 
     profile = getattr(user, "userprofile", None) or getattr(user, "profile", None)

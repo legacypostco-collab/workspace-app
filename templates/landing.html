@@ -6,7 +6,7 @@
 <title>Consolidator Parts — {% trans "B2B-маркетплейс запчастей для спецтехники" %}</title>
 
 {# ── SEO meta + Open Graph + Twitter Card ─────────────────────── #}
-<meta name="description" content="{% trans 'B2B-платформа: ищу запчасть, AI собирает котировки от 200+ поставщиков за минуты, оплачивает через эскроу и довозит до склада.' %}">
+<meta name="description" content="{% trans 'B2B-платформа для поиска запчастей, сравнения предложений и контроля поставок.' %}">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="{{ request.scheme }}://{{ request.get_host }}/">
 
@@ -24,12 +24,9 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Consolidator Parts">
 <meta property="og:title" content="{% trans 'Consolidator Parts — запчасти для спецтехники' %}">
-<meta property="og:description" content="{% trans 'AI-консолидатор: одно RFQ → 200+ проверенных поставщиков → лучшая цена.' %}">
+<meta property="og:description" content="{% trans 'Поиск запчастей, сравнение предложений и контроль поставок в одном рабочем пространстве.' %}">
 <meta property="og:url" content="{{ request.scheme }}://{{ request.get_host }}/">
-{# ── og:image PNG 1200×630 (B-19). Раздаём с jsDelivr (CDN поверх GitHub): #}
-{#    наш домен под SNI-фильтрацией РФ, краулер Telegram не всегда дотягивает #}
-{#    картинку с сервера в МСК → отдаём её с глобального CDN мимо ТСПУ.        #}
-<meta property="og:image" content="https://cdn.jsdelivr.net/gh/legacypostco-collab/workspace-app@8bca1317c2e75b319911401da06e8e28c9bcfe2b/static/brand/og-card.png">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/png">
@@ -38,7 +35,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Consolidator Parts">
 <meta name="twitter:description" content="{% trans 'AI-консолидатор запчастей для спецтехники.' %}">
-<meta name="twitter:image" content="https://cdn.jsdelivr.net/gh/legacypostco-collab/workspace-app@8bca1317c2e75b319911401da06e8e28c9bcfe2b/static/brand/og-card.png">
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
 
 {# ── Schema.org Organization (structured data) ─────────────── #}
 <script type="application/ld+json">
@@ -940,7 +937,7 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.55);
   }
   .trust .cell:first-child::before{
-    content:"247";
+    content:"B2B";
     position:absolute;
     top: 20px;
     right: 24px;
@@ -3773,9 +3770,9 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   </div>
 
   <div class="trust-strip">
-    <span><span class="t-dot t-dot-live"></span><b>247</b> {% trans "поставщиков" %}</span>
-    <span><span class="t-dot t-dot-time"></span><b>14 {% trans "дн" %}</b> — {% trans "медиана доставки" %}</span>
-    <span class="discount"><span class="t-dot t-dot-deal"></span><b>18%</b> {% trans "экономии к рынку" %}</span>
+    <span><span class="t-dot t-dot-live"></span><b>{% trans "Проверенная сеть" %}</b> {% trans "поставщиков" %}</span>
+    <span><span class="t-dot t-dot-time"></span><b>{% trans "Контроль сроков" %}</b> {% trans "поставки" %}</span>
+    <span class="discount"><span class="t-dot t-dot-deal"></span><b>{% trans "Сравнение" %}</b> {% trans "предложений" %}</span>
   </div>
 </section>
 
@@ -3789,13 +3786,13 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
     </div>
 
     <p class="about">
-      <b>Consolidator Parts</b> — {% trans "B2B-платформа, которая соединяет покупателей с проверенными поставщиками, производителями и логистическими партнёрами по всему миру. Получайте расчёт за секунды, закупайте по лучшим ценам и контролируйте поставку на каждом этапе." %}
+      <b>Consolidator Parts</b> — {% trans "B2B-платформа, которая соединяет покупателей с поставщиками, производителями и логистическими партнёрами. Сравнивайте предложения и контролируйте поставку на каждом этапе." %}
     </p>
 
     <div class="about-snapshot" aria-label="{% trans 'Ключевые показатели платформы' %}">
-      <span><b>200+</b>{% trans "поставщиков и производителей в рабочей сети" %}</span>
+      <span><b>B2B</b>{% trans "единое рабочее пространство для закупки" %}</span>
       <span><b>13</b>{% trans "статусов заказа для контроля поставки" %}</span>
-      <span><b>10 / 90</b>{% trans "эскроу-модель оплаты для защищённых сделок" %}</span>
+      <span><b>RFQ</b>{% trans "сравнение предложений по каждой позиции" %}</span>
     </div>
 
     <!-- Trust signals (line-art icons like original, refined) -->
@@ -3860,7 +3857,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
           </svg>
         </div>
         <div class="lbl">{% trans "Глобальная сеть поставок" %}</div>
-        <div class="sub">{% trans "Хабы в ОАЭ, Китае и ЕС. Консолидация грузов. Оплата в любой валюте." %}</div>
+        <div class="sub">{% trans "Международные маршруты, консолидация грузов и контроль документов в одном рабочем процессе." %}</div>
       </div>
 
       <div class="cell">
@@ -3907,8 +3904,8 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
       <div class="step">
         <div class="n">03</div>
         <h3>{% trans "Точная цена и срок" %}</h3>
-        <p>{% trans "Подтверждённая цена и срок по каждой позиции. Сравнение в одной таблице, заказ через эскроу" %} <b>10 / 90</b>.</p>
-        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>{% trans "от 30 секунд до 48 часов" %}</div>
+        <p>{% trans "Предложения поставщиков по каждой позиции: цена, наличие, срок и условия поставки в одной таблице." %}</p>
+        <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>{% trans "после ответа поставщика" %}</div>
       </div>
       <div class="step">
         <div class="n">04</div>
@@ -3933,7 +3930,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
         </div>
         <h4>{% trans "Расчёт и закупка" %}</h4>
-        <p>{% trans "Получайте цену и наличие за секунды. OEM и aftermarket — напрямую от производителей." %}</p>
+        <p>{% trans "Сравнивайте цену, наличие и условия поставки для оригинальных деталей и аналогов." %}</p>
       </div>
       <div class="infra-card">
         <div class="infra-ic">
@@ -3961,7 +3958,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         </div>
         <h4>{% trans "Платежи" %}</h4>
-        <p>{% trans "Оплата в любой валюте — мгновенно. Банковские и криптоканалы. Автоматическое распределение." %}</p>
+        <p>{% trans "Условия и доступные способы оплаты фиксируются в счёте и договоре по конкретной поставке." %}</p>
       </div>
       <div class="infra-card">
         <div class="infra-ic">
@@ -4198,14 +4195,14 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
     <div class="wh-cell">
       <img loading="eager" decoding="async" fetchpriority="high" class="bg-photo" src="{% static 'marketplace/landing/warehouse-transit-generic.jpg' %}" alt="" role="presentation">
       <div class="label">{% trans "Транзитный склад" %}</div>
-      <div class="num">7 {% trans "млн" %}<small>{% trans "позиций" %}</small></div>
-      <div class="desc">{% trans "Сеть транзитных хабов в" %} <b>{% trans "7 странах" %}</b> · {% trans "консолидация грузов · отслеживание на каждом этапе доставки." %}</div>
+      <div class="num">{% trans "Хабы" %}<small>{% trans "и маршруты" %}</small></div>
+      <div class="desc">{% trans "Консолидация грузов, маршрутные документы и отслеживание этапов доставки." %}</div>
     </div>
     <div class="wh-cell">
       <img loading="lazy" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/warehouse-inventory-generic.jpg' %}" alt="" role="presentation">
       <div class="label">{% trans "Проверенные позиции" %}</div>
-      <div class="num">2 {% trans "млн" %}<small>SKU</small></div>
-      <div class="desc">{% blocktrans %}2 миллиона проверенных позиций <b>по лучшим ценам</b> от крупных трейдеров и производителей.{% endblocktrans %}</div>
+      <div class="num">{% trans "Каталог" %}<small>{% trans "поставщиков" %}</small></div>
+      <div class="desc">{% trans "Позиции из каталогов поставщиков с ценами, сроками и доступными аналогами." %}</div>
     </div>
   </div>
 </section>
@@ -4215,15 +4212,14 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
 <!-- ===================== FOOTER ===================== -->
 <footer class="footer" id="footer">
   <div class="inner">
-    <section class="footer-brand" aria-label="Consolidator Parts">
+    <section class="footer-brand" id="contacts" aria-label="Consolidator Parts">
       <a class="footer-logo" href="/landing/" aria-label="Consolidator Parts">
         <img src="{% static 'brand/logo-full-white.svg' %}" alt="Consolidator Parts">
       </a>
       <p class="footer-desc">{% trans "Платформа для поиска, подбора и поставки запчастей для спецтехники. Собираем цены, сроки, аналоги и документы в одном рабочем окне." %}</p>
       <div class="footer-contacts">
-        <div><b>+7 (495) 123-45-67</b> · {% trans "ежедневно 8:00–22:00 МСК" %}</div>
-        <div><a href="mailto:1@consolidator.ru">1@consolidator.ru</a></div>
-        <div>{% trans "МО, г. Долгопрудный, Дорожный пр-д, 10" %}</div>
+        <div>{% trans "Связь с командой и поддержкой доступна в рабочем чате." %}</div>
+        <div><a href="/chat/?new=1&amp;run=support_home">{% trans "Открыть поддержку" %}</a></div>
       </div>
     </section>
 
@@ -4242,44 +4238,32 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <h3>{% trans "Компания" %}</h3>
         <ul>
           <li><a href="#about">{% trans "О компании" %}</a></li>
-          <li><a href="#">{% trans "Реквизиты" %}</a></li>
-          <li><a href="#">{% trans "Сертификаты" %}</a></li>
           <li><a href="/chat/?new=1&amp;run=start_registration&amp;role=seller"
                  data-auth-action="start_registration"
                  data-auth-params='{"role":"seller"}'>{% trans "Стать поставщиком" %}</a></li>
-          <li><a href="#contacts">{% trans "Контакты" %}</a></li>
+          <li><a href="/chat/?new=1&amp;run=support_home">{% trans "Контакты" %}</a></li>
         </ul>
       </div>
       <div class="footer-col">
-        <h3>{% trans "Документы" %}</h3>
+        <h3>{% trans "Правовая информация" %}</h3>
         <ul>
-          <li><a href="#">{% trans "Доставка" %}</a></li>
-          <li><a href="#">{% trans "Возврат товара" %}</a></li>
-          <li><a href="#">{% trans "Гарантии" %}</a></li>
-          <li><a href="#">{% trans "Параллельный импорт" %}</a></li>
-          <li><a href="#">{% trans "Вопросы и ответы" %}</a></li>
+          <li><a href="{% url 'privacy' %}">{% trans "Политика конфиденциальности" %}</a></li>
+          <li><a href="{% url 'cookies' %}">{% trans "Использование cookies" %}</a></li>
+          <li><a href="/chat/?new=1&amp;run=support_home">{% trans "Вопросы и ответы" %}</a></li>
         </ul>
       </div>
     </nav>
 
     <aside class="footer-aside">
       <div class="footer-card">
-        <h3>{% trans "Оплата" %}</h3>
-        <p>{% trans "Безналичный счёт, карты, СБП, международные переводы и расчёты в цифровых валютах для внешнеторговых поставок." %}</p>
-        <div class="payment-logos" aria-label="{% trans 'Поддерживаемые способы оплаты' %}">
-          <span class="payment-logo"><img loading="lazy" decoding="async" src="{% static 'marketplace/payments/visa.svg' %}" alt="Visa"></span>
-          <span class="payment-logo"><img loading="lazy" decoding="async" src="{% static 'marketplace/payments/mastercard.svg' %}" alt="Mastercard"></span>
-          <span class="payment-logo"><img loading="lazy" decoding="async" src="{% static 'marketplace/payments/mir.svg' %}" alt="Мир"></span>
-          <span class="payment-logo"><img loading="lazy" decoding="async" src="{% static 'marketplace/payments/sbp.svg' %}" alt="СБП"></span>
-          <span class="payment-logo"><img loading="lazy" decoding="async" src="{% static 'marketplace/payments/swift.svg' %}" alt="SWIFT"></span>
-          <span class="payment-logo"><img loading="lazy" decoding="async" src="{% static 'marketplace/payments/tether.svg' %}" alt="Tether"></span>
-        </div>
+        <h3>{% trans "Расчёты" %}</h3>
+        <p>{% trans "Способ, валюта и график оплаты согласуются для каждой поставки и фиксируются в документах сделки." %}</p>
       </div>
       <a class="footer-action" href="/chat/?new=1&amp;run=create_rfq">{% trans "Запросить котировку" %}</a>
     </aside>
   </div>
   <div class="bottom">
-    <span>© 2014–2026 ООО «Consolidator Parts» · ИНН 7710000000 · ОГРН 1027700000000</span>
+    <span>© 2026 Consolidator Parts</span>
     <div class="bottom-links">
       <a href="{% url 'privacy' %}">{% trans "Политика конфиденциальности" %}</a>
       <a href="{% url 'cookies' %}">{% trans "Cookies" %}</a>

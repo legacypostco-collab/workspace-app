@@ -18,8 +18,9 @@ Production checklist for Consolidator Parts.
 # Core
 SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(50))')"
 DEBUG_MODE=False
-ALLOWED_HOSTS="consolidator.parts,www.consolidator.parts"
-CSRF_TRUSTED_ORIGINS="https://consolidator.parts,https://www.consolidator.parts"
+ALLOWED_HOSTS="consolidatorparts.com,www.consolidatorparts.com"
+CSRF_TRUSTED_ORIGINS="https://consolidatorparts.com,https://www.consolidatorparts.com"
+SITE_URL="https://consolidatorparts.com"
 
 # HTTPS (after TLS cert is in place)
 USE_HTTPS=True
@@ -43,11 +44,11 @@ CHANNELS_REDIS_URL="redis://127.0.0.1:6379/1"
 # Email (Mailgun example)
 EMAIL_HOST=smtp.mailgun.org
 EMAIL_PORT=587
-EMAIL_HOST_USER=postmaster@mg.consolidator.parts
+EMAIL_HOST_USER=postmaster@mg.consolidatorparts.com
 EMAIL_HOST_PASSWORD=<mailgun-smtp-password>
 EMAIL_USE_TLS=True
-DEFAULT_FROM_EMAIL="Consolidator Parts <noreply@consolidator.parts>"
-ADMINS="Admin:admin@consolidator.parts"
+DEFAULT_FROM_EMAIL="Consolidator Parts <noreply@consolidatorparts.com>"
+ADMINS="Admin:admin@consolidatorparts.com"
 
 # Payments (optional — defaults to stub)
 PAYMENT_PROVIDER=yookassa  # or stripe, or stub
@@ -165,9 +166,9 @@ upstream consolidator_app { server 127.0.0.1:8001; }
 
 server {
   listen 443 ssl http2;
-  server_name consolidator.parts www.consolidator.parts;
-  ssl_certificate /etc/letsencrypt/live/consolidator.parts/fullchain.pem;
-  ssl_certificate_key /etc/letsencrypt/live/consolidator.parts/privkey.pem;
+  server_name consolidatorparts.com www.consolidatorparts.com;
+  ssl_certificate /etc/letsencrypt/live/consolidatorparts.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/consolidatorparts.com/privkey.pem;
   client_max_body_size 20M;
 
   location /static/ { alias /srv/consolidator/staticfiles/; expires 30d; access_log off; }
@@ -193,11 +194,11 @@ server {
   }
 }
 
-server { listen 80; server_name consolidator.parts; return 301 https://$host$request_uri; }
+server { listen 80; server_name consolidatorparts.com; return 301 https://$host$request_uri; }
 ```
 
 ```bash
-sudo certbot --nginx -d consolidator.parts -d www.consolidator.parts
+sudo certbot --nginx -d consolidatorparts.com -d www.consolidatorparts.com
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -244,11 +245,11 @@ python3 manage.py loaddata dump.json
 
 ## 7. Post-deploy verification
 
-- [ ] `curl -I https://consolidator.parts/` returns 200
+- [ ] `curl -I https://consolidatorparts.com/` returns 200
 - [ ] Registration → email verification → login works (real SMTP)
 - [ ] Password reset email arrives
 - [ ] Switch language EN → ZH → RU on cabinet pages
-- [ ] Demo accounts work (`demo_seller`, `demo_buyer`, `demo_operator`)
+- [ ] E2E accounts can sign in through the regular authentication flow
 - [ ] WebSocket connects: open notification dropdown, check browser DevTools Network → WS
 - [ ] Trigger a notification (e.g., create new RFQ as buyer) → seller sees badge update **without refreshing**
 - [ ] Celery beat schedule runs: `celery -A consolidator_site inspect scheduled`

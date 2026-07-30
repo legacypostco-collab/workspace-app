@@ -165,7 +165,7 @@ Claude и Llama не отвечают свободным текстом — он
 
 ### 4.6 Demo
 
-- `demo_buyer / demo_seller / demo_operator` (`demo12345`)
+- `demo_buyer / demo_seller / demo_operator`; пароль задаётся через переменную окружения при наполнении базы
 - Сидер `manage.py seed --all-demo` с проектами и заказами
 
 ---
@@ -350,4 +350,4 @@ Claude и Llama не отвечают свободным текстом — он
 
 **Owner:** Mansour, 1@legacypostco.tech
 **Repo:** legacypostco-collab/workspace-app, ветка `chat-first`
-**Сервер:** `python manage.py runserver 8001`, demo: `demo_buyer/demo_seller/demo_operator` / `demo12345`
+**Сервер:** `python manage.py runserver 8001`; демонстрационные учётные данные задаются локально и не хранятся в репозитории

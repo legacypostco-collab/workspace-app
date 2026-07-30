@@ -36,6 +36,7 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       CHANNELS_REDIS_URL: redis://redis:6379/1
+      DEFAULT_CACHE_URL: redis://redis:6379/2
       PRICELIST_CACHE_URL: redis://redis:6379/4
       # безопасные дефолты для локального запуска без .env:
       SECRET_KEY: ${SECRET_KEY:-}
@@ -68,6 +69,8 @@ services:
       DB_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEFAULT_CACHE_URL: redis://redis:6379/2
+      PRICELIST_CACHE_URL: redis://redis:6379/4
     depends_on:
       db:
         condition: service_healthy
@@ -91,6 +94,8 @@ services:
       DB_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEFAULT_CACHE_URL: redis://redis:6379/2
+      PRICELIST_CACHE_URL: redis://redis:6379/4
     depends_on:
       db:
         condition: service_healthy

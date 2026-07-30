@@ -331,7 +331,7 @@
           data-status="{{ d.status }}"
           data-status-label="{{ d.get_status_display }}"
           data-desc="{{ d.description }}"
-          data-file-url="{{ d.file_url }}"
+          data-file-url="/api/assistant/drawings/{{ d.id }}/file/?action=download"
           data-file-name="{{ d.file_name }}"
           data-updated="{{ d.updated_at|date:'d.m.Y H:i' }}">
         <td style="font-weight:600;">{{ d.title }}</td>
@@ -349,7 +349,7 @@
         <td>
           <div class="drw-actions">
             {% if d.file_url %}
-            <a href="{{ d.file_url }}" target="_blank" rel="noopener noreferrer" class="drw-action-btn" title="{% trans 'Скачать' %}" onclick="event.stopPropagation()">↓</a>
+            <a href="/api/assistant/drawings/{{ d.id }}/file/?action=download" target="_blank" rel="noopener noreferrer" class="drw-action-btn" title="{% trans 'Скачать' %}" onclick="event.stopPropagation()">↓</a>
             {% endif %}
           </div>
         </td>
@@ -436,6 +436,12 @@
   var drawerClose = document.getElementById('drw-drawer-close');
   var activeRow = null;
 
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function(char) {
+      return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[char];
+    });
+  }
+
   function openDrawer(row) {
     if (activeRow) activeRow.classList.remove('active');
     activeRow = row;
@@ -448,12 +454,12 @@
     var statusColors = { draft:'#8A8A8A', on_review:'#E84A21', approved:'#E84A21', rejected:'#FF8C42', archived:'#5A5A5A' };
     var meta = document.getElementById('drw-drawer-meta');
     meta.innerHTML = [
-      [gettext("Формат"), '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:#8A8A8A;">' + d.format + '</span>'],
-      [gettext("Ревизия"), d.revision || '—'],
-      ['OEM', d.oem || '—'],
-      [gettext("Размер"), d.size || '—'],
-      [gettext("Статус"), '<span style="color:' + (statusColors[d.status] || '#8A8A8A') + '">' + d.statusLabel + '</span>'],
-      [gettext("Обновлён"), d.updated],
+      [gettext("Формат"), '<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.06);color:#8A8A8A;">' + escapeHtml(d.format) + '</span>'],
+      [gettext("Ревизия"), escapeHtml(d.revision || '—')],
+      ['OEM', escapeHtml(d.oem || '—')],
+      [gettext("Размер"), escapeHtml(d.size || '—')],
+      [gettext("Статус"), '<span style="color:' + (statusColors[d.status] || '#8A8A8A') + '">' + escapeHtml(d.statusLabel) + '</span>'],
+      [gettext("Обновлён"), escapeHtml(d.updated)],
     ].map(function(pair) {
       return '<div class="drw-drawer-meta-item"><div class="drw-drawer-meta-label">' + pair[0] + '</div><div class="drw-drawer-meta-val">' + pair[1] + '</div></div>';
     }).join('');
@@ -468,10 +474,10 @@
     if (d.fileUrl) {
       filesEl.innerHTML =
         '<div class="drw-drawer-file">' +
-          '<div class="drw-drawer-file-icon">' + d.format + '</div>' +
+          '<div class="drw-drawer-file-icon">' + escapeHtml(d.format) + '</div>' +
           '<div class="drw-drawer-file-info">' +
-            '<div class="drw-drawer-file-name">' + (d.fileName || d.title + '.' + d.format.toLowerCase()) + '</div>' +
-            '<div class="drw-drawer-file-size">' + d.size + '</div>' +
+            '<div class="drw-drawer-file-name">' + escapeHtml(d.fileName || d.title + '.' + d.format.toLowerCase()) + '</div>' +
+            '<div class="drw-drawer-file-size">' + escapeHtml(d.size) + '</div>' +
           '</div>' +
           '<a href="' + d.fileUrl + '" target="_blank" rel="noopener noreferrer" class="drw-drawer-file-dl">↓ Скачать</a>' +
         '</div>';

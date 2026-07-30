@@ -14,8 +14,8 @@ urlpatterns = [
     path("suggest/", views.SuggestView.as_view(), name="assistant-suggest"),
     path("widget-config/", views.WidgetConfigView.as_view(), name="assistant-widget-config"),
     path("role/", views.RoleSwitchView.as_view(), name="assistant-role"),
-    # Telegram bot webhook (prod). Secret в env TELEGRAM_WEBHOOK_SECRET.
-    path("tg/webhook/<str:secret>/", tg_views.telegram_webhook, name="tg-webhook"),
+    # Telegram bot webhook (prod). Secret приходит только в штатном заголовке.
+    path("tg/webhook/", tg_views.telegram_webhook, name="tg-webhook"),
     path("upload-spec/", upload.UploadSpecView.as_view(), name="assistant-upload-spec"),
     path("transcribe-audio/", upload.TranscribeAudioView.as_view(), name="assistant-transcribe"),
     path("recognize-photo/", upload.RecognizePhotoView.as_view(), name="assistant-recognize-photo"),
@@ -32,6 +32,11 @@ urlpatterns = [
     path("topup/<str:ref>/invoice.pdf", documents.TopupInvoicePdfView.as_view(), name="assistant-topup-pdf"),
     # KYB document upload (dealership certificate, bank requisites — file fields в CompanyVerification)
     path("kyb/doc/<str:kind>/", views.KYBDocUploadView.as_view(), name="assistant-kyb-doc-upload"),
+    path(
+        "kyb/<int:user_id>/doc/<str:kind>/file/",
+        views.KYBDocumentFileView.as_view(),
+        name="assistant-kyb-doc-file",
+    ),
     # RFQ detail (for chat-first /chat/rfq/<id>/ page)
     path("rfq/<int:rfq_id>/", views.RFQDetailView.as_view(), name="assistant-rfq-detail"),
     # Notifications (bell + dropdown)
@@ -45,11 +50,9 @@ urlpatterns = [
     # Drawings (ТЗ §12.1): защищённый доступ к чертежу + audit log
     path("drawings/<int:drawing_id>/file/", views.DrawingFileView.as_view(), name="drawing-file"),
     path("drawings/upload/", views.DrawingUploadView.as_view(), name="drawing-upload"),
-    # Auth — magic-link & OAuth
+    # Auth — magic link
     path("auth/magic-link/", auth_views.MagicLinkRequestView.as_view(), name="auth-magic-link-request"),
     path("auth/magic-link/<str:token>/", auth_views.MagicLinkConfirmView.as_view(), name="auth-magic-link-confirm"),
-    path("auth/oauth/<str:provider>/", auth_views.OAuthLoginView.as_view(), name="auth-oauth-login"),
-    path("auth/oauth/callback/<str:provider>/", auth_views.OAuthCallbackView.as_view(), name="auth-oauth-callback"),
     # ERP двусторонний обмен (ТЗ §17.2): аутентификация по X-Api-Token
     path("erp/sync/parts/", erp_views.sync_parts_push, name="erp-sync-parts"),
     path("erp/sync/orders/", erp_views.sync_orders_pull, name="erp-sync-orders"),
@@ -67,9 +70,15 @@ urlpatterns = [
     path("upload-pricelist/<int:import_id>/generate-output/", pricelist.PricelistGenerateOutputView.as_view(), name="pricelist-generate-output"),
     path("upload-pricelist/<int:import_id>/generate-output-progress/", pricelist.PricelistGenerateOutputProgressView.as_view(), name="pricelist-generate-output-progress"),
     path("upload-pricelist/<int:import_id>/output-preview/", pricelist.PricelistOutputPreviewView.as_view(), name="pricelist-output-preview"),
+    path("upload-pricelist/<int:import_id>/output-file/", pricelist.PricelistOutputFileView.as_view(), name="pricelist-output-file"),
     path("upload-pricelist/<int:import_id>/errors.csv", pricelist.PricelistErrorsCsvView.as_view(), name="pricelist-errors-csv"),
     path("geo-cities/", pricelist.GeoCitiesView.as_view(), name="geo-cities"),
     path("geo-ports/", pricelist.GeoPortsView.as_view(), name="geo-ports"),
     path("pricelist-template.csv", pricelist.PricelistTemplateView.as_view(), name="pricelist-template"),
     path("pricelist-template.xlsx", pricelist.PricelistTemplateXlsxView.as_view(), name="pricelist-template-xlsx"),
+    path(
+        "rfq/<int:rfq_id>/quotes/<int:quote_id>/proforma.pdf",
+        documents.ProformaInvoicePdfView.as_view(),
+        name="assistant-proforma-pdf",
+    ),
 ]

@@ -83,6 +83,51 @@ _ROLE_COMMANDS = {
     ],
 }
 
+_ROLE_SUGGESTIONS = {
+    "buyer": [
+        "Покажи мои активные RFQ",
+        "Какие гусеничные цепи есть для Komatsu?",
+        "Статус моих заказов за последний месяц",
+        "Сравни поставщиков по SLA",
+    ],
+    "seller": [
+        "Новые RFQ за сегодня",
+        "Какие запчасти ищут чаще всего?",
+        "Мои просроченные заказы",
+        "KPI за этот месяц",
+    ],
+    "operator_logist": [
+        "Какие отгрузки сейчас в пути?",
+        "Есть ли нарушения SLA?",
+        "Контейнеры на таможне",
+    ],
+    "operator_customs": [
+        "Грузы ожидающие растаможки",
+        "Документы для контейнера",
+        "Просроченные декларации",
+    ],
+    "operator_payment": [
+        "Неоплаченные инвойсы",
+        "Просроченные платежи",
+        "Эскроу-счета по заказам",
+    ],
+    "operator_manager": [
+        "Конверсия RFQ → заказ за месяц",
+        "Топ покупатели по выручке",
+        "Неактивные клиенты",
+    ],
+    "operator": [
+        "Открытые заказы с нарушением сроков",
+        "Поставщики на проверке",
+        "Новые обращения пользователей",
+    ],
+    "admin": [
+        "Метрики платформы за неделю",
+        "Поставщики на верификации",
+        "Просроченные SLA",
+    ],
+}
+
 
 def _base_role(role: str) -> str:
     if role in _ROLE_COMMANDS:
@@ -103,6 +148,14 @@ def commands_for_role(role: str, *, anonymous: bool = False) -> list[dict]:
         }
         for icon, label, action, params in _ROLE_COMMANDS[key]
     ]
+
+
+def suggestions_for_role(role: str, *, anonymous: bool = False) -> list[str]:
+    if anonymous:
+        return []
+    key = _base_role(role)
+    source = _ROLE_SUGGESTIONS.get(key, _ROLE_SUGGESTIONS["buyer"])
+    return [_(text) for text in source]
 
 
 def commands_for_all_roles() -> dict[str, list[dict]]:

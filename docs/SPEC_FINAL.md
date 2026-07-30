@@ -1031,7 +1031,7 @@ created_at, updated_at
 
 ### 11.7 Demo
 
-- ✅ Аккаунты: `demo_buyer`, `demo_seller`, `demo_operator` / `demo12345`
+- ✅ Аккаунты: `demo_buyer`, `demo_seller`, `demo_operator`; пароль задаётся через переменную окружения
 - ✅ Сидер `manage.py seed --all-demo` создаёт проекты, RFQ, заказы, документы
 
 ### 11.8 Что НЕ работает / есть баги
@@ -1600,10 +1600,12 @@ SENTRY_DSN=
 
 После `python manage.py seed --all-demo` доступны:
 
-- **demo_buyer** / demo12345 (роль buyer) — компания "Polyus Olimpiada"
-- **demo_seller** / demo12345 (роль seller) — компания "Heavy Equipment Spares"
-- **demo_operator** / demo12345 (роль operator_manager)
-- **admin** / admin12345 (Django superuser)
+- **demo_buyer** (роль buyer) — компания "Polyus Olimpiada"
+- **demo_seller** (роль seller) — компания "Heavy Equipment Spares"
+- **demo_operator** (роль operator_manager)
+- Администратор создаётся отдельно командой `create_admin`.
+
+Пароли передаются через переменные окружения и не должны храниться в репозитории.
 
 Сид содержит:
 - 3 проекта (Polyus Olimpiada, SUEK Borodino, EuroChem Kovdor)

@@ -88,6 +88,48 @@ def test_idor_create_claim_seller_cannot_open_on_order_without_his_parts(client,
     assert any(k in (r.text or "").lower() for k in ("не содержит", "не найден"))
 
 
+def test_seller_cannot_open_buyer_claim_through_http_endpoint(
+    client, buyer_a_order
+):
+    from marketplace.models import Category, OrderClaim, OrderItem, Part, UserProfile
+
+    seller = User.objects.create_user(username="seller_claim_http", password="x")
+    UserProfile.objects.create(
+        user=seller,
+        role="seller",
+        can_manage_orders=True,
+    )
+    category = Category.objects.create(name="Claim category", slug="claim-category")
+    part = Part.objects.create(
+        seller=seller,
+        title="Claim part",
+        slug="claim-part",
+        oem_number="CLAIM-001",
+        description="Claim access test",
+        price="10.00",
+        stock_quantity=1,
+        category=category,
+    )
+    OrderItem.objects.create(
+        order=buyer_a_order,
+        part=part,
+        quantity=1,
+        unit_price="10.00",
+    )
+    client.force_login(seller)
+
+    response = client.post(
+        f"/orders/{buyer_a_order.id}/claims/open/",
+        {"title": "Seller-created claim", "description": "Must be rejected"},
+    )
+
+    assert response.status_code == 403
+    assert not OrderClaim.objects.filter(
+        order=buyer_a_order,
+        opened_by=seller,
+    ).exists()
+
+
 def test_idor_unknown_role_create_claim_blocked(client, buyer_b, buyer_a_order):
     """Role не buyer/seller/operator → отказ."""
     from assistant.actions import create_claim
@@ -196,6 +238,25 @@ def test_csrf_required_on_set_language(client, buyer_a):
     r = c.post("/api/set-language/", data=json.dumps({"language": "en"}),
                 content_type="application/json")
     assert r.status_code == 403
+
+
+def test_shared_cache_url_keeps_redis_credentials_and_selects_database():
+    from consolidator_site.settings import _redis_url_for_db
+
+    assert (
+        _redis_url_for_db(
+            "rediss://cache-user:cache-pass@redis.internal:6380/9?ssl_cert_reqs=required",
+            2,
+        )
+        == "rediss://cache-user:cache-pass@redis.internal:6380/2?ssl_cert_reqs=required"
+    )
+
+
+def test_shared_cache_url_rejects_non_redis_urls():
+    from consolidator_site.settings import _redis_url_for_db
+
+    assert _redis_url_for_db("http://example.test/cache", 2) == ""
+    assert _redis_url_for_db("", 2) == ""
 
 
 # ══ A05:2021 — Misconfig: open admin panel ════════════════════════

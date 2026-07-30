@@ -835,7 +835,8 @@ class DashboardProjectionBuilder:
 
 
 def refresh_dashboard_projection_for_user(user: User) -> DashboardProjection | None:
-    profile = UserProfile.objects.filter(user=user).first()
-    if not profile or profile.role != "seller":
+    from assistant.permissions import user_allowed_roles
+
+    if "seller" not in user_allowed_roles(user):
         return None
     return DashboardProjectionBuilder().build(supplier=user, user=user)

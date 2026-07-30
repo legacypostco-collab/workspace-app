@@ -44,7 +44,15 @@ class StubPaymentAdapter(BasePaymentAdapter):
     """Demo adapter. Returns mock data, no external calls."""
     name = "stub"
 
+    @staticmethod
+    def _require_debug():
+        from django.conf import settings
+
+        if not settings.DEBUG:
+            raise RuntimeError("Stub payment adapter is disabled outside DEBUG")
+
     def create_payment(self, order, amount, return_url, description=""):
+        self._require_debug()
         # Mock payment ID for demo
         pid = f"stub-{order.id}-{int(amount * 100)}"
         return PaymentResult(
@@ -55,7 +63,10 @@ class StubPaymentAdapter(BasePaymentAdapter):
         )
 
     def verify_callback(self, payload, signature=""):
-        # Always succeeds in stub mode
+        from django.conf import settings
+
+        if not settings.DEBUG:
+            return ("", 0, "failed")
         return (
             str(payload.get("order_id", "")),
             float(payload.get("amount", 0)),
@@ -63,9 +74,11 @@ class StubPaymentAdapter(BasePaymentAdapter):
         )
 
     def capture(self, payment_id):
+        self._require_debug()
         return True
 
     def refund(self, payment_id, amount=None):
+        self._require_debug()
         return f"refund-{payment_id}"
 
 
@@ -101,14 +114,10 @@ class YooKassaAdapter(BasePaymentAdapter):
             raise RuntimeError("yookassa SDK not installed: pip install yookassa")
 
     def verify_callback(self, payload, signature=""):
-        # YooKassa sends notification with signature in headers
-        # Real impl validates signature against secret_key
-        obj = payload.get("object", {})
-        return (
-            obj.get("metadata", {}).get("order_id", ""),
-            float(obj.get("amount", {}).get("value", 0)),
-            obj.get("status", "pending"),
-        )
+        # YooKassa notifications must be verified by fetching the payment from
+        # the provider before any local state change. This legacy adapter does
+        # not have that flow, so it must fail closed.
+        return ("", 0, "failed")
 
     def capture(self, payment_id):
         try:
@@ -171,10 +180,9 @@ class StripeAdapter(BasePaymentAdapter):
         try:
             import stripe
             secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-            if secret and signature:
-                event = stripe.Webhook.construct_event(payload, signature, secret)
-            else:
-                event = payload
+            if not secret or not signature:
+                return ("", 0, "failed")
+            event = stripe.Webhook.construct_event(payload, signature, secret)
             obj = event.get("data", {}).get("object", {}) if isinstance(event, dict) else event["data"]["object"]
             return (
                 obj.get("metadata", {}).get("order_id", ""),
@@ -205,4 +213,8 @@ def get_payment_adapter(name: str = None) -> BasePaymentAdapter:
         return YooKassaAdapter()
     if name == "stripe":
         return StripeAdapter()
+    from django.conf import settings
+
+    if not settings.DEBUG:
+        raise RuntimeError("Stub payment adapter is disabled outside DEBUG")
     return StubPaymentAdapter()

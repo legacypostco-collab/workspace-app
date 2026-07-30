@@ -22,8 +22,32 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _notify, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
+MAX_COMPETITOR_PRICE = Decimal("999999999999.99")
+MAX_COMPETITOR_DELIVERY_DAYS = 365
+MAX_COMPETITOR_NOTE_LENGTH = 2000
+
+
+def _finite_decimal(value, *, minimum=None, maximum=None):
+    try:
+        parsed = Decimal(str(value))
+    except Exception:
+        return None
+    if not parsed.is_finite():
+        return None
+    if minimum is not None and parsed < minimum:
+        return None
+    if maximum is not None and parsed > maximum:
+        return None
+    return parsed
+
+
+def _seller_principal(user):
+    from .seller_actions import _effective_seller
+
+    return _effective_seller(user)
 
 
 @register("upload_competitor_offer")
@@ -31,7 +55,9 @@ def upload_competitor_offer(params, user, role):
     """Buyer загружает конкурентное предложение для триггера переторжки."""
     from marketplace.models import CompetitorOffer, Quote
 
-    confirmed = bool(params.get("confirmed"))
+    if role not in ("buyer", "seller"):
+        return ActionResult(text=_("Загрузить предложение может только покупатель."))
+    confirmed = confirmation_is_true(params.get("confirmed"))
     try:
         quote = Quote.objects.select_related("rfq", "seller").get(
             id=int(params.get("quote_id") or 0),
@@ -39,12 +65,16 @@ def upload_competitor_offer(params, user, role):
     except (Quote.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Котировка не найдена."))
 
-    if quote.rfq.created_by_id != user.id:
+    if (
+        quote.rfq.created_by_id != user.id
+        or quote.direction != "seller_to_buyer"
+        or quote.status not in ("submitted", "finalized")
+        or quote.rfq.status == "cancelled"
+    ):
         return ActionResult(text=_("Загрузить competitor-оффер может только заказчик RFQ."))
 
     competitor_name = (params.get("competitor_name") or "").strip()
     quoted_price_raw = params.get("quoted_price") or ""
-    delivery_days = int(params.get("delivery_days") or 14)
     note = (params.get("note") or "").strip()
 
     if not confirmed or not competitor_name or not quoted_price_raw:
@@ -66,10 +96,21 @@ def upload_competitor_offer(params, user, role):
             }}],
         )
 
-    try:
-        quoted_price = Decimal(str(quoted_price_raw))
-    except Exception:
+    quoted_price = _finite_decimal(
+        quoted_price_raw,
+        minimum=Decimal("0.01"),
+        maximum=MAX_COMPETITOR_PRICE,
+    )
+    if quoted_price is None:
         return ActionResult(text=_("⚠️ Цена должна быть числом."))
+    try:
+        delivery_days = int(params.get("delivery_days") or 14)
+    except (TypeError, ValueError, OverflowError):
+        return ActionResult(text=_("⚠️ Срок поставки указан неверно."))
+    if not 1 <= delivery_days <= MAX_COMPETITOR_DELIVERY_DAYS:
+        return ActionResult(text=_("⚠️ Срок поставки должен быть от 1 до 365 дней."))
+    if len(note) > MAX_COMPETITOR_NOTE_LENGTH:
+        return ActionResult(text=_("⚠️ Комментарий слишком длинный."))
 
     offer = CompetitorOffer.objects.create(
         rfq=quote.rfq, quote=quote, uploaded_by=user,
@@ -114,7 +155,10 @@ def respond_to_competitor_offer(params, user, role):
     """Seller отвечает на competitor offer — даёт ручную скидку."""
     from marketplace.models import CompetitorOffer, Quote, QuoteItem
 
-    confirmed = bool(params.get("confirmed"))
+    if role != "seller":
+        return ActionResult(text=_("Отвечать может только продавец."))
+    seller_user = _seller_principal(user)
+    confirmed = confirmation_is_true(params.get("confirmed"))
     try:
         offer = CompetitorOffer.objects.select_related("quote", "rfq").get(
             id=int(params.get("offer_id") or 0),
@@ -122,14 +166,21 @@ def respond_to_competitor_offer(params, user, role):
     except (CompetitorOffer.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Конкурентное предложение не найдено."))
 
-    if offer.quote.seller_id != user.id:
+    if offer.quote.seller_id != seller_user.id:
         return ActionResult(text=_("Отвечать может только продавец, чью котировку оспаривают."))
-    if offer.status != "uploaded":
+    if offer.status != "uploaded" or offer.rfq.status == "cancelled":
         return ActionResult(text=_("Уже обработано (статус: %(st)s).") % {"st": offer.get_status_display()})
 
     discount_pct_raw = params.get("discount_pct") or ""
     seller_comment = (params.get("seller_comment") or "").strip()
-    decline = bool(params.get("decline"))
+    decline_raw = params.get("decline")
+    decline = (
+        decline_raw is True
+        or decline_raw == 1
+        or str(decline_raw).strip().lower() in {"1", "true", "yes", "да"}
+    )
+    if len(seller_comment) > MAX_COMPETITOR_NOTE_LENGTH:
+        return ActionResult(text=_("Комментарий слишком длинный."))
 
     if not confirmed:
         gap = offer.quote.total_amount - offer.quoted_price
@@ -165,11 +216,28 @@ def respond_to_competitor_offer(params, user, role):
             }}],
         )
 
-    if decline or str(decline) == "1":
-        offer.status = "declined"
-        offer.seller_comment = seller_comment
-        offer.reviewed_at = timezone.now()
-        offer.save(update_fields=["status", "seller_comment", "reviewed_at"])
+    if decline:
+        from django.db import transaction
+
+        with transaction.atomic():
+            locked_offer = (
+                CompetitorOffer.objects.select_for_update(of=("self",))
+                .select_related("quote", "rfq")
+                .get(pk=offer.pk)
+            )
+            if (
+                locked_offer.status != "uploaded"
+                or locked_offer.quote.seller_id != seller_user.id
+                or locked_offer.rfq.status == "cancelled"
+            ):
+                return ActionResult(text=_("Предложение уже обработано или недоступно."))
+            locked_offer.status = "declined"
+            locked_offer.seller_comment = seller_comment
+            locked_offer.reviewed_at = timezone.now()
+            locked_offer.save(
+                update_fields=["status", "seller_comment", "reviewed_at"],
+            )
+            offer = locked_offer
         if offer.uploaded_by:
             _notify(offer.uploaded_by, kind="rfq",
                     title=_("Поставщик отклонил вашу competitor-оффер"),
@@ -179,48 +247,82 @@ def respond_to_competitor_offer(params, user, role):
             text=_("✓ Competitor #%(id)s отклонён.") % {"id": offer.id},
         )
 
-    try:
-        pct = Decimal(str(discount_pct_raw))
-    except Exception:
-        pct = Decimal("0")
-
-    if pct <= 0:
+    pct = _finite_decimal(
+        discount_pct_raw,
+        minimum=Decimal("0.01"),
+        maximum=Decimal("99.99"),
+    )
+    if pct is None:
         return ActionResult(text=_("⚠️ Укажите положительный % скидки или нажмите 'Отказаться'."))
 
-    # Создаём новую counter-quote с обновлёнными ценами
-    new_total = (offer.quote.total_amount * (Decimal("100") - pct) / Decimal("100")).quantize(Decimal("0.01"))
-    new_quote = Quote.objects.create(
-        rfq=offer.rfq, seller=user,
-        direction="seller_to_buyer",
-        parent_quote=offer.quote,
-        round_number=offer.quote.round_number + 1,
-        status="submitted",
-        delivery_days=offer.quote.delivery_days,
-        total_amount=new_total,
-        message=(
-            _("Скидка %(pct)s%% в ответ на конкурентное предложение от %(comp)s. %(comment)s")
-            % {"pct": pct, "comp": offer.competitor_name, "comment": seller_comment}
-        )[:500],
-    )
-    # Копируем items с обновлёнными ценами
-    for qi in offer.quote.items.all():
-        new_unit = (qi.unit_price * (Decimal("100") - pct) / Decimal("100")).quantize(Decimal("0.01"))
-        QuoteItem.objects.create(
-            quote=new_quote, rfq_item=qi.rfq_item, part=qi.part,
-            title_snapshot=qi.title_snapshot, quantity=qi.quantity,
-            unit_price=new_unit,
+    from django.db import transaction
+
+    with transaction.atomic():
+        offer = (
+            CompetitorOffer.objects.select_for_update(of=("self",))
+            .select_related("quote", "rfq")
+            .get(pk=offer.pk)
         )
+        if (
+            offer.status != "uploaded"
+            or offer.quote.seller_id != seller_user.id
+            or offer.rfq.status == "cancelled"
+        ):
+            return ActionResult(text=_("Предложение уже обработано или недоступно."))
+        quote = Quote.objects.select_for_update(of=("self",)).get(pk=offer.quote_id)
+        quote_total = _finite_decimal(
+            quote.total_amount,
+            minimum=Decimal("0.01"),
+            maximum=MAX_COMPETITOR_PRICE,
+        )
+        if quote_total is None or quote.status not in ("submitted", "finalized"):
+            return ActionResult(text=_("Исходная котировка уже недоступна для скидки."))
+        multiplier = (Decimal("100") - pct) / Decimal("100")
+        new_total = (quote_total * multiplier).quantize(Decimal("0.01"))
+        if new_total <= 0:
+            return ActionResult(text=_("После скидки цена должна оставаться положительной."))
 
-    offer.status = "matched"
-    offer.seller_response_pct = pct
-    offer.seller_comment = seller_comment
-    offer.reviewed_at = timezone.now()
-    offer.save(update_fields=["status", "seller_response_pct", "seller_comment",
-                                "reviewed_at"])
+        source_items = list(quote.items.all())
+        new_items = []
+        for qi in source_items:
+            new_unit = (qi.unit_price * multiplier).quantize(Decimal("0.01"))
+            if not new_unit.is_finite() or new_unit <= 0:
+                return ActionResult(
+                    text=_("После скидки цена каждой позиции должна оставаться положительной.")
+                )
+            new_items.append((qi, new_unit))
 
-    # Старый quote → countered (буде обновлён)
-    offer.quote.status = "countered"
-    offer.quote.save(update_fields=["status"])
+        new_quote = Quote.objects.create(
+            rfq=offer.rfq, seller=seller_user,
+            direction="seller_to_buyer",
+            parent_quote=quote,
+            round_number=quote.round_number + 1,
+            status="submitted",
+            delivery_days=quote.delivery_days,
+            total_amount=new_total,
+            message=(
+                _("Скидка %(pct)s%% в ответ на конкурентное предложение от %(comp)s. %(comment)s")
+                % {"pct": pct, "comp": offer.competitor_name, "comment": seller_comment}
+            )[:500],
+        )
+        QuoteItem.objects.bulk_create([
+            QuoteItem(
+                quote=new_quote, rfq_item=qi.rfq_item, part=qi.part,
+                title_snapshot=qi.title_snapshot, quantity=qi.quantity,
+                unit_price=new_unit,
+            )
+            for qi, new_unit in new_items
+        ])
+
+        offer.status = "matched"
+        offer.seller_response_pct = pct
+        offer.seller_comment = seller_comment
+        offer.reviewed_at = timezone.now()
+        offer.save(update_fields=["status", "seller_response_pct", "seller_comment",
+                                    "reviewed_at"])
+
+        quote.status = "countered"
+        quote.save(update_fields=["status"])
 
     if offer.uploaded_by:
         _new = f"{new_total:,.0f}"

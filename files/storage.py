@@ -10,6 +10,7 @@ from uuid import uuid4
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
 from django.core.files.storage.filesystem import FileSystemStorage
+from django.conf import settings
 from django.utils import timezone
 
 
@@ -22,12 +23,32 @@ class StoredUpload:
     original_name: str
 
 
+def _local_fallback_enabled() -> bool:
+    return bool(
+        getattr(settings, "DEBUG", False)
+        or getattr(settings, "TESTING", False)
+    )
+
+
+def _fallback_root() -> Path:
+    return (Path(tempfile.gettempdir()) / "workspace-app-media").resolve()
+
+
+def _fallback_path(storage_key: str) -> Path:
+    fallback_root = _fallback_root()
+    candidate = (fallback_root / str(storage_key or "")).resolve()
+    if candidate != fallback_root and fallback_root not in candidate.parents:
+        raise ValueError("Invalid fallback storage key.")
+    return candidate
+
+
 def _save_bytes_to_storage(storage_path: str, content: bytes) -> str:
     try:
         return default_storage.save(storage_path, ContentFile(content))
     except PermissionError:
-        # Fallback for restricted local environments: keep logic compatible with S3/default storage in production.
-        fallback_root = Path(tempfile.gettempdir()) / "workspace-app-media"
+        if not _local_fallback_enabled():
+            raise
+        fallback_root = _fallback_root()
         fallback_root.mkdir(parents=True, exist_ok=True, mode=0o700)
         try:
             fallback_root.chmod(0o700)
@@ -45,10 +66,13 @@ def store_import_source_file(uploaded_file, prefix: str = "imports/source") -> S
     hasher = hashlib.sha256()
     chunks: list[bytes] = []
     size_bytes = 0
+    max_bytes = int(getattr(settings, "MAX_IMPORT_FILE_BYTES", 50 * 1024 * 1024))
     for chunk in uploaded_file.chunks():
         hasher.update(chunk)
         chunks.append(chunk)
         size_bytes += len(chunk)
+        if size_bytes > max_bytes:
+            raise ValueError(f"Файл слишком большой. Максимум: {max_bytes} байт.")
 
     content = b"".join(chunks)
     checksum_sha256 = hasher.hexdigest()
@@ -100,7 +124,8 @@ def read_stored_file_bytes(storage_key: str) -> bytes:
         with default_storage.open(storage_key, "rb") as fh:
             return fh.read()
     except Exception:
-        fallback_root = Path(tempfile.gettempdir()) / "workspace-app-media"
-        fallback_path = fallback_root / storage_key
+        if not _local_fallback_enabled():
+            raise
+        fallback_path = _fallback_path(storage_key)
         with fallback_path.open("rb") as fh:
             return fh.read()

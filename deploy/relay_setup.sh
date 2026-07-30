@@ -4,7 +4,7 @@
 # Принцип: TCP/TLS passthrough — прод соединяется TLS напрямую с Anthropic
 # СКВОЗЬ релей; ключ на релее не виден (end-to-end TLS прод↔Anthropic).
 set -e
-PROD_IP="72.56.234.89"
+PROD_IP="${PROD_IP:?Перед запуском задайте PROD_IP рабочей системы}"
 
 echo "=== 1. nginx + stream-модуль ==="
 export DEBIAN_FRONTEND=noninteractive

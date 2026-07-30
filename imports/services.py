@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
@@ -13,6 +14,7 @@ from catalog.models import Product, ProductCrossReference
 from files.models import StoredFile
 from files.storage import read_stored_file_bytes, store_generated_file_bytes
 from offers.models import SupplierOffer, SupplierOfferPrice
+from marketplace.export_security import safe_spreadsheet_row
 
 from .models import ImportErrorReport, ImportJob, ImportRow
 
@@ -24,6 +26,8 @@ def _normalize_header(value: str) -> str:
 
 
 def _decode_csv_bytes(raw: bytes) -> str:
+    if b"\x00" in raw:
+        raise ValueError("CSV-файл содержит бинарные данные.")
     for encoding in ("utf-8-sig", "utf-8", "cp1251"):
         try:
             return raw.decode(encoding)
@@ -37,9 +41,12 @@ class PreviewResult:
     fieldnames: list[str]
     detected_columns: dict[str, str]
     sample_rows: list[dict[str, str]]
+    row_count: int = 0
 
 
 class ImportParser:
+    MAX_COLUMNS = 100
+
     OEM_ALIASES = {"oem", "part number", "partnumber", "sku", "article"}
     PRICE_ALIASES = {"price", "unitprice", "unit price", "price exw", "price fob sea", "price fob air"}
     PRICE_EXW_ALIASES = {"price exw", "exw", "price"}
@@ -77,14 +84,33 @@ class ImportParser:
         "height": HEIGHT_ALIASES,
     }
 
-    def parse_csv_rows(self, storage_key: str) -> list[tuple[int, dict[str, str]]]:
-        raw = read_stored_file_bytes(storage_key)
+    def _csv_reader(self, raw: bytes) -> tuple[csv.DictReader, list[str]]:
         text = _decode_csv_bytes(raw)
         reader = csv.DictReader(io.StringIO(text))
-        if not reader.fieldnames:
-            return []
+        raw_fieldnames = list(reader.fieldnames or [])
+        fieldnames = [str(header or "").strip() for header in raw_fieldnames]
+        if not fieldnames:
+            raise ValueError("CSV-файл не содержит строку заголовков.")
+        if any(not header for header in fieldnames):
+            raise ValueError("CSV-файл содержит пустой заголовок колонки.")
+        max_columns = int(getattr(settings, "MAX_IMPORT_COLUMNS", self.MAX_COLUMNS))
+        if len(fieldnames) > max_columns:
+            raise ValueError(f"CSV-файл содержит слишком много колонок. Максимум: {max_columns}.")
+        normalized = [header.casefold() for header in fieldnames]
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("CSV-файл содержит повторяющиеся заголовки колонок.")
+        return reader, fieldnames
+
+    def parse_csv_rows(self, storage_key: str) -> list[tuple[int, dict[str, str]]]:
+        raw = read_stored_file_bytes(storage_key)
+        reader, _fieldnames = self._csv_reader(raw)
+        max_rows = int(getattr(settings, "MAX_IMPORT_ROWS", 5000))
         rows: list[tuple[int, dict[str, str]]] = []
         for row_no, row in enumerate(reader, start=2):
+            if len(rows) >= max_rows:
+                raise ValueError(f"CSV-файл содержит слишком много строк. Максимум: {max_rows}.")
+            if None in row:
+                raise ValueError(f"Строка {row_no} содержит больше значений, чем заголовков.")
             raw_row = {str(k or "").strip(): str(v or "").strip() for k, v in row.items()}
             rows.append((row_no, raw_row))
         return rows
@@ -102,16 +128,28 @@ class ImportParser:
 
     def build_preview(self, storage_key: str, rows_limit: int = 10) -> PreviewResult:
         raw = read_stored_file_bytes(storage_key)
-        text = _decode_csv_bytes(raw)
-        reader = csv.DictReader(io.StringIO(text))
-        fieldnames = [str(h or "").strip() for h in (reader.fieldnames or []) if str(h or "").strip()]
+        return self.build_preview_from_bytes(raw, rows_limit=rows_limit)
+
+    def build_preview_from_bytes(self, raw: bytes, rows_limit: int = 10) -> PreviewResult:
+        reader, fieldnames = self._csv_reader(raw)
         mapping = self.infer_column_mapping(fieldnames)
         sample_rows: list[dict[str, str]] = []
-        for row in reader:
-            sample_rows.append({str(k or "").strip(): str(v or "").strip() for k, v in row.items()})
-            if len(sample_rows) >= rows_limit:
-                break
-        return PreviewResult(fieldnames=fieldnames, detected_columns=mapping, sample_rows=sample_rows)
+        row_count = 0
+        max_rows = int(getattr(settings, "MAX_IMPORT_ROWS", 5000))
+        for row_no, row in enumerate(reader, start=2):
+            row_count += 1
+            if row_count > max_rows:
+                raise ValueError(f"CSV-файл содержит слишком много строк. Максимум: {max_rows}.")
+            if None in row:
+                raise ValueError(f"Строка {row_no} содержит больше значений, чем заголовков.")
+            if len(sample_rows) < rows_limit:
+                sample_rows.append({str(k or "").strip(): str(v or "").strip() for k, v in row.items()})
+        return PreviewResult(
+            fieldnames=fieldnames,
+            detected_columns=mapping,
+            sample_rows=sample_rows,
+            row_count=row_count,
+        )
 
     def extract_fields(self, raw_row: dict[str, str], column_mapping: dict[str, str] | None = None) -> dict[str, str]:
         extracted = {
@@ -581,7 +619,7 @@ class ErrorReportBuilder:
         for row in invalid_rows:
             raw = row.raw_payload or {}
             writer.writerow(
-                [
+                safe_spreadsheet_row([
                     row.row_no,
                     row.error_code,
                     row.error_message,
@@ -591,7 +629,7 @@ class ErrorReportBuilder:
                     self._extract_input_value(raw, self.CROSS_NUMBER_ALIASES),
                     self._extract_input_value(raw, self.PRICE_ALIASES),
                     self._extract_input_value(raw, self.QUANTITY_ALIASES),
-                ]
+                ])
             )
 
         content = buffer.getvalue().encode("utf-8")
@@ -671,10 +709,13 @@ class ImportRowPipeline:
 
     @transaction.atomic
     def process_job(self, job: ImportJob) -> ImportProcessingSummary:
-        if job.source_type != ImportJob.SourceType.CSV:
-            raise ValueError("Сейчас поддерживается только CSV источник.")
+        if job.source_type not in {
+            ImportJob.SourceType.CSV,
+            ImportJob.SourceType.GOOGLE_SHEET,
+        }:
+            raise ValueError("Тип источника импорта не поддерживается.")
         if not job.source_file_id:
-            raise ValueError("Для CSV импорта отсутствует source_file.")
+            raise ValueError("Для импорта отсутствует сохранённый файл источника.")
 
         rows = self.parser.parse_csv_rows(job.source_file.storage_key)
         total_rows = 0
@@ -1006,63 +1047,85 @@ class StrictImportService:
     def _read_xlsx_rows(self, raw: bytes) -> tuple[list[str], list[tuple[int, dict[str, str]]]]:
         from openpyxl import load_workbook
 
-        wb = load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
-        ws = wb.active
+        wb = load_workbook(
+            io.BytesIO(raw),
+            read_only=True,
+            data_only=True,
+            keep_links=False,
+        )
+        try:
+            ws = wb.active
+            max_columns = int(getattr(settings, "MAX_IMPORT_COLUMNS", ImportParser.MAX_COLUMNS))
+            max_rows = int(getattr(settings, "MAX_IMPORT_ROWS", 5000))
+            if ws.max_column > max_columns:
+                raise ValueError(f"Таблица содержит слишком много колонок. Максимум: {max_columns}.")
+            if ws.max_row > max_rows + 5:
+                raise ValueError(f"Таблица содержит слишком много строк. Максимум: {max_rows}.")
 
-        header_row_idx = None
-        headers: list[str] = []
-        for row_idx, row in enumerate(ws.iter_rows(min_row=1, max_row=5, values_only=False), start=1):
-            cells = [str(c.value or "").strip() for c in row]
-            if "PartNumber" in cells:
-                headers = cells
-                header_row_idx = row_idx
-                break
+            header_row_idx = None
+            headers: list[str] = []
+            for row_idx, row in enumerate(
+                ws.iter_rows(min_row=1, max_row=5, values_only=True),
+                start=1,
+            ):
+                cells = [str(value or "").strip() for value in row]
+                if "PartNumber" in cells:
+                    headers = cells
+                    header_row_idx = row_idx
+                    break
 
-        if header_row_idx is None:
+            if header_row_idx is None:
+                return [], []
+            non_empty_headers = [header for header in headers if header]
+            normalized_headers = [header.casefold() for header in non_empty_headers]
+            if len(set(normalized_headers)) != len(normalized_headers):
+                raise ValueError("Таблица содержит повторяющиеся заголовки колонок.")
+
+            rows: list[tuple[int, dict[str, str]]] = []
+            for row_idx, row in enumerate(
+                ws.iter_rows(min_row=header_row_idx + 1, values_only=True),
+                start=header_row_idx + 1,
+            ):
+                values = [str(value or "").strip() if value is not None else "" for value in row]
+                if not any(values):
+                    continue
+                if len(rows) >= max_rows:
+                    raise ValueError(f"Таблица содержит слишком много строк. Максимум: {max_rows}.")
+                row_dict = {}
+                for index, header in enumerate(headers):
+                    if header and index < len(values):
+                        row_dict[header] = values[index]
+                rows.append((row_idx, row_dict))
+            return headers, rows
+        finally:
             wb.close()
-            return [], []
-
-        rows: list[tuple[int, dict[str, str]]] = []
-        for row_idx, row in enumerate(ws.iter_rows(min_row=header_row_idx + 1, values_only=True), start=header_row_idx + 1):
-            values = [str(v or "").strip() if v is not None else "" for v in row]
-            if not any(values):
-                continue
-            row_dict = {}
-            for i, h in enumerate(headers):
-                if h and i < len(values):
-                    row_dict[h] = values[i]
-            rows.append((row_idx, row_dict))
-
-        wb.close()
-        return headers, rows
 
     def _read_csv_rows(self, raw: bytes) -> tuple[list[str], list[tuple[int, dict[str, str]]]]:
-        text = _decode_csv_bytes(raw)
-        text = text.replace("\r\n", "\n").replace("\r", "\n")
-        reader = csv.DictReader(io.StringIO(text, newline=""))
-        if not reader.fieldnames:
-            return [], []
-        headers = [str(h or "").strip() for h in reader.fieldnames if str(h or "").strip()]
+        reader, headers = ImportParser()._csv_reader(raw)
+        max_rows = int(getattr(settings, "MAX_IMPORT_ROWS", 5000))
         rows: list[tuple[int, dict[str, str]]] = []
         for row_no, row in enumerate(reader, start=2):
+            if len(rows) >= max_rows:
+                raise ValueError(f"CSV-файл содержит слишком много строк. Максимум: {max_rows}.")
+            if None in row:
+                raise ValueError(f"Строка {row_no} содержит больше значений, чем заголовков.")
             row_dict = {str(k or "").strip(): str(v or "").strip() for k, v in row.items()}
             rows.append((row_no, row_dict))
         return headers, rows
 
-    def validate_structure(self, storage_key: str, original_name: str) -> tuple[bool, str, list[str]]:
-        raw = read_stored_file_bytes(storage_key)
+    def validate_content(self, raw: bytes, original_name: str) -> tuple[bool, str, list[str]]:
         ext = (original_name or "").rsplit(".", 1)[-1].lower()
 
         try:
-            if ext in ("xlsx", "xls"):
+            if ext == "xlsx":
                 headers, _ = self._read_xlsx_rows(raw)
             elif ext == "csv":
                 headers, _ = self._read_csv_rows(raw)
             else:
-                return False, "Неподдерживаемый формат файла. Загрузите XLS, XLSX или CSV.", []
-        except Exception as e:
+                return False, "Неподдерживаемый формат файла. Загрузите XLSX или CSV.", []
+        except Exception:
             logger.exception("Ошибка чтения файла %s", original_name)
-            return False, f"Не удалось прочитать файл: {e}", []
+            return False, "Не удалось безопасно прочитать файл.", []
 
         if not headers:
             return False, "Не удалось прочитать заголовки файла.", []
@@ -1072,6 +1135,10 @@ class StrictImportService:
             return False, f"Отсутствуют обязательные колонки: {', '.join(missing)}.", missing
 
         return True, "", []
+
+    def validate_structure(self, storage_key: str, original_name: str) -> tuple[bool, str, list[str]]:
+        raw = read_stored_file_bytes(storage_key)
+        return self.validate_content(raw, original_name)
 
     def _parse_number(self, raw: str) -> Decimal | None:
         cleaned = raw.strip().replace(" ", "").replace(",", ".")
@@ -1137,10 +1204,12 @@ class StrictImportService:
         raw = read_stored_file_bytes(storage_key)
         ext = (original_name or "").rsplit(".", 1)[-1].lower()
 
-        if ext in ("xlsx", "xls"):
+        if ext == "xlsx":
             headers, rows = self._read_xlsx_rows(raw)
-        else:
+        elif ext == "csv":
             headers, rows = self._read_csv_rows(raw)
+        else:
+            raise ValueError("Неподдерживаемый формат файла.")
 
         missing = [col for col in STRICT_ALL_COLUMNS if col not in headers]
         if missing:

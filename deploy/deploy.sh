@@ -2,7 +2,7 @@
 # Production deploy для Consolidator Parts на /var/www/workspace-app.
 #
 # Использование:
-#   ssh root@72.56.234.89 'cd /var/www/workspace-app && bash deploy/deploy.sh'
+#   ssh deploy@<PRODUCTION_HOST> 'cd /var/www/workspace-app && bash deploy/deploy.sh'
 #
 # Опции:
 #   bash deploy/deploy.sh              # обычный деплой (git pull + migrate + restart)
@@ -43,13 +43,31 @@ log "━━━ 0. pre-flight checks ━━━"
 # Загружаем ЗНАЧЕНИЯ из .env (а не только имена) — иначе проверки ниже всегда
 # видят пустые переменные и падают на «SECRET_KEY required».
 set -a; . ./.env; set +a
-[[ -n "${SECRET_KEY:-}" ]]              || die ".env: SECRET_KEY required"
+require_secret() {
+    local name="$1" min_length="$2" value="${!1:-}"
+    [[ "${#value}" -ge "$min_length" ]] || die ".env: $name must contain at least $min_length characters"
+    case "$value" in
+        *CHANGE_ME*|dev-secret*|dev-only*|django-insecure-*|whsec_...|sk_live_...)
+            die ".env: $name still contains a known placeholder"
+            ;;
+    esac
+}
+require_secret SECRET_KEY 50
+require_secret QR_SECRET 32
+require_secret PAYMENT_CALLBACK_SECRET 32
 [[ -n "${DATABASE_URL:-}" ]]            || die ".env: DATABASE_URL required"
-[[ -n "${PAYMENT_CALLBACK_SECRET:-}" ]] || die ".env: PAYMENT_CALLBACK_SECRET required (P0-2)"
-[[ "${DEBUG:-False}" == "False" ]]      || die ".env: DEBUG must be False in prod"
+case "${DEBUG_MODE:-}" in
+    1|true|True|TRUE|yes|Yes|YES|on|On|ON)
+        die ".env: DEBUG_MODE must be False in production"
+        ;;
+esac
 [[ -n "${ALLOWED_HOSTS:-}" ]]           || die ".env: ALLOWED_HOSTS required"
+[[ -n "${CSRF_TRUSTED_ORIGINS:-}" ]]    || die ".env: CSRF_TRUSTED_ORIGINS required"
 [[ -n "${ANTHROPIC_API_KEY:-}" ]] || log "  ⚠ ANTHROPIC_API_KEY missing — AI will use stub heuristics"
-[[ -n "${STRIPE_WEBHOOK_SECRET:-}" ]] || log "  ⚠ STRIPE_WEBHOOK_SECRET missing — webhook will reject in prod"
+[[ "${PAYMENT_ENGINE:-wallet}" == "wallet" ]] || die ".env: only PAYMENT_ENGINE=wallet is production-ready"
+if [[ -n "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+    require_secret TELEGRAM_WEBHOOK_SECRET 32
+fi
 log "  ✓ env validated"
 
 # ── 0b. OOM guard: swap (idempotent) ─────────────────────
@@ -98,6 +116,7 @@ if [[ "$BEFORE" != "$AFTER" ]] && git diff --name-only "$BEFORE..$AFTER" | grep 
 else
     log "  (no changes)"
 fi
+"$VENV/bin/python" manage.py check_deploy_readiness
 
 log "━━━ 3. migrate --plan ━━━"
 "$VENV/bin/python" manage.py migrate --plan 2>&1 | head -30

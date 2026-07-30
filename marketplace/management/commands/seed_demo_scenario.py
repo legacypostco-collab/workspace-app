@@ -5,21 +5,29 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
-from assistant.management._seed_guard import ensure_dev_only
+from assistant.management._seed_guard import (
+    add_seed_password_argument,
+    ensure_dev_only,
+    require_seed_password,
+)
 from marketplace.models import RFQ, Brand, Category, Part, RFQItem, UserProfile
 
 
 class Command(BaseCommand):
     help = "Create realistic demo data for proposal/logistics testing."
 
+    def add_arguments(self, parser):
+        add_seed_password_argument(parser)
+
     def handle(self, *args, **options):
         ensure_dev_only(self)
+        password = require_seed_password(options)
         # Users
         buyer, _ = User.objects.get_or_create(
             username="demo_buyer",
             defaults={"email": "buyer@demo.com", "first_name": "Demo", "last_name": "Buyer"},
         )
-        buyer.set_password("demo12345")
+        buyer.set_password(password)
         buyer.save(update_fields=["password"])
         UserProfile.objects.get_or_create(
             user=buyer,
@@ -30,7 +38,7 @@ class Command(BaseCommand):
             username="demo_seller",
             defaults={"email": "seller@demo.com", "first_name": "Demo", "last_name": "Seller"},
         )
-        seller.set_password("demo12345")
+        seller.set_password(password)
         seller.save(update_fields=["password"])
         seller_profile, _ = UserProfile.objects.get_or_create(
             user=seller,
@@ -154,8 +162,7 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(self.style.SUCCESS("Demo scenario created successfully."))
-        self.stdout.write("Credentials:")
-        self.stdout.write("  buyer: demo_buyer / demo12345")
-        self.stdout.write("  seller: demo_seller / demo12345")
+        self.stdout.write("Users: demo_buyer, demo_seller")
+        self.stdout.write("Password: value supplied through --password or DEMO_PASSWORD.")
         self.stdout.write(f"Open RFQ: /rfq/{rfq.id}/")
         self.stdout.write(f"Open Proposal: /rfq/{rfq.id}/proposal/")

@@ -37,6 +37,8 @@ def _safe_link(url: str) -> str:
     if not url:
         return ""
     u = url.strip()
+    if u.startswith("//"):
+        return ""
     return u if _SAFE_URL_RE.match(u) else ""
 
 
@@ -44,6 +46,8 @@ def _safe_img(url: str) -> str:
     if not url:
         return ""
     u = url.strip()
+    if u.startswith("//"):
+        return ""
     return u if _SAFE_IMG_RE.match(u) else ""
 
 
@@ -65,7 +69,10 @@ def render_kb_markdown(text: str) -> str:
         safe = _safe_img(url)
         if not safe:
             return ""  # тихо выбросили подозрительный URL
-        return f'<img src="{safe}" alt="{escape(alt)}" loading="lazy" decoding="async">'
+        return (
+            f'<img src="{escape(safe)}" alt="{escape(alt)}" '
+            'loading="lazy" decoding="async">'
+        )
     src = re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", _img_sub, src)
 
     # Ссылки [text](url)
@@ -74,7 +81,10 @@ def render_kb_markdown(text: str) -> str:
         safe = _safe_link(url)
         if not safe:
             return text  # без ссылки, просто текст
-        return f'<a href="{safe}" rel="noopener noreferrer" target="_blank">{text}</a>'
+        return (
+            f'<a href="{escape(safe)}" rel="noopener noreferrer" '
+            f'target="_blank">{text}</a>'
+        )
     src = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", _link_sub, src)
 
     # Inline code `…`
@@ -127,4 +137,5 @@ def render_kb_markdown(text: str) -> str:
             para_buf.append(line)
     flush_para(); close_lists()
 
-    return mark_safe("\n".join(out_lines))
+    # Raw text and every attribute were escaped before only known tags were added.
+    return mark_safe("\n".join(out_lines))  # nosec B308 B703

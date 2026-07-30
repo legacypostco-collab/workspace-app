@@ -2,12 +2,18 @@
 from types import SimpleNamespace
 
 import pytest
+from django.test import override_settings
 
 from assistant.kyb_api_checks import (
     check_address, check_messengers, check_opencorporates,
     check_ru_aggregator, check_sanctions, check_vies, check_website,
     evaluate_risk, run_all_checks,
 )
+
+
+@pytest.fixture(autouse=True)
+def _enable_explicit_kyb_fixtures(settings):
+    settings.KYB_ALLOW_TEST_FIXTURES = True
 
 
 def _kyb(**overrides):
@@ -48,12 +54,11 @@ def test_ru_aggregator_not_applicable_for_non_ru():
     assert r["data"] is None
 
 
-def test_ru_aggregator_unknown_inn_synthesized_green():
-    """Любой неизвестный ИНН → синтез green-данных (deterministic)."""
+def test_ru_aggregator_unknown_inn_requires_manual_review():
     r = check_ru_aggregator("9999999999", "RU")
-    assert r["ok"] is True
-    assert r["data"]["risk_indicator"] == "green"
-    assert r["data"]["ogrn"].startswith("10")
+    assert r["ok"] is False
+    assert r["data"] is None
+    assert any(s["level"] == "yellow" for s in r["signals"])
 
 
 # ── §3.2 OpenCorporates ─────────────────────────────────────────
@@ -69,10 +74,10 @@ def test_opencorporates_skipped_for_ru():
     assert r["ok"] is False
 
 
-def test_opencorporates_unknown_synth():
+def test_opencorporates_unknown_requires_manual_review():
     r = check_opencorporates("UNKNOWN", "DE")
-    assert r["ok"] is True
-    assert r["data"]["company_number"] == "UNKNOWN"
+    assert r["ok"] is False
+    assert r["data"] is None
 
 
 # ── §3.3 VIES ───────────────────────────────────────────────────
@@ -85,10 +90,10 @@ def test_vies_non_eu_yellow_not_red():
     assert "red" not in levels
 
 
-def test_vies_default_valid_for_unknown():
+def test_vies_unknown_requires_manual_review():
     r = check_vies("DE123456789", "DE")
-    assert r["data"]["valid"] is True
-    assert r["signals"] == []
+    assert r["ok"] is False
+    assert r["data"] is None
 
 
 # ── §3.4 OpenSanctions ──────────────────────────────────────────
@@ -113,6 +118,8 @@ def test_address_industrial_no_signal():
     """Classifier ищет "ул. промышленная" / "industrial" / "промзона" в адресе."""
     r = check_address("г. Москва, ул. Промышленная д. 17")
     assert r["data"]["kind"] == "industrial"
+    assert r["data"]["coordinates"] is None
+    assert r["data"]["rating"] is None
     assert r["signals"] == []
 
 
@@ -138,7 +145,8 @@ def test_address_empty_yellow():
 
 def test_website_valid_passes():
     r = check_website("https://example.com")
-    assert r["data"]["reachable"] is True
+    assert r["data"]["valid_format"] is True
+    assert r["data"]["reachable"] is None
     assert r["signals"] == []
 
 
@@ -187,6 +195,7 @@ def test_evaluate_risk_no_signals_green():
     assert reasons == []
 
 
+@override_settings(DEBUG=True)
 def test_run_all_checks_returns_7_sources():
     kyb = _kyb()
     results = run_all_checks(kyb)
@@ -194,6 +203,7 @@ def test_run_all_checks_returns_7_sources():
                                     "sanctions", "maps", "site", "messenger"}
 
 
+@override_settings(DEBUG=True)
 def test_run_all_checks_oldfabric_full_red():
     """Полный e2e сценарий C: ликвидация + санкции → red verdict."""
     kyb = _kyb(country="RU", inn="5031000099", legal_name="ООО «Старый Завод»",
@@ -203,3 +213,32 @@ def test_run_all_checks_oldfabric_full_red():
     assert risk == "red"
     assert decision == "auto_reject"
     assert any("ликвидации" in r for r in reasons)
+
+
+@override_settings(DEBUG=False, KYB_ALLOW_TEST_FIXTURES=False)
+def test_run_all_checks_requires_manual_review_without_live_providers():
+    results = run_all_checks(_kyb())
+    decision, risk, reasons = evaluate_risk(results)
+
+    assert not results["aggregator"]["ok"]
+    assert not results["maps"]["ok"]
+    assert results["site"]["ok"]
+    assert results["site"]["data"]["reachable"] is None
+    assert results["messenger"]["ok"]
+    assert decision == "manual_review"
+    assert risk == "yellow"
+    assert reasons
+
+
+@override_settings(KYB_ALLOW_TEST_FIXTURES=False)
+def test_direct_external_checks_fail_closed_without_fixture_flag():
+    assert check_ru_aggregator("7708123456", "RU")["ok"] is False
+    assert check_opencorporates("2233445", "AE")["ok"] is False
+    assert check_vies("AE100123456700003", "AE")["ok"] is False
+    assert check_sanctions(
+        "ООО «Тест»",
+        [],
+        country="RU",
+        fixture_key=("RU", "7708123456"),
+    )["ok"] is False
+    assert check_address("г. Москва, ул. Промышленная д. 17")["ok"] is False

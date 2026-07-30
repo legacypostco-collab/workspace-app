@@ -20,6 +20,7 @@ from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import transaction
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -108,6 +109,7 @@ def export_my_data(request):
 
 @login_required
 @require_POST
+@transaction.atomic
 def delete_my_account(request):
     """Soft-delete аккаунта. Возможные эффекты:
       - user.is_active = False (нельзя войти)
@@ -157,6 +159,32 @@ def delete_my_account(request):
         )
     except Exception:
         logger.exception("kyb anonymize failed for user %s", user.id)
+
+    from marketplace.models import (
+        ApiToken,
+        Customer,
+        MagicLinkToken,
+        TeamMember,
+        TwoFactorAuth,
+    )
+
+    now = timezone.now()
+    ApiToken.objects.filter(user=user, revoked_at__isnull=True).update(
+        revoked_at=now
+    )
+    MagicLinkToken.objects.filter(user=user).delete()
+    TwoFactorAuth.objects.filter(user=user).update(
+        enabled=False,
+        secret="",
+        backup_codes="",
+        enabled_at=None,
+    )
+    TeamMember.objects.filter(user=user).update(
+        invited_email=user.email,
+        status="disabled",
+        invite_token="",
+    )
+    Customer.objects.filter(user=user).update(user=None, invite_token="")
 
     logger.warning("gdpr_delete user_id=%s anon=%s", user.id, anon_marker)
     # Logout — у пользователя больше нет валидной сессии

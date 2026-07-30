@@ -19,7 +19,11 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 
-from assistant.management._seed_guard import ensure_dev_only
+from assistant.management._seed_guard import (
+    add_seed_password_argument,
+    ensure_dev_only,
+    require_seed_password,
+)
 
 User = get_user_model()
 
@@ -28,6 +32,7 @@ class Command(BaseCommand):
     help = "Seed KYB submissions + OrderClaim test data for operator UI."
 
     def add_arguments(self, parser):
+        add_seed_password_argument(parser)
         parser.add_argument("--reset", action="store_true",
                             help="Удалить ранее заведённые demo-KYB/claim'ы перед посевом.")
 
@@ -99,6 +104,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **opts):
         ensure_dev_only(self)
+        password = require_seed_password(opts)
         from marketplace.models import CompanyVerification, Order, OrderClaim, UserProfile
 
         if opts["reset"]:
@@ -119,11 +125,11 @@ class Command(BaseCommand):
         for (username, role, status, legal_name, inn, ogrn, director, reason) in self.KYB_FIXTURES:
             user, created = User.objects.get_or_create(
                 username=username,
-                defaults={"email": f"{username}@demo.consolidator.parts",
+                defaults={"email": f"{username}@demo.invalid",
                           "first_name": legal_name.split('«')[-1].rstrip('»') if '«' in legal_name else legal_name},
             )
             if created:
-                user.set_password("demo12345")
+                user.set_password(password)
                 user.save()
             # Профиль
             profile, _ = UserProfile.objects.get_or_create(

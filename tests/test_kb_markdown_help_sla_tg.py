@@ -60,6 +60,17 @@ class TestKbMarkdown:
         assert "javascript:" not in out
         assert "<a" not in out
 
+    def test_scheme_relative_link_is_rejected(self):
+        out = render_kb_markdown("[click](//evil.example/path)")
+        assert "<a" not in out
+
+    def test_link_attribute_entities_are_escaped_twice(self):
+        out = render_kb_markdown(
+            '[click](https://safe.example/"autofocus="true)'
+        )
+        assert "&amp;quot;" in out
+        assert 'href="https://safe.example/&quot;' not in out
+
     def test_safe_image(self):
         out = render_kb_markdown("![hero](https://cdn.example.com/img.jpg)")
         assert '<img src="https://cdn.example.com/img.jpg"' in out
@@ -68,6 +79,10 @@ class TestKbMarkdown:
 
     def test_unsafe_image_stripped(self):
         out = render_kb_markdown("![x](javascript:alert(1))")
+        assert "<img" not in out
+
+    def test_scheme_relative_image_is_rejected(self):
+        out = render_kb_markdown("![x](//evil.example/tracker.jpg)")
         assert "<img" not in out
 
     def test_html_in_input_escaped(self):
@@ -117,6 +132,20 @@ class TestHelpCenter:
         r = c.get("/help/")
         assert b'application/ld+json' in r.content
         assert b'FAQPage' in r.content
+
+    def test_help_jsonld_cannot_close_script_element(self):
+        KnowledgeBaseEntry.objects.create(
+            category="payment",
+            question="</script><script>alert(1)</script>",
+            answer="Stored content",
+            sort_order=20,
+        )
+
+        r = Client().get("/help/")
+
+        assert r.status_code == 200
+        assert b"</script><script>alert(1)</script>" not in r.content
+        assert b"\\u003C/script\\u003E" in r.content
 
     def test_help_search_filters(self):
         c = Client()

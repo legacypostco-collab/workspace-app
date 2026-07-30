@@ -11,7 +11,6 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class PartSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
-    seller_username = serializers.CharField(source="seller.username", read_only=True)
     brand_name = serializers.CharField(source="brand.name", read_only=True)
     is_mandatory_complete = serializers.BooleanField(read_only=True)
     mandatory_missing_fields = serializers.SerializerMethodField()
@@ -39,7 +38,6 @@ class PartSerializer(serializers.ModelSerializer):
             "mandatory_missing_fields",
             "category",
             "brand_name",
-            "seller_username",
             "created_at",
         ]
 

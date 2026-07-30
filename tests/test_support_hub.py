@@ -177,4 +177,5 @@ class TestOpenComplaint:
             "confirmed": True, "against": "platform",
             "text": "Тестовая жалоба на работу платформы.",
         }, u, "buyer")
-        assert "зафиксирована" in r.text.lower() or "audit" in r.text.lower()
+        assert "зарегистрирована" in r.text.lower()
+        assert r.navigate_conversation_id

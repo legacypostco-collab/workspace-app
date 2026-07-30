@@ -140,11 +140,11 @@
   <div style="margin-top:12px;">
     <div class="ap-section-sub">Документы</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
-      {% if kyb.doc_charter %}<a href="{{ kyb.doc_charter.url }}" target="_blank" class="kyb-doc">📄 Устав</a>{% endif %}
-      {% if kyb.doc_egrul %}<a href="{{ kyb.doc_egrul.url }}" target="_blank" class="kyb-doc">📄 ЕГРЮЛ</a>{% endif %}
-      {% if kyb.doc_passport %}<a href="{{ kyb.doc_passport.url }}" target="_blank" class="kyb-doc">🪪 Паспорт</a>{% endif %}
-      {% if kyb.doc_dealership %}<a href="{{ kyb.doc_dealership.url }}" target="_blank" class="kyb-doc">📋 Дилерство</a>{% endif %}
-      {% if kyb.doc_bank %}<a href="{{ kyb.doc_bank.url }}" target="_blank" class="kyb-doc">🏦 Банк</a>{% endif %}
+      {% if kyb.doc_charter %}<a href="/api/assistant/kyb/{{ kyb.user_id }}/doc/charter/file/" target="_blank" class="kyb-doc">📄 Устав</a>{% endif %}
+      {% if kyb.doc_egrul %}<a href="/api/assistant/kyb/{{ kyb.user_id }}/doc/egrul/file/" target="_blank" class="kyb-doc">📄 ЕГРЮЛ</a>{% endif %}
+      {% if kyb.doc_passport %}<a href="/api/assistant/kyb/{{ kyb.user_id }}/doc/passport/file/" target="_blank" class="kyb-doc">🪪 Паспорт</a>{% endif %}
+      {% if kyb.doc_dealership %}<a href="/api/assistant/kyb/{{ kyb.user_id }}/doc/dealership/file/" target="_blank" class="kyb-doc">📋 Дилерство</a>{% endif %}
+      {% if kyb.doc_bank %}<a href="/api/assistant/kyb/{{ kyb.user_id }}/doc/bank/file/" target="_blank" class="kyb-doc">🏦 Банк</a>{% endif %}
       {% if not kyb.doc_charter and not kyb.doc_egrul and not kyb.doc_passport and not kyb.doc_dealership and not kyb.doc_bank %}<span style="color:#5E5E5E;font-size:12px;">Документов нет</span>{% endif %}
     </div>
   </div>

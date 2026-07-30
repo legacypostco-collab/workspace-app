@@ -107,7 +107,9 @@ def get_embedding(text: str) -> list[float]:
                 raise
             logger.debug(f"Voyage embedding failed, falling back to stub: {e}")
 
-    return _stub_embedding(text)
+    if settings.DEBUG:
+        return _stub_embedding(text)
+    raise RuntimeError("No embedding provider is available")
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:

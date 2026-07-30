@@ -12,6 +12,7 @@ import logging
 from django.utils.translation import gettext as _
 
 from .actions import ActionResult, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,14 @@ def notif_prefs(params, user, role):
         {"label": "Telegram", "value":
             (_("✓ Вкл") if p.notif_telegram_enabled and p.notif_telegram_chat_id else _("✗ Не подключён")),
          "tone": "ok" if (p.notif_telegram_enabled and p.notif_telegram_chat_id) else "warn"},
-        {"label": "Telegram chat_id", "value": p.notif_telegram_chat_id or "—"},
+        {
+            "label": _("Telegram"),
+            "value": (
+                f"••••{p.notif_telegram_chat_id[-4:]}"
+                if p.notif_telegram_chat_id
+                else "—"
+            ),
+        },
         {"label": _("Типы событий"), "value": p.notif_kinds},
     ]
     return ActionResult(
@@ -63,7 +71,7 @@ def notif_prefs(params, user, role):
 def notif_set_email(params, user, role):
     p = _get_or_create_profile(user)
     enabled = params.get("enabled")
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or enabled is None:
         return ActionResult(
@@ -99,7 +107,7 @@ def notif_set_email(params, user, role):
 def notif_set_kinds(params, user, role):
     p = _get_or_create_profile(user)
     raw = (params.get("kinds") or "").strip()
-    confirmed = bool(params.get("confirmed"))
+    confirmed = confirmation_is_true(params.get("confirmed"))
 
     if not confirmed or not raw:
         return ActionResult(
@@ -163,6 +171,7 @@ def send_telegram(chat_id: str, text: str) -> bool:
                 "disable_web_page_preview": True,
             },
             timeout=5,
+            allow_redirects=False,
         )
         return r.ok
     except Exception:
@@ -181,7 +190,7 @@ def send_telegram_to_operators(text: str) -> int:
     U = get_user_model()
 
     ops = (U.objects.filter(is_active=True)
-           .filter(Q(is_staff=True) | Q(profile__role__startswith="operator"))
+           .filter(Q(is_superuser=True) | Q(profile__role="operator"))
            .filter(profile__notif_telegram_enabled=True)
            .exclude(profile__notif_telegram_chat_id="")
            .select_related("profile")
@@ -197,52 +206,48 @@ def send_telegram_to_operators(text: str) -> int:
 
 @register("notif_link_telegram")
 def notif_link_telegram(params, user, role):
-    """Привязать Telegram chat_id.
+    """Создать одноразовую подтверждаемую ссылку для Telegram."""
+    import re
 
-    Ожидаемый flow в проде:
-      1. Пользователь пишет нашему боту /start → бот отвечает chat_id
-      2. Пользователь вставляет chat_id сюда
+    from django.conf import settings
 
-    В demo (без реального бота) — просто принимаем числовой chat_id и
-    активируем канал.
-    """
+    from .tg_linking import create_link_token
+
     p = _get_or_create_profile(user)
-    chat_id = (params.get("chat_id") or "").strip()
-    confirmed = bool(params.get("confirmed"))
-
-    if not confirmed or not chat_id:
-        bot_username = "your_bot"  # в проде взять из env TELEGRAM_BOT_USERNAME
+    bot_username = str(
+        getattr(settings, "TELEGRAM_BOT_USERNAME", "") or ""
+    ).strip().lstrip("@")
+    if not re.fullmatch(r"[A-Za-z0-9_]{5,32}", bot_username):
         return ActionResult(
-            text=(
-                _(
-                    "✈️ Подключение Telegram\n\n"
-                    "1. Откройте бота: @%(bot)s\n"
-                    "2. Отправьте /start\n"
-                    "3. Бот ответит вашим chat_id — вставьте сюда"
-                ) % {"bot": bot_username}
-            ),
-            cards=[{"type": "form", "data": {
-                "title": _("✈️ Telegram chat_id"),
-                "submit_action": "notif_link_telegram",
-                "fields": [{
-                    "name": "chat_id",
-                    "label": _("Числовой chat_id из ответа бота"),
-                    "required": True,
-                    "value": p.notif_telegram_chat_id,
-                }],
-                "fixed_params": {"confirmed": True},
-            }}],
+            text=_("Подключение Telegram временно не настроено.")
         )
 
-    if not chat_id.lstrip("-").isdigit():
-        return ActionResult(text=_("⚠️ chat_id должен быть числом (может быть отрицательным)."))
-
-    p.notif_telegram_chat_id = chat_id
-    p.notif_telegram_enabled = True
-    p.save(update_fields=["notif_telegram_chat_id", "notif_telegram_enabled"])
+    token = create_link_token(user)
+    link = f"https://t.me/{bot_username}?start={token}"
+    status_text = (
+        _("Текущая привязка будет заменена после подтверждения в Telegram.")
+        if p.notif_telegram_chat_id
+        else _("Привязка завершится только после подтверждения в Telegram.")
+    )
     return ActionResult(
-        text=_("✓ Telegram подключён (chat_id=%(chat_id)s).") % {"chat_id": chat_id},
+        text=_(
+            "Откройте бота по одноразовой ссылке и нажмите «Запустить». "
+            "Ссылка действует 10 минут. %(status)s"
+        ) % {"status": status_text},
+        cards=[{
+            "type": "copy_link",
+            "data": {
+                "title": _("Подключение Telegram"),
+                "url": link,
+                "hint": _("Одноразовая ссылка действует 10 минут."),
+            },
+        }],
         contextual_actions=[
+            {
+                "action": "open_url",
+                "label": _("Открыть Telegram"),
+                "params": {"_url": link},
+            },
             {"action": "notif_prefs", "label": _("← Все настройки")},
         ],
     )

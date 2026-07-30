@@ -26,6 +26,8 @@ from __future__ import annotations
 import logging
 import os
 from datetime import timedelta
+from html import escape
+from urllib.parse import urljoin, urlparse
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
@@ -61,10 +63,6 @@ def _build_email_link(url: str) -> str:
       3. https://<ALLOWED_HOSTS[0]>            — основной prod-host
       4. http://localhost:8001                 — dev fallback (НЕ prod-IP)
     """
-    if not url:
-        return ""
-    if url.startswith("http"):
-        return url
     site = (
         os.getenv("SITE_URL")
         or getattr(settings, "SITE_URL", "")
@@ -76,7 +74,36 @@ def _build_email_link(url: str) -> str:
             site = f"https://{hosts[0]}"
         else:
             site = "http://localhost:8001"  # dev fallback
-    return site.rstrip("/") + url
+    site = site.rstrip("/") + "/"
+    parsed_site = urlparse(site)
+    allowed_site_schemes = {"https"}
+    if settings.DEBUG:
+        allowed_site_schemes.add("http")
+    if (
+        parsed_site.scheme not in allowed_site_schemes
+        or not parsed_site.hostname
+        or parsed_site.username is not None
+        or parsed_site.password is not None
+    ):
+        return ""
+
+    value = str(url or "").strip()
+    if not value:
+        return ""
+    if value.startswith("/") and not value.startswith("//"):
+        candidate = urljoin(site, value)
+    else:
+        candidate = value
+    parsed_candidate = urlparse(candidate)
+    if (
+        parsed_candidate.scheme != parsed_site.scheme
+        or parsed_candidate.hostname != parsed_site.hostname
+        or parsed_candidate.port != parsed_site.port
+        or parsed_candidate.username is not None
+        or parsed_candidate.password is not None
+    ):
+        return ""
+    return candidate
 
 
 def send_email(user, *, kind: str, title: str, body: str = "", url: str = "") -> bool:
@@ -90,11 +117,13 @@ def send_email(user, *, kind: str, title: str, body: str = "", url: str = "") ->
         return False
 
     full_url = _build_email_link(url)
-    subject = f"[Consolidator] {title}"
+    clean_title = " ".join(str(title or "").splitlines())[:200]
+    subject = f"[Consolidator] {clean_title}"
     text_body = f"{body}\n\n{full_url}" if full_url else body
     html_body = (
-        f"<p>{body}</p>" + (
-            _("<p><a href='%(url)s'>Открыть в Consolidator</a></p>") % {"url": full_url}
+        f"<p>{escape(str(body or ''))}</p>" + (
+            _('<p><a href="%(url)s">Открыть в Consolidator</a></p>')
+            % {"url": escape(full_url, quote=True)}
             if full_url else ""
         )
     )
@@ -178,7 +207,7 @@ def send_telegram(user, *, kind: str, title: str, body: str = "", url: str = "")
 
     emoji = _KIND_EMOJI.get(kind, "🔔")
     # Заголовок: emoji + bold. Если title уже содержит emoji в начале — не дублируем.
-    title_text = title or ""
+    title_text = escape(str(title or ""))
     if title_text and title_text[0] in "📦💰📋⏱🧾🛡⚙️ℹ️🔔🚨✅⚠️":
         header = f"<b>{title_text}</b>"
     else:
@@ -186,7 +215,7 @@ def send_telegram(user, *, kind: str, title: str, body: str = "", url: str = "")
     text_lines = [header]
     if body:
         text_lines.append("")  # пустая строка перед body для визуального воздуха
-        text_lines.append(body)
+        text_lines.append(escape(str(body)))
     text = "\n".join(text_lines)
 
     payload = {
@@ -210,8 +239,12 @@ def send_telegram(user, *, kind: str, title: str, body: str = "", url: str = "")
                             resp.status_code, user.id, resp.text[:200])
             return False
         return True
-    except Exception:
-        logger.exception("send_telegram failed for user_id=%s", user.id)
+    except Exception as exc:
+        logger.warning(
+            "send_telegram transport failed user_id=%s error=%s",
+            user.id,
+            exc.__class__.__name__,
+        )
         return False
 
 

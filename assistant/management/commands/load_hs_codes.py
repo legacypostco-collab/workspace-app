@@ -11,17 +11,18 @@ from __future__ import annotations
 
 import csv
 import re
+import tempfile
 from pathlib import Path
+from urllib.request import Request
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from marketplace.models import HSCode, Part
 
 CSV_URL = "https://raw.githubusercontent.com/datasets/harmonized-system/master/data/harmonized-system.csv"
-CSV_LOCAL = Path("/tmp/hs_codes.csv")
-
 BATCH = 5000
+MAX_CSV_BYTES = 50 * 1024 * 1024
 
 # ── Правила автоклассификации ─────────────────────────────────────────────────
 # Порядок важен: первое сработавшее правило побеждает.
@@ -107,23 +108,48 @@ def classify(title: str, brand_name: str | None) -> str | None:
 class Command(BaseCommand):
     help = "Загрузить справочник HSCode (hs_code на Part — только брокер вручную)"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--csv",
+            help="Локальный CSV вместо загрузки официального справочника.",
+        )
+
     def handle(self, *args, **options):
-        self._load_csv()
+        local_path = options.get("csv")
+        if local_path:
+            csv_path = Path(local_path).expanduser().resolve()
+            if not csv_path.is_file():
+                raise CommandError(f"CSV-файл не найден: {csv_path}")
+            if csv_path.stat().st_size > MAX_CSV_BYTES:
+                raise CommandError("CSV-файл превышает допустимый размер 50 МБ.")
+            self._load_csv(csv_path)
+            return
+
+        self.stdout.write("Скачиваем HS CSV...")
+        from assistant.security import urlopen_no_redirect
+
+        request = Request(CSV_URL, headers={"User-Agent": "ConsolidatorParts/1.0"})
+        with tempfile.NamedTemporaryFile("w+b", suffix=".csv") as temp_file:
+            with urlopen_no_redirect(request, timeout=30) as response:
+                while True:
+                    chunk = response.read(1024 * 1024)
+                    if not chunk:
+                        break
+                    if temp_file.tell() + len(chunk) > MAX_CSV_BYTES:
+                        raise CommandError("Удаленный CSV превышает допустимый размер 50 МБ.")
+                    temp_file.write(chunk)
+            temp_file.flush()
+            self._load_csv(Path(temp_file.name))
 
     # ── Загрузка CSV ──────────────────────────────────────────────────────────
 
-    def _load_csv(self):
-        if not CSV_LOCAL.exists():
-            self.stdout.write("Скачиваем HS CSV...")
-            import urllib.request
-            urllib.request.urlretrieve(CSV_URL, CSV_LOCAL)
-
+    def _load_csv(self, csv_path: Path):
         existing = set(HSCode.objects.values_list("hscode", flat=True))
         to_create: list[HSCode] = []
 
         # Сначала — только уровень 2 и 4 (без parent-зависимости)
         rows_6: list[dict] = []
-        with CSV_LOCAL.open(encoding="utf-8") as fh:
+        with csv_path.open(encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
                 level = int(row["level"])
                 hscode = row["hscode"].strip()

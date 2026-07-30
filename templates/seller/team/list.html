@@ -776,7 +776,11 @@ function sendMsg() {
   const text = input.value.trim();
   if (!text) return;
   const container = document.querySelector('.tm-chat-messages');
-  container.innerHTML += `<div class="tm-chat-msg tm-chat-msg--me"><div class="tm-chat-msg-ava">АК</div><div><div class="tm-chat-msg-body">${text}</div><div class="tm-chat-msg-time">сейчас</div></div></div>`;
+  const message = document.createElement('div');
+  message.className = 'tm-chat-msg tm-chat-msg--me';
+  message.innerHTML = '<div class="tm-chat-msg-ava">АК</div><div><div class="tm-chat-msg-body"></div><div class="tm-chat-msg-time">сейчас</div></div>';
+  message.querySelector('.tm-chat-msg-body').textContent = text;
+  container.appendChild(message);
   input.value = '';
   container.scrollTop = container.scrollHeight;
 }
@@ -815,10 +819,14 @@ function submitNewTask() {
   task.className = 'tm-task';
   task.style.cssText = 'animation:fadeIn .2s ease;';
   task.innerHTML = '<div class="tm-task-check" onclick="toggleTask(this)">&#10003;</div>'
-    + '<div class="tm-task-title">' + title + '</div>'
-    + '<div class="tm-task-assignee">' + assignee + '</div>'
-    + '<div class="tm-task-due ' + dueClass + '">' + due + '</div>'
-    + '<div class="tm-task-prio ' + p[1] + '">' + p[0] + '</div>';
+    + '<div class="tm-task-title"></div>'
+    + '<div class="tm-task-assignee"></div>'
+    + '<div class="tm-task-due ' + dueClass + '"></div>'
+    + '<div class="tm-task-prio ' + p[1] + '"></div>';
+  task.querySelector('.tm-task-title').textContent = title;
+  task.querySelector('.tm-task-assignee').textContent = assignee;
+  task.querySelector('.tm-task-due').textContent = due;
+  task.querySelector('.tm-task-prio').textContent = p[0];
   var list = document.querySelector('.tm-task-list');
   list.insertBefore(task, list.firstChild);
   closeTaskModal();

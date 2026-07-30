@@ -17,7 +17,9 @@ Must run AFTER `django.middleware.locale.LocaleMiddleware` and AFTER
 `AuthenticationMiddleware` so `request.user` is populated.
 """
 from django.conf import settings
-from django.http import HttpResponseRedirect
+import json
+
+from django.http import JsonResponse, HttpResponseRedirect
 from django.utils import translation
 
 # ────────────────────────────────────────────────────────────────────
@@ -70,10 +72,10 @@ _LEGACY_EXACT_REDIRECTS = {
 }
 
 _AUTHENTICATED_CHAT_REDIRECTS = {
-    "/demo-center/": "/chat/",
-    "/demo-center": "/chat/",
-    "/demo/": "/chat/",
-    "/demo": "/chat/",
+    "/demo-center/": "/chat/?workspace=1",
+    "/demo-center": "/chat/?workspace=1",
+    "/demo/": "/chat/?workspace=1",
+    "/demo": "/chat/?workspace=1",
     "/reports/kpi/": "/chat/?new=1&run=get_analytics",
     "/reports/kpi": "/chat/?new=1&run=get_analytics",
 }
@@ -180,8 +182,8 @@ class OperatorViewAsMiddleware:
       позволяют views отказывать в мутациях.
 
     Безопасность:
-    — Подмена возможна только если оригинальный юзер — operator или admin
-      (is_staff / is_superuser). Если кто-то другой случайно поставил ключ
+    — Подмена возможна только если оригинальному пользователю явно выдана
+      роль operator или admin. Если кто-то другой случайно поставил ключ
       в сессию — ignore.
     — Цель должна существовать и быть seller.
     """
@@ -197,6 +199,28 @@ class OperatorViewAsMiddleware:
         except Exception:
             # Никогда не валим запрос из-за view-as
             request.is_view_as = False
+        if request.view_as_readonly and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            # Единственные POST-команды, разрешённые в режиме просмотра, не
+            # меняют данные поставщика: выход и служебная помощь оператора.
+            allowed_actions = {
+                "op_exit_view_as", "op_help_supplier",
+                "op_help_send_reminder", "op_help_escalate",
+            }
+            action = ""
+            if request.path == "/api/assistant/action/":
+                try:
+                    action = (json.loads(request.body or b"{}") or {}).get("action", "")
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    action = ""
+            if action not in allowed_actions:
+                return JsonResponse(
+                    {"error": "Режим просмотра доступен только для чтения."},
+                    status=403,
+                )
+            # Служебная команда должна выполняться от имени оператора, а не
+            # от имени просматриваемого продавца. Данные продавца по-прежнему
+            # доступны команде только через явный seller_id в параметрах.
+            request.user = request.original_user
         return self.get_response(request)
 
     def _maybe_swap_user(self, request):
@@ -207,8 +231,14 @@ class OperatorViewAsMiddleware:
         if not target_id:
             return
         original = request.user
-        # Только staff может имперсонировать (operator/admin — у всех is_staff=True)
-        if not getattr(original, "is_authenticated", False) or not getattr(original, "is_staff", False):
+        # Только реально выданная операторская роль или superuser может
+        # открывать режим просмотра. Сам по себе is_staff не даёт это право.
+        from assistant.permissions import detect_user_role
+        original_role = detect_user_role(original)
+        if (
+            not getattr(original, "is_authenticated", False)
+            or not (original_role.startswith("operator") or original_role == "admin")
+        ):
             # Левый юзер с ключом в сессии — чистим
             sess.pop("op_view_as_id", None)
             sess.pop("op_view_as_originator_id", None)
@@ -242,3 +272,22 @@ class OperatorViewAsMiddleware:
         request.user = target
         request.is_view_as = True
         request.view_as_readonly = True
+
+
+class ActiveRoleContextMiddleware:
+    """Фиксирует подтвержденную активную роль для всех представлений запроса."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        request.active_role = None
+        if user is not None and getattr(user, "is_authenticated", False):
+            from assistant.permissions import detect_user_role
+            request.active_role = detect_user_role(user, request=request)
+            # Старые внутренние функции получают только user. Объект User
+            # живет в рамках запроса, поэтому атрибут не разделяется между
+            # пользователями и позволяет им читать тот же серверный контекст.
+            user._assistant_active_role = request.active_role
+        return self.get_response(request)

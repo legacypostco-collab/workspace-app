@@ -5,11 +5,12 @@ Usage:
     python manage.py seed_beta_testers --count 40 --reset
     python manage.py seed_beta_testers --count 5 --role seller
 
-Печатает CSV-таблицу учёток в stdout — отправь её тестерам.
+Сохраняет CSV-таблицу учетных записей в файл, доступный только владельцу.
 """
 from __future__ import annotations
 
 import csv
+import os
 import secrets
 import string
 from pathlib import Path
@@ -17,6 +18,8 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
+
+from assistant.management._seed_guard import ensure_dev_only
 
 User = get_user_model()
 
@@ -50,6 +53,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **opts):
+        ensure_dev_only(self)
         from decimal import Decimal
 
         from assistant.models import Wallet
@@ -82,14 +86,14 @@ class Command(BaseCommand):
             username = f"{prefix}{i:02d}"
             password = _gen_password()
             role = _role_for_index(i)
-            email = f"{username}@beta.consolidator.parts"
+            email = f"{username}@beta.invalid"
 
             user, created = User.objects.get_or_create(
                 username=username,
                 defaults={"email": email, "first_name": f"Beta{i:02d}"},
             )
             user.set_password(password)
-            user.is_staff = (role == "operator")  # для доступа в /admin/ если потребуется
+            user.is_staff = False
             user.save()
 
             profile, _ = UserProfile.objects.get_or_create(
@@ -111,28 +115,17 @@ class Command(BaseCommand):
                           "email": email, "created": created})
 
         # CSV в файл
-        with out_path.open("w", newline="", encoding="utf-8") as f:
+        fd = os.open(out_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        os.fchmod(fd, 0o600)
+        with os.fdopen(fd, "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(f, fieldnames=["username", "password", "role", "email"])
             w.writeheader()
             for r in rows:
                 w.writerow({k: r[k] for k in ("username", "password", "role", "email")})
 
-        # И в stdout
         self.stdout.write(self.style.SUCCESS(
             f"\n✓ Создано {len(rows)} beta-тестеров. CSV → {out_path.resolve()}\n"
         ))
-        self.stdout.write(self.style.NOTICE(
-            "─" * 70 +
-            f"\n{'username':10s} {'password':14s} {'role':10s} email\n" +
-            "─" * 70
-        ))
-        for r in rows:
-            badge = "(new)" if r["created"] else "(reset password)"
-            self.stdout.write(
-                f"{r['username']:10s} {r['password']:14s} {r['role']:10s} "
-                f"{r['email']:36s} {badge}"
-            )
-        self.stdout.write("─" * 70 + "\n")
         self.stdout.write(self.style.WARNING(
-            "⚠ Сохрани CSV перед раздачей. Пароли больше нигде не покажутся."
+            "Пароли записаны только в CSV с правами доступа владельца файла."
         ))

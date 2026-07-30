@@ -51,16 +51,6 @@
         <p class="price">${{ row.order.total_amount }}</p>
         <a class="btn btn-secondary" href="{% url 'order_detail' row.order.id %}">Открыть заказ</a>
         <a class="btn btn-secondary" href="{% url 'order_invoice' row.order.id %}">Invoice</a>
-        <form method="post" action="{% url 'seller_order_status_update' row.order.id %}" class="status-form">
-          {% csrf_token %}
-          <label for="status-{{ row.order.id }}">Статус</label>
-          <select id="status-{{ row.order.id }}" name="status">
-            {% for value, label in status_choices %}
-              <option value="{{ value }}" {% if row.order.status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-          <button class="btn btn-secondary" type="submit">Сменить</button>
-        </form>
       </div>
     </article>
   {% empty %}

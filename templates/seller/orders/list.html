@@ -45,15 +45,6 @@
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
         <span style="font-family:'Golos Text',sans-serif;font-size:15px;font-weight:800;color:#ECECEC;">${{ row.order.total_amount }}</span>
-        <form method="post" action="{% url 'seller_order_status_update' row.order.id %}" style="margin:0;">
-          {% csrf_token %}
-          <input type="hidden" name="next" value="{% url 'seller_orders' %}" />
-          <select name="status" onchange="this.form.submit()" style="padding:4px 8px;font-size:11px;">
-            {% for value, label in status_choices %}
-              <option value="{{ value }}" {% if row.order.status == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </form>
         <a class="btn ghost" href="{% url 'order_invoice' row.order.id %}" style="padding:4px 10px;font-size:11px;">Invoice</a>
       </div>
     </article>

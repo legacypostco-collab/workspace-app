@@ -1,5 +1,5 @@
 {% extends "seller/base_seller.html" %}
-{% load i18n %}
+{% load static i18n %}
 {% block title %}{% trans "QR-контроль" %}{% endblock %}
 
 {% block extra_css %}
@@ -545,7 +545,7 @@
 
 {% block extra_js %}
 {# QRCode.js — генерация QR на клиенте #}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="{% static 'vendor/qrcodejs/1.0.0/qrcode.min.js' %}"></script>
 <script>
 (function() {
 

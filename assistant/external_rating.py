@@ -23,10 +23,13 @@ Demo режим (без API key):
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import os
+import re
 from decimal import Decimal
 
+from django.conf import settings
 from django.utils.translation import gettext as _
 
 logger = logging.getLogger(__name__)
@@ -34,8 +37,18 @@ logger = logging.getLogger(__name__)
 
 # ── Fetch ─────────────────────────────────────────────────────
 
+def _unavailable(reason: str) -> dict:
+    return {
+        "score": None,
+        "bankruptcy": False,
+        "liquidation": False,
+        "reason": reason,
+        "source": "unavailable",
+    }
+
+
 def fetch_external_rating(inn: str) -> dict:
-    """Получить внешнюю оценку. Real Kontur при наличии env, иначе demo-stub.
+    """Получить внешнюю оценку без подмены результата тестовыми данными.
 
     Returns:
         {
@@ -48,16 +61,24 @@ def fetch_external_rating(inn: str) -> dict:
     """
     inn = (inn or "").strip()
     if not inn:
-        return {"score": 50.0, "bankruptcy": False, "liquidation": False,
-                "reason": _("ИНН не указан"), "source": "error"}
+        return _unavailable(_("ИНН не указан"))
+    if not re.fullmatch(r"\d{10}|\d{12}", inn):
+        return _unavailable(_("ИНН имеет неверный формат"))
 
     api_key = os.getenv("KONTUR_FOCUS_API_KEY", "").strip()
     if api_key:
         try:
             return _fetch_kontur(inn, api_key)
-        except Exception:
-            logger.exception("kontur fetch failed for %s — fallback to demo", inn)
-    return _demo_external_rating(inn)
+        except Exception as exc:
+            logger.warning(
+                "kontur fetch failed error=%s",
+                exc.__class__.__name__,
+            )
+            if not settings.DEBUG:
+                return _unavailable(_("Внешний источник временно недоступен"))
+    if settings.DEBUG:
+        return _demo_external_rating(inn)
+    return _unavailable(_("Внешняя проверка не настроена"))
 
 
 def _fetch_kontur(inn: str, api_key: str) -> dict:
@@ -69,16 +90,29 @@ def _fetch_kontur(inn: str, api_key: str) -> dict:
       arbitration: список судов (count, totalSum)
     """
     import httpx
-    r = httpx.get(
-        "https://api.kontur.ru/focus/api/3/companies",
-        params={"key": api_key, "inn": inn},
-        timeout=10,
-    )
-    r.raise_for_status()
-    data = r.json()
+
+    max_response_bytes = 1024 * 1024
+    with httpx.Client(timeout=10, follow_redirects=False) as client:
+        with client.stream(
+            "GET",
+            "https://api.kontur.ru/focus/api/3/companies",
+            params={"key": api_key, "inn": inn},
+            headers={"Accept": "application/json"},
+        ) as response:
+            response.raise_for_status()
+            content_length = response.headers.get("Content-Length")
+            if content_length and int(content_length) > max_response_bytes:
+                raise ValueError("oversized external rating response")
+            chunks = []
+            size = 0
+            for chunk in response.iter_bytes():
+                size += len(chunk)
+                if size > max_response_bytes:
+                    raise ValueError("oversized external rating response")
+                chunks.append(chunk)
+    data = json.loads(b"".join(chunks).decode("utf-8"))
     if not isinstance(data, list) or not data:
-        return {"score": 50.0, "bankruptcy": False, "liquidation": False,
-                "reason": _("ИНН %(inn)s не найден") % {"inn": inn}, "source": "live"}
+        return _unavailable(_("ИНН %(inn)s не найден во внешнем источнике") % {"inn": inn})
 
     company = data[0]
     status_raw = (company.get("status") or {}).get("statusString", "").lower()
@@ -156,6 +190,8 @@ def refresh_external_rating(seller) -> dict | None:
             return {"score": None, "reason": _("ИНН не указан в KYB"),
                     "source": "skip"}
         data = fetch_external_rating(inn)
+        if data.get("score") is None:
+            return data
         profile = UserProfile.objects.filter(user=seller).first()
         if not profile:
             return None

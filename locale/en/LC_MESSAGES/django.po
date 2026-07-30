@@ -12069,11 +12069,11 @@ msgstr "🔍 Find a part"
 #: assistant/onboarding.py:100
 msgid ""
 "🛡 Самостоятельная верификация временно недоступна.\n"
-"Свяжитесь с менеджером: support@consolidator.parts — пройдём проверку вместе "
+"Свяжитесь с менеджером: support@consolidatorparts.com — пройдём проверку вместе "
 "за 1-2 рабочих дня."
 msgstr ""
 "🛡 Self-verification is temporarily unavailable.\n"
-"Contact a manager: support@consolidator.parts — we'll complete the "
+"Contact a manager: support@consolidatorparts.com — we'll complete the "
 "verification together in 1-2 business days."
 
 #: assistant/onboarding.py:114 assistant/onboarding.py:401
@@ -12537,8 +12537,8 @@ msgid "13 цифр (юр) или 15 (ИП)"
 msgstr "13 digits (legal entity) or 15 (sole proprietor)"
 
 #: assistant/onboarding.py:485
-msgid "Например 5022051 (RAKEZ / DED / IFZA)"
-msgstr "For example 5022051 (RAKEZ / DED / IFZA)"
+msgid "Укажите номер из торговой лицензии"
+msgstr "Enter the number from the trade license"
 
 #: assistant/onboarding.py:487
 msgid "15 цифр (если зарегистрирован для VAT)"
@@ -12720,12 +12720,12 @@ msgid "Например: Emirates NBD (Gold & Diamond Park Branch), ADCB, …"
 msgstr "For example: Emirates NBD (Gold & Diamond Park Branch), ADCB, …"
 
 #: assistant/onboarding.py:692
-msgid "8 или 11 символов, например UNILAEAD"
-msgstr "8 or 11 characters, for example UNILAEAD"
+msgid "8 или 11 символов из банковских реквизитов"
+msgstr "8 or 11 characters from the bank details"
 
 #: assistant/onboarding.py:695
-msgid "Например: AE34 0470 0000 0020 0830 094"
-msgstr "E.g.: AE34 0470 0000 0020 0830 094"
+msgid "Введите IBAN в точности как в банковских реквизитах"
+msgstr "Enter the IBAN exactly as shown in the bank details"
 
 #: assistant/onboarding.py:701
 msgid "Полное наименование банка-получателя"
@@ -38638,8 +38638,8 @@ msgstr "daily 8:00–22:00 MSK"
 #~ msgid "Поставщикам"
 #~ msgstr "For suppliers"
 
-#~ msgid "Расчёты"
-#~ msgstr "Quotes"
+msgid "Расчёты"
+msgstr "Payments"
 
 #~ msgid "Войти в систему"
 #~ msgstr "Sign in to the system"
@@ -39674,3 +39674,69 @@ msgstr "daily 8:00–22:00 MSK"
 
 #~ msgid "Цена EXW"
 #~ msgstr "Price EXW"
+
+msgid "B2B-платформа для поиска запчастей, сравнения предложений и контроля поставок."
+msgstr "A B2B platform for finding parts, comparing offers, and monitoring deliveries."
+
+msgid "Поиск запчастей, сравнение предложений и контроль поставок в одном рабочем пространстве."
+msgstr "Parts search, offer comparison, and delivery control in one workspace."
+
+msgid "Проверенная сеть"
+msgstr "Verified network"
+
+msgid "Контроль сроков"
+msgstr "Deadline control"
+
+msgid "предложений"
+msgstr "offers"
+
+msgid "B2B-платформа, которая соединяет покупателей с поставщиками, производителями и логистическими партнёрами. Сравнивайте предложения и контролируйте поставку на каждом этапе."
+msgstr "A B2B platform connecting buyers with suppliers, manufacturers, and logistics partners. Compare offers and monitor every delivery stage."
+
+msgid "единое рабочее пространство для закупки"
+msgstr "one workspace for procurement"
+
+msgid "сравнение предложений по каждой позиции"
+msgstr "offer comparison for each item"
+
+msgid "Международные маршруты, консолидация грузов и контроль документов в одном рабочем процессе."
+msgstr "International routes, cargo consolidation, and document control in one workflow."
+
+msgid "Предложения поставщиков по каждой позиции: цена, наличие, срок и условия поставки в одной таблице."
+msgstr "Supplier offers for each item: price, availability, lead time, and delivery terms in one table."
+
+msgid "после ответа поставщика"
+msgstr "after the supplier responds"
+
+msgid "Сравнивайте цену, наличие и условия поставки для оригинальных деталей и аналогов."
+msgstr "Compare price, availability, and delivery terms for original parts and alternatives."
+
+msgid "Условия и доступные способы оплаты фиксируются в счёте и договоре по конкретной поставке."
+msgstr "Payment terms and available methods are specified in the invoice and contract for each delivery."
+
+msgid "Хабы"
+msgstr "Hubs"
+
+msgid "и маршруты"
+msgstr "and routes"
+
+msgid "Консолидация грузов, маршрутные документы и отслеживание этапов доставки."
+msgstr "Cargo consolidation, route documents, and delivery-stage tracking."
+
+msgid "Позиции из каталогов поставщиков с ценами, сроками и доступными аналогами."
+msgstr "Items from supplier catalogs with prices, lead times, and available alternatives."
+
+msgid "Связь с командой и поддержкой доступна в рабочем чате."
+msgstr "The team and support are available through the workspace chat."
+
+msgid "Открыть поддержку"
+msgstr "Open support"
+
+msgid "Правовая информация"
+msgstr "Legal information"
+
+msgid "Способ, валюта и график оплаты согласуются для каждой поставки и фиксируются в документах сделки."
+msgstr "The payment method, currency, and schedule are agreed for each delivery and recorded in the transaction documents."
+
+msgid "Войдите в чат, чтобы подобрать запчасти и сравнить предложения поставщиков."
+msgstr "Open the chat to find parts and compare supplier offers."

@@ -26,6 +26,7 @@ from django.utils import timezone
 from django.utils.translation import gettext as _
 
 from .actions import ActionResult, _full_order_cards, _notify, register
+from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,8 @@ logger = logging.getLogger(__name__)
 # ── Параметры SLA ────────────────────────────────────────────────
 SLA_OPERATOR_APPROVE_MINUTES = 15
 SLA_MANUAL_QUOTE_COLLECTION_HOURS = 48
+MAX_KP_TOTAL = Decimal("999999999999.99")
+MAX_KP_ITEM_QUANTITY = 1_000_000
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -107,6 +110,71 @@ def _calc_logistics(items: list[tuple]) -> dict:
     }
 
 
+def _quote_logistics_cost(quote) -> Decimal:
+    items = [
+        (qi.rfq_item, qi.part, qi.quantity, qi.unit_price)
+        for qi in quote.items.select_related("rfq_item", "part").all()
+        if qi.part_id
+    ]
+    return Decimal(str(_calc_logistics(items)["cost"])).quantize(
+        Decimal("0.01")
+    )
+
+
+def _quote_financials(quote):
+    """Validate stored quote rows before using them in an invoice or payment."""
+    try:
+        parts_total = Decimal(str(quote.total_amount))
+    except Exception:
+        return None
+    if (
+        not parts_total.is_finite()
+        or parts_total <= 0
+        or parts_total > MAX_KP_TOTAL
+    ):
+        return None
+
+    quote_items = list(quote.items.select_related("part", "rfq_item").all())
+    if not quote_items or any(item.part_id is None for item in quote_items):
+        return None
+    calculated_total = Decimal("0")
+    for item in quote_items:
+        try:
+            quantity = int(item.quantity)
+            unit_price = Decimal(str(item.unit_price))
+        except Exception:
+            return None
+        if (
+            quantity < 1
+            or quantity > MAX_KP_ITEM_QUANTITY
+            or not unit_price.is_finite()
+            or unit_price <= 0
+            or unit_price > MAX_KP_TOTAL
+        ):
+            return None
+        calculated_total += unit_price * quantity
+    if (
+        not calculated_total.is_finite()
+        or abs(calculated_total - parts_total) > Decimal("0.01")
+    ):
+        return None
+
+    try:
+        logistics_cost = _quote_logistics_cost(quote)
+        full_invoice = (parts_total + logistics_cost).quantize(Decimal("0.01"))
+    except Exception:
+        return None
+    if (
+        not logistics_cost.is_finite()
+        or logistics_cost < 0
+        or not full_invoice.is_finite()
+        or full_invoice <= 0
+        or full_invoice > MAX_KP_TOTAL
+    ):
+        return None
+    return parts_total, logistics_cost, full_invoice
+
+
 # ══════════════════════════════════════════════════════════
 # AUTO — кнопка «Подтвердить и зарезервировать 10%»
 # ══════════════════════════════════════════════════════════
@@ -130,6 +198,8 @@ def present_kp_to_buyer(params, user, role):
 
     if rfq.created_by_id != user.id:
         return ActionResult(text=_("Просматривать КП может только заказчик."))
+    if rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — коммерческое предложение закрыто."))
 
     best = (Quote.objects.filter(
         rfq=rfq, direction="seller_to_buyer",
@@ -140,17 +210,16 @@ def present_kp_to_buyer(params, user, role):
             _("По RFQ ещё нет готовых котировок. Дождитесь сбора КП.")
         ))
 
-    # Логистика — суммируем по items
-    items_for_logi = []
-    for qi in best.items.all():
-        if not qi.part:
-            continue
-        items_for_logi.append((qi.rfq_item, qi.part, qi.quantity, qi.unit_price))
-    logi = _calc_logistics(items_for_logi)
-
-    parts_total = best.total_amount
-    logi_cost_d = Decimal(str(logi["cost"]))
-    full_invoice = (parts_total + logi_cost_d).quantize(Decimal("0.01"))
+    financials = _quote_financials(best)
+    if financials is None:
+        return ActionResult(
+            text=_("Котировка содержит некорректные позиции или сумму и требует проверки оператора.")
+        )
+    parts_total, logi_cost_d, full_invoice = financials
+    logi = _calc_logistics([
+        (qi.rfq_item, qi.part, qi.quantity, qi.unit_price)
+        for qi in best.items.select_related("rfq_item", "part").all()
+    ])
 
     # Early-warning: если сумма КП меньше минимума, сразу показываем
     # blocker — не строим Pro-forma, не плодим UI.
@@ -245,6 +314,8 @@ def confirm_kp_and_reserve(params, user, role):
 
     if rfq.created_by_id != user.id:
         return ActionResult(text=_("Подтвердить КП может только заказчик."))
+    if rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — подтвердить КП нельзя."))
     if q.rfq_id != rfq.id:
         return ActionResult(text=_("Котировка не относится к этому RFQ."))
     if q.status not in ("submitted", "finalized"):
@@ -258,10 +329,14 @@ def confirm_kp_and_reserve(params, user, role):
             _('Котировка истекла %(p0)s. Запросите у поставщика новое КП.') % {"p0": f"{q.valid_until.strftime('%d.%m.%Y %H:%M')}"}
         ))
 
-    # Полная сумма = запчасти + логистика
-    parts_total = q.total_amount
-    logi_cost = Decimal(str(params.get("logistics_cost") or 0))
-    full_invoice = (parts_total + logi_cost).quantize(Decimal("0.01"))
+    # Полная сумма = запчасти + серверный расчёт логистики. Значение из
+    # параметров кнопки не является доверенным и намеренно игнорируется.
+    financials = _quote_financials(q)
+    if financials is None:
+        return ActionResult(
+            text=_("Котировка содержит некорректные позиции или сумму и не может быть принята.")
+        )
+    parts_total, logi_cost, full_invoice = financials
 
     # Бизнес-правило: минимальная сумма заказа (см. assistant/order_limits.py).
     from .order_limits import check_min_order
@@ -288,9 +363,24 @@ def confirm_kp_and_reserve(params, user, role):
         # два одновременных клика проходят её одновременно и создают два Order +
         # два резерва (idempotency платёжного слоя не ловит — create_payment_intent
         # генерит новый uuid каждый раз). Зеркалим pay_reserve (actions.py).
+        rfq = RFQ.objects.select_for_update().get(id=rfq.id)
+        if rfq.status == "cancelled":
+            return ActionResult(text=_("RFQ отменён — подтвердить КП нельзя."))
         q = Quote.objects.select_for_update().get(id=q.id)
-        if q.status == "accepted":
-            return ActionResult(text=_("Заказ по этой котировке уже создан."))
+        if q.rfq_id != rfq.id or q.status not in ("submitted", "finalized"):
+            return ActionResult(text=_("Заказ по этой котировке уже создан или она недоступна."))
+        if q.valid_until and timezone.now() > q.valid_until:
+            return ActionResult(text=_("Срок действия котировки истёк."))
+        financials = _quote_financials(q)
+        if financials is None:
+            return ActionResult(
+                text=_("Котировка содержит некорректные позиции или сумму и не может быть принята.")
+            )
+        parts_total, logi_cost, full_invoice = financials
+        block = check_min_order(full_invoice)
+        if block:
+            return ActionResult(**block)
+        reserve = (full_invoice * Decimal("0.10")).quantize(Decimal("0.01"))
         # Кошелёк тоже под блокировкой + перепроверка баланса.
         wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
         if wallet.balance < reserve:
@@ -420,7 +510,7 @@ def op_approve_kp(params, user, role):
     params: {rfq_id, confirmed?}
     """
     from marketplace.models import RFQ, Quote
-    if not (role or "").startswith("operator") and not user.is_staff:
+    if not ((role or "").startswith("operator") or role == "admin"):
         return ActionResult(text=_("Только оператор может подтверждать КП в SEMI-режиме."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
@@ -429,6 +519,8 @@ def op_approve_kp(params, user, role):
 
     if rfq.mode != "semi":
         return ActionResult(text=_('RFQ #%(p0)s не в SEMI-режиме (mode=%(p1)s).') % {"p0": f'{rfq.id}', "p1": f'{rfq.mode}'})
+    if rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — подтверждать КП нельзя."))
 
     quotes = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer", status="submitted")
     if not quotes.exists():
@@ -449,7 +541,7 @@ def op_approve_kp(params, user, role):
             ],
         )
 
-    if not params.get("confirmed"):
+    if not confirmation_is_true(params.get("confirmed")):
         elapsed = timezone.now() - rfq.created_at
         sla_left = timedelta(minutes=SLA_OPERATOR_APPROVE_MINUTES) - elapsed
         sla_status = (
@@ -477,13 +569,18 @@ def op_approve_kp(params, user, role):
             }}],
         )
 
-    # Маркер approve в notes
-    approve_line = (
-        f" | KP_APPROVED: by {user.username} at "
-        f"{timezone.now().strftime('%Y-%m-%d %H:%M')}"
-    )
-    rfq.notes = (rfq.notes or "")[:4500] + approve_line
-    rfq.save(update_fields=["notes"])
+    from django.db import transaction
+
+    with transaction.atomic():
+        rfq = RFQ.objects.select_for_update().get(pk=rfq.pk)
+        if rfq.status == "cancelled" or rfq.mode != "semi":
+            return ActionResult(text=_("RFQ отменён или больше не доступен для подтверждения."))
+        approve_line = (
+            f" | KP_APPROVED: by {user.username} at "
+            f"{timezone.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+        rfq.notes = (rfq.notes or "")[:4500] + approve_line
+        rfq.save(update_fields=["notes"])
 
     # Уведомляем buyer'а — КП готово
     _notify(
@@ -514,7 +611,7 @@ def op_dispatch_manual_rfq(params, user, role):
     params: {rfq_id, seller_ids?: [int], confirmed?}
     """
     from marketplace.models import RFQ
-    if not (role or "").startswith("operator") and not user.is_staff:
+    if not ((role or "").startswith("operator") or role == "admin"):
         return ActionResult(text=_("Только оператор может работать с MANUAL-RFQ."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
@@ -523,6 +620,8 @@ def op_dispatch_manual_rfq(params, user, role):
 
     if rfq.mode not in ("manual", "manual_oem"):
         return ActionResult(text=_('RFQ #%(p0)s не в MANUAL-режиме (mode=%(p1)s).') % {"p0": f'{rfq.id}', "p1": f'{rfq.mode}'})
+    if rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — повторная рассылка запрещена."))
 
     # Используем стандартный send_rfq_to_suppliers — но фиксируем deadline
     from .negotiation import send_rfq_to_suppliers
@@ -535,8 +634,14 @@ def op_dispatch_manual_rfq(params, user, role):
         f" | MANUAL_DEADLINE: {deadline.strftime('%Y-%m-%d %H:%M')} "
         f"(48h от {timezone.now().strftime('%Y-%m-%d %H:%M')})"
     )
-    rfq.notes = (rfq.notes or "")[:4500] + deadline_line
-    rfq.save(update_fields=["notes"])
+    from django.db import transaction
+
+    with transaction.atomic():
+        rfq = RFQ.objects.select_for_update().get(pk=rfq.pk)
+        if rfq.status == "cancelled":
+            return ActionResult(text=_("RFQ отменён — повторная рассылка запрещена."))
+        rfq.notes = (rfq.notes or "")[:4500] + deadline_line
+        rfq.save(update_fields=["notes"])
 
     # Buyer'а уведомляем что в работе
     _notify(
@@ -570,18 +675,21 @@ def op_compose_kp(params, user, role):
     params: {rfq_id, quote_id?}  — если quote_id передан, оператор сам выбрал
     """
     from marketplace.models import RFQ, Quote
-    if not (role or "").startswith("operator") and not user.is_staff:
+    if not ((role or "").startswith("operator") or role == "admin"):
         return ActionResult(text=_("Только оператор формирует MANUAL-КП."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("RFQ не найден."))
 
+    if rfq.status == "cancelled":
+        return ActionResult(text=_("RFQ отменён — формировать КП нельзя."))
+
     qs = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer", status="submitted")
     if params.get("quote_id"):
         try:
             chosen = qs.get(id=int(params["quote_id"]))
-        except Quote.DoesNotExist:
+        except (Quote.DoesNotExist, ValueError, TypeError):
             return ActionResult(text=_("Выбранная котировка не найдена."))
     else:
         chosen = qs.order_by("total_amount").first()
@@ -618,13 +726,31 @@ def op_compose_kp(params, user, role):
             ],
         )
 
-    # Маркер «оператор сформировал КП» в notes
-    line = (
-        f" | KP_COMPOSED: quote #{chosen.id} by op {user.username} at "
-        f"{timezone.now().strftime('%Y-%m-%d %H:%M')}"
-    )
-    rfq.notes = (rfq.notes or "")[:4500] + line
-    rfq.save(update_fields=["notes"])
+    if _quote_financials(chosen) is None:
+        return ActionResult(
+            text=_("Выбранная котировка содержит некорректные позиции или сумму.")
+        )
+
+    from django.db import transaction
+
+    with transaction.atomic():
+        rfq = RFQ.objects.select_for_update().get(pk=rfq.pk)
+        chosen = Quote.objects.select_for_update(of=("self",)).get(pk=chosen.pk)
+        if (
+            rfq.status == "cancelled"
+            or chosen.rfq_id != rfq.id
+            or chosen.status != "submitted"
+            or _quote_financials(chosen) is None
+        ):
+            return ActionResult(
+                text=_("RFQ или выбранная котировка больше не доступны.")
+            )
+        line = (
+            f" | KP_COMPOSED: quote #{chosen.id} by op {user.username} at "
+            f"{timezone.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+        rfq.notes = (rfq.notes or "")[:4500] + line
+        rfq.save(update_fields=["notes"])
 
     _notify(
         rfq.created_by, kind="rfq",

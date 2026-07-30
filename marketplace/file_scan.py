@@ -6,8 +6,8 @@ Active mode (production):
     docker run -d --name clam -p 3310:3310 clamav/clamav:latest
   env: CLAMD_HOST=127.0.0.1, CLAMD_PORT=3310
 
-Inactive mode (dev / нет clamd):
-  scan_file() возвращает (True, "scan unavailable") — пропускает файл.
+Inactive mode is allowed only in development. In production an unavailable
+scanner rejects the upload instead of pretending that it was checked.
 
 Usage:
   from marketplace.file_scan import scan_uploaded_file
@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import logging
 import os
+
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,8 @@ def scan_uploaded_file(uploaded_file) -> tuple[bool, str]:
     """Сканирует UploadedFile / FieldFile. Returns (clean: bool, message: str).
 
     Поведение:
-      ok=True,  msg="scan unavailable" → clamd не настроен, пропускаем
+      ok=True,  msg="scan unavailable" → clamd не настроен, dev only
+      ok=False, msg="scanner unavailable" → clamd обязателен, но недоступен
       ok=True,  msg="clean"            → ClamAV: чисто
       ok=False, msg="<signature>"      → ClamAV: вирус найден, signature
       ok=False, msg="scan failed: ..." → не удалось прочитать / сетевая ошибка
@@ -61,7 +64,8 @@ def scan_uploaded_file(uploaded_file) -> tuple[bool, str]:
 
     client = _get_client()
     if client is None:
-        # Не настроен — fallback: пропускаем
+        if getattr(settings, "VIRUS_SCAN_REQUIRED", not settings.DEBUG):
+            return False, "scanner unavailable"
         return True, "scan unavailable"
 
     try:
@@ -77,9 +81,9 @@ def scan_uploaded_file(uploaded_file) -> tuple[bool, str]:
             logger.warning("virus found in upload: %s", sig)
             return False, f"virus detected: {sig}"
         return False, f"scan error: {status}"
-    except Exception as e:
+    except Exception:
         logger.exception("clamd scan failed")
-        return False, f"scan failed: {e}"
+        return False, "ошибка антивирусной проверки"
 
 
 def scan_or_raise(uploaded_file):

@@ -1,5 +1,8 @@
+from django.conf import settings
 from django.utils import translation
 from django.utils.translation import gettext_lazy as _
+
+from assistant.permissions import detect_user_role
 
 from .models import RFQ, Order, Part, SellerImportRun
 
@@ -9,20 +12,23 @@ def auth_meta(request):
     seller_permissions = {}
     seller_department = None
     if request.user.is_authenticated:
+        role = (
+            getattr(request, "active_role", None)
+            or detect_user_role(request.user, request=request)
+        )
         if request.user.is_superuser:
-            role = "seller"
-            seller_permissions = {
-                "can_manage_assortment": True,
-                "can_manage_pricing": True,
-                "can_manage_orders": True,
-                "can_manage_drawings": True,
-                "can_view_analytics": True,
-                "can_manage_team": True,
-            }
-            seller_department = "director"
+            if role == "seller":
+                seller_permissions = {
+                    "can_manage_assortment": True,
+                    "can_manage_pricing": True,
+                    "can_manage_orders": True,
+                    "can_manage_drawings": True,
+                    "can_view_analytics": True,
+                    "can_manage_team": True,
+                }
+                seller_department = "director"
         else:
             profile = getattr(request.user, "profile", None)
-            role = profile.role if profile else "buyer"
             if profile and role == "seller":
                 seller_permissions = {
                     "can_manage_assortment": bool(profile.can_manage_assortment),
@@ -226,7 +232,11 @@ def auth_meta(request):
         },
     }[lang_key]
 
-    is_demo = request.user.is_authenticated and request.user.username.startswith("demo_")
+    is_demo = (
+        settings.DEBUG
+        and request.user.is_authenticated
+        and request.user.username.startswith("demo_")
+    )
 
     # Admin moderation count
     admin_moderation_count = 0
@@ -257,7 +267,11 @@ def seller_context(request):
         return {}
 
     profile = getattr(request.user, "profile", None)
-    if not profile or profile.role != "seller":
+    role = (
+        getattr(request, "active_role", None)
+        or detect_user_role(request.user, request=request)
+    )
+    if not profile or role != "seller":
         return {}
 
     seller = request.user
@@ -309,7 +323,11 @@ def buyer_context(request):
         return {}
 
     profile = getattr(request.user, "profile", None)
-    if not profile or profile.role != "buyer":
+    role = (
+        getattr(request, "active_role", None)
+        or detect_user_role(request.user, request=request)
+    )
+    if not profile or role != "buyer":
         return {}
 
     buyer = request.user
@@ -322,7 +340,7 @@ def buyer_context(request):
         status__in=["cancelled"]
     ).count()
 
-    is_demo = buyer.username.startswith("demo_")
+    is_demo = settings.DEBUG and buyer.username.startswith("demo_")
 
     if is_demo:
         buyer_nav_items = [

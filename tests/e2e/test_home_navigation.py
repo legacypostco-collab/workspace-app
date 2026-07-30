@@ -12,7 +12,7 @@ def test_home_preserves_current_conversation(buyer_page: Page):
     page = buyer_page
     welcome = page.locator("#welcomeStage")
 
-    page.locator(".pill", has_text="Мои сделки").first.click()
+    page.locator(".pill[data-pid^='get_my_deals#']").first.click()
     page.wait_for_selector(".msg-assistant", timeout=15000)
     conv_id = page.evaluate("window.sessionStorage.getItem('cf_active_conv')")
     message_count = page.locator("#streamInner .msg").count()
@@ -38,13 +38,17 @@ def test_navigation_is_not_duplicated_under_each_answer(buyer_page: Page):
     assert "Главная" not in joined
 
 
-def test_new_chat_gets_a_new_conversation_id(buyer_page: Page):
+def test_new_chat_gets_a_new_conversation_id_after_first_action(buyer_page: Page):
     page = buyer_page
     page.locator(".pill", has_text="Мои сделки").first.click()
     page.wait_for_selector(".msg-assistant", timeout=15000)
     first_id = page.evaluate("window.sessionStorage.getItem('cf_active_conv')")
 
     page.locator(".side-new-btn").click()
+    assert page.evaluate("window.sessionStorage.getItem('cf_active_conv')") is None
+    assert page.locator("#streamInner .msg").count() == 0
+
+    page.locator(".pill[data-pid^='get_my_deals#']").first.click()
     second_id = None
     for _ in range(40):
         second_id = page.evaluate("window.sessionStorage.getItem('cf_active_conv')")
@@ -53,7 +57,7 @@ def test_new_chat_gets_a_new_conversation_id(buyer_page: Page):
         page.wait_for_timeout(250)
 
     assert second_id and second_id != first_id
-    assert page.locator("#streamInner .msg").count() == 0
+    assert page.locator("#streamInner .msg").count() > 0
 
 
 def test_command_palette_contains_role_commands(buyer_page: Page):
@@ -95,11 +99,10 @@ def test_input_command_button_keeps_current_conversation(buyer_page: Page):
     assert page.locator(".msg-assistant").count() > message_count
 
 
-def test_direct_action_link_starts_after_initialization(page: Page, base_url: str):
-    page.goto(
-        f"{base_url}/demo-login/?role=buyer",
-        wait_until="domcontentloaded",
-    )
+def test_direct_action_link_starts_after_initialization(
+    page: Page, base_url: str, login_as
+):
+    login_as(page, "buyer")
     page.goto(
         f"{base_url}/chat/?new=1&run=get_orders",
         wait_until="domcontentloaded",

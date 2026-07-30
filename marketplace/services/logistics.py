@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 from django.conf import settings
+
+MAX_LOGISTICS_QUOTE = Decimal("100000000.00")
 
 
 def _to_decimal(value, default: Decimal = Decimal("0.00")) -> Decimal:
@@ -16,8 +18,12 @@ def _to_decimal(value, default: Decimal = Decimal("0.00")) -> Decimal:
 
 
 def _is_strict() -> bool:
-    # Backward compatible with old TEUSTAT_STRICT_MODE flag.
-    return bool(getattr(settings, "LOGISTICS_STRICT_MODE", False) or getattr(settings, "TEUSTAT_STRICT_MODE", False))
+    # Рабочая среда не должна выдавать расчёт по тестовой формуле как котировку.
+    return bool(
+        not settings.DEBUG
+        or getattr(settings, "LOGISTICS_STRICT_MODE", False)
+        or getattr(settings, "TEUSTAT_STRICT_MODE", False)
+    )
 
 
 def _fallback_logistics_estimate(payload: dict, warning: str | None = None) -> dict:
@@ -141,7 +147,7 @@ def _request_external(provider: str, payload: dict) -> dict:
     if api_key:
         req_headers["Authorization"] = f"Bearer {api_key}"
 
-    from assistant.security import safe_outbound_url
+    from assistant.security import safe_outbound_url, urlopen_no_redirect
 
     ok_url, reason = safe_outbound_url(
         api_url,
@@ -156,8 +162,12 @@ def _request_external(provider: str, payload: dict) -> dict:
 
     req = Request(api_url, data=body, headers=req_headers, method="POST")
     try:
-        with urlopen(req, timeout=timeout_sec) as resp:
-            raw = resp.read().decode("utf-8")
+        # The target passed safe_outbound_url with a production allowlist.
+        with urlopen_no_redirect(req, timeout=timeout_sec) as resp:
+            raw_bytes = resp.read(1024 * 1024 + 1)
+        if len(raw_bytes) > 1024 * 1024:
+            raise ValueError("oversized logistics response")
+        raw = raw_bytes.decode("utf-8")
         data = json.loads(raw)
         amount = _extract_cost_from_response(data)
         if amount is None:
@@ -166,18 +176,29 @@ def _request_external(provider: str, payload: dict) -> dict:
                     "ok": False,
                     "provider": normalized_provider,
                     "error": f"{normalized_provider} response does not contain cost field.",
-                    "raw": data,
                 }
             return _fallback_logistics_estimate(payload, warning=f"{normalized_provider} response without cost; fallback used.")
+        if amount < 0 or amount > MAX_LOGISTICS_QUOTE:
+            return {
+                "ok": False,
+                "provider": normalized_provider,
+                "error": f"{normalized_provider} response contains invalid cost.",
+            }
 
         return {
             "ok": True,
             "provider": normalized_provider,
             "currency": str(data.get("currency") or payload.get("currency") or "USD"),
             "cost": str(amount.quantize(Decimal("0.01"))),
-            "raw": data,
         }
-    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+    except (
+        HTTPError,
+        URLError,
+        TimeoutError,
+        UnicodeDecodeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
         if strict_mode:
             return {
                 "ok": False,
@@ -190,6 +211,12 @@ def _request_external(provider: str, payload: dict) -> dict:
 def logistics_estimate(payload: dict) -> dict:
     provider = (getattr(settings, "LOGISTICS_PROVIDER", "teustat") or "teustat").strip().lower()
     if provider == "internal":
+        if _is_strict():
+            return {
+                "ok": False,
+                "provider": "internal",
+                "error": "Internal logistics formula is disabled in strict mode.",
+            }
         return _fallback_logistics_estimate(payload, warning="internal formula selected by LOGISTICS_PROVIDER=internal")
     return _request_external(provider, payload)
 
