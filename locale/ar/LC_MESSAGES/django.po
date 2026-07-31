@@ -1197,11 +1197,11 @@ msgid "только что"
 msgstr "الآن"
 
 #: assistant/actions.py:2682
-msgid "Мои активные RFQ"
+msgid "Мои активные заявки"
 msgstr "طلبات عروضي النشطة"
 
 #: assistant/actions.py:2682
-msgid "Создать ещё RFQ"
+msgid "Создать ещё заявку"
 msgstr "إنشاء طلب عرض آخر"
 
 #: assistant/actions.py:2721

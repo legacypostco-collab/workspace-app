@@ -122,6 +122,10 @@ def test_chat_authenticated(xb_page, xb_browser_name, login_as):
     assert xb_page.locator("#topBell").is_visible(timeout=5000)
     assert xb_page.locator('button:has-text("Войти")').count() == 0
     assert xb_page.locator('button:has-text("Регистрация")').count() == 0
+    visible_text = xb_page.locator("body").inner_text()
+    assert not any(term in visible_text for term in ("AUTO", "SEMI", "MANUAL")), (
+        "в интерфейсе видны внутренние названия режима заявки"
+    )
 
     _shot(xb_page, xb_browser_name, "chat_auth")
     assert not errors, f"JS-ошибки на /chat/ (auth): {errors}"

@@ -1171,12 +1171,12 @@ msgid "только что"
 msgstr "justo ahora"
 
 #: assistant/actions.py:2677
-msgid "Мои активные RFQ"
-msgstr "Mis RFQ activos"
+msgid "Мои активные заявки"
+msgstr "Mis solicitudes activas"
 
 #: assistant/actions.py:2677
-msgid "Создать ещё RFQ"
-msgstr "Crear otro RFQ"
+msgid "Создать ещё заявку"
+msgstr "Crear otra solicitud"
 
 #: assistant/actions.py:2716
 msgid "У вас пока нет заказов."

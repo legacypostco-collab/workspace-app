@@ -4317,7 +4317,16 @@
       };
       const urgencyClass = d.urgency === 'critical' ? 'rcard-urg-critical'
                           : d.urgency === 'urgent' ? 'rcard-urg-urgent' : '';
-      const modeBadge = d.mode ? `<span class="rcard-mode-badge">${esc(d.mode)}</span>` : '';
+      const modeKey = String(d.mode || '').trim().toLowerCase();
+      const modeLabel = {
+        auto: tr('rfq.mode.auto'),
+        semi: tr('rfq.mode.semi'),
+        manual: tr('rfq.mode.manual'),
+        manual_oem: tr('rfq.mode.manual'),
+      }[modeKey] || '';
+      const modeBadge = modeLabel
+        ? `<span class="rcard-mode-badge">${esc(modeLabel)}</span>`
+        : '';
       const urgencyBadge = d.urgency_label
         ? `<span class="rcard-urg-badge ${urgencyClass}">${esc(d.urgency_label)}</span>` : '';
 

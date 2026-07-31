@@ -1159,11 +1159,11 @@ msgid "только что"
 msgstr "刚刚"
 
 #: assistant/actions.py:2682
-msgid "Мои активные RFQ"
+msgid "Мои активные заявки"
 msgstr "我的活跃询价"
 
 #: assistant/actions.py:2682
-msgid "Создать ещё RFQ"
+msgid "Создать ещё заявку"
 msgstr "再创建一个询价"
 
 #: assistant/actions.py:2721
