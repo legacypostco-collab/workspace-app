@@ -38,7 +38,7 @@
 <meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'brand/og-card.png' %}">
 
 {# ── Schema.org Organization (structured data) ─────────────── #}
-<script type="application/ld+json">
+<script nonce="{{ request.csp_nonce }}" type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -49,7 +49,7 @@
   "sameAs": []
 }
 </script>
-<style>
+<style nonce="{{ request.csp_nonce }}">
   /* ======== TOKENS ======== */
   :root{
     --bg:           #F7F7F6;
@@ -3449,7 +3449,7 @@
 <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
-<style>
+<style nonce="{{ request.csp_nonce }}">
 .lang-fab-wrap{position:relative;z-index:1;}
 .lang-fab{width:42px;height:42px;border-radius:50%;border:1px solid rgba(24,24,24,0.08);
   background:rgba(24,24,24,0.06);color:rgba(24,24,24,0.86);cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -3481,7 +3481,7 @@ body.dark-mode .lang-menu button.active,
 html[dir="rtl"] .lang-menu{right:auto;left:0;text-align:right;}
 html[dir="rtl"] .lang-menu button{text-align:right;}
 </style>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   function curLang(){
     var m = document.cookie.match(/django_language=([a-z-]+)/);
@@ -3526,7 +3526,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   else highlight();
 })();
 </script>
-<script>
+<script nonce="{{ request.csp_nonce }}">
   (function(){
     try {
       if (localStorage.getItem('cf_dark_mode') === '1') {
@@ -3659,19 +3659,19 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M7.3 19.3c1-2.3 2.6-3.3 4.7-3.3s3.7 1 4.7 3.3"/></svg>
     </a>
     <div class="lang-fab-wrap" id="langFabWrap">
-      <button type="button" class="lang-fab" id="langFab" onclick="toggleLangMenu()"
+      <button type="button" class="lang-fab" id="langFab" data-ui-click="toggleLangMenu"
               aria-label="{% trans 'Язык интерфейса' %}" title="{% trans 'Язык интерфейса' %}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
       </button>
       <div class="lang-menu" id="langMenu" hidden>
-        <button type="button" data-lang="ru"      onclick="pickLang('ru')">Русский</button>
-        <button type="button" data-lang="en"      onclick="pickLang('en')">English</button>
-        <button type="button" data-lang="es"      onclick="pickLang('es')">Español</button>
-        <button type="button" data-lang="zh-hans" onclick="pickLang('zh-hans')">中文</button>
-        <button type="button" data-lang="ar"      onclick="pickLang('ar')">العربية</button>
+        <button type="button" data-lang="ru"      data-ui-click="pickLang" data-ui-click-args='["ru"]'>Русский</button>
+        <button type="button" data-lang="en"      data-ui-click="pickLang" data-ui-click-args='["en"]'>English</button>
+        <button type="button" data-lang="es"      data-ui-click="pickLang" data-ui-click-args='["es"]'>Español</button>
+        <button type="button" data-lang="zh-hans" data-ui-click="pickLang" data-ui-click-args='["zh-hans"]'>中文</button>
+        <button type="button" data-lang="ar"      data-ui-click="pickLang" data-ui-click-args='["ar"]'>العربية</button>
       </div>
     </div>
-    <button type="button" class="theme-fab" id="themeFab" onclick="toggleLandingTheme()"
+    <button type="button" class="theme-fab" id="themeFab" data-ui-click="toggleLandingTheme"
             aria-label="{% trans 'Переключить тему' %}" title="{% trans 'Тема' %}">
       <svg class="theme-icon-sun"  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
       <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -3682,7 +3682,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
           aria-label="{% trans 'Меню' %}"
           aria-expanded="false"
           data-testid="mobile-menu-button"
-          onclick="(function(b){var n=b.parentElement.querySelector('nav');var open=n.classList.toggle('is-open');b.setAttribute('aria-expanded',open?'true':'false');})(this)">
+          data-ui-action="landing-nav-toggle">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
   </button>
 </header>
@@ -3769,7 +3769,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
 
       </div>
 
-      <div class="search-box" onclick="if(event.target===this){document.getElementById('landingSearch').focus();}">
+      <div class="search-box" data-ui-action="landing-search-focus">
         <div class="search-head">
           <div class="examples-tag">{% trans "ПРИМЕРЫ:" %}</div>
           <div class="search-assist">
@@ -3782,20 +3782,20 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         </div>
         <textarea id="landingSearch" class="search-input" rows="2" autocomplete="off" spellcheck="false"
                   placeholder="2W1223  1&#10;1R0750  2"
-                  onkeydown="landingKey(event)"></textarea>
+                  data-ui-keydown="landingKey" data-ui-keydown-event></textarea>
         <div class="search-toolbar">
           <div class="tools-left">
-            <button class="tool-btn" type="button" aria-label="{% trans 'Прикрепить файл' %}" onclick="landingChat()">
+            <button class="tool-btn" type="button" aria-label="{% trans 'Прикрепить файл' %}" data-ui-click="landingChat">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 17.93 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </button>
-            <button class="tool-btn" type="button" aria-label="{% trans 'Сфотографировать деталь' %}" onclick="landingChat()">
+            <button class="tool-btn" type="button" aria-label="{% trans 'Сфотографировать деталь' %}" data-ui-click="landingChat">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg>
             </button>
-            <button class="tool-btn" type="button" aria-label="{% trans 'Поиск по каталогу' %}" onclick="landingGoSearch()">
+            <button class="tool-btn" type="button" aria-label="{% trans 'Поиск по каталогу' %}" data-ui-click="landingGoSearch">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
             </button>
           </div>
-          <button class="mic-btn" type="button" aria-label="{% trans 'Найти' %}" onclick="landingGoSearch()">
+          <button class="mic-btn" type="button" aria-label="{% trans 'Найти' %}" data-ui-click="landingGoSearch">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
           </button>
         </div>
@@ -4307,42 +4307,44 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
 </footer>
 
 {# ──── Cookie consent banner (152-ФЗ / GDPR): Accept + Reject (B-02) ──── #}
+<style nonce="{{ request.csp_nonce }}">
+  .cookie-banner{position:fixed;bottom:0;left:0;right:0;z-index:9990;background:#111;color:#fff;padding:14px 22px;box-shadow:0 -4px 20px rgba(0,0,0,.25);font-size:13px;line-height:1.5;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .cookie-banner:not([hidden]){display:flex;}
+  .cookie-banner__text{flex:1;min-width:280px;margin:0;}
+  .cookie-banner__text a{color:#fcd34d;text-decoration:underline;}
+  .cookie-banner__actions{display:flex;gap:12px;align-items:center;}
+  .cookie-banner__actions .btn{padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;}
+  .cookie-banner__actions .btn--ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);}
+  .cookie-banner__actions .btn--primary{background:#fff;color:#181818;border:0;}
+</style>
 <div id="cookie-banner"
      class="cookie-banner"
      role="region"
      aria-label="{% trans 'Согласие на использование файлов cookie' %}"
      data-testid="cookie-banner"
-     style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9990;
-            background:#111111;color:#fff;padding:14px 22px;
-            box-shadow:0 -4px 20px rgba(0,0,0,0.25);font-size:13px;line-height:1.5;
-            align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;"
      hidden>
-  <p class="cookie-banner__text" style="flex:1;min-width:280px;margin:0;">
+  <p class="cookie-banner__text">
     {% blocktrans %}Мы используем файлы cookie для авторизации и работы платформы. Продолжая, вы соглашаетесь с{% endblocktrans %}
-    <a href="{% url 'privacy' %}" style="color:#fcd34d;text-decoration:underline;">{% trans "политикой конфиденциальности" %}</a>
+    <a href="{% url 'privacy' %}">{% trans "политикой конфиденциальности" %}</a>
     {% trans "и" %}
-    <a href="{% url 'cookies' %}" style="color:#fcd34d;text-decoration:underline;">{% trans "использованием файлов cookie" %}</a>.
+    <a href="{% url 'cookies' %}">{% trans "использованием файлов cookie" %}</a>.
   </p>
-  <div class="cookie-banner__actions" style="display:flex;gap:12px;align-items:center;">
+  <div class="cookie-banner__actions">
     <button type="button"
             class="btn btn--ghost"
             data-cookie-action="reject"
-            data-testid="cookie-reject"
-            style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,0.4);
-                   padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+            data-testid="cookie-reject">
       {% trans "Отклонить" %}
     </button>
     <button type="button"
             class="btn btn--primary"
             data-cookie-action="accept"
-            data-testid="cookie-accept"
-            style="background:#fff;color:#181818;border:none;
-                   padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;">
+            data-testid="cookie-accept">
       {% trans "Принять все" %}
     </button>
   </div>
 </div>
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function () {
   var KEY = 'cookie_consent';
   var banner = document.getElementById('cookie-banner');
@@ -4359,7 +4361,6 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
     document.cookie = 'cookie_consent=' + (decision === 'accept' ? '1' : '0') +
                       '; path=/; max-age=' + (60 * 60 * 24 * 365) + '; SameSite=Lax';
     banner.hidden = true;
-    banner.style.display = 'none';
     if (decision === 'accept' && window.__loadAnalytics) {
       try { window.__loadAnalytics(); } catch (e) {}
     }
@@ -4370,7 +4371,6 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   }
   if (!hasDecision()) {
     banner.hidden = false;
-    banner.style.display = 'flex';
   }
   banner.addEventListener('click', function (e) {
     var btn = e.target.closest('[data-cookie-action]');
@@ -4397,7 +4397,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   </div>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   var modal = document.getElementById('authModal');
   var body = document.getElementById('authModalBody');
@@ -4707,6 +4707,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   });
 })();
 </script>
+<script src="{% static 'js/ui-events.js' %}?v=1" defer></script>
 
 </div><!-- /.page -->
 

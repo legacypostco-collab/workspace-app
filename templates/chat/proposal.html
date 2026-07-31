@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csp-nonce" content="{{ request.csp_nonce }}">
   <title>{% blocktrans with rfq_id=rfq_id %}Предложение по заявке №{{ rfq_id }}{% endblocktrans %} — Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <script src="{% url 'javascript-catalog' %}" defer></script>
-  <style>
+  <style nonce="{{ request.csp_nonce }}">
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;color:#1a1a1a;-webkit-font-smoothing:antialiased;}
     body{background:linear-gradient(180deg,#a8b8d8 0%,#cda9d6 35%,#f0a59a 65%,#f4956a 100%);background-attachment:fixed;overflow:hidden;}
@@ -72,6 +73,7 @@
     .term-val{font-size:13px;color:rgba(0,0,0,0.88);font-weight:500;}
 
     .loading{text-align:center;padding:80px 20px;color:rgba(0,0,0,0.55);}
+    .loading-compact{padding:30px}.pp-meta-spaced{margin-top:8px}.line-col-num{width:40px}.line-col-qty{width:60px}.line-col-total{width:140px}.badge-row{margin-top:4px}
 
     @media(max-width:768px){
       .content{padding:10px 14px 40px;}
@@ -109,7 +111,7 @@
   </div>
 </div>
 
-<script>window.RFQ_ID = "{{ rfq_id }}";</script>
+<script nonce="{{ request.csp_nonce }}">window.RFQ_ID = "{{ rfq_id }}";</script>
 <script src="{% static 'js/proposal-page.js' %}?v=1&t={% now 'U' %}" defer></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
-{% load i18n %}
+{% load static i18n %}
 {# AI Assistant chat widget — floating button + drawer with WS streaming #}
-<style>
+<style nonce="{{ request.csp_nonce }}">
   .ai-fab{position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#E84A21,#FFB08A);color:#1A1A1A;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 28px rgba(232,74,33,0.45);z-index:9990;transition:all .2s;}
   .ai-fab:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(232,74,33,0.55);}
   .ai-fab svg{width:26px;height:26px;}
@@ -52,9 +52,10 @@
 
   .ai-empty{text-align:center;padding:30px 20px;color:#5E5E5E;font-size:13px;}
   .ai-empty-icon{font-size:42px;margin-bottom:12px;opacity:0.5;}
+  .ai-empty-note{margin-top:8px;font-size:11px;color:#5e5e5e;}
 </style>
 
-<button id="aiFab" class="ai-fab" title="{% trans 'AI Ассистент' %}" onclick="aiToggle()">
+<button id="aiFab" class="ai-fab" title="{% trans 'AI Ассистент' %}" data-ui-click="aiToggle">
   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12c0 1.5.4 2.9 1 4.2L2 22l5.8-1c1.3.6 2.7 1 4.2 1 5.5 0 10-4.5 10-10S17.5 2 12 2zm-3 11h-2v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"/></svg>
   <span class="dot"></span>
 </button>
@@ -66,26 +67,26 @@
       <div class="ai-head-title">{% trans "AI Ассистент" %}</div>
       <div class="ai-head-status"><span id="aiStatus" class="live">●</span> <span id="aiStatusText">{% trans "На связи" %}</span></div>
     </div>
-    <button class="ai-head-close" onclick="aiToggle()">×</button>
+    <button class="ai-head-close" data-ui-click="aiToggle">×</button>
   </div>
 
   <div class="ai-body" id="aiBody">
     <div class="ai-empty" id="aiEmpty">
       <div class="ai-empty-icon">🤖</div>
       <div>{% trans "Привет! Я помогу с заказами, RFQ, каталогом и аналитикой." %}</div>
-      <div style="margin-top:8px;font-size:11px;color:#5E5E5E;">{% trans "Задайте вопрос или выберите подсказку." %}</div>
+      <div class="ai-empty-note">{% trans "Задайте вопрос или выберите подсказку." %}</div>
     </div>
   </div>
 
   <div class="ai-suggest" id="aiSuggest"></div>
 
   <div class="ai-input">
-    <textarea id="aiInput" rows="1" placeholder="{% trans 'Спросите что-нибудь...' %}" onkeydown="aiKey(event)"></textarea>
-    <button id="aiSend" onclick="aiSend()">↑</button>
+    <textarea id="aiInput" rows="1" placeholder="{% trans 'Спросите что-нибудь...' %}" data-ui-keydown="aiKey" data-ui-keydown-event></textarea>
+    <button id="aiSend" data-ui-click="aiSend">↑</button>
   </div>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
 (function(){
   var convId = null, ws = null, currentBotMsg = null, isStreaming = false;
   var STORAGE_OPEN = 'ai_drawer_open';
@@ -109,7 +110,7 @@
     fetch('/api/assistant/widget-config/').then(r=>r.json()).then(cfg=>{
       var s = $('aiSuggest');
       s.innerHTML = (cfg.suggestions || []).map(q =>
-        '<button class="ai-suggest-chip" onclick="aiAsk(this.textContent)">'+escapeHtml(String(q || ''))+'</button>'
+        '<button class="ai-suggest-chip" data-ui-action="assistant-suggest">'+escapeHtml(String(q || ''))+'</button>'
       ).join('');
       if (cfg.latest_conversation_id) {
         convId = cfg.latest_conversation_id;
@@ -200,8 +201,8 @@
     }
     if (role === 'bot' && msgId) {
       inner += '<div class="ai-msg-fb">' +
-        '<button data-message-id="'+escapeHtml(String(msgId))+'" onclick="aiFb(this.dataset.messageId,1,this)">👍</button>' +
-        '<button data-message-id="'+escapeHtml(String(msgId))+'" onclick="aiFb(this.dataset.messageId,-1,this)">👎</button>' +
+        '<button data-ui-action="assistant-feedback" data-feedback="1" data-message-id="'+escapeHtml(String(msgId))+'">👍</button>' +
+        '<button data-ui-action="assistant-feedback" data-feedback="-1" data-message-id="'+escapeHtml(String(msgId))+'">👎</button>' +
         '</div>';
     }
     inner += '</div>';
@@ -301,3 +302,4 @@
   }
 })();
 </script>
+<script src="{% static 'js/ui-events.js' %}?v=1" defer></script>

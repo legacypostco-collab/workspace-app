@@ -1,4 +1,20 @@
 (function () {
+  const applyDynamicPresentation = function (root) {
+    const scope = root && root.nodeType === 1 ? root : document;
+    const selector = '[data-ui-percent],[data-ui-bg],[data-ui-color]';
+    const nodes = [];
+    if (scope.matches && scope.matches(selector)) nodes.push(scope);
+    if (scope.querySelectorAll) scope.querySelectorAll(selector).forEach(function (node) { nodes.push(node); });
+    nodes.forEach(function (node) {
+      if (node.dataset.uiPercent != null) node.style.width = Math.max(0, Math.min(100, Number(node.dataset.uiPercent) || 0)) + '%';
+      const safe = function (value) { return /^#[0-9a-f]{3,8}$/i.test(value || '') || /^rgba?\([\d\s.,%]+\)$/i.test(value || ''); };
+      if (safe(node.dataset.uiBg)) node.style.background = node.dataset.uiBg;
+      if (safe(node.dataset.uiColor)) node.style.color = node.dataset.uiColor;
+    });
+  };
+  new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) { mutation.addedNodes.forEach(applyDynamicPresentation); });
+  }).observe(document.body, { childList: true, subtree: true });
   const endpoint = "/api/v1/supplier/dashboard";
   const refreshIntervalMs = 60000;
   const initialNode = document.getElementById("supplier-dashboard-initial");
@@ -188,7 +204,7 @@
 
         return (
           '<article class="dashboard-metric-card">' +
-          '<div class="dashboard-metric-accent" style="background:' + escapeHtml(accent) + '"></div>' +
+          '<div class="dashboard-metric-accent" data-ui-bg="' + escapeHtml(accent) + '"></div>' +
           '<div class="dashboard-metric-label">' + escapeHtml(card.label || card.key || "Metric") + "</div>" +
           '<div class="dashboard-metric-value">' + escapeHtml(String(value)) + "</div>" +
           '<div class="dashboard-metric-foot">' + sub + cta + "</div>" +
@@ -279,7 +295,7 @@
     root.innerHTML =
       '<div class="dashboard-rating">' +
       '<div class="dashboard-rating-ring">' +
-      '<svg width="96" height="96" viewBox="0 0 96 96" style="transform: rotate(-90deg)">' +
+      '<svg width="96" height="96" viewBox="0 0 96 96" class="dashboard-rating-ring">' +
       '<circle cx="48" cy="48" r="42" fill="none" stroke="#2C2C2C" stroke-width="6"></circle>' +
       '<circle cx="48" cy="48" r="42" fill="none" stroke="' + color + '" stroke-width="6" stroke-linecap="round" ' +
       'stroke-dasharray="' + String(circumference) + '" stroke-dashoffset="' + String(offset) + '"></circle>' +
@@ -321,7 +337,7 @@
         const count = Number(row.count || 0);
         const color = palette[row.status_key] || row.color || "#E84A21";
         const width = Math.max(4, Math.round((count / safeTotal) * 100));
-        return '<span class="dashboard-status-segment" style="width:' + String(width) + '%;background:' + escapeHtml(color) + '"></span>';
+        return '<span class="dashboard-status-segment" data-ui-percent="' + String(width) + '" data-ui-bg="' + escapeHtml(color) + '"></span>';
       })
       .join("");
 
@@ -331,7 +347,7 @@
       const color = palette[row.status_key] || row.color || "#E84A21";
       return (
         '<div class="dashboard-status-item">' +
-        '<span class="dashboard-status-dot" style="background:' + escapeHtml(color) + '"></span>' +
+        '<span class="dashboard-status-dot" data-ui-bg="' + escapeHtml(color) + '"></span>' +
         '<span class="dashboard-status-label">' + escapeHtml(label) + "</span>" +
         '<strong class="dashboard-status-count">' + escapeHtml(String(count)) + "</strong>" +
         "</div>"
@@ -555,10 +571,10 @@
         const value = Number(row[valueKey] || 0);
         const width = Math.round((value / max) * 100);
         return (
-          '<div class="dashboard-bars-row" style="grid-template-columns: 56px minmax(0,1fr) 64px">' +
-          '<span class="muted" style="text-align:right">' + escapeHtml(label) + "</span>" +
-          '<div class="dashboard-bar-track"><div class="dashboard-bar-fill" style="width:' + String(width) + '%;background:#1D9E75"></div></div>' +
-          '<span class="muted" style="text-align:right">' + escapeHtml(formatNumber(value.toFixed(1))) + escapeHtml(suffix || "") + "</span>" +
+          '<div class="dashboard-bars-row dashboard-bars-row-three">' +
+          '<span class="muted dashboard-text-right">' + escapeHtml(label) + "</span>" +
+          '<div class="dashboard-bar-track"><div class="dashboard-bar-fill dashboard-bar-fill-green" data-ui-percent="' + String(width) + '"></div></div>' +
+          '<span class="muted dashboard-text-right">' + escapeHtml(formatNumber(value.toFixed(1))) + escapeHtml(suffix || "") + "</span>" +
           "</div>"
         );
       }).join("") +
@@ -605,11 +621,11 @@
       })();
       return (
         '<a class="dashboard-request-row" href="' + escapeHtml(url) + '">' +
-        '<span class="dashboard-dot" style="background:' + escapeHtml(typeStyle.dot || dot) + '"></span>' +
+        '<span class="dashboard-dot" data-ui-bg="' + escapeHtml(typeStyle.dot || dot) + '"></span>' +
         '<div class="dashboard-request-idcol">' + (id ? '<span class="dashboard-request-id">' + escapeHtml(id) + "</span>" : "") + "</div>" +
         '<div class="dashboard-request-main">' +
         '<div class="dashboard-request-meta">' +
-        '<span class="dashboard-badge" style="background:' + escapeHtml(typeStyle.bg) + ';color:' + escapeHtml(typeStyle.color) + ';border-color:transparent">' + escapeHtml(type) + "</span>" +
+        '<span class="dashboard-badge dashboard-badge-dynamic" data-ui-bg="' + escapeHtml(typeStyle.bg) + '" data-ui-color="' + escapeHtml(typeStyle.color) + '">' + escapeHtml(type) + "</span>" +
         (brand ? '<span class="dashboard-badge">' + escapeHtml(brand) + "</span>" : "") +
         "</div>" +
         '<div class="dashboard-request-part">' + escapeHtml(part) + "</div>" +
@@ -644,7 +660,7 @@
       })();
       return (
         '<div class="dashboard-event-row">' +
-        '<span class="dashboard-event-dot" style="background:' + escapeHtml(dot) + '"></span>' +
+        '<span class="dashboard-event-dot" data-ui-bg="' + escapeHtml(dot) + '"></span>' +
         '<div><div class="dashboard-event-title">' + escapeHtml(text) + '</div>' +
         (detail ? '<div class="muted">' + escapeHtml(detail) + "</div>" : "") +
         "</div>" +

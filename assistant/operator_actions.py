@@ -16,7 +16,7 @@ from decimal import Decimal
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
-from .actions import ActionResult, _log_event, _notify, register
+from .actions import ActionResult, _log_activity, _log_event, _notify, register
 from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
@@ -4207,17 +4207,33 @@ def op_confirm_topup(params, user, role):
             text=_('Заявка %(p0)s в статусе «%(p1)s» — зачисление невозможно.') % {"p0": f'{req.reference_code}', "p1": f'{req.get_status_display()}'},
         )
 
-    tx = req.mark_paid(by_user=user)
-    _log_event(
-        user, "topup_confirmed",
-        {"topup_id": req.id, "amount": str(req.amount),
-         "ref": req.reference_code, "tx_id": tx.id if tx else None,
-         "buyer_id": req.user_id},
+    try:
+        tx = req.mark_paid(by_user=user)
+    except ValueError:
+        req.refresh_from_db()
+        return ActionResult(
+            text=_("Заявка %(ref)s уже обработана и не может быть зачислена.") % {
+                "ref": req.reference_code,
+            },
+        )
+    _log_activity(
+        "topup_confirmed",
+        actor=user,
+        title=_("Пополнение подтверждено"),
+        meta={"topup_id": req.id, "amount": str(req.amount),
+              "ref": req.reference_code, "tx_id": tx.id if tx else None,
+              "buyer_id": req.user_id},
     )
     # Уведомление покупателю — через стандартный нотификатор.
     try:
-        _notify(req.user, "topup_paid",
-                _("💰 Депозит пополнен на $%(amount)s (заявка %(ref)s).") % {"amount": f"{req.amount:,.2f}", "ref": req.reference_code})
+        _notify(
+            req.user,
+            kind="payment",
+            title=_("Депозит пополнен"),
+            body=_("Депозит пополнен на $%(amount)s (заявка %(ref)s).") % {
+                "amount": f"{req.amount:,.2f}", "ref": req.reference_code,
+            },
+        )
     except Exception:
         pass
 
@@ -4234,6 +4250,7 @@ def op_confirm_topup(params, user, role):
 @register("op_reject_topup")
 def op_reject_topup(params, user, role):
     """Финансист отклоняет заявку (например, деньги не пришли в срок)."""
+    from django.db import transaction
     from django.utils import timezone
 
     from assistant.models import WalletTopupRequest
@@ -4248,21 +4265,217 @@ def op_reject_topup(params, user, role):
     except (WalletTopupRequest.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("Заявка не найдена."))
 
-    if req.status in ("paid", "cancelled", "failed", "expired"):
-        return ActionResult(
-            text=_('Заявка в статусе «%(p0)s» — изменить нельзя.') % {"p0": f'{req.get_status_display()}'},
-        )
-
-    req.status = "failed"
-    req.cancelled_at = timezone.now()
-    if reason:
-        req.note = (req.note + " | " if req.note else "") + f"rejected: {reason}"
-    req.save(update_fields=["status", "cancelled_at", "note", "updated_at"])
-    _log_event(user, "topup_rejected",
-               {"topup_id": req.id, "ref": req.reference_code, "reason": reason})
+    with transaction.atomic():
+        locked = WalletTopupRequest.objects.select_for_update().get(pk=req.pk)
+        if locked.status in ("paid", "cancelled", "failed", "expired"):
+            return ActionResult(
+                text=_('Заявка в статусе «%(status)s» — изменить нельзя.') % {
+                    "status": locked.get_status_display(),
+                },
+            )
+        locked.status = "failed"
+        locked.cancelled_at = timezone.now()
+        if reason:
+            locked.note = (
+                (locked.note + " | " if locked.note else "")
+                + f"rejected: {reason}"
+            )
+        locked.save(update_fields=[
+            "status", "cancelled_at", "note", "updated_at",
+        ])
+        req = locked
+    _log_activity(
+        "topup_rejected",
+        actor=user,
+        title=_("Пополнение отклонено"),
+        meta={"topup_id": req.id, "ref": req.reference_code, "reason": reason},
+    )
     try:
-        _notify(req.user, "topup_failed",
-                _("⚠️ Заявка %(ref)s отклонена: %(reason)s.") % {"ref": req.reference_code, "reason": reason or _('свяжитесь с финансовым отделом')})
+        _notify(
+            req.user,
+            kind="payment",
+            title=_("Пополнение отклонено"),
+            body=_("Заявка %(ref)s отклонена: %(reason)s.") % {
+                "ref": req.reference_code,
+                "reason": reason or _("свяжитесь с финансовым отделом"),
+            },
+        )
     except Exception:
         pass
     return ActionResult(text=_('✓ Заявка %(p0)s отклонена.') % {"p0": f'{req.reference_code}'})
+
+
+@register("op_withdrawal_queue")
+def op_withdrawal_queue(params, user, role):
+    """Очередь заявок на вывод с уже зарезервированными суммами."""
+    from assistant.models import WalletWithdrawalRequest
+
+    if role not in ("operator_payment", "operator", "admin"):
+        return ActionResult(text=_("Действие доступно только финансовому оператору."))
+    requests = list(
+        WalletWithdrawalRequest.objects
+        .filter(status__in=("pending", "approved"))
+        .select_related("wallet__user")
+        .order_by("status", "created_at")[:100]
+    )
+    rows = []
+    for request in requests:
+        next_action = "op_complete_withdrawal" if request.status == "approved" else "op_approve_withdrawal"
+        rows.append({
+            "title": f"{request.reference_code} · ${request.amount:,.2f} · {request.wallet.user.username}",
+            "subtitle": (
+                f"{request.get_status_display()} · {request.bank_name} · "
+                f"счёт ••••{request.bank_account_last4} · {request.created_at:%d.%m %H:%M}"
+            ),
+            "action": next_action,
+            "params": {"withdrawal_id": request.id},
+            "badge": {"label": request.get_status_display(),
+                      "tone": "warn" if request.status == "pending" else "info"},
+        })
+    return ActionResult(
+        text=_("Заявки на вывод: %(count)s.") % {"count": len(rows)},
+        cards=[{"type": "list", "data": {
+            "title": _("Очередь выводов"),
+            "items": rows or [{"title": _("Очередь пуста")}],
+        }}],
+        contextual_actions=[
+            {"label": _("Очередь пополнений"), "action": "op_topup_queue", "params": {}},
+        ],
+    )
+
+
+def _withdrawal_for_operator(params):
+    from assistant.models import WalletWithdrawalRequest
+
+    try:
+        return WalletWithdrawalRequest.objects.select_related("wallet__user").get(
+            id=int(params.get("withdrawal_id")),
+        )
+    except (WalletWithdrawalRequest.DoesNotExist, TypeError, ValueError):
+        return None
+
+
+@register("op_approve_withdrawal")
+def op_approve_withdrawal(params, user, role):
+    from django.db import transaction
+    from assistant.models import WalletWithdrawalRequest
+
+    if role not in ("operator_payment", "operator", "admin"):
+        return ActionResult(text=_("Действие доступно только финансовому оператору."))
+    request = _withdrawal_for_operator(params)
+    if not request:
+        return ActionResult(text=_("Заявка не найдена."))
+    with transaction.atomic():
+        locked = WalletWithdrawalRequest.objects.select_for_update().get(pk=request.pk)
+        if locked.status == "pending":
+            locked.status = "approved"
+            locked.reviewed_by = user
+            locked.reviewed_at = timezone.now()
+            locked.operator_note = (params.get("note") or "")[:300]
+            locked.save(update_fields=[
+                "status", "reviewed_by", "reviewed_at", "operator_note", "updated_at",
+            ])
+        elif locked.status == "approved":
+            return ActionResult(text=_("Заявка уже одобрена и ожидает выплаты."))
+        else:
+            return ActionResult(text=_("Заявка уже обработана."))
+    _log_activity(
+        "withdrawal_approved", actor=user,
+        title=_("Заявка на вывод одобрена"),
+        meta={"withdrawal_id": request.id, "reference": request.reference_code,
+              "amount": str(request.amount), "user_id": request.wallet.user_id},
+    )
+    return ActionResult(
+        text=_(
+            "Заявка %(ref)s одобрена. После выполнения банковского платежа "
+            "подтвердите выплату."
+        ) % {"ref": request.reference_code},
+        actions=[
+            {"label": _("Подтвердить выплату"), "action": "op_complete_withdrawal",
+             "params": {"withdrawal_id": request.id}},
+            {"label": _("Отклонить и вернуть"), "action": "op_reject_withdrawal",
+             "params": {"withdrawal_id": request.id}},
+        ],
+    )
+
+
+@register("op_complete_withdrawal")
+def op_complete_withdrawal(params, user, role):
+    from django.db import transaction
+    from assistant.models import WalletWithdrawalRequest
+
+    if role not in ("operator_payment", "operator", "admin"):
+        return ActionResult(text=_("Действие доступно только финансовому оператору."))
+    request = _withdrawal_for_operator(params)
+    if not request:
+        return ActionResult(text=_("Заявка не найдена."))
+    with transaction.atomic():
+        locked = WalletWithdrawalRequest.objects.select_for_update().get(pk=request.pk)
+        if locked.status == "completed":
+            return ActionResult(text=_("Выплата уже подтверждена."))
+        if locked.status != "approved":
+            return ActionResult(text=_("Сначала заявка должна быть одобрена."))
+        locked.status = "completed"
+        locked.completed_at = timezone.now()
+        locked.reviewed_by = user
+        locked.save(update_fields=[
+            "status", "completed_at", "reviewed_by", "updated_at",
+        ])
+    _log_activity(
+        "withdrawal_completed", actor=user,
+        title=_("Выплата выполнена"),
+        meta={"withdrawal_id": request.id, "reference": request.reference_code,
+              "amount": str(request.amount), "user_id": request.wallet.user_id},
+    )
+    try:
+        _notify(
+            request.wallet.user,
+            kind="payment",
+            title=_("Выплата выполнена"),
+            body=_("Выплата по заявке %(ref)s на $%(amount)s выполнена.") % {
+                "ref": request.reference_code, "amount": f"{request.amount:,.2f}",
+            },
+        )
+    except Exception:
+        logger.exception("withdrawal completion notification failed")
+    return ActionResult(
+        text=_("Выплата по заявке %(ref)s подтверждена.") % {"ref": request.reference_code},
+        actions=[{"label": _("Назад в очередь"), "action": "op_withdrawal_queue", "params": {}}],
+    )
+
+
+@register("op_reject_withdrawal")
+def op_reject_withdrawal(params, user, role):
+    if role not in ("operator_payment", "operator", "admin"):
+        return ActionResult(text=_("Действие доступно только финансовому оператору."))
+    request = _withdrawal_for_operator(params)
+    if not request:
+        return ActionResult(text=_("Заявка не найдена."))
+    try:
+        request.refund(
+            status="rejected", by_user=user,
+            note=(params.get("reason") or "")[:300],
+        )
+    except ValueError:
+        return ActionResult(text=_("Заявку уже нельзя отклонить."))
+    _log_activity(
+        "withdrawal_rejected", actor=user,
+        title=_("Заявка на вывод отклонена"),
+        meta={"withdrawal_id": request.id, "reference": request.reference_code,
+              "amount": str(request.amount), "user_id": request.wallet.user_id},
+    )
+    try:
+        _notify(
+            request.wallet.user,
+            kind="payment",
+            title=_("Заявка на вывод отклонена"),
+            body=_("Заявка %(ref)s отклонена, зарезервированная сумма возвращена.") % {
+                "ref": request.reference_code,
+            },
+        )
+    except Exception:
+        logger.exception("withdrawal rejection notification failed")
+    return ActionResult(
+        text=_("Заявка отклонена, сумма возвращена пользователю."),
+        actions=[{"label": _("Назад в очередь"), "action": "op_withdrawal_queue", "params": {}}],
+    )

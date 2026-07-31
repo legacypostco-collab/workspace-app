@@ -136,11 +136,47 @@ class Command(BaseCommand):
             )
 
         # Admin password via env
-        if not os.getenv("DJANGO_ADMIN_PASSWORD"):
+        if not (
+            os.getenv("DJANGO_ADMIN_PASSWORD")
+            or os.getenv("DJANGO_ADMIN_PASSWORD_FILE")
+        ):
             warnings.append(
                 "DJANGO_ADMIN_PASSWORD not set; automatic administrator provisioning "
                 "is unavailable."
             )
+
+        if not getattr(settings, "ANTHROPIC_API_KEY", ""):
+            message = (
+                "ANTHROPIC_API_KEY is not set; free-form chat uses the limited "
+                "deterministic fallback."
+            )
+            (errors if getattr(settings, "LLM_REQUIRED", False) else warnings).append(message)
+
+        if not getattr(settings, "KONTUR_FOCUS_API_KEY", ""):
+            message = (
+                "KONTUR_FOCUS_API_KEY is not set; company checks require manual review."
+            )
+            (errors if getattr(settings, "KYB_EXTERNAL_REQUIRED", False) else warnings).append(message)
+
+        monitoring_values = {
+            "SENTRY_DSN": getattr(settings, "SENTRY_DSN", ""),
+            "UPTIME_HEARTBEAT_URL": getattr(settings, "UPTIME_HEARTBEAT_URL", ""),
+            "MONITOR_WEBHOOK_URL": getattr(settings, "MONITOR_WEBHOOK_URL", ""),
+        }
+        missing_monitoring = [name for name, value in monitoring_values.items() if not value]
+        if missing_monitoring:
+            message = "Monitoring is incomplete: " + ", ".join(missing_monitoring) + "."
+            (errors if getattr(settings, "MONITORING_REQUIRED", False) else warnings).append(message)
+        for name in ("UPTIME_HEARTBEAT_URL", "MONITOR_WEBHOOK_URL"):
+            value = monitoring_values[name]
+            parsed = urlparse(value) if value else None
+            if value and (
+                parsed.scheme != "https"
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+            ):
+                errors.append(f"{name} must be an HTTPS URL without credentials.")
 
         webhook_secret = str(getattr(settings, "WEBHOOK_SECRET", "") or "")
         if getattr(settings, "WEBHOOK_ENDPOINTS", "") and len(webhook_secret) < 32:

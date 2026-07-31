@@ -15,6 +15,7 @@ from django.utils.translation import gettext as _
 
 from . import actions as action_executor
 from .card_renderer import parse_cards_from_text
+from .conv_category import clean_action_label, humanize_action_title
 from .embeddings import get_embedding, search_similar_chunks
 from .models import Conversation, Message
 from .prompts import get_system_prompt
@@ -85,16 +86,25 @@ def _params_for_storage(action_name: str, params: dict) -> tuple[dict, bool]:
             sensitive = True
             return "[redacted]"
         if isinstance(value, dict):
-            return {k: scrub(v, str(k)) for k, v in value.items()}
+            return {
+                k: scrub(v, str(k))
+                for k, v in value.items()
+                if not str(k).startswith("_")
+            }
         if isinstance(value, list):
             return [scrub(item) for item in value]
         return value
 
     serializable = {
         k: v for k, v in (params or {}).items()
-        if k not in {"_request", "_conversation"}
+        if not str(k).startswith("_")
     }
     return scrub(serializable), sensitive
+
+
+def _visible_action_label(action_name: str, params: dict) -> str:
+    supplied = clean_action_label(str((params or {}).get("_label") or ""))
+    return supplied or humanize_action_title(action_name)
 
 
 def _max_out_tokens(query: str) -> int:
@@ -697,7 +707,6 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
     """
     # Stateless anon-flow: нет conversation, нет user.
     if conversation is None:
-        label = params.get("_label") or action_name
         effective_role = role or "buyer"
         result = action_executor.execute(action_name, params, user, effective_role)
         payload = {
@@ -716,7 +725,7 @@ def execute_action(conversation: Conversation | None, action_name: str, params: 
     user = user or conversation.user
 
     # Save user-action message (for history) — но без _request (HttpRequest не сериализуем).
-    label = params.get("_label") or action_name
+    label = _visible_action_label(action_name, params)
     saved_params, has_sensitive_params = _params_for_storage(action_name, params)
 
     # FIX: защита от дублей при двойном клике / быстром ретрае. Если за

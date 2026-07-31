@@ -13,6 +13,30 @@
   const SB_KEY = 'cf_sidebar_open';
   const PID = window.PROJECT_ID;
 
+  function applyDynamicPresentation(root) {
+    const scope = root?.nodeType === 1 ? root : document;
+    const selector = '[data-ui-percent],[data-ui-bg]';
+    const nodes = [];
+    if (scope.matches?.(selector)) nodes.push(scope);
+    scope.querySelectorAll?.(selector).forEach((node) => nodes.push(node));
+    nodes.forEach((node) => {
+      if (node.dataset.uiPercent != null) {
+        const value = Math.max(0, Math.min(100, Number(node.dataset.uiPercent) || 0));
+        node.style.width = value + '%';
+      }
+      if (/^#[0-9a-f]{3,8}$/i.test(node.dataset.uiBg || '') || /^rgba?\([\d\s.,%]+\)$/i.test(node.dataset.uiBg || '')) {
+        node.style.background = node.dataset.uiBg;
+      }
+    });
+  }
+
+  function observeDynamicPresentation() {
+    applyDynamicPresentation(document);
+    new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => applyDynamicPresentation(node)));
+    }).observe(document.body, {childList: true, subtree: true});
+  }
+
   // ── Тёмная тема (синхронно с /chat/ через localStorage cf_dark_mode) ──
   // Применяем СРАЗУ, чтобы не было «вспышки» светлой темы при загрузке.
   try {
@@ -37,9 +61,9 @@
       if (!b) return;
       if (cnt > 0) {
         b.textContent = cnt > 99 ? '99+' : String(cnt);
-        b.style.display = 'flex';
+        b.hidden = false;
       } else {
-        b.style.display = 'none';
+        b.hidden = true;
       }
     } catch(e) {}
   }
@@ -141,21 +165,21 @@
       const data = await api('/api/assistant/projects/');
       const list = (data.projects || []);
       if (!list.length) {
-        $('projectsList').innerHTML = `<div class="side-item" style="color:rgba(0,0,0,0.4);">Нет проектов</div>`;
+        $('projectsList').innerHTML = `<div class="side-item side-item-muted">Нет проектов</div>`;
         return;
       }
       $('projectsList').innerHTML = list.map(p => {
         const dot = DOT_BG[p.dot_color] || DOT_BG.green;
         const active = (p.id === PID) ? ' active' : '';
-        return `<a href="/chat/project/${esc(p.id)}/" class="side-item side-item-proj${active}" data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}" style="text-decoration:none;">
-          <span class="side-item-dot" style="background:${dot};"></span>
+        return `<a href="/chat/project/${esc(p.id)}/" class="side-item side-item-proj${active}" data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}">
+          <span class="side-item-dot" data-ui-bg="${dot}"></span>
           <span class="side-item-text">${esc(p.name)}</span>
           <span class="side-item-meta">${esc(p.chats || 0)}</span>
           <button class="side-item-del" type="button" title="Удалить проект" aria-label="Удалить" data-delete-project data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}">×</button>
         </a>`;
       }).join('');
     } catch(e) {
-      $('projectsList').innerHTML = `<div class="side-item" style="color:rgba(0,0,0,0.4);">—</div>`;
+      $('projectsList').innerHTML = `<div class="side-item side-item-muted">—</div>`;
     }
   }
 
@@ -228,20 +252,20 @@
   window.__openProjectSettings = function() {
     const info = window.__projInfo || {};
     const field = (name, label, val, ph) =>
-      '<label style="display:block;margin-top:10px"><span style="display:block;font-size:12px;opacity:.6;margin-bottom:4px">' + label + '</span>'
-      + '<input class="__ps-inp" data-field="' + name + '" type="text" value="' + esc(val || '') + '" placeholder="' + esc(ph || '') + '" style="width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid rgba(0,0,0,.16);font:inherit"/></label>';
+      '<label class="project-settings-field"><span class="project-settings-label">' + label + '</span>'
+      + '<input class="__ps-inp project-settings-input" data-field="' + name + '" type="text" value="' + esc(val || '') + '" placeholder="' + esc(ph || '') + '"/></label>';
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999';
     ov.innerHTML =
-      '<div style="background:#fff;color:#1a1a1a;width:min(94vw,480px);border-radius:16px;padding:20px;box-shadow:0 16px 50px rgba(0,0,0,.4)">'
-      + '<div style="font-weight:700;font-size:17px;margin-bottom:6px">Настройки проекта</div>'
+      '<div class="project-settings-dialog">'
+      + '<div class="project-settings-title">Настройки проекта</div>'
       + field('name', 'Название', info.name, 'Напр. Norilsk Q2')
       + field('code', 'Код', info.code, 'NORQ2')
       + field('customer', 'Заказчик', info.customer, 'Норникель — Кольская ГМК')
       + field('description', 'Описание', info.description, 'Кратко о проекте')
-      + '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px">'
-      + '<button type="button" class="__ps-cancel" style="padding:9px 16px;border-radius:9px;border:none;background:rgba(0,0,0,.07);font:inherit;cursor:pointer">Отмена</button>'
-      + '<button type="button" class="__ps-save" style="padding:9px 18px;border-radius:9px;border:none;background:#E84A21;color:#fff;font:inherit;cursor:pointer">Сохранить</button>'
+      + '<div class="project-settings-actions">'
+      + '<button type="button" class="__ps-cancel project-settings-cancel">Отмена</button>'
+      + '<button type="button" class="__ps-save project-settings-save">Сохранить</button>'
       + '</div></div>';
     const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -318,37 +342,36 @@
                      : (window.__projDocs || []).filter(d => (d.doctype || 'other') === key);
     const cardHtml = (d) => {
       const canBind = !!d.drawing_id;
-      return `<div class="__df-card" data-drawing-id="${esc(d.drawing_id || '')}" style="border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#fff;overflow:hidden">
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
+      return `<div class="__df-card doc-folder-card" data-drawing-id="${esc(d.drawing_id || '')}">
+        <div class="doc-folder-card-row">
           <span class="__df-file-icon">${projectDocIconSvg('file', 20)}</span>
-          <span style="flex:1;min-width:0">
-            <span style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</span>
-            <span style="display:block;font-size:12px;opacity:.62">${esc(d.doctype_label || '')}${d.size_kb ? ' · ' + esc(String(d.size_kb)) + ' КБ' : ''}<span class="__df-oemtag">${d.oem ? ' · ' + esc(d.oem) : ''}</span></span>
+          <span class="doc-folder-card-main">
+            <span class="doc-folder-card-name">${esc(d.name)}</span>
+            <span class="doc-folder-card-meta">${esc(d.doctype_label || '')}${d.size_kb ? ' · ' + esc(String(d.size_kb)) + ' КБ' : ''}<span class="__df-oemtag">${d.oem ? ' · ' + esc(d.oem) : ''}</span></span>
           </span>
-          <a href="/api/assistant/projects/${PID}/documents/${d.id}/file/" target="_blank" rel="noopener" style="opacity:.6;font-size:13px;text-decoration:none;color:inherit;white-space:nowrap">Открыть ›</a>
+          <a href="/api/assistant/projects/${PID}/documents/${d.id}/file/" target="_blank" rel="noopener" class="doc-folder-card-open">Открыть ›</a>
         </div>
-        ${canBind ? `<div style="padding:0 14px 12px">
+        ${canBind ? `<div class="doc-folder-bind-wrap">
           <button type="button" class="__df-bindbtn">${projectDocIconSvg('link', 14)} <span class="__df-bindlabel">${d.oem ? 'Изменить артикул' : 'Привязать артикул'}</span></button>
-          <div class="__df-bindpanel" style="display:none;margin-top:8px">
-            <input class="__df-oeminput" type="text" placeholder="Артикул из общей базы — напр. 6D102" autocomplete="off" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.14);font:inherit"/>
-            <div class="__df-oemresults" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;max-height:210px;overflow:auto"></div>
+          <div class="__df-bindpanel doc-folder-bind-panel" hidden>
+            <input class="__df-oeminput doc-folder-oem-input" type="text" placeholder="Артикул из общей базы — напр. 6D102" autocomplete="off"/>
+            <div class="__df-oemresults doc-folder-oem-results"></div>
           </div>
         </div>` : ''}
       </div>`;
     };
-    const cards = docs.map(cardHtml).join('') || '<div style="opacity:.6;padding:14px 4px">В этой папке пока нет файлов.</div>';
+    const cards = docs.map(cardHtml).join('') || '<div class="doc-folder-empty">В этой папке пока нет файлов.</div>';
     const ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999;animation:dffade .12s ease';
+    ov.className = '__df-overlay';
     ov.innerHTML = `
-      <style>@keyframes dffade{from{opacity:0}to{opacity:1}}</style>
       <div class="__df-dialog">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div class="doc-folder-head">
           <span class="__df-folder-icon">${projectDocIconSvg(all ? 'all' : key, 22)}</span>
-          <span style="font-weight:700;font-size:17px;flex:1">${esc(slot.label || 'Документы')} <span style="opacity:.5;font-weight:500">· ${docs.length}</span></span>
+          <span class="doc-folder-title">${esc(slot.label || 'Документы')} <span class="doc-folder-count">· ${docs.length}</span></span>
           <button type="button" class="__df-add">Добавить</button>
           <button type="button" class="__df-close" aria-label="Закрыть"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;overflow:auto">${cards}</div>
+        <div class="doc-folder-list">${cards}</div>
       </div>`;
     const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -365,8 +388,8 @@
       if (bb) {
         const card = bb.closest('.__df-card');
         const panel = card.querySelector('.__df-bindpanel');
-        const show = panel.style.display === 'none';
-        panel.style.display = show ? 'block' : 'none';
+        const show = panel.hidden;
+        panel.hidden = !show;
         if (show) card.querySelector('.__df-oeminput').focus();
         return;
       }
@@ -378,7 +401,7 @@
           body: JSON.stringify({action:'bind_drawing', params:{drawing_id: did, oem}})}).then(() => {
           card.querySelector('.__df-oemtag').textContent = ' · ' + oem;
           const lbl = card.querySelector('.__df-bindlabel'); if (lbl) lbl.textContent = 'Изменить артикул';
-          card.querySelector('.__df-bindpanel').style.display = 'none';
+          card.querySelector('.__df-bindpanel').hidden = true;
           // обновим кэш, чтобы при переоткрытии папки артикул сохранился
           const dd = (window.__projDocs || []).find(x => x.drawing_id === did); if (dd) dd.oem = oem;
         }).catch(() => {});
@@ -398,11 +421,11 @@
             if ((inp.value || '').trim() !== q) return;
             const c = (resp.cards || []).find(x => x.type === 'drawing_link');
             const rows = (c && c.data && c.data.rows) || [];
-            if (!c || !c.data.searched) { out.innerHTML = '<div style="opacity:.55;font-size:13px;padding:6px">Введите артикул</div>'; return; }
-            if (!rows.length) { out.innerHTML = '<div style="opacity:.55;font-size:13px;padding:6px">Ничего не найдено</div>'; return; }
+            if (!c || !c.data.searched) { out.innerHTML = '<div class="doc-folder-search-state">Введите артикул</div>'; return; }
+            if (!rows.length) { out.innerHTML = '<div class="doc-folder-search-state">Ничего не найдено</div>'; return; }
             out.innerHTML = rows.map(rr => {
               const oem = (rr.params || {}).oem || '';
-              return '<div class="__df-oemres" data-oem="' + esc(oem) + '" style="padding:7px 10px;border-radius:7px;border:1px solid rgba(0,0,0,.08);background:#fafafa;cursor:pointer;font-size:13px">' + esc(rr.title || '') + '</div>';
+              return '<div class="__df-oemres doc-folder-search-result" data-oem="' + esc(oem) + '">' + esc(rr.title || '') + '</div>';
             }).join('');
           }).catch(() => {});
       }, 350);
@@ -464,7 +487,7 @@
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const data = await r.json();
       const convs = data.results || data;
-      if (clearBtn) clearBtn.style.display = (convs && convs.length) ? '' : 'none';
+      if (clearBtn) clearBtn.hidden = !(convs && convs.length);
       if (!convs.length) {
         wrap.innerHTML = `<div class="side-item-stack"><div class="side-item-stack-meta">Нет чатов</div></div>`;
         return 0;
@@ -488,7 +511,7 @@
             <div class="side-item-stack-title"><span class="conv-cat-icon">${icon}</span>${esc(c.title || 'Без названия')}</div>
             <div class="side-item-stack-meta">${esc(meta)}${lastMeta && lastMeta !== meta ? ' · ' + esc(lastMeta) : ''}</div>
           </div>
-          <button class="side-item-stack-more" type="button" title="Действия" onclick="event.preventDefault();event.stopPropagation();window.__openConvMenu&amp;&amp;window.__openConvMenu('${cid}', this);return false;" aria-label="Действия">⋯</button>
+          <button class="side-item-stack-more" type="button" title="Действия" data-pj-action="conversation-menu" data-conv-id="${cid}" aria-label="Действия">⋯</button>
         </a>`;
       };
       wrap.innerHTML = _BUCKET_ORDER
@@ -550,10 +573,10 @@
       menu.style.background = '#1a1a1a'; menu.style.borderColor = 'rgba(255,255,255,0.10)';
     }
     menu.innerHTML = `
-      <button type="button" data-action="rename" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:transparent;border:none;border-radius:6px;cursor:pointer;font-size:13px;color:inherit;text-align:left;">
+      <button type="button" data-action="rename" class="conv-menu-action">
         <span>✏️</span><span>Переименовать</span>
       </button>
-      <button type="button" data-action="delete" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:transparent;border:none;border-radius:6px;cursor:pointer;font-size:13px;color:#dc3545;text-align:left;">
+      <button type="button" data-action="delete" class="conv-menu-action conv-menu-action-danger">
         <span>🗑</span><span>Удалить</span>
       </button>
     `;
@@ -777,7 +800,7 @@
     }
     // KPI cards. Подписи под цифрами объясняют ЧТО за число.
     const stats = p.stats || {};
-    const kpiClick = (id) => `onclick="window.__projScrollTo&amp;&amp;window.__projScrollTo('${id}')" style="cursor:pointer"`;
+    const kpiClick = (id) => `data-pj-action="scroll" data-target-id="${id}"`;
     let kpiHTML;
     if (isSeller) {
       // Продавец: Входящие RFQ / Заказы в работе / Товаров в каталоге / Выручка за месяц.
@@ -963,12 +986,12 @@
       const cornerBadge = filled
         ? `<span class="doc-slot-corner-badge" title="${slotDocs.length} документ(ов)">${slotDocs.length}</span>`
         : '';
-      return `<div class="doc-slot${filled ? ' doc-slot-filled' : ''}"${filled ? ` onclick="window.__openDocFolder&amp;&amp;window.__openDocFolder('${slot.key}')" style="cursor:pointer"` : ''}>
+      return `<div class="doc-slot${filled ? ' doc-slot-filled doc-slot-interactive' : ''}"${filled ? ` data-pj-action="open-doc-folder" data-doc-type="${slot.key}"` : ''}>
         ${cornerBadge}
         <div class="doc-slot-head">
           <span class="doc-slot-icon">${projectDocIconSvg(slot.key)}</span>
           <span class="doc-slot-label">${esc(slot.label)}</span>
-          <a href="#" class="doc-slot-add" onclick="event.stopPropagation();window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc('${slot.key}');return false;">${addLabel}</a>
+          <button type="button" class="doc-slot-add" data-pj-action="upload-doc" data-doc-type="${slot.key}">${addLabel}</button>
         </div>
         <div class="doc-slot-desc-short">${esc(slot.descShort)}</div>
         <div class="doc-slot-desc">↓ <span>${esc(slot.descFull)}</span></div>
@@ -987,13 +1010,13 @@
         <div class="doc-slot-cta-eyebrow">Подключите данные</div>
         <div class="doc-slot-cta-title">Чем больше данных — тем точнее аналитика</div>
         <div class="doc-slot-cta-sub">Помощник учитывает данные проекта при подборе, прогнозах и сравнении предложений.</div>
-        <button type="button" class="doc-slot-cta-btn" onclick="window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc()">${ctaLabel}</button>
+        <button type="button" class="doc-slot-cta-btn" data-pj-action="upload-doc">${ctaLabel}</button>
         <div class="doc-slot-cta-hint">PDF / Excel / DWG · до 25 МБ</div>
       </div>
     `;
     const docsHTML = `
       <div class="doc-progress">
-        <div class="doc-progress-bar"><div class="doc-progress-fill" style="width:${progressPct}%"></div></div>
+        <div class="doc-progress-bar"><div class="doc-progress-fill" data-ui-percent="${progressPct}"></div></div>
         <div class="doc-progress-label"><strong>${connectedTypes} / ${SLOTS_WITH_OTHER.length}</strong> типов подключено${docs.length === 0 ? ' · начните с любого' : (connectedTypes < SLOTS_WITH_OTHER.length ? ' · загрузите ещё для полного контекста' : ' · всё подключено')}</div>
       </div>
       ${mainSlotsHTML}
@@ -1018,7 +1041,7 @@
       const legacyMode = rawTag.toUpperCase();
       const tagText = rawTag ? (ML[legacyMode] || rawTag) : '';
       const tagClass = legacyMode === 'AUTO' ? 'auto' : legacyMode === 'SEMI' ? 'semi' : 'default';
-      return `<div class="rfq" onclick="window.location.href='/chat/?new=1&run=get_rfq_status'" style="cursor:pointer" title="Открыть заявку в чате">
+      return `<div class="rfq rfq-interactive" data-pj-action="navigate" data-url="/chat/?new=1&amp;run=get_rfq_status" title="Открыть заявку в чате">
         <span class="rfq-num">${esc(r.number)}</span>
         <div class="rfq-info">
           <div class="rfq-title">${esc(r.title)}${tagText ? ` <span class="rfq-tag rfq-tag-${tagClass}">${esc(tagText)}</span>` : ''}</div>
@@ -1029,7 +1052,7 @@
           <div class="rfq-best-val">${fmtMoney(r.best_so_far)}</div>
         </div>
       </div>`;
-    }).join('') : `<div class="rfq" style="border-left-color:rgba(0,0,0,0.1);"><div class="rfq-info"><div class="rfq-meta">Нет активных заявок</div></div></div>`;
+    }).join('') : `<div class="rfq rfq-empty"><div class="rfq-info"><div class="rfq-meta">Нет активных заявок</div></div></div>`;
 
     // Orders
     const orders = p.orders || [];
@@ -1037,7 +1060,7 @@
       const stages = o.stages || [];
       const stageBars = stages.map(s => `<div class="po-stage ${s ? 'done' : ''}"></div>`).join('');
       const statusClass = o.status_color === 'green' ? 'green' : '';
-      return `<div class="po" onclick="window.location.href='/chat/?new=1&run=get_orders'" style="cursor:pointer" title="Открыть заказы в чате">
+      return `<div class="po po-interactive" data-pj-action="navigate" data-url="/chat/?new=1&amp;run=get_orders" title="Открыть заказы в чате">
         <div class="po-row1">
           <span class="po-num">${esc(o.number)}</span>
           <span class="po-title">${esc(o.title)}</span>
@@ -1058,19 +1081,19 @@
     const chatsHTML = chats.length ? chats.map(c => {
       const date = c.updated_at ? new Date(c.updated_at) : null;
       const meta = date ? relativeTime(date) : '';
-      return `<a href="/chat/?conv=${esc(c.id)}" class="chat" style="text-decoration:none;">
+      return `<a href="/chat/?conv=${esc(c.id)}" class="chat chat-link">
         <div class="chat-info">
           <div class="chat-title">${esc(c.title || 'Без названия')}</div>
           ${c.preview ? `<div class="chat-preview">${esc(c.preview)}</div>` : ''}
         </div>
         <span class="chat-time">${esc(meta)}</span>
       </a>`;
-    }).join('') : `<div class="chat" style="cursor:default;"><div class="chat-info"><div class="chat-preview">Нет чатов в этом проекте</div></div></div>`;
+    }).join('') : `<div class="chat chat-static"><div class="chat-info"><div class="chat-preview">Нет чатов в этом проекте</div></div></div>`;
 
     // Участники сделки — только оператор (видит обе стороны). Используем стиль строки .rfq.
     const participants = p.participants || [];
     const participantsHTML = participants.map(pt => `
-      <div class="rfq" style="cursor:default;">
+      <div class="rfq rfq-static">
         <span class="rfq-num">${esc(pt.role)}</span>
         <div class="rfq-info">
           <div class="rfq-title">${esc(pt.name)}</div>
@@ -1105,7 +1128,7 @@
       <div class="pj-head">
         <div class="pj-head-left">
           <div class="pj-title-row">
-            <span class="pj-dot" style="background:${dotBg};"></span>
+            <span class="pj-dot" data-ui-bg="${dotBg}"></span>
             <h1 class="pj-name">${esc(p.name)}</h1>
           </div>
           <div class="pj-meta">
@@ -1115,9 +1138,9 @@
           </div>
         </div>
         <div class="pj-actions">
-          <button class="pj-btn" onclick="newProjectChat()">+ Новый чат</button>
-          <button class="pj-btn" onclick="window.__openDocFolder&amp;&amp;window.__openDocFolder('__all__')">Файлы</button>
-          <button class="pj-btn" onclick="window.__openProjectSettings&amp;&amp;window.__openProjectSettings()">Настройки</button>
+          <button class="pj-btn" data-pj-action="new-chat">+ Новый чат</button>
+          <button class="pj-btn" data-pj-action="open-doc-folder" data-doc-type="__all__">Файлы</button>
+          <button class="pj-btn" data-pj-action="project-settings">Настройки</button>
         </div>
       </div>
 
@@ -1126,7 +1149,7 @@
       <div class="sec-title">
         <h2>Документы проекта</h2>
         <span class="sec-title-count">${docs.length}</span>
-        <a href="#" class="sec-title-link" onclick="window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc();return false;">+ Загрузить</a>
+        <button type="button" class="sec-title-link" data-pj-action="upload-doc">+ Загрузить</button>
       </div>
       <div class="doc-slots-stack">${docsHTML}</div>
       <div class="ai-note">
@@ -1147,7 +1170,7 @@
       <div class="sec-title">
         <h2>Чаты по проекту</h2>
         <span class="sec-title-count">${chats.length}</span>
-        <a href="#" class="sec-title-link" onclick="newProjectChat();return false;">+ Новый чат</a>
+        <button type="button" class="sec-title-link" data-pj-action="new-chat">+ Новый чат</button>
       </div>
       <div class="chat-list">${chatsHTML}</div>
     `;
@@ -1155,7 +1178,7 @@
 
   async function loadProject() {
     if (!PID) {
-      $('projectContent').innerHTML = `<div style="text-align:center;padding:60px 20px;color:rgba(0,0,0,0.6);">Проект не указан</div>`;
+      $('projectContent').innerHTML = `<div class="project-load-state">Проект не указан</div>`;
       return;
     }
     try {
@@ -1163,10 +1186,10 @@
       $('projectContent').innerHTML = renderProject(p);
       document.title = `${p.name} — Consolidator Parts`;
     } catch(e) {
-      $('projectContent').innerHTML = `<div style="text-align:center;padding:60px 20px;color:rgba(0,0,0,0.6);">
-        <div style="font-size:18px;font-weight:600;margin-bottom:8px;">Не удалось загрузить проект</div>
-        <div style="font-size:13px;">${esc(e.message)}</div>
-        <a href="/chat/?workspace=1" style="display:inline-block;margin-top:16px;padding:8px 16px;background:rgba(255,255,255,0.6);border-radius:8px;color:#1a1a1a;font-weight:600;text-decoration:none;">← Назад в чаты</a>
+      $('projectContent').innerHTML = `<div class="project-load-state">
+        <div class="project-load-title">Не удалось загрузить проект</div>
+        <div class="project-load-message">${esc(e.message)}</div>
+        <a href="/chat/?workspace=1" class="project-load-back">← Назад в чаты</a>
       </div>`;
     }
   }
@@ -1187,8 +1210,36 @@
     }
   };
 
+  document.addEventListener('click', (event) => {
+    const element = event.target.closest('[data-pj-action]');
+    if (!element) return;
+    const action = element.dataset.pjAction;
+    if (action === 'conversation-menu') {
+      event.preventDefault();
+      event.stopPropagation();
+      window.__openConvMenu?.(element.dataset.convId || '', element);
+    } else if (action === 'scroll') {
+      window.__projScrollTo?.(element.dataset.targetId || '');
+    } else if (action === 'open-doc-folder') {
+      if (event.target.closest('[data-pj-action="upload-doc"]')) return;
+      window.__openDocFolder?.(element.dataset.docType || '__all__');
+    } else if (action === 'upload-doc') {
+      event.preventDefault();
+      event.stopPropagation();
+      window.__uploadProjectDoc?.(element.dataset.docType || undefined);
+    } else if (action === 'navigate') {
+      window.location.href = element.dataset.url || '/chat/';
+    } else if (action === 'new-chat') {
+      event.preventDefault();
+      window.newProjectChat?.();
+    } else if (action === 'project-settings') {
+      window.__openProjectSettings?.();
+    }
+  });
+
   // ── Init ─────────────────────────────────────────────────
   async function init() {
+    observeDynamicPresentation();
     await loadConfig();
     const [, convCount] = await Promise.all([
       loadSidebarProjects(),

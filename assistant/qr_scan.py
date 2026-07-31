@@ -24,6 +24,7 @@ import hmac
 import logging
 import os
 import re
+import secrets
 
 from django.conf import settings
 from django.core.cache import cache
@@ -184,26 +185,18 @@ class QRScanView(View):
 
         csrf_token = get_token(request)
         action_buttons = "".join(
-            f'<form method="post" style="display:inline;margin:4px;">'
+            f'<form method="post" class="qr-action">'
             f'<input type="hidden" name="action" value="{a}">'
             f'<input type="hidden" name="csrfmiddlewaretoken" value="{csrf_token}">'
-            f'<button type="submit" style="padding:14px 22px;background:#1a1a1a;color:#fff;'
-            f'border:none;border-radius:10px;font-size:16px;font-weight:700;'
-            f'font-family:system-ui,sans-serif;cursor:pointer;">'
+            f'<button type="submit" class="qr-button">'
             f'{a.upper()}</button></form>'
             for a in available
         )
-        return HttpResponse(
-            f"""<!DOCTYPE html><html><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>QR · Order #{order_id}</title></head>
-<body style="font-family:system-ui;padding:30px;max-width:600px;margin:0 auto;background:#f5f5f5;">
-<h1>📦 Заказ #{order_id}</h1>
-<p style="color:#666;">Статус: {order.get_status_display()}</p>
-<hr style="margin:24px 0;border:none;border-top:1px solid #ddd;">
-{action_buttons}
-</body></html>""",
-            content_type="text/html; charset=utf-8",
+        return self._html_response(
+            f'<h1>Заказ #{order_id}</h1>'
+            f'<p class="qr-status">Статус: {order.get_status_display()}</p>'
+            f'<hr>{action_buttons}',
+            title=f"QR · Заказ #{order_id}",
         )
 
     def post(self, request, code):
@@ -395,8 +388,37 @@ class QRScanView(View):
         return False
 
     def _html_error(self, msg: str, status: int = 400) -> HttpResponse:
-        return HttpResponse(
-            f"""<!DOCTYPE html><html><body style="font-family:system-ui;padding:30px;">
-<h1>⚠️ Ошибка</h1><p>{msg}</p></body></html>""",
-            status=status, content_type="text/html; charset=utf-8",
+        from html import escape
+
+        return self._html_response(
+            f"<h1>Ошибка</h1><p>{escape(msg)}</p>",
+            title="Ошибка QR-кода",
+            status=status,
         )
+
+    @staticmethod
+    def _html_response(body: str, *, title: str, status: int = 200) -> HttpResponse:
+        from html import escape
+
+        nonce = secrets.token_urlsafe(24)
+        css = (
+            "body{font-family:system-ui,sans-serif;padding:30px;max-width:600px;"
+            "margin:0 auto;background:#f5f5f5;color:#1a1a1a}"
+            ".qr-status{color:#666}hr{margin:24px 0;border:0;border-top:1px solid #ddd}"
+            ".qr-action{display:inline;margin:4px}.qr-button{padding:14px 22px;"
+            "background:#1a1a1a;color:#fff;border:0;border-radius:10px;font-size:16px;"
+            "font-weight:700;font-family:system-ui,sans-serif;cursor:pointer}"
+        )
+        response = HttpResponse(
+            '<!doctype html><html lang="ru"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<title>{escape(title)}</title><style nonce="{nonce}">{css}</style>'
+            f'</head><body>{body}</body></html>',
+            status=status,
+            content_type="text/html; charset=utf-8",
+        )
+        response["Content-Security-Policy"] = (
+            f"default-src 'none'; style-src 'nonce-{nonce}'; "
+            "style-src-attr 'none'; script-src 'none'; frame-ancestors 'none'"
+        )
+        return response

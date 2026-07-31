@@ -63,6 +63,27 @@ class ConversationNavigationTests(TestCase):
         self.assertEqual(second.status_code, 200)
         self.assertNotEqual(first.data["conversation_id"], second.data["conversation_id"])
 
+    def test_action_history_hides_technical_label_and_internal_params(self):
+        response = self.client.post(
+            "/api/assistant/action/",
+            {
+                "action": "get_balance",
+                "params": {
+                    "_label": "get_balance",
+                    "_client_ip": "203.0.113.7",
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        message = Message.objects.get(
+            conversation_id=response.data["conversation_id"],
+            role=Message.Role.ACTION,
+        )
+        self.assertEqual(message.content, "▸ Внутренний счёт")
+        self.assertEqual(message.actions[0]["params"], {})
+
 
 class ChatCommandTests(TestCase):
     def test_every_menu_command_is_registered_and_allowed_for_its_role(self):
@@ -148,6 +169,24 @@ class ChatCommandTests(TestCase):
             self.assertNotIn(technical_name, visible_payload)
         self.assertEqual(data["cards"][0]["data"]["mode"], "semi")
         self.assertEqual(data["actions"][0]["action"], "op_approve_kp")
+
+    def test_message_serializer_cleans_legacy_action_metadata(self):
+        user = get_user_model().objects.create_user("legacy_action", password="x")
+        conversation = Conversation.objects.create(user=user, role="buyer")
+        message = Message.objects.create(
+            conversation=conversation,
+            role=Message.Role.ACTION,
+            content="▸ get_balance",
+            actions=[{
+                "action": "get_balance",
+                "params": {"_label": "get_balance", "_client_ip": "203.0.113.7"},
+            }],
+        )
+
+        data = MessageSerializer(message).data
+
+        self.assertEqual(data["content"], "▸ Внутренний счёт")
+        self.assertEqual(data["actions"][0]["params"], {})
 
     def test_conversation_list_hides_legacy_action_names_and_decorations(self):
         user = get_user_model().objects.create_user("legacy_title", password="x")

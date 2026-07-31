@@ -465,3 +465,9 @@ table.lines th,
     font-size: var(--cp-text-md);
   }
 }
+
+.dashboard-rating-ring { transform: rotate(-90deg); }
+.dashboard-bars-row-three { grid-template-columns: 56px minmax(0, 1fr) 64px; }
+.dashboard-text-right { text-align: right; }
+.dashboard-bar-fill-green { background: #1d9e75; }
+.dashboard-badge-dynamic { border-color: transparent; }

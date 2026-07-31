@@ -6,7 +6,7 @@
   - Password reset throttling (3/hour)
   - demo_login backdoor закрыт когда DEBUG=False
   - GDPR export endpoint требует auth, отдаёт корректный JSON
-  - Legacy cabinet → /chat/ redirect
+  - Удалённые кабинеты отвечают 410 и не возвращают старый интерфейс
 """
 import sys
 
@@ -148,7 +148,7 @@ def test_demo_login_route_is_removed(client):
     assert r.status_code == 404
 
 
-def test_disabled_cart_route_ignores_external_next(client, db):
+def test_removed_cart_route_does_not_redirect_to_external_next(client, db):
     category = Category.objects.create(name="Redirect test", slug="redirect-test")
     part = Part.objects.create(
         category=category,
@@ -162,27 +162,26 @@ def test_disabled_cart_route_ignores_external_next(client, db):
         f"/cart/add/{part.id}/",
         {"next": "https://evil.example/phishing"},
     )
-    assert response.status_code == 302
-    assert response["Location"] == "/chat/"
+    assert response.status_code == 404
+    assert "Location" not in response
 
 
-# ══ Legacy cabinet redirect ═══════════════════════════════════════
+# ══ Removed legacy cabinets ══════════════════════════════════════
 
 @_skip_template_render
-def test_legacy_buyer_redirects_to_chat(client, user):
-    """ Залогиненный заход на /buyer/ → 302 /chat/."""
+def test_legacy_buyer_route_is_gone(client, user):
     client.force_login(user)
     r = client.get("/buyer/")
-    assert r.status_code == 302
-    assert "/chat/" in r["Location"]
+    assert r.status_code == 410
+    assert r["Cache-Control"] == "no-store"
 
 
 @_skip_template_render
-def test_legacy_dashboard_redirects_to_chat(client, user):
+def test_legacy_dashboard_alias_redirects_to_chat(client, user):
     client.force_login(user)
     r = client.get("/dashboard/")
     assert r.status_code == 302
-    assert "/chat/" in r["Location"]
+    assert r["Location"] == "/chat/"
 
 
 @_skip_template_render

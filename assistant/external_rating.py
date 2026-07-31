@@ -28,9 +28,13 @@ import logging
 import os
 import re
 from decimal import Decimal
+from urllib.parse import urlencode
+from urllib.request import Request
 
 from django.conf import settings
 from django.utils.translation import gettext as _
+
+from .security import urlopen_no_redirect
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +69,9 @@ def fetch_external_rating(inn: str) -> dict:
     if not re.fullmatch(r"\d{10}|\d{12}", inn):
         return _unavailable(_("ИНН имеет неверный формат"))
 
-    api_key = os.getenv("KONTUR_FOCUS_API_KEY", "").strip()
+    api_key = getattr(settings, "KONTUR_FOCUS_API_KEY", "") or os.getenv(
+        "KONTUR_FOCUS_API_KEY", ""
+    ).strip()
     if api_key:
         try:
             return _fetch_kontur(inn, api_key)
@@ -89,27 +95,28 @@ def _fetch_kontur(inn: str, api_key: str) -> dict:
       financialAnalytics.activityIndex: 0-100
       arbitration: список судов (count, totalSum)
     """
-    import httpx
-
     max_response_bytes = 1024 * 1024
-    with httpx.Client(timeout=10, follow_redirects=False) as client:
-        with client.stream(
-            "GET",
-            "https://api.kontur.ru/focus/api/3/companies",
-            params={"key": api_key, "inn": inn},
-            headers={"Accept": "application/json"},
-        ) as response:
-            response.raise_for_status()
-            content_length = response.headers.get("Content-Length")
-            if content_length and int(content_length) > max_response_bytes:
+    query = urlencode({"key": api_key, "inn": inn})
+    request = Request(
+        f"https://api.kontur.ru/focus/api/3/companies?{query}",
+        headers={"Accept": "application/json", "User-Agent": "ConsolidatorParts/1.0"},
+    )
+    chunks = []
+    size = 0
+    with urlopen_no_redirect(request, timeout=10) as response:
+        if response.status != 200:
+            raise ValueError("external rating provider returned an error")
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > max_response_bytes:
+            raise ValueError("oversized external rating response")
+        while True:
+            chunk = response.read(min(64 * 1024, max_response_bytes + 1 - size))
+            if not chunk:
+                break
+            size += len(chunk)
+            if size > max_response_bytes:
                 raise ValueError("oversized external rating response")
-            chunks = []
-            size = 0
-            for chunk in response.iter_bytes():
-                size += len(chunk)
-                if size > max_response_bytes:
-                    raise ValueError("oversized external rating response")
-                chunks.append(chunk)
+            chunks.append(chunk)
     data = json.loads(b"".join(chunks).decode("utf-8"))
     if not isinstance(data, list) or not data:
         return _unavailable(_("ИНН %(inn)s не найден во внешнем источнике") % {"inn": inn})

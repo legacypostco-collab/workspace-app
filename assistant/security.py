@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-import hmac
 import hashlib
+import hmac
+import http.client
 import ipaddress
 import socket
+import ssl
 import time
 from urllib.parse import urlparse
-from urllib.request import HTTPRedirectHandler, build_opener
+from urllib.request import Request
 
 from django.conf import settings
 from django.db import transaction
-
 
 _BACKUP_CODE_PREFIX = "hmac_sha256$"
 
@@ -26,17 +27,141 @@ def confirmation_is_true(value) -> bool:
     return False
 
 
-class _NoRedirectHandler(HTTPRedirectHandler):
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        return None
+def _is_forbidden_address(address: str) -> bool:
+    ip = ipaddress.ip_address(address)
+    return not ip.is_global or ip.is_multicast
 
 
-_NO_REDIRECT_OPENER = build_opener(_NoRedirectHandler)
+def _resolved_addresses(host: str, port: int, *, allow_private: bool) -> list[str]:
+    infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    addresses: list[str] = []
+    for info in infos:
+        address = info[4][0]
+        if not allow_private and _is_forbidden_address(address):
+            raise ValueError("private or local address is not allowed")
+        if address not in addresses:
+            addresses.append(address)
+    if not addresses:
+        raise ValueError("host does not resolve")
+    return addresses
 
 
-def urlopen_no_redirect(request, *, timeout: float):
-    """Open a prevalidated outbound request without following redirects."""
-    return _NO_REDIRECT_OPENER.open(request, timeout=timeout)  # nosec B310
+class _PinnedHTTPConnection(http.client.HTTPConnection):
+    def __init__(self, host: str, port: int, address: str, *, timeout: float):
+        super().__init__(host, port=port, timeout=timeout)
+        self._pinned_address = address
+
+    def connect(self):
+        self.sock = socket.create_connection(
+            (self._pinned_address, self.port),
+            self.timeout,
+            self.source_address,
+        )
+
+
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    def __init__(self, host: str, port: int, address: str, *, timeout: float):
+        super().__init__(
+            host,
+            port=port,
+            timeout=timeout,
+            context=ssl.create_default_context(),
+        )
+        self._pinned_address = address
+
+    def connect(self):
+        raw_socket = socket.create_connection(
+            (self._pinned_address, self.port),
+            self.timeout,
+            self.source_address,
+        )
+        self.sock = self._context.wrap_socket(raw_socket, server_hostname=self.host)
+
+
+class _PinnedResponse:
+    """Small urllib-compatible response wrapper that also closes its connection."""
+
+    def __init__(self, response, connection):
+        self._response = response
+        self._connection = connection
+        self.status = response.status
+        self.reason = response.reason
+        self.headers = response.headers
+
+    def read(self, amount=None):
+        return self._response.read(amount)
+
+    def getcode(self):
+        return self.status
+
+    def close(self):
+        try:
+            self._response.close()
+        finally:
+            self._connection.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        self.close()
+        return False
+
+
+def urlopen_no_redirect(request, *, timeout: float, allow_private: bool = False):
+    """Open a prevalidated URL through the exact IP address checked here.
+
+    Redirects are returned to the caller and are never followed automatically.
+    TLS certificate verification and SNI still use the original host name.
+    """
+    if isinstance(request, str):
+        request = Request(request)
+    url = request.full_url
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("unsupported outbound URL")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("credentials in URL are not allowed")
+
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    addresses = _resolved_addresses(
+        parsed.hostname,
+        port,
+        allow_private=bool(allow_private and settings.DEBUG),
+    )
+    path = parsed.path or "/"
+    if parsed.params:
+        path += ";" + parsed.params
+    if parsed.query:
+        path += "?" + parsed.query
+
+    headers = dict(request.header_items())
+    default_port = 443 if parsed.scheme == "https" else 80
+    host_name = f"[{parsed.hostname}]" if ":" in parsed.hostname else parsed.hostname
+    host_header = host_name if port == default_port else f"{host_name}:{port}"
+    headers["Host"] = host_header
+    method = request.get_method()
+    body = request.data
+    last_error = None
+    for address in addresses:
+        connection_cls = (
+            _PinnedHTTPSConnection if parsed.scheme == "https" else _PinnedHTTPConnection
+        )
+        connection = connection_cls(
+            parsed.hostname,
+            port,
+            address,
+            timeout=timeout,
+        )
+        try:
+            connection.request(method, path, body=body, headers=headers)
+            return _PinnedResponse(connection.getresponse(), connection)
+        except (OSError, ssl.SSLError, http.client.HTTPException) as exc:
+            last_error = exc
+            connection.close()
+    if last_error:
+        raise last_error
+    raise OSError("outbound host has no usable address")
 
 
 def client_ip(request) -> str:
@@ -76,7 +201,7 @@ def client_ip(request) -> str:
 
 
 def _backup_code_digest(user_id: int, code: str) -> str:
-    payload = f"{user_id}:{(code or '').strip()}".encode("utf-8")
+    payload = f"{user_id}:{(code or '').strip()}".encode()
     digest = hmac.new(
         settings.SECRET_KEY.encode("utf-8"),
         payload,
@@ -233,15 +358,13 @@ def safe_outbound_url(
 
     allow_private = bool(getattr(settings, allow_private_setting, False) and settings.DEBUG)
     try:
-        infos = socket.getaddrinfo(host, parsed.port or (443 if parsed.scheme == "https" else 80), type=socket.SOCK_STREAM)
+        _resolved_addresses(
+            host,
+            parsed.port or (443 if parsed.scheme == "https" else 80),
+            allow_private=allow_private,
+        )
     except socket.gaierror:
         return False, "host does not resolve"
-
-    for info in infos:
-        ip = ipaddress.ip_address(info[4][0])
-        if not allow_private and (
-            ip.is_private or ip.is_loopback or ip.is_link_local
-            or ip.is_multicast or ip.is_reserved or ip.is_unspecified
-        ):
-            return False, "private or local address is not allowed"
+    except ValueError as exc:
+        return False, str(exc)
     return True, ""

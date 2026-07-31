@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>{% if page_key == 'terms' %}{% trans "Условия использования" %}{% elif page_key == 'privacy' %}{% trans "Политика конфиденциальности" %}{% else %}{% trans "Использование файлов cookie" %}{% endif %} — Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-white.svg' %}"/>
-  <style>
+  <style nonce="{{ request.csp_nonce }}">
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{min-height:100%;max-width:100%;overflow-x:hidden;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
     a{color:#E84A21;text-decoration:none;}

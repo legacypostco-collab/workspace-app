@@ -456,21 +456,24 @@ STORAGES = {
     },
 }
 
-# ── Content Security Policy ────────────────────────────────────────
-# Defense-in-depth XSS protection. Активируется через django-csp если
-# установлен. Для inline-onclick в chat (~37 шт) пока используем
-# 'unsafe-inline' — TODO мигрировать на event delegation чтобы убрать.
-# ── Content Security Policy (django-csp 4.0 формат) ──────────────
-# FIXME: убрать 'unsafe-inline' из script/style после миграции inline-onclick
-# на event delegation (~37 мест в chat-first.js + шаблонах).
+# ── Content Security Policy (django-csp 4.0) ──────────────────────
+try:
+    from csp.constants import NONCE as CSP_NONCE
+except ImportError:
+    CSP_NONCE = None
+
 CONTENT_SECURITY_POLICY = {
     "DIRECTIVES": {
-        "script-src": ["'self'", "'unsafe-inline'"],
-        "style-src": ["'self'", "'unsafe-inline'"],
+        "default-src": ["'self'"],
+        "script-src": ["'self'", *([CSP_NONCE] if CSP_NONCE else [])],
+        "script-src-attr": ["'none'"],
+        "style-src": ["'self'", *([CSP_NONCE] if CSP_NONCE else [])],
+        "style-src-attr": ["'none'"],
         "img-src": ["'self'", "data:", "https:"],
         "font-src": ["'self'", "data:"],
         "connect-src": ["'self'", "ws:" if DEBUG else "wss:"],
         "media-src": ["'self'", "blob:"],
+        "object-src": ["'none'"],
         "frame-ancestors": ["'none'"],
         "base-uri": ["'self'"],
         "form-action": ["'self'"],
@@ -557,6 +560,7 @@ CLAIM_SLA_DAYS = {
 }
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+LLM_REQUIRED = _env_bool("LLM_REQUIRED", False)
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6").strip()  # sonnet-4-20250514 выводится 2026-06-15
 # Цена 1 AI-запроса при покупке с депозита (USD, ≈ себестоимость). Пакеты 50/100.
 AI_REQUEST_PRICE_USD = float(os.getenv("AI_REQUEST_PRICE_USD", "0.04"))
@@ -568,6 +572,16 @@ ANTHROPIC_FAST_MODE = _env_bool("ANTHROPIC_FAST_MODE", False)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 VOYAGE_API_KEY = os.getenv("VOYAGE_API_KEY", "").strip()
 EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "auto").strip().lower()  # openai|voyage|stub|auto
+
+# Внешняя проверка компаний включается только после выдачи ключа провайдера.
+KONTUR_FOCUS_API_KEY = os.getenv("KONTUR_FOCUS_API_KEY", "").strip()
+KYB_EXTERNAL_REQUIRED = _env_bool("KYB_EXTERNAL_REQUIRED", False)
+
+# Контроль после запуска. Heartbeat должен указывать на внешний dead-man
+# монитор, webhook — на канал оповещений дежурной команды.
+UPTIME_HEARTBEAT_URL = os.getenv("UPTIME_HEARTBEAT_URL", "").strip()
+MONITOR_WEBHOOK_URL = os.getenv("MONITOR_WEBHOOK_URL", "").strip()
+MONITORING_REQUIRED = _env_bool("MONITORING_REQUIRED", False)
 
 # ── Sentry error tracking ─────────────────────────────────
 # Set SENTRY_DSN env var to enable. Auto-captures unhandled exceptions, performance.

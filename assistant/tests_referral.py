@@ -8,7 +8,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
-from marketplace.models import Order, ReferralReward
+from marketplace.models import Order, ReferralAcceptance, ReferralCode, ReferralReward
 from assistant import referral as ref
 from assistant.models import Wallet
 
@@ -85,6 +85,18 @@ class RecordReferralTests(TestCase):
         # buyer_discount — один на пригласившего, независимо от числа приглашённых
         self.assertEqual(
             ReferralReward.objects.filter(referrer=self.buyer, kind="buyer_discount").count(), 1)
+        self.assertEqual(ref.summary_for(self.buyer)["count"], 2)
+
+    def test_acceptance_uses_first_touch_across_reward_types(self):
+        first = User.objects.create_user("first_touch_referrer", password="x")
+        second = User.objects.create_user("second_touch_referrer", password="x")
+
+        self.assertIsNotNone(ref.record_referral(first, self.invitee, "buyer"))
+        self.assertIsNone(ref.record_referral(second, self.invitee, "seller"))
+
+        acceptance = ReferralAcceptance.objects.get(referred=self.invitee)
+        self.assertEqual(acceptance.referrer, first)
+        self.assertFalse(ReferralReward.objects.filter(referrer=second).exists())
 
 
 class CreditFlatOnFirstOrderTests(TestCase):
@@ -224,6 +236,18 @@ class AcceptReferralBranchTests(TestCase):
         self.assertIn("Приглашение принято", res.text)
         self.assertEqual(
             ReferralReward.objects.filter(referrer=seller, kind="flat_first_order").count(), 1)
+
+    def test_short_link_counts_real_click(self):
+        user = User.objects.create_user("click_owner", password="x")
+        code = ReferralCode.for_user(user)
+
+        response = self.client.get(f"/i/{code.code}/")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"/chat/?ref={code.code}")
+        code.refresh_from_db()
+        self.assertEqual(code.clicks, 1)
+        self.assertIsNotNone(code.last_clicked_at)
 
     def test_short_code_case_insensitive(self):
         from marketplace.models import ReferralCode

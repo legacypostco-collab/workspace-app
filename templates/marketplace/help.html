@@ -13,10 +13,10 @@
 
   {# ── Schema.org FAQPage — rich-snippet в Google ── #}
   {% if entries %}
-  <script type="application/ld+json">{{ schema_json|safe }}</script>
+  <script nonce="{{ request.csp_nonce }}" type="application/ld+json">{{ schema_json|safe }}</script>
   {% endif %}
 
-  <style>
+  <style nonce="{{ request.csp_nonce }}">
     :root { --bg:#FBF7F7; --surface:#fff; --ink:#151515; --ink-2:#3A2E36; --ink-3:#6B5560; --accent:#E84A21; --line:rgba(0,0,0,0.07); --card-shadow:0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03); }
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.55;}

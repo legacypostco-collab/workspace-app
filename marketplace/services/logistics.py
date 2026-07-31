@@ -163,7 +163,11 @@ def _request_external(provider: str, payload: dict) -> dict:
     req = Request(api_url, data=body, headers=req_headers, method="POST")
     try:
         # The target passed safe_outbound_url with a production allowlist.
-        with urlopen_no_redirect(req, timeout=timeout_sec) as resp:
+        with urlopen_no_redirect(
+            req,
+            timeout=timeout_sec,
+            allow_private=bool(getattr(settings, "LOGISTICS_ALLOW_PRIVATE_IPS", False)),
+        ) as resp:
             raw_bytes = resp.read(1024 * 1024 + 1)
         if len(raw_bytes) > 1024 * 1024:
             raise ValueError("oversized logistics response")

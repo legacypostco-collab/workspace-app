@@ -42,7 +42,7 @@
         <div>
           <div class="pp-eyebrow">${esc(proposalNo)}</div>
           <h1 class="pp-name">Коммерческое предложение</h1>
-          <div class="pp-meta" style="margin-top:8px;">
+          <div class="pp-meta pp-meta-spaced">
             <span>Заявка <strong>№${esc(d.id)}</strong></span>
             ${d.customer_name ? `<span>Клиент: <strong>${esc(d.customer_name)}</strong></span>` : ''}
             ${d.created_at ? `<span>Дата: <strong>${esc(fmtDate(d.created_at))}</strong></span>` : ''}
@@ -50,7 +50,7 @@
           </div>
         </div>
         <div class="pp-actions">
-          <button class="pp-btn" onclick="window.print()">
+          <button class="pp-btn" data-pp-action="print">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
             Печать
           </button>
@@ -88,16 +88,16 @@
           <h2>Состав предложения</h2>
           <span class="sec-pill">${items.length} позиций</span>
         </div>
-        ${items.length === 0 ? '<div class="loading" style="padding:30px;">В заявке нет позиций для предложения</div>' : `
+        ${items.length === 0 ? '<div class="loading loading-compact">В заявке нет позиций для предложения</div>' : `
         <table class="lines">
           <thead>
             <tr>
-              <th style="width:40px;">№</th>
+              <th class="line-col-num">№</th>
               <th>Артикул / Деталь</th>
               <th>Поставщик</th>
               <th class="right">Цена</th>
-              <th class="right" style="width:60px;">Кол-во</th>
-              <th class="right" style="width:140px;">Сумма</th>
+              <th class="right line-col-qty">Кол-во</th>
+              <th class="right line-col-total">Сумма</th>
             </tr>
           </thead>
           <tbody>
@@ -107,7 +107,7 @@
                 <td>
                   <div class="art">${esc(it.article || '—')}</div>
                   ${it.match ? `<div class="match-name">${esc(it.match)}${it.brand ? ' · ' + esc(it.brand) : ''}</div>` : ''}
-                  <div style="margin-top:4px;">${badge(it.state)}</div>
+                  <div class="badge-row">${badge(it.state)}</div>
                 </td>
                 <td>${esc(it.supplier || '—')}</td>
                 <td class="right">${fmtMoney(it.price, it.currency)}</td>
@@ -147,6 +147,10 @@
     `;
     $('ppContent').innerHTML = html;
   }
+
+  document.addEventListener('click', (event) => {
+    if (event.target.closest('[data-pp-action="print"]')) window.print();
+  });
 
   async function load() {
     try {

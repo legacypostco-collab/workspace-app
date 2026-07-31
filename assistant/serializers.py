@@ -126,7 +126,18 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["content"] = _humanize_legacy_text(data.get("content") or "")
+        if instance.role == Message.Role.ACTION:
+            action = (data.get("actions") or [{}])[0]
+            action_name = action.get("action") or ""
+            data["content"] = f"▸ {humanize_action_title(action_name)}"
+            for item in data.get("actions") or []:
+                item["params"] = {
+                    key: value
+                    for key, value in (item.get("params") or {}).items()
+                    if not str(key).startswith("_")
+                }
+        else:
+            data["content"] = _humanize_legacy_text(data.get("content") or "")
         for field in ("cards", "actions", "contextual_actions", "suggestions"):
             data[field] = _humanize_legacy_payload(data.get(field) or [])
         return data
@@ -170,9 +181,13 @@ class ConversationListSerializer(serializers.ModelSerializer):
         if not msg:
             return None
         role = MessageSerializer(context=self.context).get_role(msg)
+        content = msg.content[:120]
+        if msg.role == Message.Role.ACTION:
+            action = (msg.actions or [{}])[0]
+            content = f"▸ {humanize_action_title(action.get('action') or '')}"
         return {
             "role": role,
-            "content": _humanize_legacy_text(msg.content[:120]),
+            "content": _humanize_legacy_text(content),
             "created_at": msg.created_at,
         }
 

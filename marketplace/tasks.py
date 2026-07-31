@@ -221,7 +221,11 @@ def deliver_webhook_task(self, url: str, payload: dict, headers: dict = None):
     )
     try:
         # The target passed safe_outbound_url with a production allowlist.
-        with urlopen_no_redirect(req, timeout=10) as resp:
+        with urlopen_no_redirect(
+            req,
+            timeout=10,
+            allow_private=bool(getattr(settings, "WEBHOOK_ALLOW_PRIVATE_IPS", False)),
+        ) as resp:
             return resp.getcode()
     except Exception:
         logger.warning(

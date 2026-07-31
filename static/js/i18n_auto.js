@@ -3,12 +3,6 @@
   if (typeof window.registerI18n !== 'function') return;
   window.registerI18n(
 {
- "\" placeholder=\"🔎 Поиск по артикулу / названию — фильтрует при наборе…\" style=\"flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;\" oninput=\"window.__catalogLiveSearch && window.__catalogLiveSearch(this,": {
-  "en": "\" placeholder=\"🔎 Search by part number / name — filters as you type…\" style=\"flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;\" oninput=\"window.__catalogLiveSearch && window.__catalogLiveSearch(this,",
-  "zh-hans": "\" placeholder=\"🔎 按零件号 / 名称搜索 — 输入时即时筛选…\" style=\"flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;\" oninput=\"window.__catalogLiveSearch && window.__catalogLiveSearch(this,",
-  "es": "\" placeholder=\"🔎 Buscar por número de pieza / nombre — filtra al escribir…\" style=\"flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;\" oninput=\"window.__catalogLiveSearch && window.__catalogLiveSearch(this,",
-  "ar": "\" placeholder=\"🔎 البحث برقم القطعة / الاسم — يُرشّح أثناء الكتابة…\" style=\"flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;\" oninput=\"window.__catalogLiveSearch && window.__catalogLiveSearch(this,"
- },
  "\" target=\"_blank\" rel=\"noopener\">⬇ Скачать": {
   "en": "\" target=\"_blank\" rel=\"noopener\">⬇ Download",
   "zh-hans": "\" target=\"_blank\" rel=\"noopener\">⬇ 下载",
@@ -116,12 +110,6 @@
   "zh-hans": ", speed: d.seller_speed || null, // 真实的响应速度指标 rfq_age: d.rfq_age ||",
   "es": ", speed: d.seller_speed || null, // métrica honesta de la velocidad de respuesta rfq_age: d.rfq_age ||",
   "ar": ", speed: d.seller_speed || null, // مقياس صادق لسرعة الاستجابة rfq_age: d.rfq_age ||"
- },
- ",true);\" style=\"padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;\">Найти": {
-  "en": ",true);\" style=\"padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;\">Find",
-  "zh-hans": ",true);\" style=\"padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;\">搜索",
-  "es": ",true);\" style=\"padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;\">Buscar",
-  "ar": ",true);\" style=\"padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;\">بحث"
  },
  "; // Secondary action (вторичная кнопка над main, например «Создать копию шаблона») let secHtml =": {
   "en": "; // Secondary action (secondary button above main, e.g. «Create a copy of the template») let secHtml =",

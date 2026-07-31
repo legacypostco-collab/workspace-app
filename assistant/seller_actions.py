@@ -120,26 +120,35 @@ def _effective_seller(user):
 
 @register("referral_program")
 def referral_program(params, user, role):
-    """Реферальная программа: личный код, статистика, размер вознаграждения."""
-    import hashlib
-    # Детерминированный код на основе user_id + username
-    seed = f"{user.id}:{user.username}".encode()
-    code = "REF-" + hashlib.sha256(seed).hexdigest()[:8].upper()
-    link = f"https://consolidatorparts.com/?ref={code}"
+    """Реферальная программа на фактических кодах и начислениях."""
+    if not (user and getattr(user, "is_authenticated", False)):
+        return ActionResult(
+            text=_("Войдите, чтобы получить реферальную ссылку."),
+            actions=[{"label": _("Войти"), "action": "start_login", "params": {}}],
+        )
 
-    # Реальная статистика будет когда подключим UTM-tracking. Пока — заглушка.
-    invited = 0
-    converted = 0
-    earned = 0
-    pending = 0
+    from marketplace.models import ReferralCode
+    from . import referral as referral_service
 
-    text = (
-        _("🤝 Реферальная программа\n"
-          "Ваш код: %(code)s\n"
-          "Условия: 2%% от первого заказа приглашённого клиента (до $5,000), "
-          "далее — 0.5%% от всех его заказов в течение года. Партнёрам "
-          "(дилерам и инженерам по сервису) — отдельный тариф 5%%.") % {"code": code}
+    code = ReferralCode.for_user(user).code
+    base = _invite_base_url(params)
+    link = f"{base}/i/{code}/" if base else ""
+    summary = referral_service.summary_for(user)
+    invited = summary["count"]
+    converted = summary["converted"]
+    clicks = summary["clicks"]
+    earned = summary["credited"]
+    pending = summary["pending"]
+    reward_text = (
+        _("Скидка $100 после выполнения условий приглашения")
+        if role == "buyer"
+        else _("$100 после первой оплаченной покупки приглашённого")
     )
+
+    text = _(
+        "Реферальная программа\nВаш код: %(code)s\n%(reward)s. "
+        "Регистрации и начисления учитываются автоматически."
+    ) % {"code": code, "reward": reward_text}
 
     return ActionResult(
         text=text,
@@ -148,34 +157,28 @@ def referral_program(params, user, role):
             "data": {
                 "title": _("Реферальная программа"),
                 "kpis": [
-                    {"label": _("Ваш код"),      "value": code,       "sub": _("копируйте и шлите")},
-                    {"label": _("Приглашено"),   "value": invited,    "sub": _("регистраций по коду")},
-                    {"label": _("Конверсия"),    "value": converted,  "sub": _("сделали заказ")},
-                    {"label": _("Заработано"),   "value": f"${earned:,.0f}", "sub": _("выплачено")},
-                    {"label": _("В ожидании"),   "value": f"${pending:,.0f}", "sub": _("после закрытия сделок")},
-                    {"label": _("Ставка"),       "value": "2%",       "sub": _("от 1-го заказа клиента")},
+                    {"label": _("Ваш код"), "value": code, "sub": _("постоянный код")},
+                    {"label": _("Переходы"), "value": clicks, "sub": _("по реферальной ссылке")},
+                    {"label": _("Приглашено"), "value": invited, "sub": _("приняли приглашение")},
+                    {"label": _("Выполнили условие"), "value": converted, "sub": _("награда начислена")},
+                    {"label": _("Зачислено"), "value": f"${earned:,.0f}", "sub": _("на внутренний счёт")},
+                    {"label": _("В ожидании"), "value": f"${pending:,.0f}", "sub": _("до выполнения условия")},
+                    {"label": _("Награда"), "value": "$100", "sub": reward_text},
                 ],
             },
         }, {
-            "type": "list",
+            "type": "copy_link",
             "data": {
-                "title": _("Как поделиться"),
-                "rows": [
-                    {"title": _("Личная ссылка"), "subtitle": link, "badge": _("Копировать")},
-                    {"title": _("Email-приглашение"),
-                     "subtitle": _("Шаблон с описанием платформы и ссылкой"),
-                     "badge": _("Шаблон")},
-                    {"title": _("QR-код для визитки"),
-                     "subtitle": _("Сгенерируем QR с вашей ссылкой"), "badge": "QR"},
-                ],
+                "title": _("Ваша реферальная ссылка"),
+                "url": link,
+                "share_text": _("Приглашаю на платформу запчастей Consolidator Parts"),
+                "hint": _("Привязка учитывается после входа или регистрации приглашённого."),
             },
         }],
         actions=[
-            {"label": _("Условия программы"), "action": "kb_search",
-             "params": {"query": _("реферальная программа")}},
-            {"label": _("📊 Дашборд"), "action": "seller_dashboard", "params": {}},
+            {"label": _("Мои начисления"), "action": "my_referrals", "params": {}},
         ],
-        suggestions=[_("Сколько мне начислили?"), _("Кого можно приглашать?")],
+        suggestions=[_("Кого можно приглашать?")],
     )
 
 
@@ -3017,9 +3020,13 @@ def accept_referral(params, user, role):
     # подписанный токен (обратная совместимость с уже разосланными ссылками).
     from marketplace.models import ReferralCode
     ref_uid = None
-    _ru = ReferralCode.resolve(code)
-    if _ru:
-        ref_uid = _ru.id
+    referral_code = (
+        ReferralCode.objects.filter(code=code.upper())
+        .select_related("user")
+        .first()
+    )
+    if referral_code:
+        ref_uid = referral_code.user_id
     else:
         try:
             ref_uid = signing.loads(code, salt="kam-ref")
@@ -3042,8 +3049,19 @@ def accept_referral(params, user, role):
     # (без CRM-заказчика — это не аккаунт KAM).
     from .permissions import detect_user_role
     ref_role = detect_user_role(ref)
+    from . import referral as _ref
+    acceptance = _ref.record_acceptance(
+        ref,
+        user,
+        ref_role,
+        code=referral_code,
+    )
+    if not acceptance or acceptance.referrer_id != ref.id:
+        return ActionResult(
+            text=_("Приглашение уже было принято по другой реферальной ссылке."),
+            actions=[{"label": _("В кабинет"), "action": "go_home", "params": {}}],
+        )
     if ref_role != "operator_manager":
-        from . import referral as _ref
         _ref.record_referral(ref, user, ref_role)
         return ActionResult(
             text=("✅ Приглашение принято! Добро пожаловать на платформу запчастей. "
@@ -3105,7 +3123,7 @@ def invite_customer(params, user, role):
         if not (user and getattr(user, "is_authenticated", False)):
             return ActionResult(text=_("Чтобы создать реф-ссылку, войдите в аккаунт."),
                                 actions=[{"label": _("Войти"), "action": "start_login", "params": {}}])
-        link = f"{base}/i/{_ref_code(user)}"
+        link = f"{base}/i/{_ref_code(user)}/"
         is_kam = (role == "operator_manager")
         if is_kam:
             txt = ("📨 Ваша персональная реф-ссылка. Отправьте контрагенту — когда он "

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>500 — Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-white.svg' %}"/>
-  <style>
+  <style nonce="{{ request.csp_nonce }}">
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;}
     .err-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;}
@@ -39,8 +39,9 @@
     </p>
     <div class="err-actions">
       <a href="/" class="err-btn err-btn-primary">← {% trans "На главную" %}</a>
-      <button onclick="location.reload()" class="err-btn err-btn-ghost" style="border:1px solid rgba(255,255,255,0.1);background:transparent;color:#919191;font-family:inherit;cursor:pointer;">↻ {% trans "Обновить" %}</button>
+      <button data-ui-action="reload" class="err-btn err-btn-ghost">↻ {% trans "Обновить" %}</button>
     </div>
   </div>
+  <script src="{% static 'js/ui-events.js' %}?v=1" defer></script>
 </body>
 </html>

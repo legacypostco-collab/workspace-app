@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{% trans "Аккаунт" %}{% endblock %} | Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-white.svg' %}"/>
-  <style>
+  <style nonce="{{ request.csp_nonce }}">
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{min-height:100vh;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;font-size:14px;}
     a{color:#FF6B3D;text-decoration:none;}
@@ -32,6 +32,9 @@
     .auth-bottom{text-align:center;font-size:13px;color:#919191;margin-top:18px;}
     .auth-message{padding:14px;background:rgba(232,74,33,0.08);border:1px solid rgba(232,74,33,0.22);border-radius:10px;color:#ECECEC;font-size:13px;line-height:1.5;margin-bottom:18px;}
     .auth-message-success{background:rgba(102,187,106,0.08);border-color:rgba(102,187,106,0.25);}
+    .auth-message-error{background:rgba(232,92,13,.08);border-color:rgba(232,92,13,.25);}
+    .auth-btn-link{display:inline-block;text-align:center;text-decoration:none;}
+    .auth-subtitle-spaced{margin-top:16px;}
     @media(max-width:640px){
       .auth-header{padding:14px 16px;}
       .auth-logo{font-size:15px;}

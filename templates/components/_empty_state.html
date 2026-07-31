@@ -1,9 +1,16 @@
 {# Reusable empty state. Pass: icon (emoji or text), title, text, action_url, action_label #}
-<div class="empty-state" style="text-align:center;padding:60px 24px;background:#242424;border:1px dashed rgba(255,255,255,0.08);border-radius:14px;">
-  <div style="font-size:42px;margin-bottom:12px;opacity:0.5;">{{ empty_icon|default:"📭" }}</div>
-  <div style="font-family:'Golos Text',sans-serif;font-weight:700;font-size:16px;color:#ECECEC;margin-bottom:6px;">{{ empty_title|default:"Пока ничего нет" }}</div>
-  <div style="font-size:13px;color:#919191;max-width:380px;margin:0 auto 20px;line-height:1.5;">{{ empty_text|default:"Здесь появятся данные, когда они будут." }}</div>
+<style nonce="{{ request.csp_nonce }}">
+  .empty-state{text-align:center;padding:60px 24px;background:#242424;border:1px dashed rgba(255,255,255,.08);border-radius:14px;}
+  .empty-state__icon{font-size:42px;margin-bottom:12px;opacity:.5;}
+  .empty-state__title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:16px;color:#ececec;margin-bottom:6px;}
+  .empty-state__text{font-size:13px;color:#919191;max-width:380px;margin:0 auto 20px;line-height:1.5;}
+  .empty-state__action{display:inline-block;padding:9px 20px;background:#e84a21;color:#1a1a1a;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;}
+</style>
+<div class="empty-state">
+  <div class="empty-state__icon">{{ empty_icon|default:"📭" }}</div>
+  <div class="empty-state__title">{{ empty_title|default:"Пока ничего нет" }}</div>
+  <div class="empty-state__text">{{ empty_text|default:"Здесь появятся данные, когда они будут." }}</div>
   {% if empty_action_url %}
-    <a href="{{ empty_action_url }}" style="display:inline-block;padding:9px 20px;background:#E84A21;color:#1A1A1A;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">{{ empty_action_label|default:"Создать" }}</a>
+    <a class="empty-state__action" href="{{ empty_action_url }}">{{ empty_action_label|default:"Создать" }}</a>
   {% endif %}
 </div>

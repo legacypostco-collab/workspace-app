@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from urllib.parse import urljoin
+from urllib.request import Request
 
-import requests
+from django.conf import settings
 
-from assistant.security import safe_outbound_url
+from assistant.security import safe_outbound_url, urlopen_no_redirect
 
 
 class ExternalDownloadError(ValueError):
@@ -36,18 +37,20 @@ def download_get_with_checked_redirects(
         if not ok:
             raise ExternalDownloadError(f"blocked outbound URL: {reason}")
 
+        request = Request(
+            current_url,
+            headers={"User-Agent": "ConsolidatorParts/1.0"},
+        )
         try:
-            response = requests.get(
-                current_url,
-                headers={"User-Agent": "ConsolidatorParts/1.0"},
+            response = urlopen_no_redirect(
+                request,
                 timeout=timeout,
-                allow_redirects=False,
-                stream=True,
+                allow_private=bool(getattr(settings, allow_private_setting, False)),
             )
-        except requests.RequestException as exc:
+        except (OSError, ValueError) as exc:
             raise ExternalDownloadError("request failed") from exc
         try:
-            if response.status_code in _REDIRECT_STATUSES:
+            if response.status in _REDIRECT_STATUSES:
                 if redirect_count >= max_redirects:
                     raise ExternalDownloadError("too many redirects")
                 location = (response.headers.get("Location") or "").strip()
@@ -56,8 +59,8 @@ def download_get_with_checked_redirects(
                 current_url = urljoin(current_url, location)
                 continue
 
-            if response.status_code != 200:
-                return response.status_code, b"", current_url
+            if response.status != 200:
+                return response.status, b"", current_url
 
             content_length = response.headers.get("Content-Length")
             if content_length:
@@ -70,15 +73,16 @@ def download_get_with_checked_redirects(
 
             body = bytearray()
             try:
-                for chunk in response.iter_content(chunk_size=64 * 1024):
+                while True:
+                    chunk = response.read(min(64 * 1024, max_bytes + 1 - len(body)))
                     if not chunk:
-                        continue
+                        break
                     body.extend(chunk)
                     if len(body) > max_bytes:
                         raise ExternalDownloadError("response is too large")
-            except requests.RequestException as exc:
+            except OSError as exc:
                 raise ExternalDownloadError("response read failed") from exc
-            return response.status_code, bytes(body), current_url
+            return response.status, bytes(body), current_url
         finally:
             response.close()
 

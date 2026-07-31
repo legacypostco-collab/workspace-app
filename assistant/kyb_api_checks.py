@@ -24,6 +24,7 @@ as enabling a provider.
 """
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from django.conf import settings
@@ -141,7 +142,26 @@ def check_ru_aggregator(inn: str, country: str = "RU") -> dict:
         return _wrap("kontur-focus", False, None,
                      [{"level": "info", "msg": "Not applicable for non-RU"}])
     if not _fixtures_allowed():
-        return _unavailable("kontur-focus")
+        api_key = (
+            getattr(settings, "KONTUR_FOCUS_API_KEY", "")
+            or os.getenv("KONTUR_FOCUS_API_KEY", "")
+        ).strip()
+        if not api_key:
+            return _unavailable("kontur-focus")
+        from .external_rating import fetch_external_rating
+
+        result = fetch_external_rating(inn)
+        if result.get("source") != "live":
+            return _unavailable("kontur-focus", result.get("reason"))
+        signals = []
+        if result.get("bankruptcy"):
+            signals.append({"level": "red", "msg": _("Компания в стадии банкротства")})
+        if result.get("liquidation"):
+            signals.append({"level": "red", "msg": _("Компания в стадии ликвидации")})
+        score = result.get("score")
+        if score is not None and score < 50 and not signals:
+            signals.append({"level": "yellow", "msg": _("Низкая внешняя оценка компании")})
+        return _wrap("kontur-focus-live", True, result, signals)
     fx = _FIXTURES.get((country, inn), {}).get("aggregator")
     if fx is None:
         return _unavailable("kontur-focus", _("Компания отсутствует в тестовом наборе; требуется ручная проверка"))

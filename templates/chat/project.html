@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csp-nonce" content="{{ request.csp_nonce }}">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>{% trans "Проект" %} — Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <script src="{% url 'javascript-catalog' %}" defer></script>
-  <style>
+  <style nonce="{{ request.csp_nonce }}">
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;color:#1a1a1a;}
     body{background:#a8b8d8;overflow:hidden;position:relative;}
@@ -432,12 +433,37 @@
     /* Theme icon swap */
     body.dark-mode .top-theme .theme-icon-sun{display:none !important;}
     body.dark-mode .top-theme .theme-icon-moon{display:block !important;}
+    .role-toggle-side{display:flex;gap:4px;padding:4px;background:rgba(0,0,0,.04);border-radius:10px;margin-bottom:12px;}
+    .role-toggle-side .role-tab{flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:0;color:rgba(0,0,0,.6);text-decoration:none;border-radius:8px;}
+    .side-new-btn-link{text-decoration:none;text-align:left;}
+    .side-history-link{text-decoration:none;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.5);border-radius:10px;color:#1a1a1a;font-size:13px;margin-bottom:18px;}
+    .side-item-loading{color:rgba(0,0,0,.4);}
+    .side-settings{margin-left:auto;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,.55);text-decoration:none;background:transparent;transition:background .12s,color .12s;}
+    .top-burger{background:transparent;border:0;cursor:pointer;}
+    .top-brand{text-decoration:none;}
+    .top-brand-logo{flex-shrink:0;}
+    .top-right{margin-left:auto;display:flex;align-items:center;gap:6px;}
+    .top-home,.top-theme,.top-bell{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.5);color:#1a1a1a;border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;transition:background .12s;}
+    .top-theme,.top-bell{border:0;cursor:pointer;}
+    .top-bell{position:relative;}
+    .theme-icon-moon{display:none;}
+    .bell-badge{position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;padding:0 4px;align-items:center;justify-content:center;}
+    .project-loading{text-align:center;padding:80px 20px;color:rgba(0,0,0,.5);}
+    [hidden]{display:none!important}
+    .side-item-proj,.chat-link{text-decoration:none}.side-item-muted{color:rgba(0,0,0,.4)}
+    .project-settings-field{display:block;margin-top:10px}.project-settings-label{display:block;font-size:12px;opacity:.6;margin-bottom:4px}.project-settings-input{width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid rgba(0,0,0,.16);font:inherit}
+    .project-settings-dialog{background:#fff;color:#1a1a1a;width:min(94vw,480px);border-radius:16px;padding:20px;box-shadow:0 16px 50px rgba(0,0,0,.4)}.project-settings-title{font-weight:700;font-size:17px;margin-bottom:6px}.project-settings-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}.project-settings-cancel,.project-settings-save{padding:9px 16px;border-radius:9px;border:0;font:inherit;cursor:pointer}.project-settings-cancel{background:rgba(0,0,0,.07)}.project-settings-save{padding-inline:18px;background:#e84a21;color:#fff}
+    @keyframes dffade{from{opacity:0}to{opacity:1}}.__df-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999;animation:dffade .12s ease}.doc-folder-card{border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#fff;overflow:hidden}.doc-folder-card-row{display:flex;align-items:center;gap:12px;padding:12px 14px}.doc-folder-card-main{flex:1;min-width:0}.doc-folder-card-name,.doc-folder-card-meta{display:block}.doc-folder-card-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.doc-folder-card-meta{font-size:12px;opacity:.62}.doc-folder-card-open{opacity:.6;font-size:13px;text-decoration:none;color:inherit;white-space:nowrap}.doc-folder-bind-wrap{padding:0 14px 12px}.doc-folder-bind-panel{margin-top:8px}.doc-folder-oem-input{width:100%;box-sizing:border-box;padding:7px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.14);font:inherit}.doc-folder-oem-results,.doc-folder-list{display:flex;flex-direction:column;overflow:auto}.doc-folder-oem-results{gap:4px;margin-top:6px;max-height:210px}.doc-folder-list{gap:8px}.doc-folder-empty{opacity:.6;padding:14px 4px}.doc-folder-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}.doc-folder-title{font-weight:700;font-size:17px;flex:1}.doc-folder-count{opacity:.5;font-weight:500}.doc-folder-search-state{opacity:.55;font-size:13px;padding:6px}.doc-folder-search-result{padding:7px 10px;border-radius:7px;border:1px solid rgba(0,0,0,.08);background:#fafafa;cursor:pointer;font-size:13px}
+    .conv-menu-action{display:flex;align-items:center;gap:8px;padding:8px 10px;background:transparent;border:0;border-radius:6px;cursor:pointer;font-size:13px;color:inherit;text-align:left}.conv-menu-action-danger{color:#dc3545}
+    .doc-slot-interactive,.rfq-interactive,.po-interactive{cursor:pointer}.rfq-empty{border-left-color:rgba(0,0,0,.1)}.chat-static,.rfq-static{cursor:default}
+    .project-load-state{text-align:center;padding:60px 20px;color:rgba(0,0,0,.6)}.project-load-title{font-size:18px;font-weight:600;margin-bottom:8px}.project-load-message{font-size:13px}.project-load-back{display:inline-block;margin-top:16px;padding:8px 16px;background:rgba(255,255,255,.6);border-radius:8px;color:#1a1a1a;font-weight:600;text-decoration:none}
+    body.dark-mode .side-item-muted{color:rgba(255,255,255,.48)}body.dark-mode .doc-folder-card,body.dark-mode .project-settings-dialog{background:#202020;color:#f5f5f5;border-color:rgba(255,255,255,.1)}body.dark-mode .doc-folder-search-result{background:#292929;border-color:rgba(255,255,255,.1)}
   </style>
   <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01">
   <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
-<script>
+<script nonce="{{ request.csp_nonce }}">
   // Применяем dark-mode СРАЗУ из localStorage — чтобы избежать «вспышки» светлой темы.
   // project-page.js загружается с defer и доходит позже DOM.
   try { if (localStorage.getItem('cf_dark_mode') === '1') document.body.classList.add('dark-mode'); } catch(e) {}
@@ -447,12 +473,12 @@
   <!-- Sidebar (shared with /chat/) -->
   <aside class="sidebar" id="sidebar">
     <div class="side-inner">
-      <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}" style="display:flex;gap:4px;padding:4px;background:rgba(0,0,0,0.04);border-radius:10px;margin-bottom:12px;">
+      <div class="role-toggle role-toggle-side" id="roleToggle" role="tablist" aria-label="{% trans 'Роль' %}">
         {% for tab in role_tabs %}
-        <a href="/chat/?workspace=1&amp;role={{ tab.role }}" class="role-tab{% if active_role == tab.role %} active{% endif %}" data-role="{{ tab.role }}" role="tab" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;letter-spacing:0;color:rgba(0,0,0,0.6);text-decoration:none;border-radius:8px;">{{ tab.label }}</a>
+        <a href="/chat/?workspace=1&amp;role={{ tab.role }}" class="role-tab{% if active_role == tab.role %} active{% endif %}" data-role="{{ tab.role }}" role="tab">{{ tab.label }}</a>
         {% endfor %}
       </div>
-      <a class="side-new-btn" href="/chat/?new=1" style="text-decoration:none;text-align:left;">
+      <a class="side-new-btn side-new-btn-link" href="/chat/?new=1">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
         {% trans "Новый чат" %}
       </a>
@@ -460,7 +486,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input type="text" placeholder="{% trans 'Поиск чатов и проектов' %}">
       </div>
-      <a href="/chat/?new=1&amp;run=recent_activity" class="side-search" style="text-decoration:none;display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.5);border-radius:10px;color:#1a1a1a;font-size:13px;margin-bottom:18px;">
+      <a href="/chat/?new=1&amp;run=recent_activity" class="side-search side-history-link">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         {% trans "История действий" %}
       </a>
@@ -472,13 +498,13 @@
             <button class="side-section-add" title="{% trans 'Новый проект' %}">+</button>
           </div>
           <div id="projectsList">
-            <div class="side-item" style="color:rgba(0,0,0,0.4);">{% trans "Загрузка..." %}</div>
+            <div class="side-item side-item-loading">{% trans "Загрузка..." %}</div>
           </div>
         </div>
         <div class="side-section">
           <div class="side-section-head">
             <span class="side-section-title">{% trans "Недавние" %}</span>
-            <button class="side-section-clear" id="clearHistoryBtn" type="button" onclick="window.__clearHistory&amp;&amp;window.__clearHistory()" title="{% trans 'Очистить историю' %}" style="display:none;">{% trans "Очистить" %}</button>
+            <button class="side-section-clear" id="clearHistoryBtn" type="button" data-ui-action="clear-project-history" title="{% trans 'Очистить историю' %}" hidden>{% trans "Очистить" %}</button>
           </div>
           <div id="convList"></div>
         </div>
@@ -490,7 +516,7 @@
           <div class="side-user-name" id="sideUserName">—</div>
           <div class="side-user-role" id="sideUserRole">—</div>
         </div>
-        <a class="side-settings" href="/chat/#settings" title="{% trans 'Настройки' %}" aria-label="{% trans 'Настройки' %}" style="margin-left:auto;width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.55);text-decoration:none;background:transparent;transition:background .12s,color .12s;">
+        <a class="side-settings" href="/chat/#settings" title="{% trans 'Настройки' %}" aria-label="{% trans 'Настройки' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 008.51 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004.6 8.51a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V2a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H22a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         </a>
       </div>
@@ -500,50 +526,49 @@
   <!-- Main -->
   <main class="main">
     <div class="topbar">
-      <button class="top-burger" onclick="toggleSidebar()" title="{% trans 'Меню' %}" style="background:transparent;border:none;cursor:pointer;color:#1a1a1a;">
+      <button class="top-burger" data-ui-click="toggleSidebar" title="{% trans 'Меню' %}">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
-      <a href="/" onclick="event.preventDefault();try{window.onbeforeunload=null;}catch(e){};window.location.assign('/');return false;" class="top-brand" title="{% trans 'Перейти на главную' %}" style="display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;text-decoration:none;letter-spacing:-0.01em;">
-        <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="Consolidator Parts" width="24" height="24" style="width:24px;height:24px;flex-shrink:0;display:block;">
+      <a href="/" class="top-brand" title="{% trans 'Перейти на главную' %}">
+        <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="Consolidator Parts" width="24" height="24">
         Consolidator Parts
       </a>
-      <div class="top-right" style="margin-left:auto;display:flex;align-items:center;gap:6px;">
-        <a href="/chat/?workspace=1" class="top-home" title="{% trans 'Рабочий стол' %}" style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.65);display:flex;align-items:center;justify-content:center;color:#1a1a1a;text-decoration:none;border:1px solid rgba(0,0,0,0.06);">
+      <div class="top-right">
+        <a href="/chat/?workspace=1" class="top-home" title="{% trans 'Рабочий стол' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2h-4v-7H9v7H5a2 2 0 01-2-2z"/></svg>
         </a>
         <!-- Theme toggle (light/dark) — синхронизирован с /chat/ через localStorage cf_dark_mode -->
         <button class="top-icon top-theme" id="topTheme" type="button"
-                onclick="toggleTheme()"
-                title="{% trans 'Тема' %}" aria-label="{% trans 'Переключить тему' %}"
-                style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;">
+                data-ui-click="toggleTheme"
+                title="{% trans 'Тема' %}" aria-label="{% trans 'Переключить тему' %}">
           <svg class="theme-icon-sun"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-          <svg class="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
         {% if user.is_authenticated %}
-        <button class="top-bell" id="topBell" type="button" onclick="window.location.href='/chat/#notifications'"
-                title="{% trans 'Уведомления' %}" aria-label="{% trans 'Уведомления' %}"
-                style="position:relative;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s;">
+        <button class="top-bell" id="topBell" type="button" data-ui-action="navigate" data-ui-href="/chat/#notifications"
+                title="{% trans 'Уведомления' %}" aria-label="{% trans 'Уведомления' %}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
-          <span class="bell-badge" id="bellBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;padding:0 4px;display:none;align-items:center;justify-content:center;">0</span>
+          <span class="bell-badge" id="bellBadge" hidden>0</span>
         </button>
         {% endif %}
-        <div class="top-avatar" id="topAvatar" style="width:34px;height:34px;border-radius:50%;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;cursor:pointer;">?</div>
+        <div class="top-avatar" id="topAvatar">?</div>
       </div>
     </div>
 
     <div class="content">
       <div class="content-inner" id="projectContent">
-        <div style="text-align:center;padding:80px 20px;color:rgba(0,0,0,0.5);">{% trans "Загрузка проекта..." %}</div>
+        <div class="project-loading">{% trans "Загрузка проекта..." %}</div>
       </div>
     </div>
   </main>
 </div>
 
-<script>
+<script nonce="{{ request.csp_nonce }}">
   window.PROJECT_ID = "{{ project_id }}";
 </script>
 <script src="{% static 'js/i18n.js' %}?v=1&t={% now 'U' %}" defer></script>
 <script src="{% static 'js/i18n_auto.js' %}?v=66" defer></script>
 <script src="{% static 'js/project-page.js' %}?v=8" defer></script>
+<script src="{% static 'js/ui-events.js' %}?v=1" defer></script>
 </body>
 </html>

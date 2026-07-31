@@ -67,6 +67,7 @@ _ROLE_COMMANDS = {
     ],
     "operator_payment": [
         ("💰", "Эскроу", "op_payments_dashboard", {}),
+        ("📤", "Заявки на вывод", "op_withdrawal_queue", {}),
         ("💳", "Аналитика платежей", "op_payments_stats", {}),
         ("⏳", "Ожидают резерва", "op_queue", {"filter": "awaiting_reserve"}),
         ("↩", "Возвраты", "op_queue", {"filter": "refund"}),

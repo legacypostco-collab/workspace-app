@@ -25,7 +25,31 @@ from django.utils.translation import gettext as _
 
 # Роли, у которых реферал = $100 с первой покупки приглашённого.
 _FLAT_ROLES = {"seller", "operator", "operator_logist", "operator_customs",
-               "operator_payments", "admin"}
+               "operator_payment", "admin"}
+
+
+def record_acceptance(referrer, referred, referrer_role: str, *, code=None):
+    """Record the first accepted referral for a user without changing rewards."""
+    from django.db import IntegrityError
+    from marketplace.models import ReferralAcceptance
+
+    if not (referrer and referred) or referrer.pk == referred.pk:
+        return None
+    existing = ReferralAcceptance.objects.filter(referred=referred).first()
+    if existing:
+        return existing
+    if code is not None and code.user_id != referrer.pk:
+        code = None
+    try:
+        with transaction.atomic():
+            return ReferralAcceptance.objects.create(
+                referrer=referrer,
+                referred=referred,
+                code=code,
+                referrer_role=referrer_role or "",
+            )
+    except IntegrityError:
+        return ReferralAcceptance.objects.filter(referred=referred).first()
 
 
 def _credit_wallet(user, amount: Decimal, *, description: str, order_id=None) -> None:
@@ -50,6 +74,9 @@ def record_referral(referrer, referred, referrer_role: str):
     if not (referrer and referred):
         return None
     role = referrer_role or ""
+    acceptance = record_acceptance(referrer, referred, role)
+    if not acceptance or acceptance.referrer_id != referrer.pk:
+        return None
     if role == "operator_manager":
         return None  # KAM — отдельная механика (CRM + резидуальные бонусы)
 
@@ -197,13 +224,36 @@ def on_deposit_funded(user) -> int:
 
 def summary_for(user) -> dict:
     """Сводка реферальных наград пользователя (для экрана my_referrals)."""
-    from marketplace.models import ReferralReward
+    from marketplace.models import Order, ReferralAcceptance, ReferralCode, ReferralReward
+
     rows = list(ReferralReward.objects.filter(referrer=user))
+    accepted_ids = set(
+        ReferralAcceptance.objects.filter(referrer=user)
+        .values_list("referred_id", flat=True)
+    )
+    accepted_ids.update(
+        row.referred_id for row in rows if row.referred_id is not None
+    )
+    paid_statuses = ("reserve_paid", "mid_paid", "paid", "final_paid")
+    converted = (
+        Order.objects.filter(
+            buyer_id__in=accepted_ids,
+            payment_status__in=paid_statuses,
+        )
+        .values("buyer_id")
+        .distinct()
+        .count()
+        if accepted_ids
+        else 0
+    )
+    code = ReferralCode.objects.filter(user=user).only("clicks").first()
     pending = sum(float(r.amount) for r in rows if r.status == "pending")
     credited = sum(float(r.amount) for r in rows if r.status == "credited")
     return {
         "rows": rows,
         "pending": pending,
         "credited": credited,
-        "count": len(rows),
+        "count": len(accepted_ids),
+        "converted": converted,
+        "clicks": code.clicks if code else 0,
     }

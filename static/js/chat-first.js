@@ -15,6 +15,35 @@
 
   const SB_KEY = 'cf_sidebar_open';
   const CONV_KEY = 'cf_active_conv';
+  const CSP_NONCE = document.querySelector('meta[name="csp-nonce"]')?.content || '';
+
+  function applyDynamicPresentation(root) {
+    const scope = root?.nodeType === 1 ? root : document;
+    const selector = '[data-ui-percent],[data-ui-height-percent],[data-ui-bg],[data-ui-color]';
+    const nodes = [];
+    if (scope.matches?.(selector)) nodes.push(scope);
+    scope.querySelectorAll?.(selector).forEach((node) => nodes.push(node));
+    nodes.forEach((node) => {
+      if (node.dataset.uiPercent != null) {
+        const value = Math.max(0, Math.min(100, Number(node.dataset.uiPercent) || 0));
+        node.style.width = value + '%';
+      }
+      if (node.dataset.uiHeightPercent != null) {
+        const value = Math.max(0, Math.min(100, Number(node.dataset.uiHeightPercent) || 0));
+        node.style.height = value + '%';
+      }
+      const safeColor = (value) => /^#[0-9a-f]{3,8}$/i.test(value || '') || /^rgba?\([\d\s.,%]+\)$/i.test(value || '');
+      if (safeColor(node.dataset.uiBg)) node.style.background = node.dataset.uiBg;
+      if (safeColor(node.dataset.uiColor)) node.style.color = node.dataset.uiColor;
+    });
+  }
+
+  function observeDynamicPresentation() {
+    applyDynamicPresentation(document);
+    new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => mutation.addedNodes.forEach((node) => applyDynamicPresentation(node)));
+    }).observe(document.body, {childList: true, subtree: true});
+  }
   // Вход через поиск с главной (/chat/?q=...). Захватываем ДО очистки URL
   // (history.replaceState) — нужно для дефолта сайдбара (см. applyDefaultSidebar).
   const _ENTRY_SEARCH = (() => {
@@ -1593,14 +1622,12 @@
     card.setAttribute('data-upload-mode', mode);
     card.querySelectorAll('.pl-mode-btn').forEach(function(b) {
       var on = b.getAttribute('data-mode') === mode;
-      b.style.background = on ? '#1a1a1a' : 'transparent';
-      b.style.color = on ? '#fff' : 'inherit';
-      b.style.fontWeight = on ? '600' : '400';
+      b.classList.toggle('pl-mode-btn-active', on);
     });
     // Секция поставщика — только для «Поставщика». Логистика (страна/порты/
     // адрес) нужна ВСЕГДА, в обоих режимах — её не прячем.
     var sup = card.querySelector('.pl-supplier-section');
-    if (sup) sup.style.display = (mode === 'kp') ? '' : 'none';
+    if (sup) sup.hidden = mode !== 'kp';
     if (mode === 'kp') { var n = card.querySelector('.pl-sup-name'); if (n) n.focus(); }
   };
 
@@ -1616,7 +1643,7 @@
         sels.forEach(function(sel){
           sel.setAttribute('data-loaded', '1');
           var row = sel.closest('.pl-known-row');
-          if (!sup.length) { if (row) row.style.display = 'none'; return; }
+          if (!sup.length) { if (row) row.hidden = true; return; }
           sup.forEach(function(s, i){
             var o = document.createElement('option');
             o.value = String(i);
@@ -1625,7 +1652,7 @@
             o.setAttribute('data-sup', JSON.stringify(s));
             sel.appendChild(o);
           });
-          if (row) row.style.display = '';
+          if (row) row.hidden = false;
         });
       }).catch(function(){});
   };
@@ -1842,7 +1869,7 @@
     const ru = it.name_ru ? esc(it.name_ru) : '';
     if (ru && _isRuUI()) {
       return '<span class="spec-name">' + ru + '</span>'
-        + '<span class="spec-name-oem" style="display:block;font-size:11px;color:#8a8a8a;font-family:ui-monospace,monospace;margin-top:1px;">' + orig + '</span>';
+        + '<span class="spec-name-oem spec-name-oem-secondary">' + orig + '</span>';
     }
     return '<span class="spec-name">' + orig + '</span>';
   }
@@ -2071,7 +2098,7 @@
       const body  = (payload && payload.body)  || '';
       const url   = safeSameOriginUrl((payload && payload.url) || '');
       t.style.cssText = 'pointer-events:auto;background:#1d2330;color:#fff;padding:10px 14px;border-radius:10px;border:1px solid rgba(232,74,33,0.35);box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:340px;font-size:13px;line-height:1.4;cursor:pointer;';
-      t.innerHTML = '<div style="font-weight:600;margin-bottom:2px;">🔔 ' + esc(title) + '</div>' + (body ? '<div style="opacity:.85;">' + esc(body) + '</div>' : '');
+      t.innerHTML = '<div class="notify-toast-title">🔔 ' + esc(title) + '</div>' + (body ? '<div class="notify-toast-body">' + esc(body) + '</div>' : '');
       if (url) t.addEventListener('click', () => navigateSameOrigin(url));
       host.appendChild(t);
       setTimeout(() => { t.style.transition = 'opacity .3s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 320); }, 5000);
@@ -2192,9 +2219,9 @@
     if (!el) return;
     if (notif.unread > 0) {
       el.textContent = notif.unread > 99 ? '99+' : String(notif.unread);
-      el.style.display = '';
+      el.hidden = false;
     } else {
-      el.style.display = 'none';
+      el.hidden = true;
     }
   }
   function bumpBellBadge(d) { setBellBadge(notif.unread + d); }
@@ -2521,7 +2548,7 @@
             <span class="dw-link-btn" title="${tr('Привязать к позиции каталога')}">🔗</span>
           </div>
           <div class="dw-linkpanel">
-            <input class="dw-linkinput" type="text" placeholder="Артикул или название позиции — напр. 6D102" autocomplete="off" oninput="window.__dwLinkInline&&window.__dwLinkInline(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();window.__dwLinkInline&&window.__dwLinkInline(this,true);}"/>
+            <input class="dw-linkinput" data-cf-input="drawing-inline" type="text" placeholder="Артикул или название позиции — напр. 6D102" autocomplete="off"/>
             <div class="dw-results"></div>
           </div>
         </div>`;
@@ -2568,21 +2595,21 @@
       else body = rows;
       return `<div class="card dw-card dw-link" data-drawing-id="${did}">
         <div class="card-title">🔗 Привязать «${esc(d.title || '')}» к позиции</div>
-        <input class="dw-newinput dw-linkinput" type="text" placeholder="Артикул или название — напр. 6D102 или коленвал" autocomplete="off" value="${esc(d.q || '')}" oninput="window.__drawingLinkSearch&&window.__drawingLinkSearch(this,'${did}')" onkeydown="if(event.key==='Enter'){event.preventDefault();window.__drawingLinkSearch&&window.__drawingLinkSearch(this,'${did}',true);}"/>
+        <input class="dw-newinput dw-linkinput" data-cf-input="drawing-link" data-drawing-id="${did}" type="text" placeholder="Артикул или название — напр. 6D102 или коленвал" autocomplete="off" value="${esc(d.q || '')}"/>
         <div class="dw-results">${body}</div>
       </div>`;
     },
     // Операторский поиск чертежей по артикулу (live, swap .opd-results).
     op_drawings(d) {
       _ensureDrawingsCSS();
-      const input = `<input class="dw-newinput opd-input" type="text" value="${esc(d.q || '')}" placeholder="Артикул (OEM) — напр. 6D102 или 5243" autocomplete="off" oninput="window.__opDrawingsSearch&&window.__opDrawingsSearch(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();window.__opDrawingsSearch&&window.__opDrawingsSearch(this,true);}"/>`;
+      const input = `<input class="dw-newinput opd-input" data-cf-input="operator-drawings" type="text" value="${esc(d.q || '')}" placeholder="Артикул (OEM) — напр. 6D102 или 5243" autocomplete="off"/>`;
       let body;
       if (!d.searched) body = '<div class="dw-empty">Введите артикул — покажу, что нужно покупателям и что предлагают продавцы.</div>';
       else if (!(d.groups || []).some(g => (g.rows || []).length)) body = '<div class="dw-empty">По «' + esc(d.q || '') + '» чертежей не найдено.</div>';
       else body = (d.groups || []).filter(g => (g.rows || []).length).map(g =>
         '<div class="opd-group"><div class="opd-gtitle">' + esc(g.label) + ' (' + (g.rows || []).length + ')</div>'
         + (g.rows || []).map(r =>
-            '<a class="dw-result" href="' + esc(safeSameOriginUrl(r.url) || '#') + '" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">'
+            '<a class="dw-result dw-result-link" href="' + esc(safeSameOriginUrl(r.url) || '#') + '" target="_blank" rel="noopener">'
             + '<span class="dw-rtitle">' + esc(r.title || '') + '</span>'
             + (r.subtitle ? '<span class="dw-rsub">' + esc(r.subtitle) + '</span>' : '') + '</a>').join('')
         + '</div>').join('');
@@ -2664,7 +2691,7 @@
         ${warns ? `<div class="dr-warnings">${warns}</div>` : ''}
         ${showActions ? `<div class="dr-actions">
           <button class="act-btn dr-confirm" data-action="${esc(d.confirm_action || '')}" data-params='${esc(confirmParams)}' data-label="${esc(d.confirm_label || tr('common.confirm'))}">${esc(d.confirm_label || tr('common.confirm'))}</button>
-          <button class="act-btn dr-cancel" type="button" onclick="window.cancelDraftCard&&window.cancelDraftCard(this)">${esc(d.cancel_label || tr('common.cancel'))}</button>
+          <button class="act-btn dr-cancel" type="button" data-cf-action="cancel-draft">${esc(d.cancel_label || tr('common.cancel'))}</button>
         </div>` : ''}
       </div>`;
     },
@@ -2691,7 +2718,7 @@
         if (Array.isArray(s.details_rows)) {  // даже пустой → раскрываемый тайл (покажет «записей нет»), а не мёртвый статик
           const rowsHtml = s.details_rows.slice(0, 30).map(r => {
             const params = JSON.stringify(r.params || {});
-            const click = r.action ? `data-action="${esc(r.action)}" data-params='${esc(params)}' role="button" tabindex="0" style="cursor:pointer"` : '';
+            const click = r.action ? `data-action="${esc(r.action)}" data-params='${esc(params)}' role="button" tabindex="0" data-ui-actionable="1"` : '';
             return `<div class="sr-det-row" ${click}>
               <span class="sr-det-time">${esc(r.left || '')}</span>
               <span class="sr-det-desc">${esc(r.title || '')}</span>
@@ -2722,7 +2749,7 @@
       // Список активных заказов в эскроу — те же стили что у транзакций
       const rows = (d.rows || []).map(r => {
         const params = JSON.stringify(r.params || {});
-        const click = r.action ? `data-action="${esc(r.action)}" data-params='${esc(params)}' role="button" tabindex="0" style="cursor:pointer"` : '';
+        const click = r.action ? `data-action="${esc(r.action)}" data-params='${esc(params)}' role="button" tabindex="0" data-ui-actionable="1"` : '';
         return `<div class="wal-row" ${click}>
           <span class="wal-time">${esc(r.left || '')}</span>
           <span class="wal-desc">${esc(r.title || '')}</span>
@@ -2814,7 +2841,7 @@
         </div>
         <div class="obp-progress">
           <div class="obp-progress-num"><span class="obp-progress-cur">${cur}</span>/${total}</div>
-          <div class="obp-progress-bar"><div class="obp-progress-fill" style="width:${pct}%"></div></div>
+          <div class="obp-progress-bar"><div class="obp-progress-fill" data-ui-percent="${pct}"></div></div>
           <div class="obp-progress-lbl">${esc(d.current_label || '')}</div>
         </div>
         <div class="obp-steps">${steps}</div>
@@ -2922,20 +2949,15 @@
       }).join('');
       const counter = (d.total_count && d.shown_end)
         ? `<span class="cat-counter">${d.offset + 1}–${d.shown_end} из ${d.total_count}</span>` : '';
-      // Поиск по артикулу: warehouse_id передаём числом или null (без кавычек —
-      // иначе сломается inline-обработчик внутри атрибута).
+      // Поиск по артикулу: пустое значение означает общий каталог.
       const whArg = (d.warehouse_id === null || d.warehouse_id === undefined || d.warehouse_id === '')
-        ? 'null' : Number(d.warehouse_id);
+        ? '' : String(Number(d.warehouse_id));
       const curQ = (d.filter && d.filter.q) ? esc(d.filter.q) : '';
-      const searchBar = `<div class="cat-search" style="display:flex;gap:8px;margin:4px 0 12px;flex-wrap:wrap;">
-        <input type="text" class="cat-search-input" value="${curQ}" placeholder="🔎 Поиск по артикулу / названию — фильтрует при наборе…"
-          style="flex:1;min-width:180px;box-sizing:border-box;padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:rgba(128,128,128,0.08);color:inherit;font-size:14px;"
-          oninput="window.__catalogLiveSearch && window.__catalogLiveSearch(this,${whArg})"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();window.__catalogLiveSearch&&window.__catalogLiveSearch(this,${whArg},true);}">
-        <button class="cat-search-btn" onclick="window.__catalogLiveSearch&&window.__catalogLiveSearch(this.parentNode.querySelector('.cat-search-input'),${whArg},true);"
-          style="padding:8px 16px;border-radius:8px;border:none;background:#2D7A3E;color:#fff;font-size:14px;cursor:pointer;white-space:nowrap;">Найти</button>
-        ${curQ ? `<button class="cat-search-clear" title="Сбросить поиск" onclick="var i=this.parentNode.querySelector('.cat-search-input');i.value='';window.__catalogLiveSearch&&window.__catalogLiveSearch(i,${whArg},true);"
-          style="padding:8px 12px;border-radius:8px;border:1px solid rgba(128,128,128,0.35);background:transparent;color:inherit;cursor:pointer;">✕</button>` : ''}
+      const searchBar = `<div class="cat-search">
+        <input type="text" class="cat-search-input" data-cf-input="catalog-search" data-warehouse-id="${esc(whArg)}" value="${curQ}" placeholder="🔎 Поиск по артикулу / названию — фильтрует при наборе…"
+          >
+        <button class="cat-search-btn" data-cf-action="catalog-search">Найти</button>
+        ${curQ ? `<button class="cat-search-clear" data-cf-action="catalog-clear" title="Сбросить поиск">✕</button>` : ''}
       </div>`;
       return `<div class="card cat-card">
         <div class="card-title">${esc(d.title || tr('card.catalog'))} ${counter}</div>
@@ -2978,13 +3000,13 @@
         const openParams = JSON.stringify({warehouse_id: wid});
         // Иконки управления — приглушены, проявляются на hover карточки
         const renameIcon = !r.is_orphan
-          ? `<button class="wh-icon" title="Переименовать" onclick="event.stopPropagation();window.renameWarehouse && window.renameWarehouse(${r.id}, ${JSON.stringify(r.name).replace(/"/g,'&quot;')})">✏️</button>`
+          ? `<button class="wh-icon" data-cf-action="warehouse-rename" data-warehouse-id="${r.id}" data-warehouse-name="${esc(r.name)}" title="Переименовать">✏️</button>`
           : '';
         const refreshIcon = !r.is_orphan
-          ? `<button class="wh-icon" title="Обновить прайс" onclick="event.stopPropagation();window.refreshWarehousePrice && window.refreshWarehousePrice(${r.id}, ${JSON.stringify(r.name).replace(/"/g,'&quot;')})">🔄</button>`
+          ? `<button class="wh-icon" data-cf-action="warehouse-refresh" data-warehouse-id="${r.id}" data-warehouse-name="${esc(r.name)}" title="Обновить прайс">🔄</button>`
           : '';
         const deleteIcon = !r.is_orphan
-          ? `<button class="wh-icon wh-icon-danger" title="Удалить склад" onclick="event.stopPropagation();window.deleteWarehouse && window.deleteWarehouse(${r.id}, ${JSON.stringify(r.name).replace(/"/g,'&quot;')}, ${r.parts_count})">🗑</button>`
+          ? `<button class="wh-icon wh-icon-danger" data-cf-action="warehouse-delete" data-warehouse-id="${r.id}" data-warehouse-name="${esc(r.name)}" data-parts-count="${Number(r.parts_count) || 0}" title="Удалить склад">🗑</button>`
           : '';
         const staleBadge = r.stale_label && r.staleness !== 'unknown' && !r.is_orphan
           ? `<span class="wh-stale wh-stale-${r.staleness}" title="Последняя загрузка: ${esc(r.last_import || '—')}">${esc(r.stale_label)}</span>`
@@ -3028,7 +3050,7 @@
               <div class="bo-brand">${esc(r.brand || '')}</div>
             </div>
             <div class="bo-meta">
-              ${r.condition_label ? `<span class="bo-cond-badge" style="display:inline-block;font-size:11px;font-weight:600;margin-bottom:3px;opacity:.75;">${esc(tr(r.condition_label))}</span>` : ''}
+              ${r.condition_label ? `<span class="bo-cond-badge">${esc(tr(r.condition_label))}</span>` : ''}
               <span class="bo-price">${fmtMoney(r.price, ccy)}</span>
               ${ratingBadge}
             </div>
@@ -3149,7 +3171,7 @@
         const pct = (typeof r.progress_pct === 'number')
           ? Math.max(0, Math.min(100, r.progress_pct)) : null;
         const progressHtml = (pct !== null) ? `
-          <div class="ls-progress"><div class="ls-progress-fill" style="width:${pct}%"></div></div>
+          <div class="ls-progress"><div class="ls-progress-fill" data-ui-percent="${pct}"></div></div>
           ${r.progress_meta ? `<div class="ls-progress-meta">${esc(r.progress_meta)}</div>` : ''}
         ` : '';
         // Опциональные stages-пилюли (для заказов в поставке).
@@ -3177,13 +3199,11 @@
         const itemsCount = (d.rows || d.items || []).length;
         const countBadge = itemsCount ? ` <span class="ls-coll-count">${itemsCount}</span>` : '';
         return `<div class="card ls-card ls-collapsible" ${stateAttr}>
-          <div class="card-title ls-coll-head" role="button" tabindex="0"
-               onclick="window.__toggleCollapsibleCard&amp;&amp;window.__toggleCollapsibleCard(this)"
-               onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.__toggleCollapsibleCard&amp;&amp;window.__toggleCollapsibleCard(this);}">
+          <div class="card-title ls-coll-head" data-cf-action="toggle-collapsible" role="button" tabindex="0">
             <span class="ls-coll-chev">${chev}</span>
             <span class="ls-coll-title">${esc(d.title || tr('card.list'))}</span>${countBadge}
           </div>
-          <div class="ls-rows ls-coll-body" ${collapsedInit ? 'style="display:none;"' : ''}>${rows || '<div class="ls-empty">Пусто</div>'}</div>
+          <div class="ls-rows ls-coll-body" ${collapsedInit ? 'hidden' : ''}>${rows || '<div class="ls-empty">Пусто</div>'}</div>
         </div>`;
       }
       return `<div class="card ls-card">
@@ -3381,7 +3401,7 @@
           data-apply-as="${esc(String(d.apply_as || 'constant'))}">
         <div class="sq-step">${idx + 1} / ${total}</div>
         <div class="sq-q">${esc(d.question || '')}</div>
-        ${d.hint ? `<div class="sq-hint" style="font-size:13px;line-height:1.4;opacity:.72;margin:-2px 0 10px;">${esc(d.hint)}</div>` : ''}
+        ${d.hint ? `<div class="sq-hint">${esc(d.hint)}</div>` : ''}
         ${chips ? `<div class="sq-chips">${chips}</div>` : ''}
         <div class="sq-input-row">
           ${countryHtml}
@@ -3436,7 +3456,7 @@
               <span class="ss-tier-score-max"> / ${esc(String(d.score_max || 100))}</span>
             </div>
           </div>
-          <div class="ss-bar"><div class="ss-bar-fill ss-tone-${esc(tierTone)}" style="width:${pct}%"></div></div>
+          <div class="ss-bar"><div class="ss-bar-fill ss-tone-${esc(tierTone)}" data-ui-percent="${pct}"></div></div>
         </div>
         ${heroHtml ? `<div class="ss-hero">${heroHtml}</div>` : ''}
         ${secondaryHtml ? `<div class="ss-secondary">${secondaryHtml}</div>` : ''}
@@ -3474,7 +3494,7 @@
             <span>${esc(p.current_text || '')}</span>
             <span class="tp-progress-target">→ ${esc(p.target_text || '')}</span>
           </div>
-          <div class="tp-bar"><div class="tp-bar-fill" style="width:${pct}%"></div></div>
+          <div class="tp-bar"><div class="tp-bar-fill" data-ui-percent="${pct}"></div></div>
           <div class="tp-progress-foot">${esc(p.gap_text || '')}${p.next_label ? ' до <b>' + esc(p.next_label) + '</b>' : ''}</div>
         </div>` : '';
       return `<div class="card tp-card">
@@ -3561,9 +3581,9 @@
             <div class="iv-ref-cap">PAYMENT REFERENCE</div>
             <div class="iv-ref-code">${esc(d.ref)}</div>
           </div>
-          <div class="iv-ref-btns" style="display:flex;gap:8px;align-items:center;justify-content:flex-end;">
+          <div class="iv-ref-btns">
             <button class="iv-ref-copy" type="button" data-copy="${esc(d.ref)}" title="Скопировать">Копировать</button>
-            ${safeSameOriginUrl(d.pdf_url) ? `<a class="iv-ref-copy iv-ref-dl" href="${esc(safeSameOriginUrl(d.pdf_url))}" download title="Скачать инвойс в PDF" style="text-decoration:none;">⬇ Скачать</a>` : ''}
+            ${safeSameOriginUrl(d.pdf_url) ? `<a class="iv-ref-copy iv-ref-dl" href="${esc(safeSameOriginUrl(d.pdf_url))}" download title="Скачать инвойс в PDF">⬇ Скачать</a>` : ''}
           </div>
           ${d.ref_warning ? `<div class="iv-ref-warn">⚠️ ${esc(d.ref_warning)}</div>` : ''}
         </div>` : ''}
@@ -3633,7 +3653,7 @@
           <div class="kpi-label">${esc(k.label || '')}</div>
           ${k.sub ? `<div class="kpi-sub">${esc(k.sub)}</div>` : ''}`;
         if (k.action) {
-          // S4 fix: action/params могут содержать апострофы → ломали inline onclick='…'
+          // S4: action/params могут содержать апострофы, поэтому данные хранятся отдельно от обработчика.
           // и открывали XSS. Кладём в data-* атрибуты с esc(); делегированный
           // listener на .kpi-cell-clickable[data-action] (см. ниже) подхватит.
           const paramsJson = JSON.stringify({...(k.params || {}), _label: k.label || ''});
@@ -3657,7 +3677,7 @@
         const center = d.progress.center != null ? d.progress.center : pct + '%';
         progress = `<div class="kpi-line">
           <div class="kpi-line-head"><span class="kpi-line-lbl">${esc(d.progress.label || '')}</span><span class="kpi-line-val">${esc(String(center))}</span></div>
-          <div class="kpi-line-track"><div class="kpi-line-fill" style="width:${pct}%"></div></div>
+          <div class="kpi-line-track"><div class="kpi-line-fill" data-ui-percent="${pct}"></div></div>
         </div>`;
       }
       return `<div class="card kpi-card">
@@ -3693,13 +3713,18 @@
         }
         // обычный input (text/number/email/password/...)
         const ro = f.readonly ? 'readonly' : '';
+        const min = f.min !== undefined ? `min="${esc(f.min)}"` : '';
+        const max = f.max !== undefined ? `max="${esc(f.max)}"` : '';
+        const step = f.step !== undefined ? `step="${esc(f.step)}"` : '';
+        const autocomplete = f.autocomplete || 'off';
+        const inputmode = f.inputmode ? `inputmode="${esc(f.inputmode)}"` : '';
         const hintHtml = f.hint ? `<div class="fm-hint">${esc(f.hint)}</div>` : '';
         return `<label class="fm-row">${lbl}
-          <input class="fm-input${f.readonly ? ' fm-input-readonly' : ''}" name="${esc(f.name)}" type="${esc(f.type || 'text')}" value="${esc(val)}" placeholder="${esc(f.placeholder || '')}" ${req} ${ro} autocomplete="off"/>
+          <input class="fm-input${f.readonly ? ' fm-input-readonly' : ''}" name="${esc(f.name)}" type="${esc(f.type || 'text')}" value="${esc(val)}" placeholder="${esc(f.placeholder || '')}" ${req} ${ro} ${min} ${max} ${step} ${inputmode} autocomplete="${esc(autocomplete)}"/>
           ${hintHtml}
         </label>`;
       }).join('');
-      const fixed = JSON.stringify(d.fixed_params || {});
+      const fixed = JSON.stringify(d.fixed_params || d.submit_params || {});
       return `<div class="card fm-card" data-form-action="${esc(d.submit_action || '')}" data-fixed='${esc(fixed)}'>
         <div class="card-title">${esc(d.title || tr('card.enter_data'))}</div>
         <div class="fm-fields">${fields}</div>
@@ -3812,7 +3837,7 @@
           <div class="tl-total">${totalLine}<span class="tl-reserve">${esc(reserveLine)}</span></div>
         </div>
         <div class="tl-progress-wrap">
-          <div class="tl-progress"><div class="tl-progress-fill" style="width:${pct}%"></div></div>
+          <div class="tl-progress"><div class="tl-progress-fill" data-ui-percent="${pct}"></div></div>
           <div class="tl-progress-pct">${pct}%</div>
         </div>
         <div class="tl-stages">${stages}</div>
@@ -3897,20 +3922,17 @@
           );
           const allDone = blockingMissing.length === 0;
           const triggerDisabled = !allDone;
-          // Inline advance — без переключения чат-сообщений и скролла вниз.
-          const advOnclick = `event.stopPropagation();event.preventDefault();window.sqAdvance&&window.sqAdvance(this, ${o.id}, '${esc(btnAct)}');`;
           const blockingTotal = checklist.filter(t => ['qr','upload'].includes(t.type)).length;
           const blockingDone = blockingTotal - blockingMissing.length;
           const advBtn = s.btn
-            ? `<button class="act-btn sq-btn${triggerDisabled ? ' sq-btn-locked' : ''}" type="button" data-checklist-total="${blockingTotal}" data-done-count="${blockingDone}" ${triggerDisabled ? `disabled title="Загрузите документы и QR-сканы перед переходом"` : ''} onclick="${advOnclick}">${esc(s.btn)}${triggerDisabled ? ` 🔒 ${blockingDone}/${blockingTotal}` : ''}</button>`
+            ? `<button class="act-btn sq-btn${triggerDisabled ? ' sq-btn-locked' : ''}" type="button" data-cf-action="seller-advance" data-order-id="${Number(o.id)}" data-order-action="${esc(btnAct)}" data-checklist-total="${blockingTotal}" data-done-count="${blockingDone}" ${triggerDisabled ? `disabled title="Загрузите документы и QR-сканы перед переходом"` : ''}>${esc(s.btn)}${triggerDisabled ? ` 🔒 ${blockingDone}/${blockingTotal}` : ''}</button>`
             : '';
-          const openOnclick = `event.stopPropagation();event.preventDefault();window.quickAction&&window.quickAction('get_order_detail',{order_id:${o.id}});`;
-          const openBtn = `<button class="act-btn sq-btn sq-open" type="button" onclick="${openOnclick}">🔍 Открыть</button>`;
+          const openBtn = `<button class="act-btn sq-btn sq-open" type="button" data-cf-action="quick-order-action" data-action-name="get_order_detail" data-order-id="${Number(o.id)}">🔍 Открыть</button>`;
           // Для статуса «Ожидает оплаты» — добавляем кнопку отмены и показываем дедлайн если установлен
           let cancelBtn = '';
           let deadlineChip = '';
           if (s.status === 'pending') {
-            cancelBtn = `<button class="act-btn sq-btn sq-cancel" type="button" onclick="event.stopPropagation();window.sellerCancelPending && window.sellerCancelPending(${o.id}, ${o.subtotal});">🗑 Отменить</button>`;
+            cancelBtn = `<button class="act-btn sq-btn sq-cancel" type="button" data-cf-action="seller-cancel-pending" data-order-id="${Number(o.id)}" data-order-total="${Number(o.subtotal) || 0}">🗑 Отменить</button>`;
             if (o.payment_deadline) {
               try {
                 const dl = new Date(o.payment_deadline);
@@ -3932,7 +3954,7 @@
             </summary>
             <div class="sq-order-body">
               <div class="sq-buyer">${window.t('Покупатель: {x}', {x: esc(o.buyer || '—')})}</div>
-              ${o.stage_meta && (o.stage_meta.trigger || o.stage_meta.actor || o.stage_meta.sla) ? `<div class="sq-stage-info" style="margin-bottom:10px;">
+              ${o.stage_meta && (o.stage_meta.trigger || o.stage_meta.actor || o.stage_meta.sla) ? `<div class="sq-stage-info sq-stage-info-spaced">
                 ${o.stage_meta.trigger ? `<div class="sq-stage-row"><span class="sq-stage-tag">⚡ Триггер</span> ${esc(o.stage_meta.trigger)}</div>` : ''}
                 ${o.stage_meta.actor ? `<div class="sq-stage-row"><span class="sq-stage-tag">👤 Вы</span> ${esc(o.stage_meta.actor)}</div>` : ''}
                 ${o.stage_meta.sla ? `<div class="sq-stage-row"><span class="sq-stage-tag">⏱ SLA</span> ${esc(o.stage_meta.sla)}</div>` : ''}
@@ -3944,10 +3966,9 @@
                   const done = doneIds.has(t.id);
                   const isAuto = t.type === 'auto';
                   const icon = ({qr:'📷', upload:'📎', button:'✓', auto:'🤖'})[t.type] || '✓';
-                  const clickCode = `event.stopPropagation();event.preventDefault();window.sqTrigger&&window.sqTrigger(this, ${o.id}, '${esc(s.status)}', '${esc(t.id)}', '${esc(t.type || 'button')}');`;
                   const cls = `sq-trigger${done ? ' sq-trigger-done' : ''}${isAuto ? ' sq-trigger-auto' : ''}`;
                   const autoBadge = isAuto && done ? '<span class="sq-trigger-auto-tag">авто</span>' : '';
-                  return `<button class="${cls}" type="button" ${(done || isAuto) ? 'disabled' : `onclick="${clickCode}"`}>
+                  return `<button class="${cls}" type="button" data-cf-action="seller-trigger" data-order-id="${Number(o.id)}" data-order-status="${esc(s.status)}" data-trigger-id="${esc(t.id)}" data-trigger-type="${esc(t.type || 'button')}" ${(done || isAuto) ? 'disabled' : ''}>
                     <span class="sq-trigger-mark">${done ? '☑' : '☐'}</span>
                     <span class="sq-trigger-icon">${icon}</span>
                     <span class="sq-trigger-label">${esc(t.label)}</span>
@@ -3988,7 +4009,7 @@
             <span class="sq-arc-actor">📍 ${esc(o.current_actor || '')}</span>
             <span class="sq-order-items">${o.items.length} ${tr('поз.')}</span>
             <span class="sq-order-sub">${fmtMoney(o.subtotal, 'USD')}</span>
-            <button class="act-btn sq-btn sq-open" type="button" onclick="event.stopPropagation();event.preventDefault();window.quickAction&&window.quickAction('track_order',{order_id:${o.id}});">📍 Трекинг</button>
+            <button class="act-btn sq-btn sq-open" type="button" data-cf-action="quick-order-action" data-action-name="track_order" data-order-id="${Number(o.id)}">📍 Трекинг</button>
           </div>`).join('');
         return `<details class="sq-section sq-archive">
           <summary class="sq-section-head sq-archive-head">
@@ -4044,7 +4065,7 @@
         </div>
         ${nextLine}
         <div class="tk-progress-wrap">
-          <div class="tk-progress"><div class="tk-progress-fill" style="width:${Math.max(0, Math.min(100, Number(d.progress_pct) || 0))}%"></div></div>
+          <div class="tk-progress"><div class="tk-progress-fill" data-ui-percent="${Math.max(0, Math.min(100, Number(d.progress_pct) || 0))}"></div></div>
           <div class="tk-progress-meta">
             <span>${(Number(d.current_idx) || 0) + 1} ${tr('из')} ${Number(d.total_stages) || 0}</span>
             <span>ETA: <b>${esc(d.eta_delivery || '—')}</b> · ${Number(d.days_left) || 0} ${tr('дн.')}</span>
@@ -4112,7 +4133,7 @@
       // Кнопка отмены — только для заказов с неоплаченным резервом
       const orderIdInt = parseInt(String(d.id || d.number).replace(/\D/g, ''), 10) || 0;
       const cancelBtn = d.can_cancel
-        ? `<button class="act-btn ord-cancel" type="button" title="Удалить неоплаченный заказ" onclick="event.stopPropagation();window.cancelOrderPrompt && window.cancelOrderPrompt(${orderIdInt}, '${esc(d.number || ('ORD-' + d.id))}', ${d.total || 0});">🗑 Отменить</button>`
+        ? `<button class="act-btn ord-cancel" type="button" data-cf-action="cancel-order" data-order-id="${orderIdInt}" data-order-number="${esc(d.number || ('ORD-' + d.id))}" data-order-total="${Number(d.total) || 0}" title="Удалить неоплаченный заказ">🗑 Отменить</button>`
         : '';
       return `<div class="card card-clickable"${clickAttrs}>
         <div class="card-row">
@@ -4138,8 +4159,7 @@
         <div class="card-title">${esc(d.title || tr('Документы приёмки'))}</div>
         <div class="card-sub">${esc(tr('Файл будет проверен и привязан к заказу.'))}</div>
         <div class="card-meta">
-          <button class="act-btn" type="button"
-            onclick="event.stopPropagation();window.sqTrigger&&window.sqTrigger(this, ${orderId}, '${status}', '${triggerId}', 'upload');">
+          <button class="act-btn" type="button" data-cf-action="seller-trigger" data-order-id="${orderId}" data-order-status="${status}" data-trigger-id="${triggerId}" data-trigger-type="upload">
             ${esc(d.label || tr('Загрузить документ'))}
           </button>
         </div>
@@ -4235,9 +4255,7 @@
         // RFQ → get_rfq_status. «×»: order → cancel_order, rfq → cancel_rfq.
         const openAction = isOrder ? 'get_order_detail' : 'get_rfq_status';
         const openParams = isOrder ? `{"order_id":${r.id}}` : `{"rfq_id":${r.id}}`;
-        const delHandler = isOrder
-          ? `window.deleteOrderRowInline(this,${r.id});`
-          : `window.deleteRfqRowInline(this,${r.id});`;
+        const deleteAction = isOrder ? 'delete-order-row' : 'delete-rfq-row';
         const metaText = isPendingOrder
           ? `${esc(r.items_count)} поз`
           : `${esc(r.items_count)} поз · <strong class="${hasQuotes ? 'rl-meta-good' : ''}">${esc(r.quotes_count)} котир</strong>`;
@@ -4270,7 +4288,7 @@
           </button>
           <button type="button" class="rl-row-del"
               title="${isPendingOrder ? 'Отменить заказ' : 'Удалить заявку'} ${esc(r.number)}"
-              onclick="event.stopPropagation();${delHandler}">×</button>
+              data-cf-action="${deleteAction}" data-record-id="${Number(r.id)}">×</button>
         </div>`;
       }).join('');
       // Collapsible head: клик по заголовку → разворот/схлоп списка строк.
@@ -4279,14 +4297,12 @@
       const stateAttr = collapsedInit ? 'data-collapsed="1"' : 'data-collapsed="0"';
       const chev = collapsedInit ? '▸' : '▾';
       return `<div class="card rl-card rl-collapsible" ${stateAttr}>
-        <div class="rl-head rl-coll-head" role="button" tabindex="0"
-             onclick="window.__toggleCollapsibleCard&amp;&amp;window.__toggleCollapsibleCard(this)"
-             onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.__toggleCollapsibleCard&amp;&amp;window.__toggleCollapsibleCard(this);}">
+        <div class="rl-head rl-coll-head" data-cf-action="toggle-collapsible" role="button" tabindex="0">
           <span class="rl-coll-chev">${chev}</span>
           <span class="rl-head-title">${esc(d.title || 'Заявки')}</span>
           <span class="rl-head-count">${(d.rows || []).length}</span>
         </div>
-        <div class="rl-list rl-coll-body" ${collapsedInit ? 'style="display:none;"' : ''}>${rows}</div>
+        <div class="rl-list rl-coll-body" ${collapsedInit ? 'hidden' : ''}>${rows}</div>
       </div>`;
     },
 
@@ -4328,7 +4344,7 @@
               <span>${tr('Ответили поставщиков')}</span>
               <span class="rcard-bar-val ${quoteHasOne ? 'rcard-bar-val-good' : ''}">${window.t('{n} из {x}', {n: esc(d.quotes_count ?? 0), x: esc(d.sent_count ?? 0)})}</span>
             </div>
-            <div class="rcard-bar"><div class="rcard-bar-fill ${quoteHasOne ? 'rcard-bar-fill-good' : ''}" style="width:${esc(d.quoting_pct ?? 0)}%"></div></div>
+            <div class="rcard-bar"><div class="rcard-bar-fill ${quoteHasOne ? 'rcard-bar-fill-good' : ''}" data-ui-percent="${esc(d.quoting_pct ?? 0)}"></div></div>
           </div>
           <div class="rcard-money">
             <div class="rcard-money-cell">
@@ -4359,9 +4375,9 @@
               const nameLine = it.match
                 ? `<div class="rcard-it-name rcard-it-name-matched">${esc((it.match||'').substring(0,100))}${it.brand ? ` <span class="rcard-it-brand">· ${esc(it.brand)}</span>` : ''}</div>`
                 : `<div class="rcard-it-fields" data-article="${artEsc}">
-                     <input type="text" class="rcard-it-input rcard-it-input-name"  placeholder="название…"          data-field="name"  onkeydown="if(event.key==='Enter'){event.preventDefault();window.submitPartFields(this);}">
-                     <input type="text" class="rcard-it-input rcard-it-input-brand" placeholder="бренд"              data-field="brand" onkeydown="if(event.key==='Enter'){event.preventDefault();window.submitPartFields(this);}">
-                     <input type="text" class="rcard-it-input rcard-it-input-model" placeholder="модель техники"     data-field="model" onkeydown="if(event.key==='Enter'){event.preventDefault();window.submitPartFields(this);}" onblur="window.submitPartFields(this,true)">
+                     <input type="text" class="rcard-it-input rcard-it-input-name" data-cf-input="part-fields" placeholder="название…" data-field="name">
+                     <input type="text" class="rcard-it-input rcard-it-input-brand" data-cf-input="part-fields" placeholder="бренд" data-field="brand">
+                     <input type="text" class="rcard-it-input rcard-it-input-model" data-cf-input="part-fields" data-submit-on-blur="1" placeholder="модель техники" data-field="model">
                    </div>`;
               const priceBit = it.est_usd != null
                 ? `<span class="rcard-it-price">${fmtMoney(it.est_usd)}</span>`
@@ -4606,10 +4622,10 @@
       const items = d.items || [];
       const max = Math.max(...items.map(i => i.value || 0)) || 1;
       const bars = items.map(i =>
-        `<div class="chart-bar" style="height:${Math.max(0, Math.min(100, (Number(i.value)/max*100)|0))}%;background:${safeCssColor(i.color)}"><div class="chart-bar-label">${esc(i.label)}</div></div>`
+        `<div class="chart-bar" data-ui-height-percent="${Math.max(0, Math.min(100, (Number(i.value)/max*100)|0))}" data-ui-bg="${safeCssColor(i.color)}"><div class="chart-bar-label">${esc(i.label)}</div></div>`
       ).join('');
       return `<div class="card">
-        <div class="card-title" style="margin-bottom:8px;">${esc(d.title || '')}</div>
+        <div class="card-title card-title-spaced">${esc(d.title || '')}</div>
         <div class="chart-bars">${bars}</div>
       </div>`;
     },
@@ -4642,7 +4658,7 @@
         return `<div class="bch-row">
           <div class="bch-label">${esc(it.label || '')}</div>
           <div class="bch-track">
-            <div class="bch-fill" style="width:${pct}%;background:${esc(color)}"></div>
+            <div class="bch-fill" data-ui-percent="${pct}" data-ui-bg="${esc(color)}"></div>
           </div>
           <div class="bch-val">${esc(String(it.value))}</div>
         </div>`;
@@ -4723,13 +4739,13 @@
         ...(showShip ? [{w: 10, th: `${shipIcon} ${tr('Доставка')}`, right: true}] : []),
         ...(showShip ? [] : [{w: 7, th: tr('Котировки'), right: true}]),
       ];
-      const nonQfColgroup = specCols.map(c => `<col style="width:${c.w}%">`).join('');
-      const nonQfHead = specCols.map(c => `<th${c.right ? ' style="text-align:right;"' : ''}>${c.th}</th>`).join('');
+      const nonQfColgroup = specCols.map(c => `<col data-ui-percent="${c.w}">`).join('');
+      const nonQfHead = specCols.map(c => `<th${c.right ? ' class="numeric-right"' : ''}>${c.th}</th>`).join('');
       const rows = (d.items || []).map((it, idx) => {
         if (it.status === 'not_found' && !it.id) {
           return `<tr><td><span class="spec-stk no">—</span></td>
             <td class="spec-row-num">${idx+1}</td>
-            <td colspan="5" class="spec-empty-row" style="text-align:left;">${tr('— нет предложений —')}</td>
+            <td colspan="5" class="spec-empty-row spec-empty-row-left">${tr('— нет предложений —')}</td>
             <td>${esc(it.qty || '')}</td><td></td><td></td><td></td></tr>`;
         }
         // Доставка: текстовые лейблы, не эмодзи. Клик → таймлайн отгрузки
@@ -4775,7 +4791,7 @@
               data-action="contact_supplier" data-params='${pAttr}' data-label="${tr('Связаться с поставщиком')}"
               title="${tr('Связаться с поставщиком')}: ${esc(it.supplier_username || '')}">${badgeInner}</button>`;
           } else {
-            supplierCell = `<span class="sp-plain ${statusCls}" style="background:transparent;border:0;padding:0;font-weight:600;white-space:nowrap;color:${_supColor};" title="${tr('Рейтинг')} ${it.supplier_rating}/100${it.alt_offers > 0 ? ' · ' + tr('клик по строке для сравнения') : ''}">${badgeInner}</span>`;
+            supplierCell = `<span class="sp-plain sp-plain-compact ${statusCls}" data-ui-color="${_supColor}" title="${tr('Рейтинг')} ${it.supplier_rating}/100${it.alt_offers > 0 ? ' · ' + tr('клик по строке для сравнения') : ''}">${badgeInner}</span>`;
           }
         } else {
           supplierCell = '—';
@@ -4795,20 +4811,20 @@
           const supRows = suppliers.map((s, i) => {
             const _stColor = ({trusted:'#16a34a',sandbox:'#b45309',risky:'#dc2626'})[s.status] || 'inherit';
             const _offerData = esc(JSON.stringify({part_id:s.part_id,price:s.price,currency:s.currency||'USD',condition:s.condition,rating:s.rating,status:s.status}));
-            return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}" data-row-idx="${idx}" data-offer="${_offerData}" style="cursor:pointer;" title="${tr('Выбрать котировку')}">
+            return `<tr class="${s.is_primary ? 'as-row as-primary' : 'as-row'}" data-row-idx="${idx}" data-offer="${_offerData}" title="${tr('Выбрать котировку')}">
               <td class="as-rank">${i + 1}</td>
-              <td class="as-label">${s.seller_id ? `<button type="button" style="appearance:none;background:none;border:0;padding:0;color:inherit;font:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer;" onclick="event.stopPropagation();window.quickAction&&window.quickAction('admin_user_detail',{user_id:${Number(s.seller_id)}});">${esc(s.label)}</button>` : esc(s.label)}</td>
-              <td><span style="color:${_stColor};font-weight:600;">${esc(_noBall(s.status_badge))}</span></td>
+              <td class="as-label">${s.seller_id ? `<button type="button" class="as-seller-link" data-cf-action="admin-user-detail" data-user-id="${Number(s.seller_id)}">${esc(s.label)}</button>` : esc(s.label)}</td>
+              <td><span class="as-status" data-ui-color="${_stColor}">${esc(_noBall(s.status_badge))}</span></td>
               <td class="as-num">${s.rating}</td>
               <td class="as-num as-price">${fmtMoney(s.price, s.currency)}</td>
 	              <td class="as-cond">${esc(({oem:'OEM',aftermarket:tr('Аналог'),analog:tr('Аналог'),reman:tr('Восстановленная')})[s.condition] || s.condition || '')}</td>
               <td class="as-num">${s.stock || '—'}</td>
               <td class="as-wh" title="${esc(s.warehouse || '')}">${esc(s.warehouse || '—')}</td>
               <td class="as-num as-score">${s.score != null ? s.score : '—'}</td>
-              <td class="as-pick"><button type="button" class="as-pick-btn" style="padding:3px 10px;font-size:12px;border-radius:6px;">${tr('Выбрать')}</button></td>
+              <td class="as-pick"><button type="button" class="as-pick-btn">${tr('Выбрать')}</button></td>
             </tr>`;
           }).join('');
-          detailRow = `<tr class="spec-detail-row" data-detail-for="${idx}" style="display:none;">
+          detailRow = `<tr class="spec-detail-row" data-detail-for="${idx}" hidden>
             <td colspan="12" class="spec-detail-cell">
               <div class="as-block">
                 <div class="as-title">🔍 ${window.t('{n} поставщик(ов) по OEM', {n: suppliers.length})} <b>${esc(it.id)}</b></div>
@@ -4835,10 +4851,10 @@
         // Per-позиционные поля котировки (только когда форма редактируемая)
         const qfEditable = d.editable_price && it.rfq_item_id != null;
         const condSel = qfEditable
-          ? `<select class="qf-item-input qf-cond" name="cond_${esc(String(it.rfq_item_id))}" title="OEM или аналог" style="width:90px;max-width:100%;font-size:13px;font-weight:700;padding:4px 5px;border-radius:5px;"><option value="oem"${(it.condition||'oem')==='oem'?' selected':''}>OEM</option><option value="analog"${it.condition==='analog'?' selected':''}>Аналог</option></select>`
+          ? `<select class="qf-item-input qf-cond" name="cond_${esc(String(it.rfq_item_id))}" title="OEM или аналог"><option value="oem"${(it.condition||'oem')==='oem'?' selected':''}>OEM</option><option value="analog"${it.condition==='analog'?' selected':''}>Аналог</option></select>`
           : '';
         const leadInp = qfEditable
-          ? `<input class="qf-item-input qf-lead" type="number" min="1" name="lead_${esc(String(it.rfq_item_id))}" placeholder="дней" value="${it.delivery_days!=null?esc(String(it.delivery_days)):''}" title="Срок поставки этой позиции (дн)" style="width:82px;max-width:100%;font-size:13px;font-weight:700;padding:4px 5px;border-radius:5px;" />`
+          ? `<input class="qf-item-input qf-lead" type="number" min="1" name="lead_${esc(String(it.rfq_item_id))}" placeholder="дней" value="${it.delivery_days!=null?esc(String(it.delivery_days)):''}" title="Срок поставки этой позиции (дн)" />`
           : '';
         // Рыночный ориентир по OEM — под полем цены (продавцу: не продешевить).
         const qfMktHint = (it.market_usd != null)
@@ -4879,31 +4895,31 @@
           : '—';
         const _quotesN = (it.alt_suppliers || []).length || it.alt_offers || 0;
         const quotesCell = _quotesN > 0
-          ? `<span title="${tr('Клик — все предложения по позиции')}" style="color:#7f9bb3;">${_quotesN}</span>`
+          ? `<span class="spec-quotes-count" title="${tr('Клик — все предложения по позиции')}">${_quotesN}</span>`
           : '—';
         const partId = String(it.part_id || '');
         return `<tr${rowAttrs} data-part-id="${partId}">
           <td><span class="spec-stk ${it.stock_class || stkClass(it.status)}">${esc(it.stock_label != null ? it.stock_label : stkLabel(it.status))}</span></td>
           <td class="spec-row-num">${idx+1}</td>
-          <td class="spec-del-cell"><button type="button" class="spec-del-btn" title="${tr('Удалить позицию')}" onclick="window.__specDelRow&&window.__specDelRow(this)">×</button></td>
+          <td class="spec-del-cell"><button type="button" class="spec-del-btn" data-cf-action="spec-delete" title="${tr('Удалить позицию')}">×</button></td>
           <td><a class="spec-id-link">${esc(it.id || '')}</a></td>
           <td><div class="spec-name-cell">${specNameHtml(it)}${it.tag ? `<span class="spec-mini-tag">${esc(it.tag)}</span>` : ''}${freshHint}</div></td>
           <td>${esc(it.brand || '')}</td>
           <td class="spec-cond-cell">${condBadge}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${esc(it.qty || '')}</td>
-          <td class="spec-price" style="text-align:right;font-variant-numeric:tabular-nums;">${(d.editable_price && it.rfq_item_id != null)
+          <td class="numeric-right">${esc(it.qty || '')}</td>
+          <td class="spec-price numeric-right">${(d.editable_price && it.rfq_item_id != null)
             ? `<div class="qf-price-wrap"><span class="qf-currency">${esc(it.currency || 'USD')}</span><input class="qf-price-input" type="number" step="0.01" min="0" name="price_${esc(String(it.rfq_item_id))}" data-qty="${Number(it.qty) || 0}" value="${Number(it.price || 0).toFixed(2)}" /></div>`
             : (showShip && it.line_total ? fmtMoney(it.line_total, it.currency || 'USD') : fmtMoney(it.price, it.currency || 'USD'))}</td>
-          <td style="text-align:right;font-variant-numeric:tabular-nums;">${showShip ? (it.weight_kg ? Number(it.weight_kg).toFixed(2)+' кг' : (it.weight||'')) : esc(it.weight || '')}</td>
-          ${showSupplierCol ? `<td style="text-align:right;font-variant-numeric:tabular-nums;">${supplierCell}</td>` : ''}
+          <td class="numeric-right">${showShip ? (it.weight_kg ? Number(it.weight_kg).toFixed(2)+' кг' : (it.weight||'')) : esc(it.weight || '')}</td>
+          ${showSupplierCol ? `<td class="numeric-right">${supplierCell}</td>` : ''}
           ${showShip ? `<td class="spec-ship">${shipCell}${leadInp}</td>` : ''}
-          ${showShip ? '' : `<td style="text-align:right;font-variant-numeric:tabular-nums;">${quotesCell}</td>`}
+          ${showShip ? '' : `<td class="numeric-right">${quotesCell}</td>`}
         </tr>${detailRow}`;
       }).join('');
       const detailBlocks = '';
 
       const moreLink = d.more_count
-        ? `<div class="spec-more">... ${d.more_count} ещё · <a href="#" onclick="return false;">раскрыть полный список</a></div>`
+        ? `<div class="spec-more">... ${d.more_count} ещё</div>`
         : '';
 
       const found = d.found || 0;
@@ -4966,7 +4982,7 @@
         <div class="spec-tbl-wrap">
 	          <table class="spec-tbl spec-tbl-fixed${qfMode ? ' qf-spec-tbl' : ''}">
             <colgroup>${qfMode
-              ? '<col style="width:11%"><col style="width:4%"><col style="width:13%"><col style="width:19%"><col style="width:12%"><col style="width:10%"><col style="width:13%"><col style="width:6%"><col style="width:12%">'
+              ? '<col class="spec-col-11"><col class="spec-col-4"><col class="spec-col-13"><col class="spec-col-19"><col class="spec-col-12"><col class="spec-col-10"><col class="spec-col-13"><col class="spec-col-6"><col class="spec-col-12">'
               : nonQfColgroup}</colgroup>
             <thead><tr>${qfMode
 	              ? `<th>${tr('Наличие')}</th><th>#</th><th>${tr('Артикул')}</th><th>${tr('Наименование')}</th><th>${tr('Бренд')}</th><th>${tr('Тип')}</th><th>${tr('Цена')}</th><th>${tr('Кол-во')}</th><th>${tr('Срок')}</th>`
@@ -5220,24 +5236,20 @@
       <div class="df-hint">${tr('Укажите <b>страну и город</b> → в таблице ниже появятся цены <b>CIP и DDP</b>. Полный адрес до двери нужен только для <b>DDP</b> — попросим при выборе.')}</div>
       <div class="df-row">
         <label class="df-lbl">${tr('Страна')} <span class="df-opt">${tr('(для CIP/DDP)')}</span></label>
-        <input class="df-input df-country" type="text" list="${ccId}" value="${_escRaw(curCountryName)}" placeholder="${tr('Начните вводить страну…')}" autocomplete="off"
-          onfocus="this.dataset.dfPrev=this.value;this.value='';window.dfCountryChange&&window.dfCountryChange(this,false);"
-          onblur="if(!this.dataset.dfCommit){this.value=this.dataset.dfPrev||'';window.dfCountryChange&&window.dfCountryChange(this,false);}delete this.dataset.dfCommit;"
-          oninput="window.dfCountryChange&&window.dfCountryChange(this,false)"
-          onchange="this.dataset.dfCommit='1';window.dfCountryChange&&window.dfCountryChange(this,true);" />
+        <input class="df-input df-country" type="text" list="${ccId}" value="${_escRaw(curCountryName)}" placeholder="${tr('Начните вводить страну…')}" autocomplete="off" data-cf-input="delivery-country" />
         <datalist id="${ccId}">${countryOpts}</datalist>
       </div>
       <div class="df-row">
         <label class="df-lbl">${tr('Город / место прибытия')} <span class="df-opt">${tr('(для CIP/DDP)')}</span></label>
-        <input class="df-input df-port" type="text" list="${dlId}" placeholder="${tr('Напр.: Москва')}" ${curPort} onkeydown="if(event.key==='Enter'){event.preventDefault(); var b=this.closest('.df-block').querySelector('.df-submit'); b&&b.click();}" />
+        <input class="df-input df-port" type="text" list="${dlId}" placeholder="${tr('Напр.: Москва')}" ${curPort} data-cf-input="delivery-port" />
         <datalist id="${dlId}">${portOpts}</datalist>
       </div>
       <div class="df-row">
         <label class="df-lbl">${tr('Адрес доставки')} <span class="df-opt">${tr('(улица, дом · для DDP)')}</span></label>
         <textarea class="df-input df-addr" rows="2" placeholder="${tr('Напр.: ул. Профсоюзная 84, корп. 5, офис 12')}">${curAddr}</textarea>
       </div>
-      <div class="df-hint" style="margin:2px 0 8px;">${tr('Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓')}</div>
-      <button class="df-submit act-btn" type="button" onclick="window.calcShipping && window.calcShipping(this)">
+      <div class="df-hint df-hint-submit">${tr('Заполнили поля? Нажмите кнопку — цены <b>CIP/DDP</b> сразу появятся в таблице ниже ↓')}</div>
+      <button class="df-submit act-btn" type="button" data-cf-action="delivery-calc">
         ${tr('🧮 Рассчитать цены CIP / DDP →')}
       </button>
     </div>`;
@@ -5283,9 +5295,7 @@
           } else {
             hint = 'недоступно';
           }
-          const clickAttr = needForm
-            ? ' onclick="window.dfFocus && window.dfFocus(this)" style="cursor:pointer;"'
-            : '';
+          const clickAttr = needForm ? ' data-cf-action="delivery-focus"' : '';
           return `<td class="sm-cell sm-cell-disabled" title="${esc(hint)}"${clickAttr}>
             <div class="sm-landed sm-na-mark">—</div>
             <div class="sm-ship">${esc(hint)}${needForm ? ' ↑' : ''}</div>
@@ -5307,7 +5317,7 @@
         // dfPickDDP: если адрес не заполнен, просим его, иначе оформляем.
         // FOB/CIP адрес до двери не нужен — обычный quick_order.
         const cellAttrs = opt.incoterm === 'DDP'
-          ? `data-params='${esc(JSON.stringify(params))}' data-label="Купить ${esc(m.mode_label)} DDP" onclick="window.dfPickDDP && window.dfPickDDP(this)" style="cursor:pointer;"`
+          ? `data-params='${esc(JSON.stringify(params))}' data-label="Купить ${esc(m.mode_label)} DDP" data-cf-action="delivery-ddp"`
           : `data-action="quick_order" data-params='${esc(JSON.stringify(params))}' data-label="Купить ${esc(m.mode_label)} ${opt.incoterm}"`;
         return `<td class="sm-cell" ${cellAttrs}>
           <div class="sm-landed">${fmtMoney(opt.landed, d.currency || 'USD')}</div>
@@ -5326,7 +5336,7 @@
     const ob = d.origin_breakdown || [];
     const expandable = ob.length >= 1;
     const routeLine = originsBadge
-      ? `<div class="sm-route${expandable ? ' sm-route-expandable' : ''}"${expandable ? ` onclick="this.classList.toggle('sm-route-open'); const t=this.nextElementSibling; if(t&&t.classList.contains('ob-block')) t.style.display = t.style.display==='block'?'none':'block';"` : ''}>${expandable ? '<span class="sm-chev">▸</span> ' : ''}${tr('Откуда:')} ${originsBadge}${arrow}${d.filter_origin ? ` <span class="sm-filter-badge">${window.t('фильтр: только {x}', {x: esc(d.filter_origin)})}</span>` : ''}</div>`
+      ? `<div class="sm-route${expandable ? ' sm-route-expandable' : ''}"${expandable ? ' data-cf-action="shipping-route-toggle"' : ''}>${expandable ? '<span class="sm-chev">▸</span> ' : ''}${tr('Откуда:')} ${originsBadge}${arrow}${d.filter_origin ? ` <span class="sm-filter-badge">${window.t('фильтр: только {x}', {x: esc(d.filter_origin)})}</span>` : ''}</div>`
       : '';
     // Разворачиваемая таблица по странам — скрыта до клика на "Откуда".
     // Каждая страна — отдельный <details>, чтобы можно было раскрыть
@@ -5375,7 +5385,7 @@
           ${itemsList ? `<ul class="ob-items">${itemsList}</ul>` : ''}
         </details>`;
       }).join('');
-      originTable = `<div class="ob-block" style="display:none;">
+      originTable = `<div class="ob-block" hidden>
         ${blocks}
         ${ob.length >= 2 && !d.filter_origin
           ? '<div class="ob-hint">💡 Несколько origin = несколько коносаментов. Клик по стране — раскрыть позиции для оценки рисков.</div>'
@@ -5407,10 +5417,10 @@
   function renderUnknownCard(type, data) {
     const rows = Object.entries(data || {})
       .filter(([k, v]) => v != null && typeof v !== 'object')
-      .map(([k, v]) => `<div style="display:flex;gap:8px;padding:3px 0;font-size:12px;"><span style="color:rgba(0,0,0,0.55);min-width:90px;">${esc(k)}:</span><span>${esc(String(v))}</span></div>`)
+      .map(([k, v]) => `<div class="unknown-card-row"><span class="unknown-card-key">${esc(k)}:</span><span>${esc(String(v))}</span></div>`)
       .join('');
     return `<div class="card">
-      <div class="card-title" style="margin-bottom:8px;">Не удалось отобразить этот блок <span style="font-weight:400;color:rgba(0,0,0,0.65);font-size:11px;">Обновите страницу и повторите действие</span></div>
+      <div class="card-title card-title-spaced">Не удалось отобразить этот блок <span class="unknown-card-note">Обновите страницу и повторите действие</span></div>
       ${rows}
     </div>`;
   }
@@ -5671,8 +5681,8 @@
     const tbody = toggleRow.parentElement;
     const detail = tbody.querySelector(`tr.spec-detail-row[data-detail-for="${idx}"]`);
     if (!detail) return;
-    const open = detail.style.display === 'table-row';
-    detail.style.display = open ? 'none' : 'table-row';
+    const open = !detail.hidden;
+    detail.hidden = open;
     toggleRow.classList.toggle('spec-row-open', !open);
     if (!open) {
       const wrap = toggleRow.closest('.spec-tbl-wrap');
@@ -5689,15 +5699,15 @@
     if (!tr) return;
     const partId = tr.dataset.partId;
     const card = tr.closest('.card, .msg-ai');
-    tr.style.display = 'none';
+    tr.hidden = true;
     // Обновляем счётчик "X из Y priced"
     const tbl = tr.closest('table.spec-tbl');
     if (tbl) {
-      const visRows = tbl.querySelectorAll('tr[data-part-id]:not([style*="display: none"])').length;
+      const visRows = tbl.querySelectorAll('tr[data-part-id]:not([hidden])').length;
       const foot = tbl.closest('.spec-block, div')?.querySelector('.spec-foot');
       // Пересчитываем итог по видимым строкам
       let newTotal = 0;
-      tbl.querySelectorAll('tr[data-part-id]:not([style*="display: none"]) .spec-price').forEach(td => {
+      tbl.querySelectorAll('tr[data-part-id]:not([hidden]) .spec-price').forEach(td => {
         const txt = td.textContent.replace(/[^0-9.]/g, '');
         newTotal += parseFloat(txt) || 0;
       });
@@ -5739,7 +5749,7 @@
     setTimeout(()=>{ mainRow.style.outline=''; mainRow.style.outlineOffset=''; }, 1600);
     const tbody = mainRow.parentElement;
     const detailRow = tbody?.querySelector('tr.spec-detail-row[data-detail-for="'+rowIdx+'"]');
-    if (detailRow) { detailRow.style.display='none'; mainRow.classList.remove('spec-row-open'); }
+    if (detailRow) { detailRow.hidden = true; mainRow.classList.remove('spec-row-open'); }
   };
 
   document.addEventListener('click', (e) => {
@@ -7030,7 +7040,7 @@
   // Quick action from pills/cards
   // ── Concurrency guard for action calls ────────────────────────
   // Защищает от двойного клика (мульти-открытия одного и того же действия).
-  // Inline `onclick="quickAction(...)"` обходит .act-btn delegated handler,
+  // Прямой вызов quickAction обходил делегированный обработчик .act-btn,
   // поэтому централизуем guard здесь. Ключ — action+params hash.
   const _inflightActions = new Set();
   function _actionKey(action, params) {
@@ -7495,6 +7505,7 @@
     if (document.getElementById('cl-css')) return;
     const s = document.createElement('style');
     s.id = 'cl-css';
+    if (CSP_NONCE) s.nonce = CSP_NONCE;
     s.textContent =
       '.cl-card{display:flex;flex-direction:column;gap:8px}'
       + '.cl-title{font-weight:700;font-size:14px}'
@@ -7524,6 +7535,7 @@
     if (document.getElementById('dw-css')) return;
     const s = document.createElement('style');
     s.id = 'dw-css';
+    if (CSP_NONCE) s.nonce = CSP_NONCE;
     s.textContent =
       '.dw-card{display:flex;flex-direction:column;gap:8px}'
       + '.dw-newrow{display:flex;gap:6px}'
@@ -8673,6 +8685,7 @@
   function _ensurePillCSS() {
     if (document.getElementById('pill-css')) return;
     const s = document.createElement('style'); s.id = 'pill-css';
+    if (CSP_NONCE) s.nonce = CSP_NONCE;
     s.textContent =
       '.pill{position:relative;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}'
       + '.pill-add{width:40px;height:40px;border-radius:50%;border:1px dashed rgba(0,0,0,.28);'
@@ -8816,10 +8829,10 @@
         </div>
         <select id="pm-add-action"><option value="" disabled>— действие пилюли —</option>${actionOpts}</select>
         <div class="pm-frow">
-          <button class="pm-addbtn" data-pm="add-save" style="flex:1">Добавить на экран</button>
-          <button class="pm-act" data-pm="add-cancel" style="height:auto;padding:0 14px">Отмена</button>
+          <button class="pm-addbtn pm-addbtn-grow" data-pm="add-save">Добавить на экран</button>
+          <button class="pm-act pm-act-cancel" data-pm="add-cancel">Отмена</button>
         </div>
-      </div>` : `<button class="pm-addbtn" data-pm="add-open" style="margin-top:8px">Добавить свою пилюлю</button>`;
+      </div>` : `<button class="pm-addbtn pm-addbtn-open" data-pm="add-open">Добавить свою пилюлю</button>`;
 
     box.innerHTML = `
       <div class="pm-head">
@@ -8906,18 +8919,16 @@
       }
       el.innerHTML = list.map(p => {
         const dot = DOT_BG[p.dot_color] || DOT_BG.green;
-        const pidStr = String(p.id).replace(/'/g, "&#39;");
-        const nameStr = String(p.name || '').replace(/'/g, "&#39;").replace(/"/g, '&quot;');
         const chatsCount = Number(p.chats || 0);
         const chatsLabel = chatsCount === 1 ? '1 чат' : `${chatsCount} чатов`;
         return `<a href="/chat/project/${esc(p.id)}/" class="side-project-row side-item-proj" data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}">
-          <span class="side-item-dot" style="background:${dot};"></span>
+          <span class="side-item-dot" data-ui-bg="${dot}"></span>
           <span class="side-project-main">
             <span class="side-project-title">${esc(p.name)}</span>
             <span class="side-project-meta">${esc(chatsLabel)}</span>
           </span>
           <span class="side-project-actions">
-            <button class="side-item-del" type="button" title="Удалить проект" aria-label="Удалить" onclick="event.preventDefault();event.stopPropagation();window.__deleteProject&amp;&amp;window.__deleteProject('${pidStr}','${nameStr}');return false;">×</button>
+            <button class="side-item-del" type="button" title="Удалить проект" aria-label="Удалить" data-cf-action="delete-project" data-project-id="${esc(p.id)}" data-project-name="${esc(p.name)}">×</button>
           </span>
         </a>`;
       }).join('');
@@ -8931,6 +8942,7 @@
     if (document.getElementById('uiprompt-css')) return;
     const s = document.createElement('style');
     s.id = 'uiprompt-css';
+    if (CSP_NONCE) s.nonce = CSP_NONCE;
     s.textContent =
       '.uip-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999;animation:uipfade .12s ease}'
       + '@keyframes uipfade{from{opacity:0}to{opacity:1}}'
@@ -9130,12 +9142,12 @@
       const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
       const icon = CATEGORY_ICON[c.category || 'general'] || CATEGORY_ICON.general;
       const cid = esc(c.id);
-      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" data-conv-id="${cid}" onclick="openConv('${cid}')" oncontextmenu="return openConvCtxMenu(event,'${cid}')">
+      return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" data-conv-id="${cid}" data-cf-action="open-conversation">
         <div class="side-item-stack-content">
           <div class="side-item-stack-title"><span class="conv-cat-icon" title="${esc(c.category || 'general')}">${icon}</span>${esc(c.title || tr('card.untitled'))}</div>
           <div class="side-item-stack-meta">${esc(meta)} ${lastMeta && lastMeta !== meta ? '· ' + esc(lastMeta) : ''}</div>
         </div>
-        <button class="side-item-stack-more" type="button" title="Действия" onclick="event.stopPropagation();openConvCtxMenu(event,'${cid}');return false;" aria-label="Действия">⋯</button>
+        <button class="side-item-stack-more" type="button" title="Действия" data-cf-action="conversation-menu" data-conv-id="${cid}" aria-label="Действия">⋯</button>
       </div>`;
     };
     const html = _BUCKET_ORDER
@@ -9245,11 +9257,11 @@
     const isCollapsed = card.getAttribute('data-collapsed') === '1';
     if (isCollapsed) {
       card.setAttribute('data-collapsed', '0');
-      if (body) body.style.display = '';
+      if (body) body.hidden = false;
       if (chev) chev.textContent = '▾';
     } else {
       card.setAttribute('data-collapsed', '1');
-      if (body) body.style.display = 'none';
+      if (body) body.hidden = true;
       if (chev) chev.textContent = '▸';
     }
   };
@@ -9477,6 +9489,9 @@
       // моментам, состояниям и осознанным повторным запросам пользователя.
       const seen = new Set();
       allMessages.forEach(m => {
+        // Служебные записи нужны для аудита и защиты от повторного выполнения,
+        // но не являются сообщениями пользователя и не показываются в ленте.
+        if (m.role === 'action') return;
         const mid = m.id || m.message_id;
         if (mid && seen.has(mid)) return;
         if (mid) seen.add(mid);
@@ -9615,7 +9630,7 @@
     const pending = addMessage('assistant', 'Загружаю файл…');
     const _spEl = pending && pending.querySelector && pending.querySelector('.msg-content');
     if (_spEl) _spEl.innerHTML =
-      'Загружаю файл… <span class="upl-pct">0%</span><div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>';
+      'Загружаю файл… <span class="upl-pct">0%</span><div class="upl-bar"><div class="upl-bar-fill" data-ui-percent="0"></div></div>';
     const fd = new FormData();
     fd.append('file', file);
     if (state.convId) fd.append('conversation_id', state.convId);
@@ -10322,17 +10337,16 @@
 
         // ── РАЗВИЛКА: Прайс или КП. Переключатель сверху карточки.
         //   Прайс → склад по логистике (страна/порты). КП → склад по заводу.
-        var _mbtn = 'flex:1;padding:8px 10px;border:1px solid rgba(128,128,128,0.35);border-radius:8px;font-size:13px;cursor:pointer;';
         var modeHtml =
-          '<div class="pl-mode-q" style="font-weight:600;margin-bottom:6px;">' + tr('Чей это прайс?') + '</div>'
-          + '<div class="pl-mode-row" style="display:flex;gap:8px;margin-bottom:10px;">'
-          + '<button type="button" class="pl-mode-btn" data-mode="pricelist" onclick="window.__plSetMode(this,\'pricelist\')" style="' + _mbtn + 'background:#1a1a1a;color:#fff;font-weight:600;">📦 ' + tr('Мой прайс') + '</button>'
-          + '<button type="button" class="pl-mode-btn" data-mode="kp" onclick="window.__plSetMode(this,\'kp\')" style="' + _mbtn + 'background:transparent;">🏭 ' + tr('Прайс / КП поставщика') + '</button>'
+          '<div class="pl-mode-q">' + tr('Чей это прайс?') + '</div>'
+          + '<div class="pl-mode-row">'
+          + '<button type="button" class="pl-mode-btn pl-mode-btn-active" data-mode="pricelist" data-cf-action="pricelist-mode">📦 ' + tr('Мой прайс') + '</button>'
+          + '<button type="button" class="pl-mode-btn" data-mode="kp" data-cf-action="pricelist-mode">🏭 ' + tr('Прайс / КП поставщика') + '</button>'
           + '</div>';
         // Быстрый выбор уже известного поставщика (заполняется async из БД).
         var knownHtml =
-          '<div class="pl-known-row" style="margin-bottom:10px;display:none;">'
-          + '<select class="pl-sup-known" onchange="window.__plPickSupplier(this)" style="width:100%;padding:8px 10px;border:1px solid rgba(128,128,128,0.35);border-radius:8px;font-size:13px;background:rgba(128,128,128,0.06);color:inherit;">'
+          '<div class="pl-known-row" hidden>'
+          + '<select class="pl-sup-known" data-cf-input="pricelist-supplier">'
           + '<option value="">' + tr('↻ Уже загружали от поставщика — подставить…') + '</option>'
           + '</select></div>';
         // Страны поставщика — те же, что в портах, + пустой дефолт.
@@ -10342,16 +10356,16 @@
             return '<option value="' + cc + '">' + esc(c.flag + ' ' + tr(c.name)) + '</option>';
           }).join('');
         var supplierHtml =
-          '<div class="pl-supplier-section" style="display:none;border:1px solid rgba(232,92,13,0.35);border-radius:8px;padding:10px;margin-bottom:10px;">'
-          + '<div class="pl-supplier-title" style="font-weight:600;margin-bottom:8px;">🏭 ' + tr('Поставщик / завод (для расценки — КП)') + '</div>'
+          '<div class="pl-supplier-section" hidden>'
+          + '<div class="pl-supplier-title">🏭 ' + tr('Поставщик / завод (для расценки — КП)') + '</div>'
           + '<div class="pl-df-row"><span class="pl-df-label">' + tr('Название завода') + '</span>'
           +   '<input class="pl-df-input pl-sup-name" data-field="supplier_name" type="text" autocomplete="off" placeholder="' + tr('напр. XCMG, Komatsu Ltd') + '"/></div>'
           + '<div class="pl-df-row"><span class="pl-df-label">' + tr('ИНН / налоговый код') + '</span>'
           +   '<input class="pl-df-input" data-field="supplier_tax_id" type="text" autocomplete="off" placeholder="' + tr('ИНН (РФ) · 统一信用代码 (Китай) · VAT/рег.№') + '"/></div>'
           + '<div class="pl-df-row"><span class="pl-df-label">' + tr('Страна поставщика') + '</span>'
           +   '<select class="pl-df-input" data-field="supplier_country">' + supCountryOpts + '</select></div>'
-          + '<label class="pl-sup-fullcat" style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;font-size:13px;">'
-          +   '<input type="checkbox" class="pl-sup-fullcat-cb" style="width:16px;height:16px;"/>'
+          + '<label class="pl-sup-fullcat">'
+          +   '<input type="checkbox" class="pl-sup-fullcat-cb"/>'
           +   '<span>' + tr('Полный каталог завода — отдельная папка на эту загрузку') + '</span>'
           + '</label>'
           + '<div class="pl-ship-combo-hint">' + tr('Без галочки — КП: позиции копятся в одну папку этого завода (по ИНН/коду). С галочкой — каждый каталог в своей папке «Завод · каталог #N».') + '</div>'
@@ -11970,7 +11984,7 @@
     const _cEl = pending && pending.querySelector && pending.querySelector('.msg-content');
     if (_cEl) _cEl.innerHTML =
       '📐 Загружаю чертёж «' + esc(file.name) + '»' + sizeKb + ' <span class="upl-pct">0%</span>'
-      + '<div class="upl-bar"><div class="upl-bar-fill" style="width:0%"></div></div>';
+      + '<div class="upl-bar"><div class="upl-bar-fill" data-ui-percent="0"></div></div>';
     const fd = new FormData();
     fd.append('file', file);
     _uploadWithProgress('/api/assistant/drawings/upload/', fd, {
@@ -12259,6 +12273,168 @@
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(fromHero); }
   };
 
+  function warehouseIdFrom(element) {
+    const raw = element?.dataset?.warehouseId;
+    return raw === '' || raw == null ? null : Number(raw);
+  }
+
+  document.addEventListener('input', (event) => {
+    const input = event.target.closest('[data-cf-input]');
+    if (!input) return;
+    if (input.dataset.cfInput === 'drawing-inline') window.__dwLinkInline?.(input);
+    else if (input.dataset.cfInput === 'drawing-link') window.__drawingLinkSearch?.(input, input.dataset.drawingId || '');
+    else if (input.dataset.cfInput === 'operator-drawings') window.__opDrawingsSearch?.(input);
+    else if (input.dataset.cfInput === 'catalog-search') window.__catalogLiveSearch?.(input, warehouseIdFrom(input));
+    else if (input.dataset.cfInput === 'delivery-country') window.dfCountryChange?.(input, false);
+  });
+
+  document.addEventListener('focusin', (event) => {
+    const input = event.target.closest('[data-cf-input="delivery-country"]');
+    if (!input) return;
+    input.dataset.dfPrev = input.value;
+    input.value = '';
+    window.dfCountryChange?.(input, false);
+  });
+
+  document.addEventListener('focusout', (event) => {
+    const input = event.target.closest('[data-cf-input="delivery-country"]');
+    if (!input) return;
+    if (!input.dataset.dfCommit) {
+      input.value = input.dataset.dfPrev || '';
+      window.dfCountryChange?.(input, false);
+    }
+    delete input.dataset.dfCommit;
+  });
+
+  document.addEventListener('change', (event) => {
+    const input = event.target.closest('[data-cf-input]');
+    if (!input) return;
+    if (input.dataset.cfInput === 'delivery-country') {
+      input.dataset.dfCommit = '1';
+      window.dfCountryChange?.(input, true);
+    } else if (input.dataset.cfInput === 'pricelist-supplier') {
+      window.__plPickSupplier?.(input);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    const actionElement = event.target.closest('[data-cf-action="toggle-collapsible"]');
+    if (actionElement && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      window.__toggleCollapsibleCard?.(actionElement);
+      return;
+    }
+    const input = event.target.closest('[data-cf-input]');
+    if (!input || event.key !== 'Enter') return;
+    event.preventDefault();
+    if (input.dataset.cfInput === 'drawing-inline') window.__dwLinkInline?.(input, true);
+    else if (input.dataset.cfInput === 'drawing-link') window.__drawingLinkSearch?.(input, input.dataset.drawingId || '', true);
+    else if (input.dataset.cfInput === 'operator-drawings') window.__opDrawingsSearch?.(input, true);
+    else if (input.dataset.cfInput === 'catalog-search') window.__catalogLiveSearch?.(input, warehouseIdFrom(input), true);
+    else if (input.dataset.cfInput === 'delivery-port') input.closest('.df-block')?.querySelector('.df-submit')?.click();
+    else if (input.dataset.cfInput === 'part-fields') window.submitPartFields?.(input);
+  });
+
+  document.addEventListener('focusout', (event) => {
+    const input = event.target.closest('[data-cf-input="part-fields"][data-submit-on-blur]');
+    if (input) window.submitPartFields?.(input, true);
+  });
+
+  document.addEventListener('click', (event) => {
+    const element = event.target.closest('[data-cf-action]');
+    if (!element) return;
+    const action = element.dataset.cfAction;
+    if (action === 'cancel-draft') window.cancelDraftCard?.(element);
+    else if (action === 'catalog-search' || action === 'catalog-clear') {
+      const input = element.parentElement?.querySelector('.cat-search-input');
+      if (!input) return;
+      if (action === 'catalog-clear') input.value = '';
+      window.__catalogLiveSearch?.(input, warehouseIdFrom(input), true);
+    } else if (action === 'warehouse-rename') {
+      event.stopPropagation();
+      window.renameWarehouse?.(Number(element.dataset.warehouseId), element.dataset.warehouseName || '');
+    } else if (action === 'warehouse-refresh') {
+      event.stopPropagation();
+      window.refreshWarehousePrice?.(Number(element.dataset.warehouseId), element.dataset.warehouseName || '');
+    } else if (action === 'warehouse-delete') {
+      event.stopPropagation();
+      window.deleteWarehouse?.(
+        Number(element.dataset.warehouseId),
+        element.dataset.warehouseName || '',
+        Number(element.dataset.partsCount) || 0,
+      );
+    } else if (action === 'toggle-collapsible') {
+      window.__toggleCollapsibleCard?.(element);
+    } else if (action === 'seller-advance') {
+      event.stopPropagation();
+      event.preventDefault();
+      window.sqAdvance?.(element, Number(element.dataset.orderId), element.dataset.orderAction || '');
+    } else if (action === 'quick-order-action') {
+      event.stopPropagation();
+      event.preventDefault();
+      window.quickAction?.(element.dataset.actionName || '', {order_id: Number(element.dataset.orderId)});
+    } else if (action === 'seller-cancel-pending') {
+      event.stopPropagation();
+      window.sellerCancelPending?.(
+        Number(element.dataset.orderId),
+        Number(element.dataset.orderTotal) || 0,
+      );
+    } else if (action === 'seller-trigger') {
+      event.stopPropagation();
+      event.preventDefault();
+      window.sqTrigger?.(
+        element,
+        Number(element.dataset.orderId),
+        element.dataset.orderStatus || '',
+        element.dataset.triggerId || '',
+        element.dataset.triggerType || 'button',
+      );
+    } else if (action === 'cancel-order') {
+      window.cancelOrderPrompt?.(
+        Number(element.dataset.orderId),
+        element.dataset.orderNumber || '',
+        Number(element.dataset.orderTotal) || 0,
+      );
+    } else if (action === 'delete-order-row') {
+      window.deleteOrderRowInline?.(element, Number(element.dataset.recordId));
+    } else if (action === 'delete-rfq-row') {
+      window.deleteRfqRowInline?.(element, Number(element.dataset.recordId));
+    } else if (action === 'admin-user-detail') {
+      window.quickAction?.('admin_user_detail', {user_id: Number(element.dataset.userId)});
+    } else if (action === 'spec-delete') {
+      window.__specDelRow?.(element);
+    } else if (action === 'delivery-calc') {
+      window.calcShipping?.(element);
+    } else if (action === 'delivery-focus') {
+      window.dfFocus?.(element);
+    } else if (action === 'delivery-ddp') {
+      window.dfPickDDP?.(element);
+    } else if (action === 'shipping-route-toggle') {
+      element.classList.toggle('sm-route-open');
+      const detail = element.nextElementSibling;
+      if (detail?.classList.contains('ob-block')) detail.hidden = !detail.hidden;
+    } else if (action === 'delete-project') {
+      event.preventDefault();
+      event.stopPropagation();
+      window.__deleteProject?.(element.dataset.projectId || '', element.dataset.projectName || '');
+    } else if (action === 'open-conversation') {
+      if (event.target.closest('.side-item-stack-more')) return;
+      window.openConv?.(element.dataset.convId || '');
+    } else if (action === 'conversation-menu') {
+      event.preventDefault();
+      event.stopPropagation();
+      window.openConvCtxMenu?.(event, element.dataset.convId || '');
+    } else if (action === 'pricelist-mode') {
+      window.__plSetMode?.(element, element.dataset.mode || 'pricelist');
+    }
+  });
+
+  document.addEventListener('contextmenu', (event) => {
+    const row = event.target.closest('[data-cf-action="open-conversation"]');
+    if (!row) return;
+    window.openConvCtxMenu?.(event, row.dataset.convId || '');
+  });
+
   // Resize handler — reapply mobile vs desktop sidebar logic
   let lastIsMobile = isMobile();
   window.addEventListener('resize', () => {
@@ -12270,5 +12446,8 @@
     }
   });
 
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => {
+    observeDynamicPresentation();
+    init();
+  });
 })();

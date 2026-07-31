@@ -155,6 +155,7 @@ _BUYER_ACTIONS = [
     "get_orders", "get_order_detail", "order_batch_items", "track_order", "track_shipment",
     "cancel_order",
     "invite_customer", "accept_customer_invite", "accept_referral",  # инвайт/реферал (для всех ролей)
+    "referral_program",
     "my_referrals",  # мои реферальные награды ($100 за приведённого)
     "my_kam", "change_manager",  # клиент: его менеджер + право сменить (удержание)
     "kam_message", "kam_reattach", "kam_request",  # клиент: написать / вернуть / подобрать KAM
@@ -186,7 +187,10 @@ _BUYER_ACTIONS = [
     # покупка и депозит
     "quick_order", "pay_reserve", "pay_final",
     "shipping_choose", "shipping_apply",
-    "get_balance", "topup_wallet", "buy_ai_requests", "link_card", "withdraw_wallet", "transfer_wallet",
+    "get_balance", "topup_wallet", "buy_ai_requests", "link_card",
+    "withdraw_wallet", "submit_withdrawal", "list_withdrawals", "cancel_withdrawal",
+    "transfer_wallet", "submit_wallet_transfer", "confirm_wallet_transfer",
+    "cancel_wallet_transfer", "list_wallet_transfers",
     # Production deposit top-up flow
     "start_topup", "submit_topup", "confirm_topup_paid", "cancel_topup", "list_topups",
     # приёмка собственного заказа после доставки
@@ -268,6 +272,7 @@ _OPERATOR_CORE = [
     "op_drawings_by_part",  # мастер-вид: чертежи по артикулу (сверка need/offer)
     "op_escalate_to_kam",  # Оператор → KAM: эскалация исключения
     "invite_customer", "accept_referral", "accept_customer_invite",  # реферал ($100 за приведённого)
+    "referral_program",
     "my_referrals",  # мои реферальные награды
     # CRM заказчиков — НЕ в общем операторском наборе: это эксклюзив KAM
     # (см. _KAM_ONLY ниже). Так оператор не пересекается с KAM по аккаунтам.
@@ -282,6 +287,8 @@ _OPERATOR_CORE = [
     "op_analytics_hub",
     # Deposit top-up confirmation (финансы)
     "op_topup_queue", "op_confirm_topup", "op_reject_topup",
+    "op_withdrawal_queue", "op_approve_withdrawal",
+    "op_complete_withdrawal", "op_reject_withdrawal",
     # Operator analytics
     "op_logistics_stats", "op_payments_stats",
     # KYB moderation
@@ -324,6 +331,8 @@ _KAM_ONLY = [
 _KAM_EXCLUDED = {
     "op_customs_release", "op_hs_assign", "op_cert_upload", "op_sanctions_check",
     "op_topup_queue", "op_confirm_topup", "op_reject_topup",
+    "op_withdrawal_queue", "op_approve_withdrawal",
+    "op_complete_withdrawal", "op_reject_withdrawal",
     "op_kyb_queue", "op_kyb_review", "op_kyb_approve", "op_kyb_reject",
     "op_kyb_check", "op_kyb_clarify",
     "op_assign_carrier", "op_resolve_dispute",
@@ -352,7 +361,7 @@ _OPERATOR_SHARED = {
     "compare_suppliers", "compare_products", "top_suppliers", "get_claims",
     "claim_detail", "audit_log", "recent_activity", "kb_search", "notifications",
     "color_legend", "kb_faq", "my_verifications", "contact_operator",
-    "open_complaint", "op_dashboard",
+    "open_complaint", "op_dashboard", "referral_program",
     "op_queue", "op_sla_breach", "op_order_detail", "op_my_user_chats",
     "open_conversation", "list_order_documents",
 }
@@ -370,7 +379,9 @@ _OPERATOR_CUSTOMS = _OPERATOR_SHARED | {
 
 _OPERATOR_PAYMENT = _OPERATOR_SHARED | {
     "get_balance", "request_payout", "op_payments_dashboard", "op_payments_stats",
-    "op_topup_queue", "op_confirm_topup", "op_reject_topup", "apply_settlement",
+    "op_topup_queue", "op_confirm_topup", "op_reject_topup",
+    "op_withdrawal_queue", "op_approve_withdrawal",
+    "op_complete_withdrawal", "op_reject_withdrawal", "apply_settlement",
     "generate_invoice_pdf", "sign_document",
 }
 
@@ -450,6 +461,9 @@ _TEAM_LOGISTICS_WRITES = {
 }
 _TEAM_FINANCE_WRITES = {
     "request_payout", "seller_demand_payment", "generate_invoice_pdf",
+    "withdraw_wallet", "submit_withdrawal", "cancel_withdrawal",
+    "transfer_wallet", "submit_wallet_transfer", "confirm_wallet_transfer",
+    "cancel_wallet_transfer",
     "sign_document",
 }
 _TEAM_MANAGEMENT_WRITES = {
@@ -1424,6 +1438,15 @@ _NON_LLM_ACTIONS = {
     "verify_2fa",
     "disable_2fa",
     "create_api_token",
+    # Денежные изменения выполняются только явными кнопками и формами.
+    "submit_withdrawal",
+    "cancel_withdrawal",
+    "submit_wallet_transfer",
+    "confirm_wallet_transfer",
+    "cancel_wallet_transfer",
+    "op_approve_withdrawal",
+    "op_complete_withdrawal",
+    "op_reject_withdrawal",
 }
 
 
@@ -12563,7 +12586,7 @@ def _seller_revenue_view(params, user, role):
     tx_rows = []
     for tx in txs:
         kind = tx.kind or ""
-        is_in = kind in ("topup", "refund", "payout")
+        is_in = kind in ("topup", "refund", "payout", "transfer_in", "withdrawal_refund")
         order_ref = tx.order_id
         if not order_ref:
             m = _re.search(r"#(\d+)", tx.description or "")
@@ -12650,7 +12673,7 @@ def get_balance(params, user, role):
     tx_rows = []
     for tx in txs:
         kind = tx.kind or ""
-        is_in = kind in ("topup", "refund")
+        is_in = kind in ("topup", "refund", "transfer_in", "withdrawal_refund")
         # Прямое поле order_id (источник истины); regex на description — fallback
         # для старых записей без order_id.
         order_ref = tx.order_id
@@ -12684,31 +12707,40 @@ def get_balance(params, user, role):
         actions=[
             {"label": _('💵 Пополнить $10,000'), "action": "topup_wallet",
              "params": {"amount": 10000}},
+            {"label": _("Перевести"), "action": "transfer_wallet", "params": {}},
+            {"label": _("Вывести"), "action": "withdraw_wallet", "params": {}},
             {"label": _('📦 Мои заказы'), "action": "get_orders", "params": {}},
         ],
         suggestions=[_('Пополнить депозит'), _('История списаний')],
     )
 
 
+def _wallet_account_user(user, role):
+    """Владелец счёта: компания в режиме продавца, личный счёт покупателя."""
+    if role == "seller":
+        from marketplace.order_access import seller_principal
+
+        return seller_principal(user)
+    return user
+
+
 @register("request_payout")
 def request_payout(params, user, role):
-    """Запрос на выплату накопленной выручки продавцу."""
-    from .models import Wallet
-    from .seller_actions import _effective_seller
-    seller_user = _effective_seller(user) if role == "seller" else user
-    wallet = Wallet.for_user(seller_user)
-    if (wallet.balance or 0) <= 0:
-        return ActionResult(text=_('💸 На счёте нет средств для вывода.'),
-                            suggestions=[_('Мои заказы'), _('История поступлений')])
-    return ActionResult(
-        text=(
-            _('📤 Запрос выплаты (доступно: $%(balance)s)\n\nФинансист платформы зачислит средства на ваш банковский счёт в течение 1-2 рабочих дней. Минимальная сумма — $500.\n\nНапишите оператору сумму и реквизиты — оформим выплату вручную (скоро добавим автоматический вывод через банк).') % {'balance': f"{wallet.balance:,.2f}"}
-        ),
-        actions=[
-            {"label": _('💬 Написать оператору'), "action": "ask_operator", "params": {}},
-            {"label": _('💰 Мой баланс'),          "action": "get_balance", "params": {}},
-        ],
-    )
+    """Совместимое название для нового контролируемого процесса вывода."""
+    if role and role.startswith("operator"):
+        return ActionResult(
+            text=_(
+                "Выплата сотруднику оформляется финансовым администратором вне "
+                "клиентского счёта. Не отправляйте банковские реквизиты в чат."
+            ),
+            actions=[
+                {"label": _("Связаться с администратором"),
+                 "action": "contact_operator", "params": {"topic": "staff_payout"}},
+                {"label": _("Вернуться к начислениям"),
+                 "action": "op_my_bonuses", "params": {}},
+            ],
+        )
+    return withdraw_wallet(params=params, user=user, role=role)
 
 
 @register("link_card")
@@ -12736,33 +12768,372 @@ def link_card(params, user, role):
 
 @register("withdraw_wallet")
 def withdraw_wallet(params, user, role):
-    """Вывод средств с депозита обратно на карту/счёт."""
+    """Форма безопасного вывода на проверенный счёт компании."""
+    from marketplace.models import CompanyVerification
     from .models import Wallet
-    wallet = Wallet.for_user(user)
+
+    account_user = _wallet_account_user(user, role)
+    wallet = Wallet.for_user(account_user)
     if (wallet.balance or 0) <= 0:
         return ActionResult(text=_('💸 На балансе нет средств для вывода.'),
                             suggestions=[_('Пополнить депозит')])
+    kyb = CompanyVerification.objects.filter(user=account_user).first()
+    if not kyb or kyb.status != "verified" or not kyb.bank_account:
+        return ActionResult(
+            text=_(
+                "Вывод доступен только на проверенный банковский счёт компании. "
+                "Завершите проверку компании или обновите банковские реквизиты. "
+                "Не отправляйте реквизиты в чат."
+            ),
+            actions=[
+                {"label": _("Проверка компании"), "action": "kyb_status", "params": {}},
+                {"label": _("Поддержка"), "action": "contact_operator", "params": {"topic": "withdrawal"}},
+            ],
+        )
+    account_mask = "••••" + kyb.bank_account[-4:]
     return ActionResult(
-        text=(
-            _('💸 Вывод средств (доступно: $%(balance)s)\n\nДоступно для вывода: средства не зарезервированные под открытые заказы.\nНапишите оператору сумму и реквизиты — выводим в течение 1 рабочего дня.') % {'balance': f"{wallet.balance:,.2f}"}
+        text=_(
+            "Вывод оформляется заявкой. Сумма сразу резервируется на внутреннем "
+            "счёте и возвращается автоматически, если финансист отклонит заявку."
         ),
-        actions=[
-            {"label": _('💬 Написать оператору'), "action": "ask_operator", "params": {}},
-            {"label": _('📊 Мой баланс'), "action": "get_balance", "params": {}},
+        cards=[{"type": "form", "data": {
+            "title": _("Заявка на вывод"),
+            "submit_action": "submit_withdrawal",
+            "submit_label": _("Зарезервировать и отправить"),
+            "fields": [
+                {"name": "amount", "label": _("Сумма (USD)"), "type": "number",
+                 "value": str(wallet.balance), "required": True,
+                 "hint": _("Минимум $100. Доступно: $%(amount)s") % {"amount": f"{wallet.balance:,.2f}"}},
+                {"name": "destination", "label": _("Счёт зачисления"), "type": "text",
+                 "value": f"{kyb.bank_name} · {account_mask}", "readonly": True},
+                {"name": "note", "label": _("Комментарий финансисту"), "type": "textarea",
+                 "placeholder": _("Назначение платежа или важное уточнение")},
+            ],
+        }}],
+        contextual_actions=[
+            {"label": _("Мои заявки"), "action": "list_withdrawals", "params": {}},
+            {"label": _("Назад к балансу"), "action": "get_balance", "params": {}},
         ],
+    )
+
+
+@register("submit_withdrawal")
+def submit_withdrawal(params, user, role):
+    from django.db import transaction
+    from marketplace.models import CompanyVerification
+    from .models import Wallet, WalletTx, WalletWithdrawalRequest
+
+    amount = _finite_decimal(
+        params.get("amount"), minimum=Decimal("100"),
+        maximum=MAX_TRANSACTION_AMOUNT, quantum=Decimal("0.01"),
+    )
+    if amount is None:
+        return ActionResult(
+            text=_("Введите корректную сумму от $100."),
+            actions=[{"label": _("Заполнить снова"), "action": "withdraw_wallet", "params": {}}],
+        )
+    account_user = _wallet_account_user(user, role)
+    kyb = CompanyVerification.objects.filter(user=account_user).first()
+    if not kyb or kyb.status != "verified" or not kyb.bank_account:
+        return ActionResult(text=_("Проверенный банковский счёт не найден."))
+    with transaction.atomic():
+        wallet = Wallet.objects.select_for_update().get(
+            pk=Wallet.for_user(account_user).pk,
+        )
+        if wallet.balance < amount:
+            return ActionResult(text=_("На внутреннем счёте недостаточно доступных средств."))
+        request = WalletWithdrawalRequest.objects.create(
+            wallet=wallet, amount=amount, currency=wallet.currency,
+            reference_code=WalletWithdrawalRequest.make_ref(),
+            bank_name=kyb.bank_name[:200],
+            bank_account_last4=kyb.bank_account[-4:],
+            user_note=(params.get("note") or "").strip()[:300],
+        )
+        wallet.balance -= amount
+        wallet.save(update_fields=["balance", "updated_at"])
+        WalletTx.objects.create(
+            wallet=wallet, kind="withdrawal_hold", amount=amount,
+            description=f"Резерв по заявке {request.reference_code}",
+            balance_after=wallet.balance,
+        )
+    return ActionResult(
+        text=_(
+            "Заявка %(ref)s создана. $%(amount)s зарезервировано до решения "
+            "финансового оператора."
+        ) % {"ref": request.reference_code, "amount": f"{amount:,.2f}"},
+        actions=[
+            {"label": _("Мои заявки"), "action": "list_withdrawals", "params": {}},
+            {"label": _("Отменить заявку"), "action": "cancel_withdrawal",
+             "params": {"reference": request.reference_code}},
+        ],
+    )
+
+
+@register("list_withdrawals")
+def list_withdrawals(params, user, role):
+    from .models import WalletWithdrawalRequest
+
+    rows = []
+    account_user = _wallet_account_user(user, role)
+    requests = WalletWithdrawalRequest.objects.filter(wallet__user=account_user)[:50]
+    for request in requests:
+        rows.append({
+            "title": f"{request.reference_code} · ${request.amount:,.2f}",
+            "subtitle": f"{request.get_status_display()} · {request.created_at:%d.%m.%Y %H:%M}",
+            "badge": {"label": request.get_status_display(),
+                      "tone": "ok" if request.status == "completed" else "warn" if request.status == "pending" else "info"},
+        })
+    return ActionResult(
+        text=_("Ваши заявки на вывод."),
+        cards=[{"type": "list", "data": {
+            "title": _("Вывод средств"),
+            "items": rows or [{"title": _("Заявок пока нет")}],
+        }}],
+        actions=[{"label": _("Создать заявку"), "action": "withdraw_wallet", "params": {}}],
+    )
+
+
+@register("cancel_withdrawal")
+def cancel_withdrawal(params, user, role):
+    from .models import WalletWithdrawalRequest
+
+    reference = (params.get("reference") or "").strip().upper()
+    account_user = _wallet_account_user(user, role)
+    request = WalletWithdrawalRequest.objects.filter(
+        wallet__user=account_user, reference_code=reference,
+    ).first()
+    if not request:
+        return ActionResult(text=_("Заявка не найдена."))
+    if request.status != "pending":
+        return ActionResult(text=_("Эту заявку уже нельзя отменить самостоятельно."))
+    request.refund(status="cancelled")
+    return ActionResult(
+        text=_("Заявка %(ref)s отменена, сумма возвращена на внутренний счёт.") % {"ref": reference},
+        actions=[{"label": _("Баланс"), "action": "get_balance", "params": {}}],
     )
 
 
 @register("transfer_wallet")
 def transfer_wallet(params, user, role):
-    """Перевод между внутренними счетами / контрагентам."""
+    """Форма двухэтапного внутреннего перевода."""
+    from marketplace.models import CompanyVerification
+    from .models import Wallet
+    from .security import user_has_enabled_2fa
+
+    account_user = _wallet_account_user(user, role)
+    wallet = Wallet.for_user(account_user)
+    if not CompanyVerification.objects.filter(
+        user=account_user,
+        status="verified",
+    ).exists():
+        return ActionResult(
+            text=_("Внутренние переводы доступны после проверки компании."),
+            actions=[{"label": _("Проверка компании"), "action": "kyb_status", "params": {}}],
+        )
+    if not user_has_enabled_2fa(user):
+        return ActionResult(
+            text=_(
+                "Для внутренних переводов включите двухфакторную защиту. "
+                "Она потребуется при окончательном подтверждении списания."
+            ),
+            actions=[{"label": _("Настроить двухфакторную защиту"), "action": "setup_2fa", "params": {}}],
+        )
     return ActionResult(
-        text=(
-            _('↗ Перевод средств\n\nВнутренние переводы между счетами Consolidator пока недоступны.\nСкоро добавим перевод бонусов и кредит-нот между связанными аккаунтами.')
-        ),
-        actions=[
-            {"label": _('💬 Написать оператору'), "action": "ask_operator", "params": {}},
+        text=_("Перевод выполняется только между активными счетами Consolidator Parts."),
+        cards=[{"type": "form", "data": {
+            "title": _("Новый перевод"),
+            "submit_action": "submit_wallet_transfer",
+            "submit_label": _("Проверить перевод"),
+            "fields": [
+                {"name": "recipient", "label": _("Имя пользователя получателя"),
+                 "type": "text", "required": True},
+                {"name": "amount", "label": _("Сумма (USD)"), "type": "number",
+                 "required": True, "hint": _("Доступно: $%(amount)s") % {"amount": f"{wallet.balance:,.2f}"}},
+                {"name": "note", "label": _("Назначение"), "type": "text",
+                 "placeholder": _("Не указывайте секретные или платёжные данные")},
+            ],
+        }}],
+        contextual_actions=[
+            {"label": _("История переводов"), "action": "list_wallet_transfers", "params": {}},
+            {"label": _("Назад к балансу"), "action": "get_balance", "params": {}},
         ],
+    )
+
+
+@register("submit_wallet_transfer")
+def submit_wallet_transfer(params, user, role):
+    from django.contrib.auth import get_user_model
+    from django.utils import timezone
+    from marketplace.models import CompanyVerification
+    from .models import Wallet, WalletTransfer
+    from .security import user_has_enabled_2fa
+
+    amount = _finite_decimal(
+        params.get("amount"), minimum=Decimal("0.01"),
+        maximum=MAX_TRANSACTION_AMOUNT, quantum=Decimal("0.01"),
+    )
+    if amount is None:
+        return ActionResult(text=_("Введите корректную сумму перевода."))
+    recipient_name = (params.get("recipient") or "").strip()
+    account_user = _wallet_account_user(user, role)
+    if not CompanyVerification.objects.filter(
+        user=account_user,
+        status="verified",
+    ).exists() or not user_has_enabled_2fa(user):
+        return ActionResult(
+            text=_("Сначала завершите проверку компании и включите двухфакторную защиту."),
+        )
+    recipient_user = get_user_model().objects.filter(
+        username__iexact=recipient_name, is_active=True,
+    ).first()
+    if not recipient_user or recipient_user.id == account_user.id:
+        return ActionResult(text=_("Получатель не найден или недоступен для перевода."))
+    if not CompanyVerification.objects.filter(
+        user=recipient_user,
+        status="verified",
+    ).exists():
+        return ActionResult(text=_("Получатель не найден или недоступен для перевода."))
+    sender_wallet = Wallet.for_user(account_user)
+    recipient_wallet = Wallet.for_user(recipient_user)
+    if sender_wallet.balance < amount:
+        return ActionResult(text=_("На внутреннем счёте недостаточно средств."))
+    if sender_wallet.currency != recipient_wallet.currency:
+        return ActionResult(text=_("Валюты внутренних счетов не совпадают."))
+    transfer = WalletTransfer.objects.create(
+        sender=sender_wallet, recipient=recipient_wallet, amount=amount,
+        currency=sender_wallet.currency, reference_code=WalletTransfer.make_ref(),
+        note=(params.get("note") or "").strip()[:200],
+        expires_at=timezone.now() + timedelta(minutes=15),
+    )
+    recipient_label = recipient_user.get_full_name() or recipient_user.username
+    return ActionResult(
+        text=_(
+            "Проверьте перевод: $%(amount)s пользователю %(recipient)s. "
+            "После подтверждения отменить его будет нельзя."
+        ) % {"amount": f"{amount:,.2f}", "recipient": recipient_label},
+        actions=[
+            {"label": _("Подтвердить перевод"), "action": "confirm_wallet_transfer",
+             "params": {"reference": transfer.reference_code}},
+            {"label": _("Отменить"), "action": "cancel_wallet_transfer",
+             "params": {"reference": transfer.reference_code}},
+        ],
+    )
+
+
+@register("confirm_wallet_transfer")
+def confirm_wallet_transfer(params, user, role):
+    from .models import WalletTransfer
+    from .security import user_has_enabled_2fa, verify_user_2fa
+
+    account_user = _wallet_account_user(user, role)
+    reference = (params.get("reference") or "").strip().upper()
+    transfer = WalletTransfer.objects.filter(
+        sender__user=account_user, reference_code=reference,
+    ).select_related("recipient__user").first()
+    if not transfer:
+        return ActionResult(text=_("Перевод не найден."))
+    if transfer.status == "completed":
+        return ActionResult(text=_("Этот перевод уже выполнен."))
+    if not user_has_enabled_2fa(user):
+        return ActionResult(
+            text=_("Для подтверждения перевода включите двухфакторную защиту."),
+            actions=[{"label": _("Настроить защиту"), "action": "setup_2fa", "params": {}}],
+        )
+    otp_code = (params.get("otp_code") or "").strip()
+    if not otp_code:
+        return ActionResult(
+            text=_("Введите одноразовый код, чтобы подтвердить списание."),
+            cards=[{"type": "form", "data": {
+                "title": _("Подтверждение перевода"),
+                "submit_action": "confirm_wallet_transfer",
+                "submit_label": _("Подтвердить перевод"),
+                "fixed_params": {"reference": reference},
+                "fields": [{
+                    "name": "otp_code",
+                    "label": _("Одноразовый код"),
+                    "type": "text",
+                    "required": True,
+                    "autocomplete": "one-time-code",
+                    "inputmode": "numeric",
+                }],
+            }}],
+        )
+    if not verify_user_2fa(user, otp_code):
+        return ActionResult(
+            text=_("Одноразовый код неверен или уже использован."),
+            actions=[{
+                "label": _("Ввести код снова"),
+                "action": "confirm_wallet_transfer",
+                "params": {"reference": reference},
+            }],
+        )
+    try:
+        completed = transfer.complete()
+    except ValueError as error:
+        logger.warning("wallet transfer %s rejected: %s", reference, error)
+        return ActionResult(text=_("Перевод не выполнен: проверьте срок подтверждения и доступный остаток."))
+    if completed.status != "completed":
+        return ActionResult(text=_("Срок подтверждения перевода истёк. Создайте новый перевод."))
+    transfer.refresh_from_db()
+    try:
+        _notify(
+            transfer.recipient.user,
+            kind="payment",
+            title=_("Внутренний перевод зачислен"),
+            body=_("На ваш внутренний счёт поступило $%(amount)s от %(sender)s.") % {
+                "amount": f"{transfer.amount:,.2f}",
+                "sender": account_user.username,
+            },
+        )
+    except Exception:
+        logger.exception("wallet transfer notification failed")
+    return ActionResult(
+        text=_("Перевод %(ref)s выполнен. Списано $%(amount)s.") % {
+            "ref": reference, "amount": f"{transfer.amount:,.2f}",
+        },
+        actions=[{"label": _("Баланс"), "action": "get_balance", "params": {}}],
+    )
+
+
+@register("cancel_wallet_transfer")
+def cancel_wallet_transfer(params, user, role):
+    from .models import WalletTransfer
+
+    account_user = _wallet_account_user(user, role)
+    reference = (params.get("reference") or "").strip().upper()
+    updated = WalletTransfer.objects.filter(
+        sender__user=account_user, reference_code=reference, status="pending",
+    ).update(status="cancelled")
+    return ActionResult(
+        text=_("Перевод отменён.") if updated else _("Перевод не найден или уже обработан."),
+    )
+
+
+@register("list_wallet_transfers")
+def list_wallet_transfers(params, user, role):
+    from .models import WalletTransfer
+
+    account_user = _wallet_account_user(user, role)
+    transfers = WalletTransfer.objects.filter(
+        Q(sender__user=account_user) | Q(recipient__user=account_user),
+    ).select_related("sender__user", "recipient__user")[:50]
+    rows = []
+    for transfer in transfers:
+        outgoing = transfer.sender.user_id == account_user.id
+        counterpart = transfer.recipient.user if outgoing else transfer.sender.user
+        sign = "−" if outgoing else "+"
+        rows.append({
+            "title": f"{sign}${transfer.amount:,.2f} · {counterpart.username}",
+            "subtitle": f"{transfer.reference_code} · {transfer.get_status_display()} · {transfer.created_at:%d.%m.%Y %H:%M}",
+            "tone": "ok" if transfer.status == "completed" else "info",
+        })
+    return ActionResult(
+        text=_("История внутренних переводов."),
+        cards=[{"type": "list", "data": {
+            "title": _("Переводы"),
+            "items": rows or [{"title": _("Переводов пока нет")}],
+        }}],
+        actions=[{"label": _("Новый перевод"), "action": "transfer_wallet", "params": {}}],
     )
 
 

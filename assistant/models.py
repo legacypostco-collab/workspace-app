@@ -393,6 +393,10 @@ class WalletTx(models.Model):
         ("escrow_hold", "Эскроу-холд"),
         ("escrow_release", "Эскроу → продавцу"),
         ("escrow_refund", "Эскроу → возврат"),
+        ("transfer_out", "Внутренний перевод: списание"),
+        ("transfer_in", "Внутренний перевод: зачисление"),
+        ("withdrawal_hold", "Вывод: сумма зарезервирована"),
+        ("withdrawal_refund", "Вывод: возврат резерва"),
     ]
     wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name="transactions")
     kind = models.CharField(max_length=20, choices=KIND_CHOICES)
@@ -498,6 +502,8 @@ class WalletTopupRequest(models.Model):
                     wallet__user=locked.user, kind="topup",
                     description__contains=locked.reference_code,
                 ).first()
+            if locked.status not in {"pending", "awaiting_confirmation"}:
+                raise ValueError("top-up request cannot be paid in its current status")
             locked.status = "paid"
             locked.confirmed_by = by_user
             locked.confirmed_at = timezone.now()
@@ -523,3 +529,174 @@ class WalletTopupRequest(models.Model):
         except Exception:
             pass
         return tx
+
+
+class WalletTransfer(models.Model):
+    """Двухэтапный перевод между внутренними счетами платформы."""
+
+    STATUS_CHOICES = [
+        ("pending", "Ожидает подтверждения"),
+        ("completed", "Выполнен"),
+        ("cancelled", "Отменён"),
+        ("expired", "Истёк"),
+    ]
+
+    sender = models.ForeignKey(
+        Wallet, on_delete=models.PROTECT, related_name="outgoing_transfers",
+    )
+    recipient = models.ForeignKey(
+        Wallet, on_delete=models.PROTECT, related_name="incoming_transfers",
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default="pending", db_index=True,
+    )
+    reference_code = models.CharField(max_length=24, unique=True, db_index=True)
+    note = models.CharField(max_length=200, blank=True)
+    expires_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["sender", "-created_at"], name="wallet_transfer_sender_idx"),
+            models.Index(fields=["recipient", "-created_at"], name="wallet_transfer_recipient_idx"),
+        ]
+
+    @classmethod
+    def make_ref(cls):
+        import secrets
+        for _ in range(12):
+            value = "TRF-" + secrets.token_hex(6).upper()
+            if not cls.objects.filter(reference_code=value).exists():
+                return value
+        return "TRF-" + uuid.uuid4().hex[:16].upper()
+
+    def complete(self):
+        from decimal import Decimal
+        from django.db import transaction
+
+        with transaction.atomic():
+            locked = type(self).objects.select_for_update().get(pk=self.pk)
+            if locked.status == "completed":
+                return locked
+            if locked.status != "pending":
+                raise ValueError("transfer is not pending")
+            if locked.expires_at <= timezone.now():
+                locked.status = "expired"
+                locked.save(update_fields=["status"])
+                self.status = "expired"
+                return locked
+            wallets = {
+                wallet.pk: wallet
+                for wallet in Wallet.objects.select_for_update()
+                .filter(pk__in=[locked.sender_id, locked.recipient_id])
+                .order_by("pk")
+            }
+            sender = wallets[locked.sender_id]
+            recipient = wallets[locked.recipient_id]
+            amount = Decimal(locked.amount)
+            if sender.currency != recipient.currency or sender.currency != locked.currency:
+                raise ValueError("wallet currency mismatch")
+            if amount <= 0 or sender.balance < amount:
+                raise ValueError("insufficient balance")
+            sender.balance -= amount
+            recipient.balance += amount
+            sender.save(update_fields=["balance", "updated_at"])
+            recipient.save(update_fields=["balance", "updated_at"])
+            WalletTx.objects.create(
+                wallet=sender, kind="transfer_out", amount=amount,
+                description=f"Перевод {locked.reference_code}",
+                balance_after=sender.balance,
+            )
+            WalletTx.objects.create(
+                wallet=recipient, kind="transfer_in", amount=amount,
+                description=f"Перевод {locked.reference_code}",
+                balance_after=recipient.balance,
+            )
+            locked.status = "completed"
+            locked.completed_at = timezone.now()
+            locked.save(update_fields=["status", "completed_at"])
+        self.refresh_from_db()
+        return self
+
+
+class WalletWithdrawalRequest(models.Model):
+    """Заявка на вывод с резервированием суммы до решения финансиста."""
+
+    STATUS_CHOICES = [
+        ("pending", "На проверке"),
+        ("approved", "Одобрена"),
+        ("completed", "Выплачена"),
+        ("rejected", "Отклонена"),
+        ("cancelled", "Отменена"),
+    ]
+
+    wallet = models.ForeignKey(
+        Wallet, on_delete=models.PROTECT, related_name="withdrawal_requests",
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default="pending", db_index=True,
+    )
+    reference_code = models.CharField(max_length=24, unique=True, db_index=True)
+    bank_name = models.CharField(max_length=200, blank=True)
+    bank_account_last4 = models.CharField(max_length=4, blank=True)
+    user_note = models.CharField(max_length=300, blank=True)
+    operator_note = models.CharField(max_length=300, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="reviewed_withdrawals",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="withdrawal_status_created_idx"),
+            models.Index(fields=["wallet", "-created_at"], name="withdrawal_wallet_created_idx"),
+        ]
+
+    @classmethod
+    def make_ref(cls):
+        import secrets
+        for _ in range(12):
+            value = "WDR-" + secrets.token_hex(6).upper()
+            if not cls.objects.filter(reference_code=value).exists():
+                return value
+        return "WDR-" + uuid.uuid4().hex[:16].upper()
+
+    def refund(self, *, status, by_user=None, note=""):
+        from django.db import transaction
+
+        if status not in {"rejected", "cancelled"}:
+            raise ValueError("invalid refund status")
+        with transaction.atomic():
+            locked = type(self).objects.select_for_update().get(pk=self.pk)
+            if locked.status in {"rejected", "cancelled"}:
+                return locked
+            if locked.status not in {"pending", "approved"}:
+                raise ValueError("withdrawal cannot be refunded")
+            wallet = Wallet.objects.select_for_update().get(pk=locked.wallet_id)
+            wallet.balance += locked.amount
+            wallet.save(update_fields=["balance", "updated_at"])
+            WalletTx.objects.create(
+                wallet=wallet, kind="withdrawal_refund", amount=locked.amount,
+                description=f"Возврат вывода {locked.reference_code}",
+                balance_after=wallet.balance,
+            )
+            locked.status = status
+            locked.reviewed_by = by_user
+            locked.reviewed_at = timezone.now()
+            locked.operator_note = (note or "")[:300]
+            locked.save(update_fields=[
+                "status", "reviewed_by", "reviewed_at", "operator_note", "updated_at",
+            ])
+        self.refresh_from_db()
+        return self

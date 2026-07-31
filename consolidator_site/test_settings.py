@@ -9,6 +9,13 @@ os.environ["CSP_STRICT"] = "0"
 
 from consolidator_site.settings import *  # noqa: F401, F403, E402
 
+STORAGES = {
+    **STORAGES,
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",

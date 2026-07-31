@@ -354,6 +354,7 @@ def _send_webhook_attempt(*, event: OrderEvent, endpoint: str, payload: dict, at
         with urlopen_no_redirect(
             req,
             timeout=float(getattr(settings, "WEBHOOK_TIMEOUT_SEC", 2)),
+            allow_private=bool(getattr(settings, "WEBHOOK_ALLOW_PRIVATE_IPS", False)),
         ) as resp:
             status_code = int(getattr(resp, "status", 200))
         is_ok = 200 <= status_code < 300
@@ -1753,7 +1754,7 @@ def chat_first_view(request):
 
 
 def invite_redirect(request, code):
-    """Короткая реф-ссылка /i/<code> → /chat/?ref=<code>.
+    """Короткая реф-ссылка /i/<code>/ → /chat/?ref=<code>.
 
     Фронт (autoTriggerFromUrl) применит реферал. Редирект всегда на ВНУТРЕННИЙ
     относительный путь (не open-redirect). Код жёстко санируем по алфавиту
@@ -1762,6 +1763,11 @@ def invite_redirect(request, code):
     from marketplace.models import ReferralCode
     allowed = set(ReferralCode.ALPHABET)
     safe = "".join(ch for ch in (code or "").upper() if ch in allowed)[:16]
+    if safe:
+        ReferralCode.objects.filter(code=safe).update(
+            clicks=F("clicks") + 1,
+            last_clicked_at=timezone.now(),
+        )
     return redirect(f"/chat/?ref={safe}")
 
 

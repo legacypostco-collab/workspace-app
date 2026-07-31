@@ -63,7 +63,13 @@ class Command(BaseCommand):
 
                 req = Request(endpoint, data=body, headers=headers, method="POST")
                 # The target passed safe_outbound_url with a production allowlist.
-                with urlopen_no_redirect(req, timeout=timeout) as resp:
+                with urlopen_no_redirect(
+                    req,
+                    timeout=timeout,
+                    allow_private=bool(
+                        getattr(settings, "WEBHOOK_ALLOW_PRIVATE_IPS", False)
+                    ),
+                ) as resp:
                     status_code = int(getattr(resp, "status", 200))
                 is_ok = 200 <= status_code < 300
                 retry_log.success = is_ok

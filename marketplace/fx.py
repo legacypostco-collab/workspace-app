@@ -12,6 +12,8 @@
 from decimal import Decimal, ROUND_HALF_UP
 import logging
 
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 
 # USD за 1 единицу валюты — фолбэк, если внешний курс недоступен.
@@ -53,7 +55,11 @@ def _fetch_rates():
             url,
             headers={"User-Agent": "consolidator-fx/1.0"})
         # URL is fixed and checked against FX_ALLOWED_HOSTS immediately above.
-        with urlopen_no_redirect(req, timeout=5) as r:
+        with urlopen_no_redirect(
+            req,
+            timeout=5,
+            allow_private=bool(getattr(settings, "FX_ALLOW_PRIVATE_IPS", False)),
+        ) as r:
             raw = r.read(1024 * 1024 + 1)
         if len(raw) > 1024 * 1024:
             logger.warning("fx: oversized rate response rejected")

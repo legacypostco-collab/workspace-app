@@ -6,6 +6,41 @@ from django.test import SimpleTestCase, override_settings
 
 class DeployReadinessSecurityTests(SimpleTestCase):
     @override_settings(
+        LLM_REQUIRED=True,
+        ANTHROPIC_API_KEY="",
+        KYB_EXTERNAL_REQUIRED=True,
+        KONTUR_FOCUS_API_KEY="",
+        MONITORING_REQUIRED=True,
+        SENTRY_DSN="",
+        UPTIME_HEARTBEAT_URL="",
+        MONITOR_WEBHOOK_URL="",
+    )
+    def test_required_external_services_are_blocking_errors(self):
+        output = StringIO()
+
+        with self.assertRaises(SystemExit):
+            call_command("check_deploy_readiness", stdout=output)
+
+        report = output.getvalue()
+        self.assertIn("ANTHROPIC_API_KEY is not set", report)
+        self.assertIn("KONTUR_FOCUS_API_KEY is not set", report)
+        self.assertIn("Monitoring is incomplete", report)
+
+    @override_settings(
+        UPTIME_HEARTBEAT_URL="http://monitor.example.com/heartbeat",
+        MONITOR_WEBHOOK_URL="https://user:secret@alerts.example.com/hook",
+    )
+    def test_monitoring_urls_require_https_without_credentials(self):
+        output = StringIO()
+
+        with self.assertRaises(SystemExit):
+            call_command("check_deploy_readiness", stdout=output)
+
+        report = output.getvalue()
+        self.assertIn("UPTIME_HEARTBEAT_URL must be an HTTPS URL", report)
+        self.assertIn("MONITOR_WEBHOOK_URL must be an HTTPS URL", report)
+
+    @override_settings(
         DEBUG=False,
         ALLOWED_HOSTS=["*"],
         CSRF_TRUSTED_ORIGINS=["http://example.com"],

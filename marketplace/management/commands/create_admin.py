@@ -8,6 +8,7 @@ Reads from env vars:
   DJANGO_ADMIN_USER     (default: admin)
   DJANGO_ADMIN_EMAIL    (default: admin@consolidatorparts.com)
   DJANGO_ADMIN_PASSWORD (required if user doesn't exist)
+  DJANGO_ADMIN_PASSWORD_FILE (preferred alternative to a password in env)
 
 Idempotent: safe to run on every deploy.
 """
@@ -22,13 +23,42 @@ from django.core.management.base import BaseCommand, CommandError
 class Command(BaseCommand):
     help = "Create or ensure the platform superuser account."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--if-configured",
+            action="store_true",
+            help="Do nothing when no password is configured and the user does not exist.",
+        )
+
+    @staticmethod
+    def _password():
+        password = os.getenv("DJANGO_ADMIN_PASSWORD", "").strip()
+        password_file = os.getenv("DJANGO_ADMIN_PASSWORD_FILE", "").strip()
+        if not password_file:
+            return password
+        try:
+            with open(password_file, encoding="utf-8") as source:
+                file_password = source.read().strip()
+        except OSError as exc:
+            raise CommandError(
+                "DJANGO_ADMIN_PASSWORD_FILE cannot be read."
+            ) from exc
+        if password and password != file_password:
+            raise CommandError(
+                "DJANGO_ADMIN_PASSWORD and DJANGO_ADMIN_PASSWORD_FILE contain different values."
+            )
+        return file_password
+
     def handle(self, *args, **options):
         username = os.getenv("DJANGO_ADMIN_USER", "admin").strip()
         email    = os.getenv("DJANGO_ADMIN_EMAIL", "admin@consolidatorparts.com").strip()
-        password = os.getenv("DJANGO_ADMIN_PASSWORD", "").strip()
+        password = self._password()
 
         existing_user = User.objects.filter(username=username).first()
         if existing_user is None and not password:
+            if options["if_configured"]:
+                self.stdout.write("Administrator provisioning skipped: password is not configured.")
+                return
             raise CommandError(
                 "DJANGO_ADMIN_PASSWORD is required when creating a new administrator."
             )

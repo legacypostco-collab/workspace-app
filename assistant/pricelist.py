@@ -3723,6 +3723,29 @@ class PricelistOutputPreviewView(APIView):
 
     PREVIEW_ROWS = 100  # ограничиваем превью
 
+    PREVIEW_CSS = (
+        'body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;}'
+        '.opx-note{font-size:11.5px;color:rgba(0,0,0,0.55);margin-bottom:10px;font-style:italic;}'
+        'table{border-collapse:collapse;width:100%;font-size:11.5px;font-family:"SF Mono",Menlo,monospace;}'
+        'th{background:#2D7A3E;color:#fff;padding:6px 8px;text-align:left;position:sticky;top:0;font-weight:600;letter-spacing:0.02em;}'
+        'td{padding:4px 8px;border-bottom:1px solid rgba(0,0,0,0.05);color:#1a1a1a;white-space:nowrap;}'
+        'tr:nth-child(even) td{background:rgba(45,122,62,0.03);}'
+    )
+
+    @classmethod
+    def _document(cls, body):
+        import re
+        import secrets
+
+        nonce = secrets.token_urlsafe(24)
+        clean_body = re.sub(r"<style[^>]*>.*?</style>", "", body, flags=re.I | re.S)
+        html = (
+            '<!doctype html><html><head><meta charset="utf-8">'
+            f'<style nonce="{nonce}">{cls.PREVIEW_CSS}</style>'
+            '</head><body>' + clean_body + '</body></html>'
+        )
+        return html, nonce
+
     def get(self, request, import_id):
         from django.http import HttpResponse
 
@@ -3741,12 +3764,12 @@ class PricelistOutputPreviewView(APIView):
             # _translate_to_en). _looks_non_ascii fast-path делает это
             # бесплатным для уже-английского HTML.
             body = _translate_to_en(imp.output_preview_html)
-            html = (
-                '<!doctype html><html><head><meta charset="utf-8"></head>'
-                '<body>' + body + '</body></html>'
-            )
+            html, nonce = self._document(body)
             response = HttpResponse(html, content_type="text/html; charset=utf-8")
-            response["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+            response["Content-Security-Policy"] = (
+                f"default-src 'none'; style-src 'nonce-{nonce}'; "
+                "style-src-attr 'none'; script-src 'none'; frame-ancestors 'none'"
+            )
             response["Cache-Control"] = "private, no-store"
             return response
 
@@ -3796,23 +3819,17 @@ class PricelistOutputPreviewView(APIView):
         more_note = (_('<div class="opx-note">Показаны первые %(rows)s из %(total)s строк</div>') % {
             "rows": self.PREVIEW_ROWS, "total": total}) if truncated else ""
 
-        html = (
-            '<!doctype html><html><head><meta charset="utf-8">'
-            '<style>'
-            'body{margin:0;padding:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;}'
-            '.opx-note{font-size:11.5px;color:rgba(0,0,0,0.55);margin-bottom:10px;font-style:italic;}'
-            'table{border-collapse:collapse;width:100%;font-size:11.5px;font-family:"SF Mono",Menlo,monospace;}'
-            'th{background:#2D7A3E;color:#fff;padding:6px 8px;text-align:left;position:sticky;top:0;font-weight:600;letter-spacing:0.02em;}'
-            'td{padding:4px 8px;border-bottom:1px solid rgba(0,0,0,0.05);color:#1a1a1a;white-space:nowrap;}'
-            'tr:nth-child(even) td{background:rgba(45,122,62,0.03);}'
-            '</style></head><body>'
-            + more_note
+        html, nonce = self._document(
+            more_note
             + '<table><thead>' + (rows_html[0] if rows_html else "") + '</thead>'
             + '<tbody>' + ''.join(rows_html[1:]) + '</tbody>'
-            + '</table></body></html>'
+            + '</table>'
         )
         response = HttpResponse(html, content_type="text/html; charset=utf-8")
-        response["Content-Security-Policy"] = "default-src 'none'; style-src 'unsafe-inline'"
+        response["Content-Security-Policy"] = (
+            f"default-src 'none'; style-src 'nonce-{nonce}'; "
+            "style-src-attr 'none'; script-src 'none'; frame-ancestors 'none'"
+        )
         response["Cache-Control"] = "private, no-store"
         return response
 

@@ -77,7 +77,8 @@ def test_set_language(client):
 
 
 @pytest.mark.django_db
-def test_authenticated_cabinet_redirect(client):
-    """Cabinet pages should redirect unauthenticated to login."""
+def test_removed_seller_cabinet_is_gone(client):
+    """The retired seller cabinet must not expose its former interface."""
     resp = client.get("/seller/")
-    assert resp.status_code in (302, 200)  # 302 if login required
+    assert resp.status_code == 410
+    assert resp["Cache-Control"] == "no-store"

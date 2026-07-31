@@ -1,4 +1,5 @@
 import os
+import tempfile
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -110,6 +111,7 @@ class HybridApiTests(TestCase):
         env = {
             "DJANGO_ADMIN_USER": "admin_without_password",
             "DJANGO_ADMIN_PASSWORD": "",
+            "DJANGO_ADMIN_PASSWORD_FILE": "",
         }
         with patch.dict(os.environ, env, clear=False):
             with self.assertRaises(CommandError):
@@ -122,11 +124,42 @@ class HybridApiTests(TestCase):
         env = {
             "DJANGO_ADMIN_USER": username,
             "DJANGO_ADMIN_PASSWORD": "",
+            "DJANGO_ADMIN_PASSWORD_FILE": "",
         }
         with patch.dict(os.environ, env, clear=False):
             with self.assertRaises(CommandError):
                 call_command("create_admin")
         self.assertFalse(User.objects.get(username=username).is_superuser)
+
+    def test_create_admin_if_configured_is_safe_without_password(self):
+        username = "optional_admin_without_password"
+        env = {
+            "DJANGO_ADMIN_USER": username,
+            "DJANGO_ADMIN_PASSWORD": "",
+            "DJANGO_ADMIN_PASSWORD_FILE": "",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            call_command("create_admin", "--if-configured")
+        self.assertFalse(User.objects.filter(username=username).exists())
+
+    def test_create_admin_reads_password_from_file(self):
+        username = "admin_from_password_file"
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8") as password_file:
+            password_file.write("a-strong-file-password")
+            password_file.flush()
+            env = {
+                "DJANGO_ADMIN_USER": username,
+                "DJANGO_ADMIN_EMAIL": "file-admin@example.com",
+                "DJANGO_ADMIN_PASSWORD": "",
+                "DJANGO_ADMIN_PASSWORD_FILE": password_file.name,
+            }
+            with patch.dict(os.environ, env, clear=False):
+                call_command("create_admin")
+
+        user = User.objects.get(username=username)
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.check_password("a-strong-file-password"))
 
     def test_hybrid_analytics_authenticated(self):
         user = User.objects.create_user(username="buyer1", password="pass123")

@@ -173,7 +173,7 @@ def test_mobile_header_controls_fit_viewport(xb_page, width, height):
           return {
             brand: box(".top-brand"),
             actions: box(".top-right"),
-            registration: box("button[onclick*='start_registration']"),
+            registration: box("button[data-ui-name='start_registration']"),
             welcomeLogoDisplay: getComputedStyle(
               document.querySelector(".welcome-logo")
             ).display,

@@ -203,9 +203,9 @@ done
 csp=$(curl -sI "$HEALTH_URL" | grep -ic '^content-security-policy:' || true)
 [[ "$csp" -ge 1 ]] && log "  ✓ CSP present" || log "  ⚠ CSP missing"
 
-log "━━━ 10. daily DB backup cron ━━━"
+log "━━━ 10. database backup and restore checks ━━━"
 # Ежедневный бэкап БД (03:30) с ротацией — обязательная страховка для prod.
-chmod +x deploy/backup.sh 2>/dev/null || true
+chmod +x deploy/backup.sh deploy/verify_restore.sh deploy/operations_check.sh 2>/dev/null || true
 if [[ ! -f /etc/cron.d/consolidator-backup ]]; then
     cat > /etc/cron.d/consolidator-backup <<'CRON'
 # Consolidator: ежедневный бэкап БД в 03:30, хранит 7 последних дампов
@@ -219,6 +219,23 @@ else
     log "  ✓ backup cron уже установлен"
 fi
 
+cat > /etc/cron.d/consolidator-restore-check <<'CRON'
+# Consolidator: weekly proof that the newest database dump can be restored
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+15 4 * * 0 root /var/www/workspace-app/deploy/verify_restore.sh >> /var/log/consolidator-restore-check.log 2>&1
+CRON
+chmod 0644 /etc/cron.d/consolidator-restore-check
+
+cat > /etc/cron.d/consolidator-operations-check <<'CRON'
+# Consolidator: services, queue, recent failures, fresh backup, external heartbeat
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+*/5 * * * * root /var/www/workspace-app/deploy/operations_check.sh >> /var/log/consolidator-operations-check.log 2>&1
+CRON
+chmod 0644 /etc/cron.d/consolidator-operations-check
+log "  ✓ restore check weekly; operations check every 5 minutes"
+
 log "━━━ 11. healthcheck watchdog (авто-рестарт daphne при зависании) ━━━"
 # daphne может «зависнуть» (процесс жив, но не отвечает на HTTP) — systemd
 # Restart=always тут НЕ помогает (нет exit-кода). Cron каждую минуту проверяет
@@ -226,13 +243,32 @@ log "━━━ 11. healthcheck watchdog (авто-рестарт daphne при �
 # ребута». Это лечит первопричину повторных обвалов прод-сервиса.
 cat > /usr/local/bin/consolidator-watchdog.sh <<'WD'
 #!/usr/bin/env bash
+set -u
+APP_DIR=/var/www/workspace-app
+set -a; . "$APP_DIR/.env" 2>/dev/null || true; set +a
+notify() {
+  [[ -n "${MONITOR_WEBHOOK_URL:-}" ]] || return 0
+  curl -fsS --max-time 8 -X POST -H 'Content-Type: application/json' \
+    --data-binary "{\"text\":\"Consolidator Parts: $1\"}" \
+    "$MONITOR_WEBHOOK_URL" >/dev/null 2>&1 || true
+}
 chk() { curl -sk --max-time 8 -H 'Host: consolidatorparts.com' -o /dev/null -w '%{http_code}' https://127.0.0.1/ 2>/dev/null || echo 000; }
 c=$(chk)
-case "$c" in 200|301|302) exit 0 ;; esac
+case "$c" in
+  200|301|302)
+    if [[ -f /tmp/consolidator_health_failed ]]; then
+      notify "доступность восстановлена"
+      rm -f /tmp/consolidator_health_failed
+    fi
+    exit 0
+    ;;
+esac
 sleep 5
 c=$(chk)
 case "$c" in 200|301|302) exit 0 ;; esac
 echo "$(date '+%F %T') watchdog: HTTP=$c → restart daphne" >> /var/log/consolidator-watchdog.log
+touch /tmp/consolidator_health_failed
+notify "локальная проверка вернула HTTP=$c, выполняется перезапуск Daphne"
 systemctl restart daphne
 sleep 3
 systemctl reload nginx 2>/dev/null || true

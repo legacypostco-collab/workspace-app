@@ -1405,16 +1405,17 @@ class QRScanTests(TestCase):
 
         from .qr_scan import encode_qr_code
         code = encode_qr_code(self.order.id)
+        order_heading = f"Заказ #{self.order.id}".encode()
         guest = Client().get(f"/api/assistant/qr/scan/{code}/")
         self.assertEqual(guest.status_code, 401)
-        self.assertNotIn(str(self.order.id).encode(), guest.content)
+        self.assertNotIn(order_heading, guest.content)
         self.assertNotIn(self.order.get_status_display().encode(), guest.content)
 
         outsider = Client()
         outsider.force_login(self.outsider)
         denied = outsider.get(f"/api/assistant/qr/scan/{code}/")
         self.assertEqual(denied.status_code, 403)
-        self.assertNotIn(str(self.order.id).encode(), denied.content)
+        self.assertNotIn(order_heading, denied.content)
         self.assertNotIn(self.order.get_status_display().encode(), denied.content)
 
         for user in (self.buyer, self.seller):
@@ -1425,7 +1426,7 @@ class QRScanTests(TestCase):
                     f"/api/assistant/qr/scan/{code}/"
                 )
                 self.assertEqual(response.status_code, 200)
-                self.assertIn(str(self.order.id).encode(), response.content)
+                self.assertIn(order_heading, response.content)
                 self.assertNotIn(b"b@x.t", response.content)
 
     def test_post_shipped_changes_status(self):
@@ -2248,16 +2249,14 @@ class ExternalRatingTests(TestCase):
         self.assertIsNone(data["score"])
         self.assertIn("формат", data["reason"])
 
-    @patch("httpx.Client")
-    def test_live_provider_not_found_does_not_assign_neutral_score(self, client_cls):
+    @patch("assistant.external_rating.urlopen_no_redirect")
+    def test_live_provider_not_found_does_not_assign_neutral_score(self, open_url):
         from .external_rating import _fetch_kontur
 
-        response = (
-            client_cls.return_value.__enter__.return_value
-            .stream.return_value.__enter__.return_value
-        )
+        response = open_url.return_value.__enter__.return_value
+        response.status = 200
         response.headers = {}
-        response.iter_bytes.return_value = [b"[]"]
+        response.read.side_effect = [b"[]", b""]
 
         data = _fetch_kontur("7707083893", "test-api-key")
 
@@ -2862,7 +2861,7 @@ class NegotiationFlowTests(TestCase):
     def test_view_rfq_quotes_blocks_non_owner(self):
         from .negotiation import view_rfq_quotes
         r = view_rfq_quotes({"rfq_id": self.rfq.id}, self.seller_a, "seller")
-        self.assertIn("только заказчик", r.text)
+        self.assertIn("только заказчик RFQ или оператор", r.text)
 
     def test_accept_quote_creates_order(self):
         from decimal import Decimal as D
@@ -3510,8 +3509,8 @@ class AdminActionsTests(TestCase):
         r = admin_dashboard({}, self.admin, "admin")
         self.assertEqual(r.cards[0]["type"], "kpi_grid")
         labels = [it["label"] for it in r.cards[0]["data"]["items"]]
-        self.assertIn("Активных юзеров", labels)
-        self.assertIn("GMV 7d", labels)
+        self.assertIn("Активных пользователей", labels)
+        self.assertIn("Оборот за 7 дней", labels)
 
     # --- read actions ---
     def test_admin_users_default_lists_all(self):
@@ -4140,7 +4139,7 @@ class CompetitorOfferTests(TestCase):
             "quote_id": self.quote.id, "competitor_name": "X",
             "quoted_price": "150", "confirmed": True,
         }, self.outsider, "buyer")
-        self.assertIn("только заказчик", r.text)
+        self.assertIn("только автор заявки", r.text)
 
     def test_upload_rejects_invalid_price_and_delivery_days(self):
         from marketplace.models import CompetitorOffer

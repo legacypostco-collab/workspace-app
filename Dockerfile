@@ -27,4 +27,4 @@ EXPOSE 8001
 #   # Сайт: http://localhost:8001
 
 # Daphne — ASGI-сервер с поддержкой WebSocket (Django Channels).
-CMD ["bash","-lc","python manage.py migrate --noinput && python manage.py collectstatic --noinput --clear && daphne -b 0.0.0.0 -p 8001 consolidator_site.asgi:application"]
+CMD ["bash","-lc","python manage.py migrate --noinput && python manage.py create_admin --if-configured && python manage.py collectstatic --noinput --clear && daphne -b 0.0.0.0 -p 8001 consolidator_site.asgi:application"]

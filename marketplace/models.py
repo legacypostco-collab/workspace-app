@@ -889,6 +889,11 @@ class ActivityEvent(models.Model):
         ("order", "Заказ"),
         ("rfq", "RFQ"),
         ("pricelist", "Загрузка прайса"),
+        ("topup_confirmed", "Пополнение подтверждено"),
+        ("topup_rejected", "Пополнение отклонено"),
+        ("withdrawal_approved", "Вывод одобрен"),
+        ("withdrawal_completed", "Вывод выполнен"),
+        ("withdrawal_rejected", "Вывод отклонён"),
     ]
     kind = models.CharField(max_length=20, choices=KIND_CHOICES, db_index=True)
     actor = models.ForeignKey(
@@ -1731,6 +1736,8 @@ class ReferralCode(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE,
                                  related_name="referral_code")
     code = models.CharField(max_length=16, unique=True, db_index=True)
+    clicks = models.PositiveBigIntegerField(default=0)
+    last_clicked_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -1774,6 +1781,42 @@ class ReferralCode(models.Model):
         obj = (cls.objects.filter(code=(code or "").strip().upper())
                .select_related("user").first())
         return obj.user if obj else None
+
+
+class ReferralAcceptance(models.Model):
+    """First-touch record of a user accepting another user's referral."""
+
+    referrer = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="accepted_referrals",
+    )
+    referred = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="referral_acceptance",
+    )
+    code = models.ForeignKey(
+        ReferralCode,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="acceptances",
+    )
+    referrer_role = models.CharField(max_length=32, blank=True)
+    accepted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-accepted_at"]
+        indexes = [
+            models.Index(
+                fields=["referrer", "-accepted_at"],
+                name="refaccept_referrer_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Referral acceptance {self.referrer_id} -> {self.referred_id}"
 
 
 class MissingDemand(models.Model):
