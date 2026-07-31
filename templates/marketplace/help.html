@@ -19,7 +19,7 @@
   <style>
     :root { --bg:#FBF7F7; --surface:#fff; --ink:#151515; --ink-2:#3A2E36; --ink-3:#6B5560; --accent:#E84A21; --line:rgba(0,0,0,0.07); --card-shadow:0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03); }
     *{box-sizing:border-box;margin:0;padding:0;}
-    html,body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:15px;line-height:1.55;}
+    html,body{background:var(--bg);color:var(--ink);font-family:'Inter',-apple-system,system-ui,sans-serif;font-size:14px;line-height:1.55;}
     a{color:var(--accent);text-decoration:none;}
     a:hover{text-decoration:underline;}
     .topbar{background:rgba(255,255,255,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 24px;position:sticky;top:0;z-index:10;}
@@ -29,10 +29,10 @@
     .nav-cta{display:inline-flex;gap:14px;align-items:center;font-size:14px;color:var(--ink-3);}
     .nav-cta a{color:var(--ink-2);}
     main{max-width:900px;margin:0 auto;padding:40px 24px 80px;}
-    h1{font-family:'Golos Text',sans-serif;font-size:38px;font-weight:800;line-height:1.1;margin-bottom:12px;letter-spacing:-0.02em;}
+    h1{font-family:'Golos Text',sans-serif;font-size:32px;font-weight:800;line-height:1.15;margin-bottom:12px;letter-spacing:0;}
     .lead{color:var(--ink-3);font-size:16px;margin-bottom:28px;}
     .search-form{display:flex;gap:8px;margin-bottom:32px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:var(--card-shadow);}
-    .search-form input{flex:1;border:0;outline:none;padding:12px 14px;font-family:inherit;font-size:15px;color:var(--ink);background:transparent;}
+    .search-form input{flex:1;min-width:0;border:0;outline:none;padding:12px 14px;font-family:inherit;font-size:14px;color:var(--ink);background:transparent;}
     .search-form button{border:0;background:var(--ink);color:#fff;cursor:pointer;padding:0 22px;border-radius:10px;font-weight:600;font-size:14px;font-family:inherit;}
     .search-form button:hover{background:#000;}
     .cat-nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px;}
@@ -47,7 +47,7 @@
     details.faq summary::-webkit-details-marker{display:none;}
     details.faq summary::after{content:'＋';color:var(--ink-3);font-weight:400;font-size:22px;transition:transform .2s ease;}
     details.faq[open] summary::after{content:'−';transform:scale(1.1);}
-    details.faq .answer{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink-2);font-size:14.5px;line-height:1.65;}
+    details.faq .answer{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--ink-2);font-size:14px;line-height:1.65;}
     /* Markdown-render: безопасные элементы */
     details.faq .answer p{margin-bottom:8px;}
     details.faq .answer ul, details.faq .answer ol{margin:8px 0 10px 18px;}
@@ -68,9 +68,17 @@
     @media (max-width:640px){
       h1{font-size:28px;}
       main{padding:24px 16px 60px;}
+      .topbar{padding:12px 16px;}
+      .topbar-inner{gap:10px;}
+      .brand{font-size:14px;white-space:nowrap;}
+      .brand svg{width:24px;height:24px;}
+      .nav-cta{gap:10px;font-size:13px;}
+      .nav-cta a:first-child{display:none;}
+      .search-form button{padding:0 16px;}
       .cta-bottom{flex-direction:column;text-align:center;}
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01">
   <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
@@ -137,9 +145,14 @@
       {% endfor %}
     {% else %}
       <div class="empty-state">
-        <h3>{% trans "Ничего не нашлось" %}</h3>
-        <p>{% trans "Попробуйте другие слова или задайте вопрос оператору в чате." %}</p>
-        <a href="/chat/?action=start_login">{% trans "💬 Открыть чат" %}</a>
+        {% if active_query %}
+          <h3>{% trans "Ничего не нашлось" %}</h3>
+          <p>{% trans "Попробуйте другие слова или задайте вопрос оператору в чате." %}</p>
+        {% else %}
+          <h3>{% trans "База знаний готовится" %}</h3>
+          <p>{% trans "Пока ответы добавляются, задайте вопрос оператору в чате." %}</p>
+        {% endif %}
+        <a href="/chat/?action=start_login">{% trans "Открыть чат" %}</a>
       </div>
     {% endif %}
 

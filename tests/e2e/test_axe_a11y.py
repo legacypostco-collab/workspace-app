@@ -1,8 +1,9 @@
 """axe-playwright accessibility scan.
 
 Прогоняет axe-core по ключевым публичным страницам. Фейлит при наличии
-violations с impact=critical (WCAG AA / Section 508 нарушения).
-Serious/moderate/minor — собираются в отчёт но не блокируют.
+нарушений уровня critical или serious. Именно к serious axe относит, в
+частности, большую часть ошибок контрастности WCAG AA.
+Moderate/minor собираются в отчёт, но не блокируют сборку.
 
 Зависимости (только для CI):
     pip install axe-playwright-python
@@ -53,8 +54,8 @@ def axe_runner(browser):
 
 @pytest.mark.parametrize("url,slug,role", PAGES,
                           ids=[f"{slug}" for _, slug, _ in PAGES])
-def test_axe_no_critical(axe_runner, url, slug, role, login_as):
-    """Страница не должна иметь impact=critical нарушений."""
+def test_axe_no_serious_or_critical(axe_runner, url, slug, role, login_as):
+    """Страница не должна иметь нарушений уровня serious или critical."""
     page, axe = axe_runner
     if role:
         login_as(page, role)
@@ -76,14 +77,15 @@ def test_axe_no_critical(axe_runner, url, slug, role, login_as):
 
     critical = [v for v in violations if v.get("impact") == "critical"]
     serious = [v for v in violations if v.get("impact") == "serious"]
+    blocking = critical + serious
     print(f"\n  [{slug}] {len(critical)} critical · {len(serious)} serious · "
           f"{len(violations)} total")
-    for v in critical[:5]:
+    for v in blocking[:10]:
         print(f"    🔴 {v.get('id')}: {v.get('help','')[:80]}")
         for n in v.get("nodes", [])[:2]:
             print(f"        → {n.get('target', ['?'])}")
 
-    assert not critical, (
-        f"axe нашёл {len(critical)} critical violations на {slug}. "
-        f"Отчёт: {out}. Топ: " + ", ".join(v.get("id", "?") for v in critical)
+    assert not blocking, (
+        f"axe нашёл {len(blocking)} serious/critical violations на {slug}. "
+        f"Отчёт: {out}. Топ: " + ", ".join(v.get("id", "?") for v in blocking)
     )

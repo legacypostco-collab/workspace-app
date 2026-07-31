@@ -45,6 +45,15 @@ def _ensure_operator(role: str):
     return None
 
 
+def _sla_status_label(value: str | None) -> str:
+    """Название состояния срока без вывода внутреннего значения из базы."""
+    return {
+        "on_track": _("В срок"),
+        "at_risk": _("Под угрозой"),
+        "breached": _("Просрочено"),
+    }.get((value or "").strip().lower(), _("Не определено"))
+
+
 # ══════════════════════════════════════════════════════════
 # Чертежи по артикулу — мастер-вид оператора (сверка need vs offer)
 # ══════════════════════════════════════════════════════════
@@ -166,13 +175,13 @@ def op_dashboard(params, user, role):
     # оператору не надо считать в голове, и сразу видна срочность.
     from .rfq_mode_badge import sla_countdown_for_operator
     todo_rows: list[dict] = []
-    # Без эмодзи в title — режим (SEMI/MANUAL) и тип (ORD) написаны словом.
-    # Tone карточки сам подсветит цвет, эмодзи не нужны.
+    # Tone карточки сам показывает приоритет, поэтому в тексте оставляем только
+    # понятное пользователю название задачи.
     for rfq in semi_pending.order_by("created_at")[:5]:
         sub, tone = sla_countdown_for_operator("semi", rfq.created_at)
         todo_rows.append({
-            "title": _("SEMI RFQ #%(id)s · %(name)s") % {"id": rfq.id, "name": rfq.customer_name},
-            "subtitle": _("approve КП · %(sub)s") % {"sub": sub},
+            "title": _("Заявка №%(id)s · %(name)s") % {"id": rfq.id, "name": rfq.customer_name},
+            "subtitle": _("Проверить и утвердить предложение · %(sub)s") % {"sub": sub},
             "tone": tone,
             "action": "op_approve_kp",
             "params": {"rfq_id": rfq.id},
@@ -180,8 +189,8 @@ def op_dashboard(params, user, role):
     for rfq in manual_pending.order_by("created_at")[:5]:
         sub, tone = sla_countdown_for_operator("manual", rfq.created_at)
         todo_rows.append({
-            "title": _("MANUAL RFQ #%(id)s · %(name)s") % {"id": rfq.id, "name": rfq.customer_name},
-            "subtitle": _("собрать КП · %(sub)s") % {"sub": sub},
+            "title": _("Заявка №%(id)s · %(name)s") % {"id": rfq.id, "name": rfq.customer_name},
+            "subtitle": _("Собрать предложение вручную · %(sub)s") % {"sub": sub},
             "tone": tone,
             "action": "op_dispatch_manual_rfq",
             "params": {"rfq_id": rfq.id},
@@ -189,16 +198,16 @@ def op_dashboard(params, user, role):
     # Hot orders (SLA at_risk/breached)
     for o in hot:
         todo_rows.append({
-            "title": _("ORD-%(id)s · %(name)s") % {"id": o.id, "name": o.customer_name},
-            "subtitle": _("%(st)s · SLA %(sla)s · $%(amt)s") % {
-                "st": o.get_status_display(), "sla": o.sla_status,
+            "title": _("Заказ №%(id)s · %(name)s") % {"id": o.id, "name": o.customer_name},
+            "subtitle": _("%(st)s · Срок: %(sla)s · $%(amt)s") % {
+                "st": o.get_status_display(), "sla": _sla_status_label(o.sla_status),
                 "amt": f"{float(o.total_amount or 0):,.0f}"},
             "action": "get_order_detail",
             "params": {"order_id": o.id},
         })
     if not todo_rows:
         todo_rows = [{"title": _("✅ Очередь пуста"),
-                       "subtitle": _("Все SEMI/MANUAL обработаны, SLA в норме")}]
+                       "subtitle": _("Все заявки обработаны, сроки в норме")}]
 
     # Группировки заказов по логистическим стадиям — оператор контролирует
     # каждую (зарубежная логистика, таможня, РФ-логистика).
@@ -222,7 +231,7 @@ def op_dashboard(params, user, role):
         cards=[
             # 1. Платежи
             {"type": "kpi_grid", "data": {
-                "title": _("💰 Платежи / Эскроу"),
+                "title": _("💰 Платежи и резервирование"),
                 "items": [
                     {"label": _("Ждут резерв 10%"), "value": str(awaiting_reserve),
                      "tone": ("warn" if awaiting_reserve else None),
@@ -249,27 +258,27 @@ def op_dashboard(params, user, role):
                      "action": "op_queue", "params": {"filter": "transit_rf"}},
                 ],
             }},
-            # 3. RFQ
+            # 3. Заявки на подбор
             {"type": "kpi_grid", "data": {
-                "title": _("📋 RFQ — формирование КП"),
+                "title": _("📋 Заявки — подготовка предложений"),
                 "items": [
-                    {"label": _("AUTO"), "value": str(auto_active),
+                    {"label": _("Автоподбор"), "value": str(auto_active),
                      "sub": _("без оператора"),
                      "action": "op_rfq_queue", "params": {"mode": "auto"}},
-                    {"label": _("SEMI · approve"), "value": str(semi_active),
+                    {"label": _("Нужно подтвердить"), "value": str(semi_active),
                      "tone": ("bad" if semi_overdue else ("warn" if semi_active else None)),
                      "sub": (
-                         _("%(n)s просрочено · SLA 15 мин") % {"n": semi_overdue}
+                         _("%(n)s просрочено · срок 15 мин") % {"n": semi_overdue}
                          if semi_overdue else
-                         _("SLA 15 мин") if semi_active else _("пусто")
+                         _("срок 15 мин") if semi_active else _("пусто")
                      ),
                      "action": "op_rfq_queue", "params": {"mode": "semi"}},
-                    {"label": _("MANUAL"), "value": str(manual_active),
+                    {"label": _("Ручной подбор"), "value": str(manual_active),
                      "tone": ("bad" if manual_overdue else ("warn" if manual_active else None)),
                      "sub": (
-                         _("%(n)s > 48ч · SLA 48 ч") % {"n": manual_overdue}
+                         _("%(n)s просрочено · срок 48 ч") % {"n": manual_overdue}
                          if manual_overdue else
-                         _("SLA 48 ч") if manual_active else _("пусто")
+                         _("срок 48 ч") if manual_active else _("пусто")
                      ),
                      "action": "op_rfq_queue", "params": {"mode": "manual"}},
                 ],
@@ -278,10 +287,10 @@ def op_dashboard(params, user, role):
             {"type": "kpi_grid", "data": {
                 "title": _("⚠️ Требуют внимания"),
                 "items": [
-                    {"label": _("SLA под угрозой"), "value": str(at_risk),
+                    {"label": _("Сроки под угрозой"), "value": str(at_risk),
                      "tone": ("warn" if at_risk else None),
                      "action": "op_sla_breach", "params": {"filter": "at_risk"}},
-                    {"label": _("SLA нарушено"), "value": str(breached),
+                    {"label": _("Просрочено"), "value": str(breached),
                      "tone": ("bad" if breached else None),
                      "action": "op_sla_breach", "params": {"filter": "breached"}},
                     {"label": _("Открытые рекламации"), "value": str(open_claims),
@@ -296,14 +305,14 @@ def op_dashboard(params, user, role):
         ],
         contextual_actions=[
             {"action": "op_queue", "label": _("Все заказы в работе"), "params": {"filter": "all"}},
-            {"action": "op_sla_breach", "label": _("Нарушения SLA")},
+            {"action": "op_sla_breach", "label": _("Нарушения сроков")},
             {"action": "get_claims", "label": _("Рекламации")},
             {"action": "get_analytics", "label": _("📈 Аналитика")},
         ],
         suggestions=[
-            _("Покажи очередь нарушений SLA"),
-            _("Какие SEMI просрочены"),
-            _("Открытые claim'ы"),
+            _("Покажи просроченные задачи"),
+            _("Какие заявки ждут подтверждения"),
+            _("Открытые рекламации"),
         ],
     )
 
@@ -397,7 +406,7 @@ def op_queue(params, user, role):
         "awaiting_reserve": (_("Ждут оплату резерва 10%"),
                               _("Мониторить — при таймауте отменить заказ или связаться с покупателем")),
         "reserve_paid":     (_("Резерв оплачен — ждём подтверждение продавца"),
-                              _("Дождаться подтверждения seller'а. Если затягивает — связаться")),
+                              _("Дождаться подтверждения поставщика. Если ответ задерживается — связаться")),
         "confirmed":        (_("Подтверждено — в производстве"),
                               _("Контроль состава заказа, готовности к отгрузке")),
         "in_production":    (_("В производстве"),
@@ -449,8 +458,8 @@ def op_queue(params, user, role):
         )
         if pending_rfqs:
             rfq_items = [{
-                "title":    _("Этап: Ждут подтверждения оператора (SEMI)"),
-                "subtitle": _("Действие оператора: проверить позиции, утвердить КП клиенту или запросить уточнение (SLA 15 мин)"),
+                "title":    _("Этап: ждут подтверждения оператора"),
+                "subtitle": _("Проверьте позиции и утвердите предложение покупателю либо запросите уточнение. Срок — 15 минут."),
             }]
             n_breach = 0
             for r in pending_rfqs[:10]:
@@ -473,7 +482,7 @@ def op_queue(params, user, role):
                            for it in _its if it.matched_part)
                 _amt = (_(" · ~$%(est)s") % {"est": f"{_est:,.0f}"}) if _est else ""
                 rfq_items.append({
-                    "title":    _("RFQ #%(id)s · %(name)s") % {"id": r.id, "name": r.customer_name or "—"},
+                    "title":    _("Заявка №%(id)s · %(name)s") % {"id": r.id, "name": r.customer_name or "—"},
                     "subtitle": _("%(n)s позиций%(amt)s · %(sla)s") % {
                         "n": len(_its), "amt": _amt, "sla": sla_str},
                     "tone":     tone,
@@ -483,13 +492,13 @@ def op_queue(params, user, role):
                 })
             n_total_rfq = len(pending_rfqs)
             total_count += n_total_rfq
-            meta_bits_rfq = [_("%(n)s RFQ") % {"n": n_total_rfq}]
+            meta_bits_rfq = [_("%(n)s заявок") % {"n": n_total_rfq}]
             if n_breach:
-                meta_bits_rfq.append(_("%(n)s SLA нарушен") % {"n": n_breach})
+                meta_bits_rfq.append(_("%(n)s просрочено") % {"n": n_breach})
             cards.append({"type": "list", "data": {
                 "title": _("Ждут подтверждения оператора · %(bits)s") % {"bits": " · ".join(meta_bits_rfq)},
                 "items": rfq_items
-                          + ([{"title": _("… ещё %(n)s RFQ") % {"n": n_total_rfq - 10}, "subtitle": "—"}]
+                          + ([{"title": _("… ещё %(n)s заявок") % {"n": n_total_rfq - 10}, "subtitle": "—"}]
                               if n_total_rfq > 10 else []),
             }})
 
@@ -507,8 +516,9 @@ def op_queue(params, user, role):
             tone, badge_label = PAY_TONE.get(o.payment_status, (None, None))
             items.append({
                 "title": _("#%(id)s · %(name)s") % {"id": o.id, "name": o.customer_name},
-                "subtitle": _("SLA %(sla)s · $%(amt)s") % {
-                    "sla": o.sla_status, "amt": f"{(o.total_amount or 0):,.0f}"},
+                "subtitle": _("Срок: %(sla)s · $%(amt)s") % {
+                    "sla": _sla_status_label(o.sla_status),
+                    "amt": f"{(o.total_amount or 0):,.0f}"},
                 "tone": tone,
                 "badge": ({"label": badge_label, "tone": tone} if badge_label else None),
                 "action": "get_order_detail",
@@ -519,7 +529,7 @@ def op_queue(params, user, role):
         n_at_risk  = sum(1 for o in orders if o.sla_status == "at_risk")
         total_count += n_total
         meta_bits = [_("%(n)s заказ") % {"n": n_total}]
-        if n_breached: meta_bits.append(_("%(n)s SLA нарушен") % {"n": n_breached})
+        if n_breached: meta_bits.append(_("%(n)s просрочено") % {"n": n_breached})
         if n_at_risk:  meta_bits.append(_("%(n)s под угрозой") % {"n": n_at_risk})
         # Header-item стилизованный — это первая строка с подзаголовком
         header = {
@@ -579,12 +589,12 @@ def op_queue(params, user, role):
 
 
 # ══════════════════════════════════════════════════════════
-# 2b. RFQ-очередь по режиму — auto/semi/manual
+# 2b. Очередь заявок по режиму обработки
 # ══════════════════════════════════════════════════════════
 
 @register("op_rfq_queue")
 def op_rfq_queue(params, user, role):
-    """Очередь RFQ — единый экран с разбивкой по 3 режимам.
+    """Очередь заявок — единый экран с разбивкой по режимам.
 
     Без параметра mode → показывает все 3 секции (AUTO/SEMI/MANUAL) в одной
     карточке. С mode=auto|semi|manual → фильтрованный полный список одного режима.
@@ -616,7 +626,7 @@ def op_rfq_queue(params, user, role):
             if not sub:
                 sub = _("Создан %(date)s") % {"date": r.created_at.strftime('%d.%m %H:%M')}
             items.append({
-                "title":    _("RFQ #%(id)s · %(name)s") % {"id": r.id, "name": r.customer_name},
+                "title":    _("Заявка №%(id)s · %(name)s") % {"id": r.id, "name": r.customer_name},
                 "subtitle": sub,
                 "tone":     tone,
                 "action":   next_action,
@@ -631,24 +641,24 @@ def op_rfq_queue(params, user, role):
         badge = mode_badge(mk)
         sla_meta = {
             "auto":   _("Без оператора · ≈1 сек"),
-            "semi":   _("Оператор подтверждает · SLA 15 мин"),
-            "manual": _("Адресный поиск · SLA 48 ч"),
+            "semi":   _("Оператор подтверждает · срок 15 мин"),
+            "manual": _("Адресный поиск · срок 48 ч"),
         }[mk]
         hint_meta = {
             "auto":   _("Контроль не нужен — авто-подбор уже отдал результат. Открывайте для аудита."),
-            "semi":   _("approve КП → RFQ уходит покупателю."),
-            "manual": _("Собрать КП: рассылка по поставщикам, дождаться ответов, выбрать исполнителя."),
+            "semi":   _("Утвердите предложение, после чего оно станет доступно покупателю."),
+            "manual": _("Соберите предложение: разошлите запрос поставщикам, дождитесь ответов и выберите исполнителя."),
         }[mk]
         header = [{"title": _("📍 Режим: %(badge)s") % {"badge": badge},
                    "subtitle": _("%(sla)s · %(hint)s") % {"sla": sla_meta, "hint": hint_meta}}]
         cards = [{"type": "list", "data": {
-            "title": _("%(badge)s · %(n)s RFQ") % {"badge": badge, "n": total},
+            "title": _("%(badge)s · %(n)s заявок") % {"badge": badge, "n": total},
             "items": header + (items if items else [
-                {"title": _("✅ Очередь пуста"), "subtitle": _("Нет открытых RFQ в этом режиме")},
+                {"title": _("✅ Очередь пуста"), "subtitle": _("Нет открытых заявок в этом режиме")},
             ]),
         }}]
         return ActionResult(
-            text=_("%(badge)s очередь · %(n)s RFQ в работе.") % {"badge": badge, "n": total},
+            text=_("%(badge)s · %(n)s заявок в работе.") % {"badge": badge, "n": total},
             cards=cards,
             contextual_actions=[
                 {"action": "op_rfq_queue", "label": _("Все режимы")},
@@ -661,7 +671,7 @@ def op_rfq_queue(params, user, role):
     totals = {}
     # PIVOT 2026-05-26: убран MANUAL — только AUTO + SEMI
     for mk, label_prefix, sla_hint in [
-        ("semi",   _("Оператор подтверждает"), _("SLA 15 мин")),
+        ("semi",   _("Оператор подтверждает"), _("срок 15 мин")),
         ("auto",   _("Без оператора"),          _("≈1 сек")),
     ]:
         items, total = _build_items(mk, limit=8)
@@ -669,18 +679,18 @@ def op_rfq_queue(params, user, role):
         badge = mode_badge(mk)
         action_hint = {
             "auto":   _("Авто-подбор. Открывайте только для аудита, контроль не нужен."),
-            "semi":   _("Действие: approve КП → RFQ уходит покупателю."),
-            "manual": _("Действие: собрать КП — рассылка по поставщикам, выбрать исполнителя."),
+            "semi":   _("Проверьте и утвердите предложение покупателю."),
+            "manual": _("Соберите предложение: разошлите запрос поставщикам и выберите исполнителя."),
         }[mk]
         # Заголовок секции (badge + total + SLA-намёк) — в data.title,
         # подсказка про действие — в data.subtitle. Не дублируем в rows.
         rows = items if items else [{"title": _("✅ Очередь пуста"), "subtitle": "—"}]
         cards.append({"type": "list", "data": {
-            "title": _("%(badge)s · %(n)s RFQ") % {"badge": badge, "n": total},
+            "title": _("%(badge)s · %(n)s заявок") % {"badge": badge, "n": total},
             "subtitle": _("%(prefix)s · %(hint)s · %(act)s") % {
                 "prefix": label_prefix, "hint": sla_hint, "act": action_hint},
             "items": rows
-                      + ([{"title": _("… ещё %(n)s RFQ") % {"n": total - 8},
+                      + ([{"title": _("… ещё %(n)s заявок") % {"n": total - 8},
                             "subtitle": _("Открыть полный список"),
                             "action": "op_rfq_queue", "params": {"mode": mk}}]
                           if total > 8 else []),
@@ -689,7 +699,7 @@ def op_rfq_queue(params, user, role):
     # PIVOT 2026-05-26: Ручная рассылка (MANUAL) удалена как класс.
     # Показываем только Автоподбор и SEMI (подтверждения оператора).
     return ActionResult(
-        text=(_("Очередь RFQ · %(total)s в работе.\n"
+        text=(_("Очередь заявок · %(total)s в работе.\n"
                 "Нужно подтвердить: %(semi)s (15 мин) · "
                 "Автоподбор: %(auto)s.") % {
                 "total": totals.get('semi',0)+totals.get('auto',0),
@@ -1004,7 +1014,7 @@ def op_order_detail(params, user, role):
         "quality_confirmed":           _("Качество подтверждено"),
         "claim_status_changed":        _("Рекламация — обновление"),
         "status_changed":              _("Статус заказа"),
-        "sla_status_changed":          _("SLA"),
+        "sla_status_changed":          _("Контроль срока"),
         "trigger_completed":           _("Триггер выполнен"),
         "payment_deadline_set":        _("Дедлайн оплаты установлен"),
         "operator_action":             _("Действие оператора"),
@@ -1023,7 +1033,7 @@ def op_order_detail(params, user, role):
 
     audit_rows = []
     for e in events:
-        evt_label = EVENT_RU.get(e.event_type, e.event_type)
+        evt_label = EVENT_RU.get(e.event_type, _("Системное событие"))
         # Из meta достаём детали — например from/to для status_changed
         m = e.meta or {}
         detail = ""
@@ -2667,7 +2677,10 @@ def op_logistics_stats(params, user, role):
         if days_in_stage is not None: sub_parts.append(_("%(d)sд на этапе") % {"d": days_in_stage})
         sub_parts.append(f"${float(o.total_amount or 0):,.0f}")
         routes_by_stage[o.status].append({
-            "title": f"ORD-{o.id} · {o.customer_name or (o.buyer.username if o.buyer else 'N/A')}",
+            "title": _("Заказ №%(id)s · %(name)s") % {
+                "id": o.id,
+                "name": o.customer_name or (o.buyer.username if o.buyer else _("Не указано")),
+            },
             "subtitle": " · ".join(sub_parts),
             "tone": tone,
             "badge": {"label": _carrier_label(carrier)[:24], "tone": tone},
@@ -3198,7 +3211,7 @@ def op_payments_stats(params, user, role):
     elif avg_pay_hours and avg_pay_hours > 72:
         insight = (_("Средний срок оплаты %(d)s дн — выше нормы 3д. Стоит подключить напоминания.") % {"d": f"{avg_pay_hours/24:.1f}"})
     elif trend_pct < -15:
-        insight = _("Выручка за 30д упала на %(p)s%% — посмотрите воронку RFQ→Order.") % {"p": abs(trend_pct)}
+        insight = _("Выручка за 30 дней снизилась на %(p)s%% — проверьте путь от заявки до заказа.") % {"p": abs(trend_pct)}
     else:
         insight = _("Платёжная воронка в норме.")
 
@@ -3274,9 +3287,9 @@ def op_analytics_hub(params, user, role):
         {"title": _("🚚 Логистика"), "action": "op_logistics_stats", "params": {},
          "subtitle": _("Активные маршруты · перевозчики · среднее время доставки")},
         {"title": _("📈 Спрос на рынке"), "action": "get_demand_report", "params": {},
-         "subtitle": _("Топ-бренды · топ-OEM · динамика RFQ по неделям")},
-        {"title": _("📋 Очередь RFQ по режимам"), "action": "op_rfq_queue", "params": {},
-         "subtitle": _("AUTO · SEMI (15 мин) · MANUAL (48 ч) — конверсия и SLA")},
+         "subtitle": _("Популярные бренды и номера деталей · динамика заявок по неделям")},
+        {"title": _("📋 Очередь заявок по способу обработки"), "action": "op_rfq_queue", "params": {},
+         "subtitle": _("Автоподбор · подтверждение оператором · ручной подбор")},
         {"title": _("🧾 Рекламации"), "action": "get_claims", "params": {},
          "subtitle": _("Активные · по причинам · среднее время разбора")},
         {"title": _("🛡 KYB очередь"), "action": "op_kyb_queue", "params": {},
@@ -4091,10 +4104,10 @@ def op_refresh_external_rating(params, user, role):
     p = UserProfile.objects.filter(user=seller).first()
     return ActionResult(
         text=(
-            _('✓ External rating обновлён для %(p0)s · score=%(p1)s · %(p2)s') % {"p0": f'{seller.username}', "p1": f"{data['score']:.0f}", "p2": f"{data['source']}"}
+            _('Внешний рейтинг обновлён для %(p0)s · оценка %(p1)s · %(p2)s') % {"p0": f'{seller.username}', "p1": f"{data['score']:.0f}", "p2": f"{data['source']}"}
         ),
         cards=[{"type": "kpi_grid", "data": {
-            "title": f"📊 External rating · {seller.username}",
+            "title": _("📊 Внешний рейтинг · %(name)s") % {"name": seller.username},
             "items": [
                 {"label": "External score", "value": f"{float(data['score']):.1f}",
                  "tone": ("ok" if data['score'] >= 80 else

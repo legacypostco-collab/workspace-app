@@ -244,9 +244,12 @@ def present_kp_to_buyer(params, user, role):
         {"label": _("Документ"),   "value": f"PRO-{rfq.id}/{best.id} · Pro-forma Invoice"},
         {"label": _("Покупатель"), "value": user.get_full_name() or user.username},
         {"label": _("Поставщик"),  "value": _("Поставщик №1 (имя раскрывается после подтверждения)")},
-        {"label": _("Режим"),      "value": {"auto": "AUTO", "semi": "SEMI",
-                                            "manual": "MANUAL",
-                                            "manual_oem": "MANUAL"}.get(rfq.mode, rfq.mode)},
+        {"label": _("Режим"),      "value": {
+            "auto": _("Автоподбор"),
+            "semi": _("Нужно подтверждение"),
+            "manual": _("Ручной подбор"),
+            "manual_oem": _("Ручной подбор"),
+        }.get(rfq.mode, _("Не указан"))},
         {"label": _("Позиций"),    "value": str(rfq.items.count())},
         {"label": _("Запчасти"),   "value": f"${parts_total:,.2f}"},
         {"label": _('Логистика (%(p0)s, %(p1)s кг)') % {"p0": f"{logi['method']}", "p1": f"{logi['weight_kg']:.1f}"},
@@ -511,14 +514,14 @@ def op_approve_kp(params, user, role):
     """
     from marketplace.models import RFQ, Quote
     if not ((role or "").startswith("operator") or role == "admin"):
-        return ActionResult(text=_("Только оператор может подтверждать КП в SEMI-режиме."))
+        return ActionResult(text=_("Подтверждать такие предложения может только оператор."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("RFQ не найден."))
 
     if rfq.mode != "semi":
-        return ActionResult(text=_('RFQ #%(p0)s не в SEMI-режиме (mode=%(p1)s).') % {"p0": f'{rfq.id}', "p1": f'{rfq.mode}'})
+        return ActionResult(text=_('Заявка #%(p0)s не ожидает подтверждения оператора.') % {"p0": f'{rfq.id}'})
     if rfq.status == "cancelled":
         return ActionResult(text=_("RFQ отменён — подтверждать КП нельзя."))
 
@@ -545,22 +548,22 @@ def op_approve_kp(params, user, role):
         elapsed = timezone.now() - rfq.created_at
         sla_left = timedelta(minutes=SLA_OPERATOR_APPROVE_MINUTES) - elapsed
         sla_status = (
-            _('⏱ SLA: %(p0)s мин') % {"p0": int(sla_left.total_seconds() // 60)}
-            if sla_left.total_seconds() > 0 else _("⚠️ SLA нарушен")
+            _('⏱ На подтверждение осталось %(p0)s мин') % {"p0": int(sla_left.total_seconds() // 60)}
+            if sla_left.total_seconds() > 0 else _("⚠️ Срок подтверждения нарушен")
         )
         best = quotes.order_by("total_amount").first()
         return ActionResult(
             text=(
-                _('📋 SEMI: одобрить КП по RFQ #%(p0)s?\nЛучшее предложение #%(p1)s от %(p2)s — $%(p3)s. %(p4)s.') % {"p0": f'{rfq.id}', "p1": f'{best.id}', "p2": f"{(best.seller.username if best.seller else '—')}", "p3": f'{best.total_amount:,.0f}', "p4": f'{sla_status}'}
+                _('📋 Одобрить предложение по заявке #%(p0)s?\nЛучший вариант #%(p1)s от %(p2)s — $%(p3)s. %(p4)s.') % {"p0": f'{rfq.id}', "p1": f'{best.id}', "p2": f"{(best.seller.username if best.seller else '—')}", "p3": f'{best.total_amount:,.0f}', "p4": f'{sla_status}'}
             ),
             cards=[{"type": "draft", "data": {
                 "title": _('Подтвердить КП по RFQ #%(p0)s') % {"p0": f'{rfq.id}'},
                 "rows": [
                     {"label": _("Заказчик"), "value": rfq.customer_name},
                     {"label": _("Позиций"), "value": str(rfq.items.count())},
-                    {"label": _("КП от продавцов"), "value": str(quotes.count())},
+                    {"label": _("Предложений от поставщиков"), "value": str(quotes.count())},
                     {"label": _("Лучшее"), "value": f"${best.total_amount:,.0f}", "primary": True},
-                    {"label": "SLA", "value": sla_status},
+                    {"label": _("Срок подтверждения"), "value": sla_status},
                 ],
                 "confirm_action": "op_approve_kp",
                 "confirm_label": _("✓ Одобрить и отправить клиенту"),
@@ -612,14 +615,14 @@ def op_dispatch_manual_rfq(params, user, role):
     """
     from marketplace.models import RFQ
     if not ((role or "").startswith("operator") or role == "admin"):
-        return ActionResult(text=_("Только оператор может работать с MANUAL-RFQ."))
+        return ActionResult(text=_("С заявками ручного подбора может работать только оператор."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):
         return ActionResult(text=_("RFQ не найден."))
 
     if rfq.mode not in ("manual", "manual_oem"):
-        return ActionResult(text=_('RFQ #%(p0)s не в MANUAL-режиме (mode=%(p1)s).') % {"p0": f'{rfq.id}', "p1": f'{rfq.mode}'})
+        return ActionResult(text=_('Заявка #%(p0)s не находится в режиме ручного подбора.') % {"p0": f'{rfq.id}'})
     if rfq.status == "cancelled":
         return ActionResult(text=_("RFQ отменён — повторная рассылка запрещена."))
 
@@ -653,7 +656,7 @@ def op_dispatch_manual_rfq(params, user, role):
 
     return ActionResult(
         text=(
-            _('✓ MANUAL-RFQ #%(p0)s разослан.\n⏱ Дедлайн сбора КП: %(p1)s (48 часов).\nПосле сбора — op_compose_kp чтобы сформировать инвойс клиенту.\n\n') % {"p0": f'{rfq.id}', "p1": f"{deadline.strftime('%d.%m %H:%M')}"}
+            _('✓ Заявка ручного подбора #%(p0)s разослана.\n⏱ Предложения собираются до %(p1)s, не более 48 часов.\nПосле сбора сформируйте итоговое предложение клиенту.\n\n') % {"p0": f'{rfq.id}', "p1": f"{deadline.strftime('%d.%m %H:%M')}"}
             + (res.text or "")
         ),
         actions=[
@@ -676,7 +679,7 @@ def op_compose_kp(params, user, role):
     """
     from marketplace.models import RFQ, Quote
     if not ((role or "").startswith("operator") or role == "admin"):
-        return ActionResult(text=_("Только оператор формирует MANUAL-КП."))
+        return ActionResult(text=_("Предложение для ручного подбора может сформировать только оператор."))
     try:
         rfq = RFQ.objects.get(id=int(params.get("rfq_id") or 0))
     except (RFQ.DoesNotExist, ValueError, TypeError):

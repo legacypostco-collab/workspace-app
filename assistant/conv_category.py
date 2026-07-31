@@ -18,6 +18,8 @@
 позже тот же чат будет «Команда · 4 человека», и т.д.
 """
 from __future__ import annotations
+import re
+
 from django.utils.translation import gettext as _
 
 # Mapping: action_name → category
@@ -112,6 +114,7 @@ _CATEGORY_TITLES: dict[str, str] = {
 _ACTION_TITLES: dict[str, str] = {
     # Seller-side
     "seller_dashboard":        _("Сводка продавца"),
+    "seller_inbox":            _("Входящие заявки"),
     "seller_orders":           _("Мои заказы"),
     "seller_catalog":          _("Мои товары"),
     "seller_drawings":         _("Чертежи"),
@@ -124,12 +127,13 @@ _ACTION_TITLES: dict[str, str] = {
     "send_quote":              _("Отправить котировку"),
     # Buyer-side
     "get_orders":              _("Мои заказы"),
+    "get_my_deals":            _("Мои сделки"),
     "get_order_detail":        _("Детали заказа"),
     "track_order":             _("Отслеживание заказа"),
     "track_shipment":          _("Отслеживание доставки"),
-    "get_rfq_status":          _("Статусы RFQ"),
-    "rfq_detail":              _("Детали RFQ"),
-    "create_rfq":              _("Создать RFQ"),
+    "get_rfq_status":          _("Заявки"),
+    "rfq_detail":              _("Детали заявки"),
+    "create_rfq":              _("Создать заявку"),
     "search_parts":            _("Поиск запчастей"),
     "compare_products":        _("Сравнение товаров"),
     "compare_suppliers":       _("Сравнение поставщиков"),
@@ -176,14 +180,36 @@ _ACTION_TITLES: dict[str, str] = {
     "notifications":           _("Уведомления"),
     "generate_qr":             _("QR-код"),
     "price_quote":             _("Калькулятор цены"),
+    "admin_dashboard":         _("Сводка платформы"),
+    "admin_users":             _("Пользователи"),
+    "admin_moderation":        _("Модерация"),
+    "admin_events":            _("Лента событий"),
 }
 
 
 def _humanize_action(action_name: str) -> str:
-    """Fallback humanizer: get_orders → 'Get orders'. Лучше чем raw имя."""
+    """Не отдавать пользователю внутреннее имя действия."""
     if not action_name:
         return ""
-    return action_name.replace("_", " ").strip().capitalize()
+    return _("Раздел")
+
+
+_LEADING_DECORATION_RE = re.compile(
+    r"^[\s\u200d\u2600-\u27bf\ufe0f\U0001f300-\U0001faff]+"
+)
+
+
+def humanize_action_title(action_name: str) -> str:
+    """Человекочитаемое название действия без внутренних идентификаторов."""
+    return str(_ACTION_TITLES.get(action_name) or _humanize_action(action_name))
+
+
+def clean_action_label(value: str | None) -> str:
+    """Убрать декоративный знак и отсеять переданный вместо подписи action."""
+    label = _LEADING_DECORATION_RE.sub("", (value or "").strip()).strip()
+    if re.fullmatch(r"[a-z][a-z0-9_]*", label, flags=re.IGNORECASE):
+        return ""
+    return label
 
 
 def title_for_action(action_name: str, action_label: str | None = None) -> str:
@@ -193,11 +219,9 @@ def title_for_action(action_name: str, action_label: str | None = None) -> str:
     """
     cat = category_for_action(action_name)
     base = _CATEGORY_TITLES.get(cat, "")
-    label = (action_label or "").strip()
+    label = clean_action_label(action_label)
     if not label:
-        # Bug-E fix: не показывать сырое имя action. Сначала пробуем
-        # справочник человекочитаемых заголовков, потом fallback-гуманизация.
-        nice = _ACTION_TITLES.get(action_name) or _humanize_action(action_name)
+        nice = humanize_action_title(action_name)
         return base or nice
     if base:
         return f"{base} · {label}"

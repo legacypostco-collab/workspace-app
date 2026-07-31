@@ -187,7 +187,7 @@ def auto_generate_quotes_from_catalog(rfq, recipients) -> int:
                 status="submitted",
                 delivery_days=delivery_days,
                 total_amount=total.quantize(Decimal("0.01")),
-                message=_("Автоматическая котировка из каталога (AUTO mode)"),
+                message=_("Автоматическая котировка из каталога"),
                 valid_until=timezone.now() + timedelta(days=7),
             )
             for it, p, qty, unit in items_data:
@@ -419,7 +419,7 @@ def send_rfq_to_suppliers(params, user, role):
                 _notify(
                     rfq.created_by, kind="rfq",
                     title=_("🤖 %(n)s котировок по RFQ #%(id)s") % {"n": auto_quotes, "id": rfq.id},
-                    body=_("AUTO mode: продавцы автоматически выставили КП из каталога."),
+                    body=_("Поставщики автоматически подготовили предложения по данным каталога."),
                     url=f"/chat/rfq/{rfq.id}/?source=auto-quote",
                 )
         except Exception:
@@ -450,7 +450,7 @@ def send_rfq_to_suppliers(params, user, role):
             reserve_amount = (best_quote.total_amount * Decimal("0.10")).quantize(Decimal("0.01"))
 
     auto_q_line = (
-        _("\n🤖 AUTO: %(n)s продавцов сразу выставили КП из каталога.") % {"n": auto_quotes}
+        _("\n🤖 Автоподбор: %(n)s поставщиков сразу подготовили предложения по каталогу.") % {"n": auto_quotes}
         + (_("\n🎯 Лучшее: $%(amt)s · резерв $%(res)s")
            % {"amt": f"{best_quote.total_amount:,.0f}", "res": f"{reserve_amount:,.0f}"}
            if best_quote else "")
@@ -1577,7 +1577,7 @@ def auto_accept_and_pay_reserve(params, user, role):
                 % {"id": rfq.id, "qid": best.id}
             ),
             cards=[{"type": "draft", "data": {
-                "title": _("🎯 AUTO: принять #%(qid)s и оплатить резерв") % {"qid": best.id},
+                "title": _("🎯 Принять лучшее предложение #%(qid)s и оплатить резерв") % {"qid": best.id},
                 "rows": [
                     {"label": _("RFQ"), "value": _("#%(id)s · %(n)s позиций") % {"id": rfq.id, "n": rfq.items.count()}},
                     {"label": _("Поставщик"), "value": _("🥇 Лучший по цене (имя раскроется)")},

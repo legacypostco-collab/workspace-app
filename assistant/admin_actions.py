@@ -96,14 +96,14 @@ def admin_dashboard(params, user, role):
     gmv_7d_fmt = f"{gmv_7d:,.0f}"
     return ActionResult(
         text=(
-            _("🛡 Платформа · %(users)s активных юзеров (+%(new)s за неделю) · "
-              "%(orders)s заказов всего · GMV за 7 дней $%(gmv)s.")
+            _("Платформа · %(users)s активных пользователей (+%(new)s за неделю) · "
+              "%(orders)s заказов всего · оборот за 7 дней $%(gmv)s.")
             % {"users": users_total, "new": users_new_7d,
                "orders": orders_total, "gmv": gmv_7d_fmt}
         ),
         cards=[
-            {"type": "kpi_grid", "data": {"title": _("🛡 Admin · Сводка"), "items": [
-                {"label": _("Активных юзеров"), "value": str(users_total), "tone": "info",
+            {"type": "kpi_grid", "data": {"title": _("Сводка платформы"), "items": [
+                {"label": _("Активных пользователей"), "value": str(users_total), "tone": "info",
                  "action": "admin_users", "params": {}},
                 {"label": _("Новых за 7 дней"), "value": f"+{users_new_7d}",
                  "tone": "ok" if users_new_7d else "warn",
@@ -114,30 +114,30 @@ def admin_dashboard(params, user, role):
                  "action": "admin_gmv", "params": {}},
                 {"label": _("В работе"), "value": str(open_orders), "tone": "info",
                  "action": "admin_gmv", "params": {}},
-                {"label": "GMV 7d", "value": f"${gmv_7d:,.0f}", "tone": "ok",
+                {"label": _("Оборот за 7 дней"), "value": f"${gmv_7d:,.0f}", "tone": "ok",
                  "action": "admin_revenue_breakdown", "params": {}},
-                {"label": "SLA breach 7d", "value": str(sla_breached_7d),
+                {"label": _("Просрочки за 7 дней"), "value": str(sla_breached_7d),
                  "tone": "bad" if sla_breached_7d > 0 else "ok",
                  "action": "admin_moderation_queue", "params": {}},
-                {"label": _("RFQ за 24ч"), "value": str(rfq_24h),
+                {"label": _("Заявок за 24 часа"), "value": str(rfq_24h),
                  "action": "admin_market_twin", "params": {}},
-                {"label": "KYB pending", "value": str(kyb_pending),
+                {"label": _("Компаний на проверке"), "value": str(kyb_pending),
                  "tone": "warn" if kyb_pending else "ok",
                  "action": "admin_moderation_queue", "params": {}},
-                {"label": "KYB verified", "value": str(kyb_verified),
+                {"label": _("Компаний проверено"), "value": str(kyb_verified),
                  "action": "admin_users", "params": {"filter": "verified"}},
-                {"label": _("Загрузки прайса 7д"), "value": str(pl_uploads_7d),
+                {"label": _("Прайс-листов за 7 дней"), "value": str(pl_uploads_7d),
                  "tone": "info", "action": "admin_activity_feed",
                  "params": {"kind": "pricelist"}},
-                {"label": _("Позиций 7д"), "value": f"{pl_positions_7d:,}",
+                {"label": _("Позиций за 7 дней"), "value": f"{pl_positions_7d:,}",
                  "action": "admin_activity_feed", "params": {"kind": "pricelist"}},
             ]}},
         ],
         contextual_actions=[
-            {"action": "admin_activity_feed", "label": _("🛰 Лента событий")},
-            {"action": "admin_gmv", "label": _("📈 GMV-разбивка")},
-            {"action": "admin_moderation_queue", "label": _("🚨 Модерация")},
-            {"action": "admin_users", "label": _("👥 Пользователи")},
+            {"action": "admin_activity_feed", "label": _("Лента событий")},
+            {"action": "admin_gmv", "label": _("Структура оборота")},
+            {"action": "admin_moderation_queue", "label": _("Модерация")},
+            {"action": "admin_users", "label": _("Пользователи")},
         ],
     )
 
@@ -700,7 +700,7 @@ def admin_moderation_queue(params, user, role):
                                           "items": items}}],
         contextual_actions=[
             {"action": "op_kyb_queue", "label": "🛡 KYB"},
-            {"action": "op_queue", "label": _("📋 Заказы (operator)")},
+            {"action": "op_queue", "label": _("📋 Заказы оператора")},
             {"action": "admin_dashboard", "label": _("← Сводка")},
         ],
     )
@@ -730,7 +730,7 @@ def admin_catalog_review(params, user, role):
     ]
     no_seller_rows = [
         {"title": f"#{p.id} {p.title[:50]}",
-         "subtitle": _("нет seller'а — orphan record")}
+         "subtitle": _("Поставщик не назначен")}
         for p in no_seller
     ]
     recent_rows = [

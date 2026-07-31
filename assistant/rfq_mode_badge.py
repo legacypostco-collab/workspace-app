@@ -85,9 +85,10 @@ def mode_hint_for_seller(mode: str | None) -> str:
     if not meta:
         return ""
     emoji, label, sla, hint = meta
-    if label == "MANUAL":
+    mode_key = (mode or "").strip().lower()
+    if mode_key in ("manual", "manual_oem"):
         return (f"{emoji} {_(label)} · {_(sla)} — {_('оператор выбрал именно вас.')} "
                 f"{_('Ответ приоритетный.')}")
-    if label == "SEMI":
+    if mode_key == "semi":
         return (f"{emoji} {_(label)} · {_(sla)} — {_('оператор ждёт вашу цену перед сборкой КП.')}")
     return f"{emoji} {_(label)} · {_(sla)} — {_(hint)}."

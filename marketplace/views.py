@@ -1685,12 +1685,18 @@ def chat_first_view(request):
     # (ветки {% else %} / default-фильтры) — ровно как было, ничего лишнего.
     if request.user.is_authenticated:
         try:
-            from assistant.permissions import detect_user_role, user_allowed_role_tabs
+            from assistant.permissions import (
+                detect_user_role,
+                display_role_label,
+                user_allowed_role_tabs,
+            )
             initial_role = detect_user_role(request.user, request=request) or "buyer"
             role_tabs = user_allowed_role_tabs(request.user)
+            initial_role_label = display_role_label(initial_role)
         except Exception:
             initial_role = "buyer"
             role_tabs = [{"role": "buyer", "label": "Покупатель"}]
+            initial_role_label = "Покупатель"
         base_role = (
             "admin" if initial_role == "admin"
             else "operator" if initial_role.startswith("operator")
@@ -1735,7 +1741,7 @@ def chat_first_view(request):
             "auth_welcome_subtitle": _SUB[base_role],
             "auth_user_name": uname,
             "auth_user_initial": (uname[:1].upper() if uname else ""),
-            "auth_user_role_label": initial_role.replace("operator_", "").replace("_", " "),
+            "auth_user_role_label": initial_role_label,
             "auth_pills": auth_pills,
         })
     resp = render(request, "chat/index.html", ctx)

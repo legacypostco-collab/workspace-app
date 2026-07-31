@@ -523,7 +523,7 @@ def _handle_seller_quick_registration(request, params):
                     "fields": [
                         {"name": "username", "label": _("Логин"),
                          "required": True, "placeholder": "myshop_2026"},
-                        {"name": "email", "label": _("E-mail"),
+                        {"name": "email", "label": _("Электронная почта"),
                          "type": "email", "required": True},
                         {"name": "password1", "label": _("Пароль"),
                          "type": "password", "required": True, "minlength": 8},
@@ -1431,10 +1431,12 @@ class WidgetConfigView(APIView):
 
     def get(self, request):
         from .commands import commands_for_role, suggestions_for_role
+        from .permissions import display_role_label
 
         if not request.user.is_authenticated:
             return Response({
                 "role": "buyer",
+                "role_label": _("Публичный просмотр"),
                 "role_override": None,
                 "user_name": _("Гость"),
                 "suggestions": [],
@@ -1450,6 +1452,7 @@ class WidgetConfigView(APIView):
             request.session.modified = True
         return Response({
             "role": role,
+            "role_label": display_role_label(role),
             "role_override": (request.session.get("assistant_role_override") if hasattr(request, "session") else None),
             "roles": user_allowed_role_tabs(request.user),
             "user_name": request.user.get_full_name() or request.user.username,
@@ -2146,126 +2149,41 @@ class ProjectDetailView(APIView):
             "updated_at": c.updated_at.isoformat(),
             "preview": (c.messages.first().content[:120] if c.messages.exists() else ""),
         } for c in p.conversations.filter(is_active=True).order_by("-updated_at")[:20]]
-        # Stats/списки — демо (в проде были бы FK). Ветвим по роли: у покупателя проект =
-        # закупочный (RFQ/заказы/расходы), у продавца проект = ТОВАРНОЕ НАПРАВЛЕНИЕ
-        # (входящие RFQ по сегменту / заказы в работе / каталог / выручка).
+        # Пока заявки и заказы не связаны с Project отдельным FK, показываем
+        # честное пустое состояние. Подмешивать демонстрационные сделки в
+        # пользовательский проект нельзя: их легко принять за реальные данные.
         role = detect_user_role(request.user, request=request)
         is_seller = (role == "seller")
         is_operator = role.startswith("operator")
-        participants = []  # только для оператора (видит обе стороны сделки)
+        rfqs = []
+        orders = []
+        participants = []
 
         if is_operator:
-            # Единый набор полей сделки — фронт показывает свой срез под подроль
-            # (КАМ/менеджер, логист, таможня, платежи).
             stats = {
-                "positions": {"count": 12, "awaiting": 3},
-                "logistics": {"count": 4, "in_transit": 3, "at_customs": 1,
-                              "earliest_eta": _eta_label(request, days=4), "delays": 1},
-                "customs": {"at_customs": 1, "hs_pending": 2, "declarations": 3, "sanctions_risk": 0},
-                "payments": {"escrow_usd": 142800, "awaiting_payout": 2,
-                             "paid_by_buyer_usd": 168400, "margin_pct": 11},
-                "deal_turnover": {"value_usd": 168400, "margin_pct": 11},
+                "positions": {"count": 0, "awaiting": 0},
+                "logistics": {"count": 0, "in_transit": 0, "at_customs": 0,
+                              "earliest_eta": None, "delays": 0},
+                "customs": {"at_customs": 0, "hs_pending": 0,
+                            "declarations": 0, "sanctions_risk": 0},
+                "payments": {"escrow_usd": 0, "awaiting_payout": 0,
+                             "paid_by_buyer_usd": 0, "margin_pct": 0},
+                "deal_turnover": {"value_usd": 0, "margin_pct": 0},
             }
-            rfqs = [
-                {"number": "RFQ-4421", "title": _("Spec Q2 — основной микс"), "tag": "AUTO",
-                 "meta": _("39 позиций · сматчены с каталогом"),
-                 "best_so_far": 47890, "best_label": _("сумма по подбору")},
-                {"number": "RFQ-4418", "title": _("Track shoes D8T — нужен аналог"), "tag": "SEMI",
-                 "meta": _("2 позиции · подберите аналог"),
-                 "best_so_far": 7440, "best_label": _("ориентир по каталогу")},
-                {"number": "RFQ-4407", "title": _("Гидрофильтры — пополнение"), "tag": "AUTO",
-                 "meta": _("1 позиция · 12 шт · сматчена"),
-                 "best_so_far": 2112, "best_label": _("сумма по подбору")},
-            ]
-            orders = [
-                {"number": "PO-22841", "title": _("Spec Q2 partial — 14 позиций"),
-                 "status": _("НА ТАМОЖНЕ"), "status_color": "amber",
-                 "stages": [True, True, True, True, False],
-                 "stage_labels": ["RFQ", _("Заказ"), _("Производство"), _("Таможня"), _("Доставлен")],
-                 "seller": "XCMG", "operator": "",
-                 "eta": _("ETA ") + _eta_label(request, days=4), "amount": 28640},
-                {"number": "PO-22829", "title": _("Гидрофильтры — 12 шт"),
-                 "status": _("В ПУТИ"), "status_color": "green",
-                 "stages": [True, True, True, False, False],
-                 "stage_labels": ["RFQ", _("Заказ"), _("Производство"), _("Таможня"), _("Доставлен")],
-                 "seller": "Caterpillar Eurasia", "operator": "",
-                 "eta": _("ETA ") + _eta_label(request, days=2), "amount": 2112},
-            ]
-            participants = [
-                {"role": _("Покупатель"), "name": "СтройМонтаж-Урал", "meta": _("клиент · 3 RFQ в сделке")},
-                {"role": _("Продавец"), "name": "XCMG", "meta": _("14 позиций · отгрузка")},
-                {"role": _("Продавец"), "name": "Caterpillar Eurasia", "meta": _("12 шт · в пути")},
-            ]
         elif is_seller:
             stats = {
-                # incoming_rfqs.awaiting — RFQ по направлению, ждущие вашего КП
-                "incoming_rfqs": {"count": 4, "awaiting": 2},
-                # active_orders.to_ship — заказы в работе, из них к отгрузке
-                "active_orders": {"count": 3, "value_usd": 96400, "to_ship": 2},
-                # catalog_items.with_drawing — товаров в каталоге направления, с чертежом/фото
-                "catalog_items": {"count": 128, "with_drawing": 34},
-                # revenue_mtd — выручка по направлению за месяц + дельта
-                "revenue_mtd": {"value_usd": 73250, "delta_pct": 9},
+                "incoming_rfqs": {"count": 0, "awaiting": 0},
+                "active_orders": {"count": 0, "value_usd": 0, "to_ship": 0},
+                "catalog_items": {"count": 0, "with_drawing": 0},
+                "revenue_mtd": {"value_usd": 0, "delta_pct": 0},
             }
-            rfqs = [
-                {"number": "RFQ-5102", "title": _("Ходовая Komatsu PC200 — запрос"), "tag": "AUTO",
-                 "meta": "6 позиций · сматчены с вашим каталогом",
-                 "best_so_far": 18400, "best_label": "потенциал по подбору"},
-                {"number": "RFQ-5098", "title": _("Катки опорные — аналог"), "tag": "SEMI",
-                 "meta": "2 позиции · оператор уточняет аналог",
-                 "best_so_far": 5200, "best_label": "ориентир по каталогу"},
-                {"number": "RFQ-5077", "title": _("Сегменты ведущей звезды — пополнение"), "tag": "AUTO",
-                 "meta": "1 позиция · 8 шт · сматчена с каталогом",
-                 "best_so_far": 3100, "best_label": "потенциал по подбору"},
-            ]
-            orders = [
-                {"number": "PO-30122", "title": _("Катки опорные Komatsu — 14 шт"),
-                 "status": "К ОТГРУЗКЕ", "status_color": "amber",
-                 "stages": [True, True, True, False, False],
-                 "stage_labels": ["RFQ", "Заказ", "Производство", "Отгрузка", "Доставлен"],
-                 "seller": "", "operator": "",
-                 "eta": "Отгрузка до " + _eta_label(request, days=4),
-                 "amount": 28640},
-                {"number": "PO-30119", "title": _("Сегменты ведущей звезды — 8 шт"),
-                 "status": "В ПУТИ", "status_color": "green",
-                 "stages": [True, True, True, True, False],
-                 "stage_labels": ["RFQ", "Заказ", "Производство", "Отгрузка", "Доставлен"],
-                 "seller": "", "operator": "",
-                 "eta": "ETA " + _eta_label(request, days=2),
-                 "amount": 2112},
-            ]
         else:
             stats = {
-                "open_rfqs": {"count": 3, "semi": 1},
-                "active_orders": {"count": 5, "value_usd": 184200},
-                "in_transit": {"count": 2, "earliest_eta": _eta_label(request, days=30)},
-                "spend_mtd": {"value_usd": 124500, "delta_pct": 12},
+                "open_rfqs": {"count": 0, "semi": 0},
+                "active_orders": {"count": 0, "value_usd": 0},
+                "in_transit": {"count": 0, "earliest_eta": None},
+                "spend_mtd": {"value_usd": 0, "delta_pct": 0},
             }
-            rfqs = [
-                {"number": "RFQ-4421", "title": _("Spec Q2 — основной микс"), "tag": "AUTO",
-                 "meta": "39 позиций · сматчены с каталогом",
-                 "best_so_far": 47890, "best_label": "сумма по подбору"},
-                {"number": "RFQ-4418", "title": _("Track shoes D8T — аналоги"), "tag": "SEMI",
-                 "meta": "2 позиции · оператор подбирает аналог",
-                 "best_so_far": 7440, "best_label": "ориентир по каталогу"},
-                {"number": "RFQ-4407", "title": _("Гидрофильтры — пополнение"), "tag": "AUTO",
-                 "meta": "1 позиция · 12 шт · сматчена с каталогом",
-                 "best_so_far": 2112, "best_label": "сумма по подбору"},
-            ]
-            orders = [
-                {"number": "PO-22841", "title": _("Spec Q2 partial — 14 позиций"),
-                 "status": "НА ТАМОЖНЕ", "status_color": "amber",
-                 "stages": [True, True, True, True, False],
-                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
-                 "seller": "XCMG", "operator": "",
-                 "eta": "ETA " + _eta_label(request, days=4), "amount": 28640},
-                {"number": "PO-22829", "title": _("Гидрофильтры — 12 шт"),
-                 "status": "В ПУТИ", "status_color": "green",
-                 "stages": [True, True, True, False, False],
-                 "stage_labels": ["RFQ", "Заказ", "Производство", "Таможня", "Доставлен"],
-                 "seller": "Caterpillar Eurasia", "operator": "",
-                 "eta": "ETA " + _eta_label(request, days=2), "amount": 2112},
-            ]
 
         return Response({
             "id": str(p.id),

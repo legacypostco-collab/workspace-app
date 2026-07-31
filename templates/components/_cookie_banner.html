@@ -1,17 +1,16 @@
 {% load i18n %}
 <div id="cookie-banner" style="display:none;position:fixed;bottom:20px;left:20px;right:20px;max-width:560px;margin:0 auto;background:#242424;border:1px solid rgba(232,74,33,0.25);border-radius:14px;padding:18px 22px;box-shadow:0 12px 40px rgba(0,0,0,0.5);z-index:9999;font-family:'Inter',sans-serif;color:#ECECEC;">
   <div style="display:flex;align-items:flex-start;gap:14px;">
-    <span style="font-size:22px;line-height:1;">🍪</span>
     <div style="flex:1;">
-      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">{% trans "Мы используем cookies" %}</div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px;">{% trans "Мы используем файлы cookie" %}</div>
       <div style="font-size:12px;color:#919191;line-height:1.5;">
-        {% trans "Для работы авторизации и улучшения сервиса. Подробнее в" %} <a href="/cookies/" style="color:#E84A21;text-decoration:none;">{% trans "политике cookies" %}</a>.
+        {% trans "Для авторизации и корректной работы сервиса. Подробнее в" %} <a href="/cookies/" style="color:#E84A21;text-decoration:none;">{% trans "правилах использования файлов cookie" %}</a>.
       </div>
     </div>
   </div>
   <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end;">
-    <button onclick="cookieDecline()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#919191;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:500;font-family:inherit;">{% trans "Только необходимые" %}</button>
-    <button onclick="cookieAccept()" style="background:#E84A21;border:none;color:#1A1A1A;padding:7px 16px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;font-family:inherit;">{% trans "Принять все" %}</button>
+    <button onclick="cookieDecline()" style="min-height:40px;background:transparent;border:1px solid rgba(255,255,255,0.1);color:#b8b8b8;padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:500;font-family:inherit;">{% trans "Только необходимые" %}</button>
+    <button onclick="cookieAccept()" style="min-height:40px;background:#E84A21;border:none;color:#fff;padding:7px 16px;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600;font-family:inherit;">{% trans "Принять все" %}</button>
   </div>
 </div>
 <script>

@@ -3131,9 +3131,42 @@
       flex-direction: column;
       align-items: flex-start;
     }
+    .footer-nav a,
+    .footer-contacts a,
+    .footer .bottom-links a{
+      display: inline-flex;
+      min-height: 32px;
+      align-items: center;
+    }
   }
 
   @media (max-width: 560px){
+    .head{
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+    }
+    .head h2{
+      flex: 1 1 220px;
+      min-width: 0;
+      padding-right: 0;
+      font-size: 24px;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+    .head .line{ display: none; }
+    .head .more{
+      min-height: 32px;
+      padding-left: 0;
+      margin-left: auto;
+      font-size: 13px;
+      flex: 0 0 auto;
+    }
+    .deals{
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .deal .img{ height: 220px; }
     .footer{
       padding-inline: 16px;
     }
@@ -3412,6 +3445,7 @@
   body.dark-mode .step .tag,body.dark-mode .step-tag{color:rgba(255,255,255,0.82);}
 
 </style>
+<link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01">
 <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
@@ -3793,7 +3827,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
     <div class="about-snapshot" aria-label="{% trans 'Ключевые показатели платформы' %}">
       <span><b>B2B</b>{% trans "единое рабочее пространство для закупки" %}</span>
       <span><b>13</b>{% trans "статусов заказа для контроля поставки" %}</span>
-      <span><b>RFQ</b>{% trans "сравнение предложений по каждой позиции" %}</span>
+      <span><b>{% trans "Заявки" %}</b>{% trans "сравнение предложений по каждой позиции" %}</span>
     </div>
 
     <!-- Trust signals (line-art icons like original, refined) -->
@@ -3898,7 +3932,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
       </div>
       <div class="step">
         <div class="n">02</div>
-        <h3>{% trans "AI-помощник" %}</h3>
+        <h3>{% trans "Умный помощник" %}</h3>
         <p>{% trans "Чат вместо сложных форм. Помогает принять решение по логистике и поставке — объясняет Incoterms, сравнивает маршруты." %}</p>
         <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12l5 5L20 7"/></svg>{% trans "в чате" %}</div>
       </div>
@@ -4069,22 +4103,22 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   <div class="brands" tabindex="0" role="region" aria-label="{% trans 'Логотипы брендов' %}">
     <div class="brands-track">
       <div class="brand-set">
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/caterpillar.svg' %}" alt="Caterpillar" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/xcmg.svg' %}" alt="XCMG" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/komatsu.svg' %}" alt="Komatsu" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/liugong.svg' %}" alt="LiuGong" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/hitachi.svg' %}" alt="Hitachi" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/shantui.svg' %}" alt="Shantui" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/liebherr.svg' %}" alt="Liebherr" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/sdlg.svg' %}" alt="SDLG" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/bomag.svg' %}" alt="BOMAG" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/sany.svg' %}" alt="SANY" loading="lazy" decoding="async"></div>
-        <div class="brand is-tall"><img src="{% static 'marketplace/brands/john-deere.svg' %}" alt="John Deere" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/shehwa.png' %}" alt="Shehwa" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/volvo.svg' %}" alt="Volvo" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/cummins.svg' %}" alt="Cummins" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/atlas-copco.svg' %}" alt="Atlas Copco" loading="lazy" decoding="async"></div>
-        <div class="brand is-wide"><img src="{% static 'marketplace/brands/epiroc.svg' %}" alt="Epiroc" loading="lazy" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/caterpillar.svg' %}" alt="Caterpillar" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/xcmg.svg' %}" alt="XCMG" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/komatsu.svg' %}" alt="Komatsu" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/liugong.svg' %}" alt="LiuGong" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/hitachi.svg' %}" alt="Hitachi" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/shantui.svg' %}" alt="Shantui" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/liebherr.svg' %}" alt="Liebherr" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/sdlg.svg' %}" alt="SDLG" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/bomag.svg' %}" alt="BOMAG" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/sany.svg' %}" alt="SANY" loading="eager" decoding="async"></div>
+        <div class="brand is-tall"><img src="{% static 'marketplace/brands/john-deere.svg' %}" alt="John Deere" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/shehwa.png' %}" alt="Shehwa" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/volvo.svg' %}" alt="Volvo" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/cummins.svg' %}" alt="Cummins" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/atlas-copco.svg' %}" alt="Atlas Copco" loading="eager" decoding="async"></div>
+        <div class="brand is-wide"><img src="{% static 'marketplace/brands/epiroc.svg' %}" alt="Epiroc" loading="eager" decoding="async"></div>
       </div>
       <div class="brand-set" aria-hidden="true">
         <div class="brand is-wide"><img src="{% static 'marketplace/brands/caterpillar.svg' %}" alt="" loading="lazy" decoding="async"></div>
@@ -4122,7 +4156,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−15%</span><span class="badge oem">OEM</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="lazy" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
         </div>
         <div class="body">
           <div class="sku">14Y-22-37470</div>
@@ -4137,7 +4171,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−11%</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="lazy" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
         </div>
         <div class="body">
           <div class="sku">CA0107091</div>
@@ -4152,7 +4186,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−16%</span><span class="badge oem">OEM</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="lazy" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
         </div>
         <div class="body">
           <div class="sku">707-99-47130</div>
@@ -4167,7 +4201,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−15%</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="lazy" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
         </div>
         <div class="body">
           <div class="sku">YM129953-77803</div>
@@ -4200,7 +4234,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
       <div class="desc">{% trans "Консолидация грузов, маршрутные документы и отслеживание этапов доставки." %}</div>
     </div>
     <div class="wh-cell">
-      <img loading="lazy" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/warehouse-inventory-generic.jpg' %}" alt="" role="presentation">
+      <img loading="eager" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/warehouse-inventory-generic.jpg' %}" alt="" role="presentation">
       <div class="label">{% trans "Проверенные позиции" %}</div>
       <div class="num">{% trans "Каталог" %}<small>{% trans "поставщиков" %}</small></div>
       <div class="desc">{% trans "Позиции из каталогов поставщиков с ценами, сроками и доступными аналогами." %}</div>
@@ -4230,9 +4264,9 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <ul>
           <li><a href="/chat/?new=1&amp;run=search_parts">{% trans "Каталог" %}</a></li>
           <li><a href="/chat/?new=1&amp;run=browse_brands">{% trans "Бренды" %}</a></li>
-          <li><a href="/chat/?new=1&amp;run=search_parts">{% trans "Массовый поиск" %} AI</a></li>
+          <li><a href="/chat/?new=1&amp;run=search_parts">{% trans "Умный массовый поиск" %}</a></li>
           <li><a href="/chat/?new=1&amp;run=compare_products">{% trans "Подбор аналогов" %}</a></li>
-          <li><a href="/chat/?new=1&amp;run=support_home">API / 1C</a></li>
+          <li><a href="/chat/?new=1&amp;run=support_home">{% trans "Интеграции" %}</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -4249,7 +4283,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <h3>{% trans "Правовая информация" %}</h3>
         <ul>
           <li><a href="{% url 'privacy' %}">{% trans "Политика конфиденциальности" %}</a></li>
-          <li><a href="{% url 'cookies' %}">{% trans "Использование cookies" %}</a></li>
+          <li><a href="{% url 'cookies' %}">{% trans "Использование файлов cookie" %}</a></li>
           <li><a href="/chat/?new=1&amp;run=support_home">{% trans "Вопросы и ответы" %}</a></li>
         </ul>
       </div>
@@ -4267,7 +4301,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
     <span>© 2026 Consolidator Parts</span>
     <div class="bottom-links">
       <a href="{% url 'privacy' %}">{% trans "Политика конфиденциальности" %}</a>
-      <a href="{% url 'cookies' %}">{% trans "Cookies" %}</a>
+      <a href="{% url 'cookies' %}">{% trans "Файлы cookie" %}</a>
     </div>
   </div>
 </footer>
@@ -4276,7 +4310,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
 <div id="cookie-banner"
      class="cookie-banner"
      role="region"
-     aria-label="{% trans 'Согласие на использование cookies' %}"
+     aria-label="{% trans 'Согласие на использование файлов cookie' %}"
      data-testid="cookie-banner"
      style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9990;
             background:#111111;color:#fff;padding:14px 22px;
@@ -4284,11 +4318,10 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
             align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;"
      hidden>
   <p class="cookie-banner__text" style="flex:1;min-width:280px;margin:0;">
-    🍪
-    {% blocktrans %}Мы используем cookies для авторизации и работы платформы. Продолжая, вы соглашаетесь с{% endblocktrans %}
+    {% blocktrans %}Мы используем файлы cookie для авторизации и работы платформы. Продолжая, вы соглашаетесь с{% endblocktrans %}
     <a href="{% url 'privacy' %}" style="color:#fcd34d;text-decoration:underline;">{% trans "политикой конфиденциальности" %}</a>
     {% trans "и" %}
-    <a href="{% url 'cookies' %}" style="color:#fcd34d;text-decoration:underline;">{% trans "использованием cookies" %}</a>.
+    <a href="{% url 'cookies' %}" style="color:#fcd34d;text-decoration:underline;">{% trans "использованием файлов cookie" %}</a>.
   </p>
   <div class="cookie-banner__actions" style="display:flex;gap:12px;align-items:center;">
     <button type="button"

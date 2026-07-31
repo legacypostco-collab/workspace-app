@@ -8,8 +8,8 @@ from marketplace.models import CompanyVerification, RFQ, UserProfile, UserRole
 
 from .actions import _REGISTRY, can_execute
 from .commands import commands_for_role
-from .models import Conversation, Message
-from .serializers import MessageSerializer
+from .models import Conversation, Message, Project
+from .serializers import ConversationListSerializer, MessageSerializer
 
 
 class ConversationNavigationTests(TestCase):
@@ -116,6 +116,52 @@ class ChatCommandTests(TestCase):
         self.assertEqual(data["contextual_actions"][0]["action"], "track_order")
         self.assertEqual(data["suggestions"][0]["action"], "get_orders")
 
+    def test_message_serializer_humanizes_legacy_internal_labels(self):
+        user = get_user_model().objects.create_user("legacy_labels", password="x")
+        conversation = Conversation.objects.create(user=user, role="operator")
+        message = Message.objects.create(
+            conversation=conversation,
+            role=Message.Role.ASSISTANT,
+            content="SEMI · approve КП · SLA нарушен",
+            cards=[{
+                "type": "list",
+                "data": {
+                    "title": "AUTO / MANUAL",
+                    "items": [{"title": "buyer", "subtitle": "seller"}],
+                    "mode": "semi",
+                },
+            }],
+            actions=[{"action": "op_approve_kp", "label": "approve КП"}],
+        )
+
+        data = MessageSerializer(message).data
+        visible_payload = f"{data['content']} {data['cards']} {data['actions']}"
+
+        for technical_name in (
+            "AUTO",
+            "SEMI",
+            "MANUAL",
+            "approve КП",
+            "buyer",
+            "seller",
+        ):
+            self.assertNotIn(technical_name, visible_payload)
+        self.assertEqual(data["cards"][0]["data"]["mode"], "semi")
+        self.assertEqual(data["actions"][0]["action"], "op_approve_kp")
+
+    def test_conversation_list_hides_legacy_action_names_and_decorations(self):
+        user = get_user_model().objects.create_user("legacy_title", password="x")
+        conversation = Conversation.objects.create(
+            user=user,
+            role="buyer",
+            title="📋 Покупки · create_rfq",
+        )
+
+        data = ConversationListSerializer(conversation).data
+
+        self.assertEqual(data["title"], "Покупки · Создать заявку")
+        self.assertNotIn("create_rfq", data["title"])
+
     def test_widget_returns_admin_commands_for_superuser(self):
         admin = get_user_model().objects.create_user(
             "chat_admin",
@@ -130,6 +176,7 @@ class ChatCommandTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["role"], "admin")
+        self.assertEqual(response.data["role_label"], "Администратор")
         actions = [item["action"] for item in response.data["commands"]]
         self.assertIn("admin_dashboard", actions)
         self.assertNotIn("op_dashboard", actions)
@@ -430,6 +477,16 @@ class RoleExtensionTests(TestCase):
         UserProfile.objects.create(user=self.seller, role="seller")
         UserProfile.objects.create(user=self.operator, role="operator")
 
+    def test_widget_returns_human_readable_operator_role(self):
+        client = APIClient()
+        client.force_authenticate(self.operator)
+
+        response = client.get("/api/assistant/widget-config/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["role"], "operator")
+        self.assertEqual(response.data["role_label"], "Оператор")
+
     def test_buyer_seller_application_stays_disabled_until_review(self):
         client = APIClient()
         client.force_authenticate(self.buyer)
@@ -506,3 +563,21 @@ class RoleExtensionTests(TestCase):
             UserRole.objects.filter(user=self.buyer, role="operator").exists()
         )
         self.assertIn("администратор", response.data["text"].lower())
+
+
+class ProjectDetailDataTests(TestCase):
+    def test_empty_project_does_not_expose_demo_orders_or_metrics(self):
+        user = get_user_model().objects.create_user("empty_project", password="x")
+        UserProfile.objects.create(user=user, role="buyer")
+        project = Project.objects.create(owner=user, name="Пустой проект")
+        client = APIClient()
+        client.force_authenticate(user)
+
+        response = client.get(f"/api/assistant/projects/{project.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["rfqs"], [])
+        self.assertEqual(response.data["orders"], [])
+        self.assertEqual(response.data["participants"], [])
+        self.assertEqual(response.data["stats"]["open_rfqs"]["count"], 0)
+        self.assertEqual(response.data["stats"]["active_orders"]["value_usd"], 0)

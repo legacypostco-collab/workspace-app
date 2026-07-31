@@ -26,7 +26,7 @@ class MultiRolePermissionsTests(TestCase):
 
     def test_primary_role_is_available(self):
         self.assertEqual(detect_user_role(self.user), "seller")
-        self.assertEqual(user_allowed_role_tabs(self.user), [{"role": "seller", "label": "Продавец"}])
+        self.assertEqual(user_allowed_role_tabs(self.user), [{"role": "seller", "label": "Поставщик"}])
 
     def test_extra_buyer_role_can_be_selected(self):
         UserRole.objects.create(user=self.user, role="buyer")
@@ -38,7 +38,7 @@ class MultiRolePermissionsTests(TestCase):
         self.assertEqual(detect_user_role(self.user, request=request), "buyer")
         self.assertEqual(
             user_allowed_role_tabs(self.user),
-            [{"role": "seller", "label": "Продавец"}, {"role": "buyer", "label": "Покупатель"}],
+            [{"role": "seller", "label": "Поставщик"}, {"role": "buyer", "label": "Покупатель"}],
         )
 
     def test_missing_role_is_rejected(self):

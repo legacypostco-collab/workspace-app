@@ -715,6 +715,19 @@ class OperatorActionsTests(TestCase):
         self.assertIsNotNone(kpi)
         self.assertGreaterEqual(len(kpi["data"]["items"]), 3)
 
+    def test_dashboard_does_not_expose_internal_mode_names(self):
+        from .operator_actions import op_dashboard
+
+        result = op_dashboard({}, self.op, "operator")
+        visible_payload = " ".join([
+            result.text or "",
+            str(result.cards or []),
+            str(result.contextual_actions or []),
+            str(result.suggestions or []),
+        ])
+        for technical_name in ("AUTO", "SEMI", "MANUAL", "approve КП", "seller'"):
+            self.assertNotIn(technical_name, visible_payload)
+
     def test_dashboard_blocks_non_operator(self):
         from .operator_actions import op_dashboard
         r = op_dashboard({}, self.op, "buyer")
@@ -2087,7 +2100,7 @@ class ConversationCategorizationTests(TestCase):
         from .conv_category import title_for_action
         self.assertEqual(
             title_for_action("submit_company_info", "📋 Реквизиты компании"),
-            "Управление · 📋 Реквизиты компании",
+            "Управление · Реквизиты компании",
         )
         self.assertEqual(
             title_for_action("track_order", "ORD-151"),

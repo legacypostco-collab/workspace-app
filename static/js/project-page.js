@@ -48,6 +48,26 @@
   const $ = id => document.getElementById(id);
   const csrf = () => document.cookie.replace(/(?:(?:^|.*;\s*)csrftoken\s*=\s*([^;]*).*$)|^.*$/, '$1');
   const esc = s => (s == null ? '' : String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const projectDocIconSvg = (key='other', size=20) => {
+    const paths = {
+      all: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+      file: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6"/>',
+      pricelist: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+      drawing: '<path d="M3 17 17 3l4 4L7 21H3Z"/><path d="m14 6 4 4"/><path d="M7 17h4"/>',
+      certificate: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/>',
+      photo: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+      fleet: '<path d="M10 17h4V5H2v12h3"/><path d="M14 9h4l4 4v4h-3"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>',
+      spec: '<path d="M4 5h16M4 12h16M4 19h16"/><path d="M8 3v18M16 3v18"/>',
+      regulation: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>',
+      contract: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m8 16 2 2 5-5"/>',
+      customs: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+      logistics: '<path d="M10 17h4V5H2v12h3"/><path d="M14 9h4l4 4v4h-3"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/>',
+      payment: '<rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20M6 15h2"/>',
+      other: '<path d="M3 6h18v4H3Z"/><path d="M5 10v10h14V10M10 14h4"/>',
+      link: '<path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/>',
+    };
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[key] || paths.other}</svg>`;
+  };
 
   function fmtMoney(v, c='USD') {
     if (v == null) return '—';
@@ -147,7 +167,7 @@
     if (r.indexOf('operator') === 0) {
       const sub = r.replace('operator_', '').replace('operator', 'manager') || 'manager';
       const ON = {
-        manager: '🎛 Проект — это сделка / консолидированная поставка. Контракты, таможня, логистика, платежи — вся поставка от RFQ до доставки.',
+        manager: '🎛 Проект — это сделка или консолидированная поставка. Контракты, таможня, логистика и платежи — весь путь от заявки до доставки.',
         logist:  '🚚 Проект — поставка с фокусом на доставке. Логистика (BL/CMR, маршрут) и статус таможни — все отгрузки сделки под контролем.',
         customs: '🛂 Проект — поставка с фокусом на растаможке. Декларации, HS-коды, инвойсы, сертификаты — таможня по всей сделке.',
         payment: '💳 Проект — поставка с фокусом на финансах. Инвойсы, эскроу, акты, выплаты — деньги по сделке.',
@@ -157,7 +177,7 @@
       note = '🏷 Проект — это ваше товарное направление. Соберите прайс, чертежи, сертификаты и фото по сегменту — быстрее КП и больше доверия покупателя.';
       ph = 'напр. Ходовка Komatsu';
     } else {
-      note = '📦 Проект — это ваша закупка под технику/объект. Загрузите парк техники, историю и чертежи — AI точнее подберёт и соберёт RFQ в контексте проекта.';
+      note = '📦 Проект — это ваша закупка под технику или объект. Загрузите парк техники, историю и чертежи — помощник точнее подберёт запчасти и соберёт заявку в контексте проекта.';
       ph = 'напр. Парк Komatsu — Ковдор';
     }
     const name = (window.prompt(note + '\n\nНазвание проекта (' + ph + '):', '') || '').trim();
@@ -300,15 +320,15 @@
       const canBind = !!d.drawing_id;
       return `<div class="__df-card" data-drawing-id="${esc(d.drawing_id || '')}" style="border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#fff;overflow:hidden">
         <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
-          <span style="font-size:22px">📄</span>
+          <span class="__df-file-icon">${projectDocIconSvg('file', 20)}</span>
           <span style="flex:1;min-width:0">
             <span style="display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(d.name)}</span>
-            <span style="display:block;font-size:12px;opacity:.55">${esc(d.doctype_label || '')}${d.size_kb ? ' · ' + esc(String(d.size_kb)) + ' КБ' : ''}<span class="__df-oemtag" style="color:#E84A21;font-weight:600">${d.oem ? ' · 🔗 ' + esc(d.oem) : ''}</span></span>
+            <span style="display:block;font-size:12px;opacity:.62">${esc(d.doctype_label || '')}${d.size_kb ? ' · ' + esc(String(d.size_kb)) + ' КБ' : ''}<span class="__df-oemtag">${d.oem ? ' · ' + esc(d.oem) : ''}</span></span>
           </span>
           <a href="/api/assistant/projects/${PID}/documents/${d.id}/file/" target="_blank" rel="noopener" style="opacity:.6;font-size:13px;text-decoration:none;color:inherit;white-space:nowrap">Открыть ›</a>
         </div>
         ${canBind ? `<div style="padding:0 14px 12px">
-          <button type="button" class="__df-bindbtn" style="font-size:13px;padding:5px 11px;border-radius:8px;border:1px solid rgba(0,0,0,.12);background:rgba(0,0,0,.03);cursor:pointer">🔗 <span class="__df-bindlabel">${d.oem ? 'Изменить артикул' : 'Привязать артикул'}</span></button>
+          <button type="button" class="__df-bindbtn">${projectDocIconSvg('link', 14)} <span class="__df-bindlabel">${d.oem ? 'Изменить артикул' : 'Привязать артикул'}</span></button>
           <div class="__df-bindpanel" style="display:none;margin-top:8px">
             <input class="__df-oeminput" type="text" placeholder="Артикул из общей базы — напр. 6D102" autocomplete="off" style="width:100%;box-sizing:border-box;padding:7px 10px;border-radius:8px;border:1px solid rgba(0,0,0,.14);font:inherit"/>
             <div class="__df-oemresults" style="display:flex;flex-direction:column;gap:4px;margin-top:6px;max-height:210px;overflow:auto"></div>
@@ -321,12 +341,12 @@
     ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:99999;animation:dffade .12s ease';
     ov.innerHTML = `
       <style>@keyframes dffade{from{opacity:0}to{opacity:1}}</style>
-      <div style="background:#f5f5f7;color:#1a1a1a;width:min(94vw,560px);max-height:84vh;border-radius:16px;padding:18px;box-shadow:0 16px 50px rgba(0,0,0,.4);display:flex;flex-direction:column">
+      <div class="__df-dialog">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-          <span style="font-size:22px">${slot.icon || '📁'}</span>
+          <span class="__df-folder-icon">${projectDocIconSvg(all ? 'all' : key, 22)}</span>
           <span style="font-weight:700;font-size:17px;flex:1">${esc(slot.label || 'Документы')} <span style="opacity:.5;font-weight:500">· ${docs.length}</span></span>
-          <button type="button" class="__df-add" style="padding:7px 13px;border-radius:9px;border:none;background:#E84A21;color:#fff;font:inherit;cursor:pointer">+ Добавить</button>
-          <button type="button" class="__df-close" style="padding:7px 11px;border-radius:9px;border:none;background:rgba(0,0,0,.08);font:inherit;cursor:pointer">✕</button>
+          <button type="button" class="__df-add">Добавить</button>
+          <button type="button" class="__df-close" aria-label="Закрыть"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px;overflow:auto">${cards}</div>
       </div>`;
@@ -356,7 +376,7 @@
         const did = card.dataset.drawingId, oem = res.dataset.oem;
         fetch('/api/assistant/action/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':csrf()}, credentials:'same-origin',
           body: JSON.stringify({action:'bind_drawing', params:{drawing_id: did, oem}})}).then(() => {
-          card.querySelector('.__df-oemtag').textContent = ' · 🔗 ' + oem;
+          card.querySelector('.__df-oemtag').textContent = ' · ' + oem;
           const lbl = card.querySelector('.__df-bindlabel'); if (lbl) lbl.textContent = 'Изменить артикул';
           card.querySelector('.__df-bindpanel').style.display = 'none';
           // обновим кэш, чтобы при переоткрытии папки артикул сохранился
@@ -589,7 +609,7 @@
       const name = anon ? 'Войти' : (cfg.user_name || 'User');
       const initial = anon ? '→' : (name[0] || '?').toUpperCase();
       $('sideUserName').textContent = name;
-      $('sideUserRole').textContent = anon ? '' : (cfg.role || '').replace('operator_', '').replace(/_/g, ' ');
+      $('sideUserRole').textContent = anon ? '' : (cfg.role_label || '');
       $('sideAvatar').textContent = initial;
       const _topAv = $('topAvatar'); if (_topAv) _topAv.textContent = anon ? '?' : initial;
     } catch(e){}
@@ -626,18 +646,18 @@
     // Подписи строго по делу: только то что несёт смысл для покупателя.
     const lang = (document.documentElement.lang || 'ru').toLowerCase().split('-')[0];
     const LBL = {
-      ru: {open_rfqs: 'Открытые RFQ', active_orders: 'Активные заказы',
+      ru: {open_rfqs: 'Открытые заявки', active_orders: 'Активные заказы',
            in_transit: 'В пути', spend_mtd: 'Расходы за месяц',
            awaiting_op: 'ждут оператора',
-           value: 'сумма', earliest_eta: 'ближайший ETA',
+           value: 'общая сумма', earliest_eta: 'ближайшая дата',
            vs_prev_month: 'к прошлому месяцу',
            sec_rfqs: 'Подбор — ждут вашего решения',
            sec_orders: 'Заказы в работе',
            sec_rfqs_op: 'Позиции и подбор', sec_rfqs_customs: 'Позиции на таможне',
-           sec_orders_op: 'Отгрузки и этапы', sec_rfqs_seller: 'Входящие RFQ по направлению',
+           sec_orders_op: 'Отгрузки и этапы', sec_rfqs_seller: 'Входящие заявки по направлению',
            op_pos:'Позиции в работе', op_log:'Логистика и таможня',
            op_pay:'Платежи · эскроу', op_deal:'Оборот сделки',
-           op_at_customs:'На таможне', op_nearest_eta:'Ближайший ETA',
+           op_at_customs:'На таможне', op_nearest_eta:'Ближайшая дата',
            op_delays:'Задержки', op_hs:'Ждут HS-кода',
            op_declarations:'Декларации', op_sanctions:'Проверка санкций',
            op_escrow:'В эскроу', op_awaiting_payout:'Ждут выплаты',
@@ -650,7 +670,7 @@
            sub_for_deal:'по сделке', sub_fee:'комиссия платформы',
            sub_await_cus:'ждут растаможки', sub_await_act:'ждут вашего действия',
            sub_await_pay:'ждут выплаты', sub_margin:'маржа',
-           sub_risk_sla:'риск SLA', sub_set_code:'проставьте код',
+           sub_risk_sla:'риск просрочки', sub_set_code:'проставьте код',
            sub_check:'требует проверки', sub_sellers:'продавцам'},
       en: {open_rfqs: 'Open RFQs', active_orders: 'Active Orders',
            in_transit: 'In Transit', spend_mtd: 'Spend MTD',
@@ -735,7 +755,7 @@
            sel_catalog:'目录中产品', sub_with_draw:'含图纸/照片',
            sub_from_total:'其中', sel_revenue:'月收入'},
     };
-    LBL.ru.sel_inc_rfqs='Входящие RFQ'; LBL.ru.sub_await_kp='ждут вашего КП';
+    LBL.ru.sel_inc_rfqs='Входящие заявки'; LBL.ru.sub_await_kp='ждут вашего предложения';
     LBL.ru.sel_orders_work='Заказы в работе'; LBL.ru.sub_to_ship='к отгрузке';
     LBL.ru.sel_catalog='Товаров в каталоге'; LBL.ru.sub_with_draw='с чертежом/фото';
     LBL.ru.sub_from_total='из них'; LBL.ru.sel_revenue='Выручка за месяц';
@@ -767,7 +787,7 @@
       const rev = stats.revenue_mtd || {};
       const rd = rev.delta_pct ?? 0;
       kpiHTML = `
-        <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу входящих RFQ">
+        <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу входящих заявок">
           <div class="kpi-label">${L.sel_inc_rfqs}</div>
           <div class="kpi-value"><div class="kpi-num">${stats.incoming_rfqs?.count || 0}</div></div>
           ${awaiting ? `<div class="kpi-sub"><span class="kpi-warn">${awaiting}</span> ${L.sub_await_kp}</div>` : ''}
@@ -826,14 +846,14 @@
         // manager / КАМ / общий оператор — полная картина
         kpiHTML =
           card('sec-rfqs', L.op_pos, pos.count || 0, pos.awaiting ? warn(pos.awaiting) + ' ' + L.sub_await_act : '') +
-          card('sec-orders', L.op_log, log.count || 0, (log.at_customs ? warn(log.at_customs) + ' ' + L.op_at_customs.toLowerCase() + ' · ' : '') + 'ETA ' + esc(log.earliest_eta || '—')) +
+          card('sec-orders', L.op_log, log.count || 0, (log.at_customs ? warn(log.at_customs) + ' ' + L.op_at_customs.toLowerCase() + ' · ' : '') + L.op_nearest_eta + ': ' + esc(log.earliest_eta || '—')) +
           card('sec-orders', L.op_pay, fmtMoney(pay.escrow_usd), pay.awaiting_payout ? warn(pay.awaiting_payout) + ' ' + L.sub_await_pay : '') +
           card('sec-orders', L.op_deal, fmtMoney(deal.value_usd), L.sub_margin + ' ' + (md >= 0 ? good('+' + md + '%') : warn(md + '%')));
       }
     } else {
       const semiCount = stats.open_rfqs?.semi || 0;  // RFQ ждущие подбора оператора
       kpiHTML = `
-      <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу RFQ">
+      <div class="kpi" ${kpiClick('sec-rfqs')} title="К разделу заявок">
         <div class="kpi-label">${L.open_rfqs}</div>
         <div class="kpi-value">
           <div class="kpi-num">${stats.open_rfqs?.count || 0}</div>
@@ -845,7 +865,7 @@
         <div class="kpi-value">
           <div class="kpi-num">${stats.active_orders?.count || 0}</div>
         </div>
-        <div class="kpi-sub">${fmtMoney(stats.active_orders?.value_usd)} ${L.value}</div>
+        <div class="kpi-sub">${L.value}: ${fmtMoney(stats.active_orders?.value_usd)}</div>
       </div>
       <div class="kpi" ${kpiClick('sec-orders')} title="К разделу заказов">
         <div class="kpi-label">${L.in_transit}</div>
@@ -889,7 +909,7 @@
       return order.map(function(k){ return OS[k]; });
     })() : isSeller ? [
       {key: "pricelist",   icon: "📤", label: "Прайс-лист направления",
-       descShort: "Цены по этой группе — оператор и AI быстрее формируют КП по входящим RFQ",
+       descShort: "Цены по этой группе помогают оператору быстрее формировать предложения по входящим заявкам",
        descFull: "Excel/CSV: артикул, цена, наличие, срок"},
       {key: "drawing",     icon: "📐", label: "Чертежи и спецификации",
        descShort: "Покупатель сразу видит, что вы предлагаете — котировка проходит за часы",
@@ -905,7 +925,7 @@
        descShort: "Точные подборы запчастей по моделям и серийникам — без перепросов",
        descFull: "Excel/CSV: модель, S/N, год, моточасы"},
       {key: "spec",       icon: "📊", label: "Закупки за прошлый год",
-       descShort: "AI видит ваши паттерны: что, сколько, у кого. Подсказывает аналоги дешевле",
+       descShort: "Помощник учитывает историю закупок и подсказывает более выгодные аналоги",
        descFull: "Excel из 1С/SAP с суммами и поставщиками"},
       {key: "regulation", icon: "📄", label: "Регламенты ТО",
        descShort: "Прогноз когда что закончится — заявки за неделю до простоя, а не после",
@@ -919,10 +939,10 @@
     // tagline «Чем больше данных — тем точнее аналитика» вместо счётчика, и слоты пустые.
     const SLOTS_WITH_OTHER = [...DOC_SLOTS, {key:"other", icon:"📦", label:"Другое",
       descShort: isOperator
-        ? "Прочие документы по сделке — переписка, доп.соглашения, фото — AI учитывает в ответах"
+        ? "Прочие документы по сделке — переписка, доп. соглашения и фото — учитываются в ответах"
         : isSeller
-        ? "Гарантии, условия поставки, прайс-история — AI учитывает их в ответах по направлению"
-        : "Контракты и условия поставки — AI учитывает их при формировании заказа",
+        ? "Гарантии, условия поставки и история цен учитываются в ответах по направлению"
+        : "Контракты и условия поставки учитываются при формировании заказа",
       descFull: isOperator ? "Доп.соглашения, переписка, фото" : (isSeller ? "Гарантии, Incoterm, прайс-история" : "Контракты, условия Incoterm")}];
     const docsByType = {};
     docs.forEach(d => {
@@ -946,13 +966,13 @@
       return `<div class="doc-slot${filled ? ' doc-slot-filled' : ''}"${filled ? ` onclick="window.__openDocFolder&amp;&amp;window.__openDocFolder('${slot.key}')" style="cursor:pointer"` : ''}>
         ${cornerBadge}
         <div class="doc-slot-head">
-          <span class="doc-slot-icon">${slot.icon}</span>
+          <span class="doc-slot-icon">${projectDocIconSvg(slot.key)}</span>
           <span class="doc-slot-label">${esc(slot.label)}</span>
           <a href="#" class="doc-slot-add" onclick="event.stopPropagation();window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc('${slot.key}');return false;">${addLabel}</a>
         </div>
         <div class="doc-slot-desc-short">${esc(slot.descShort)}</div>
         <div class="doc-slot-desc">↓ <span>${esc(slot.descFull)}</span></div>
-        ${filled ? `<div style="margin-top:8px;font-size:12.5px;font-weight:600;opacity:.7">📂 Открыть папку (${slotDocs.length}) ›</div>` : ''}
+        ${filled ? `<div class="doc-slot-open">${projectDocIconSvg('all', 15)} Открыть папку (${slotDocs.length})</div>` : ''}
       </div>`;
     };
     // 4 функциональных слота, потом рекламная мини-карточка, потом «Другое» — в нижнем ряду
@@ -964,9 +984,9 @@
     const ctaLabel = docs.length === 0 ? '+ Загрузить первый документ' : '+ Загрузить ещё';
     const marketingCardHTML = `
       <div class="doc-slot doc-slot-cta">
-        <div class="doc-slot-cta-eyebrow">ПОДКЛЮЧИТЕ ДАННЫЕ</div>
+        <div class="doc-slot-cta-eyebrow">Подключите данные</div>
         <div class="doc-slot-cta-title">Чем больше данных — тем точнее аналитика</div>
-        <div class="doc-slot-cta-sub">AI работает в контексте вашего проекта — получите подборы, прогнозы и сравнения за секунды.</div>
+        <div class="doc-slot-cta-sub">Помощник учитывает данные проекта при подборе, прогнозах и сравнении предложений.</div>
         <button type="button" class="doc-slot-cta-btn" onclick="window.__uploadProjectDoc&amp;&amp;window.__uploadProjectDoc()">${ctaLabel}</button>
         <div class="doc-slot-cta-hint">PDF / Excel / DWG · до 25 МБ</div>
       </div>
@@ -985,9 +1005,8 @@
     const rfqs = p.rfqs || [];
     const rfqsHTML = rfqs.length ? rfqs.map(r => {
       const respClass = r.responded_color === 'amber' ? 'amber' : '';
-      // Локализованный лейбл режима подбора. r.tag — машинно-читаемый код
-      // ("AUTO" / "SEMI") или произвольная строка (legacy). Если AUTO/SEMI —
-      // переводим, иначе показываем как есть.
+      // Старые проекты могут содержать машинный код режима, новые уже
+      // получают готовую человекочитаемую подпись от сервера.
       const MODE_LABEL = {
         ru: {AUTO: 'Авто-подбор', SEMI: 'Подбор оператором'},
         en: {AUTO: 'Auto-match',  SEMI: 'Operator-match'},
@@ -995,11 +1014,14 @@
         zh: {AUTO: '自动匹配',     SEMI: '操作员匹配'},
       };
       const ML = MODE_LABEL[lang] || MODE_LABEL.ru;
-      const tagText = r.tag ? (ML[r.tag.toUpperCase()] || r.tag) : '';
-      return `<div class="rfq" onclick="window.location.href='/chat/?new=1&run=get_rfq_status'" style="cursor:pointer" title="Открыть RFQ в чате">
+      const rawTag = String(r.tag || '');
+      const legacyMode = rawTag.toUpperCase();
+      const tagText = rawTag ? (ML[legacyMode] || rawTag) : '';
+      const tagClass = legacyMode === 'AUTO' ? 'auto' : legacyMode === 'SEMI' ? 'semi' : 'default';
+      return `<div class="rfq" onclick="window.location.href='/chat/?new=1&run=get_rfq_status'" style="cursor:pointer" title="Открыть заявку в чате">
         <span class="rfq-num">${esc(r.number)}</span>
         <div class="rfq-info">
-          <div class="rfq-title">${esc(r.title)}${tagText ? ` <span class="rfq-tag rfq-tag-${esc((r.tag||'').toLowerCase())}">${esc(tagText)}</span>` : ''}</div>
+          <div class="rfq-title">${esc(r.title)}${tagText ? ` <span class="rfq-tag rfq-tag-${tagClass}">${esc(tagText)}</span>` : ''}</div>
           <div class="rfq-meta">${esc(r.meta)}</div>
         </div>
         <div class="rfq-best">
@@ -1007,7 +1029,7 @@
           <div class="rfq-best-val">${fmtMoney(r.best_so_far)}</div>
         </div>
       </div>`;
-    }).join('') : `<div class="rfq" style="border-left-color:rgba(0,0,0,0.1);"><div class="rfq-info"><div class="rfq-meta">Нет активных RFQ</div></div></div>`;
+    }).join('') : `<div class="rfq" style="border-left-color:rgba(0,0,0,0.1);"><div class="rfq-info"><div class="rfq-meta">Нет активных заявок</div></div></div>`;
 
     // Orders
     const orders = p.orders || [];
@@ -1109,7 +1131,7 @@
       <div class="doc-slots-stack">${docsHTML}</div>
       <div class="ai-note">
         <svg class="ai-note-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span>AI использует <strong>все эти документы</strong> как контекст для ответов в чатах этого проекта</span>
+        <span>Помощник использует <strong>все эти документы</strong> как контекст для ответов в чатах проекта</span>
       </div>
 
       ${listsSection}

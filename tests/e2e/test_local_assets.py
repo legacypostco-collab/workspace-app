@@ -66,3 +66,19 @@ def test_vendored_assets_are_served_locally(page: Page, base_url: str):
     for path in paths:
         response = page.request.get(f"{base_url}{path}")
         assert response.ok, f"{path} returned HTTP {response.status}"
+
+
+def test_chat_has_no_missing_stylesheets(page: Page, base_url: str):
+    missing: list[str] = []
+
+    def on_response(response):
+        if (
+            response.request.resource_type == "stylesheet"
+            and response.status >= 400
+        ):
+            missing.append(f"{response.status} {response.url}")
+
+    page.on("response", on_response)
+    page.goto(f"{base_url}/chat/", wait_until="networkidle")
+
+    assert not missing, f"chat requested missing stylesheets: {missing}"

@@ -19,6 +19,7 @@ from decimal import Decimal
 from django.db.models import Q
 from django.utils.translation import gettext as _, ngettext
 
+from .rfq_mode_badge import mode_badge
 from .security import confirmation_is_true
 
 logger = logging.getLogger(__name__)
@@ -2285,7 +2286,7 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
         if qty_param:
             qo_params["product_quantities"] = {k: v for k, v in qty_param.items() if k in auto_ids}
         actions.append({
-            "label": _('⚡ Купить %(auto_ids)s ИЗ AUTO · $%(auto_total)s') % {'auto_ids': len(auto_ids), 'auto_total': f"{auto_total:,.0f}"} if _semi_n or _manual_n
+            "label": _('⚡ Купить найденные позиции: %(auto_ids)s · $%(auto_total)s') % {'auto_ids': len(auto_ids), 'auto_total': f"{auto_total:,.0f}"} if _semi_n or _manual_n
                      else _('⚡ Купить сейчас $%(auto_total)s') % {'auto_total': f"{auto_total:,.0f}"},
             "action": "quick_order",
             "params": qo_params,
@@ -2990,8 +2991,8 @@ def create_rfq(params, user, role):
             for op in ops:
                 _notify(
                     op, kind="rfq",
-                    title=_('⏱ SEMI RFQ #%(id)s — нужен approve (15 мин)') % {'id': rfq.id},
-                    body=_('Buyer %(rfq_customer_name)s создал SEMI-RFQ. Проверь КП и одобри/отклони.') % {'rfq_customer_name': rfq_customer_name},
+                    title=_('⏱ Заявка #%(id)s ждёт подтверждения, осталось 15 минут') % {'id': rfq.id},
+                    body=_('Покупатель %(rfq_customer_name)s создал заявку с проверкой. Проверьте предложение и подтвердите или отклоните его.') % {'rfq_customer_name': rfq_customer_name},
                     url=f"/chat/rfq/{rfq.id}/?source=semi-approve",
                 )
         except Exception:
@@ -5099,13 +5100,21 @@ def get_rfq_status(params, user, role):
             })
         urgency = getattr(rfq, "urgency", "standard") or "standard"
         URGENCY_LABEL = {"critical": _('СРОЧНО'), "urgent": _('ВАЖНО'), "standard": ""}
-        title_bits = [f"RFQ #{rfq.id}"]
+        title_bits = [f"{_('Заявка')} №{rfq.id}"]
         if URGENCY_LABEL.get(urgency):
             title_bits.append(f"· {URGENCY_LABEL[urgency]}")
-        if (rfq.mode or "").upper():
-            title_bits.append(f"· {rfq.mode.upper()}")
+        mode_label = mode_badge(rfq.mode)
+        if mode_label:
+            title_bits.append(f"· {mode_label}")
         title = " ".join(title_bits)
-        foot = _('%(found_n)s из %(items_qs)s priced · %(quotes_count)s котир.') % {'found_n': found_n, 'items_qs': len(items_qs), 'quotes_count': quotes_count}
+        foot = _(
+            "%(found_n)s из %(items_qs)s позиций с ценой · "
+            "%(quotes_count)s предложений"
+        ) % {
+            "found_n": found_n,
+            "items_qs": len(items_qs),
+            "quotes_count": quotes_count,
+        }
         if quotes_count == 0 and len(items_qs) > 0:
             foot += _(' · ждём ответы поставщиков')
 
@@ -5120,12 +5129,12 @@ def get_rfq_status(params, user, role):
             rfq_suggestions = ["Создать RFQ", "Все мои сделки"]
         elif quotes_count > 0:
             rfq_hint = (
-                _('📊 %(quotes_count)s котировок получено. Дальше: выберите поставщика, оформите заказ и оплатите резерв 10%%.') % {'quotes_count': quotes_count}
+                _('%(quotes_count)s предложений получено. Выберите поставщика, оформите заказ и оплатите резерв 10%%.') % {'quotes_count': quotes_count}
             )
             rfq_suggestions = ["Сравнить котировки", "Лучшая котировка", "Спросить оператора"]
         elif rfq.mode == "semi":
             rfq_hint = (
-                _('⏳ Оператор подтверждает аналоги (SLA 15 мин). Дальше: после подтверждения вы получите КП и сможете оплатить резерв 10%.')
+                _('Оператор подтверждает аналоги. Ориентировочный срок — 15 минут. После подтверждения вы получите предложение и сможете оплатить резерв 10%.')
             )
             rfq_suggestions = ["Спросить оператора", "Все мои сделки"]
         elif found_n == 0:
@@ -5135,7 +5144,7 @@ def get_rfq_status(params, user, role):
             rfq_suggestions = ["Предложить аналог", "Связаться с оператором"]
         else:
             rfq_hint = (
-                _('✓ %(found_n)s позиций сматчены в каталоге. Дальше: оператор подтвердит и сформирует КП для оплаты резерва 10%%.') % {'found_n': found_n}
+                _('%(found_n)s позиций найдено в каталоге. Оператор проверит подбор и сформирует предложение для оплаты резерва 10%%.') % {'found_n': found_n}
             )
             rfq_suggestions = ["Спросить оператора", "Создать ещё RFQ"]
 
@@ -5146,8 +5155,17 @@ def get_rfq_status(params, user, role):
             rfq_actions = [a for a in rfq_actions if a.get("action") not in _op_drop]
             rfq_suggestions = [s for s in rfq_suggestions if "оператор" not in s.lower()]
 
+        status_label = {
+            "new": _("Новый"),
+            "quoted": _("Есть предложения"),
+            "needs_review": _("Требует проверки"),
+            "cancelled": _("Отменён"),
+            "declined": _("Отклонён"),
+            "closed": _("Закрыт"),
+        }.get(rfq.status, _("Статус уточняется"))
+
         return ActionResult(
-            text=f"RFQ #{rfq.id} — {rfq.get_status_display() if hasattr(rfq,'get_status_display') else rfq.status}\n\n{rfq_hint}",
+            text=f"{_('Заявка')} №{rfq.id} — {status_label}\n\n{rfq_hint}",
             cards=[{
                 "type": "spec_results",
                 "data": {

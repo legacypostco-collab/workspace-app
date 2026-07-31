@@ -5,20 +5,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>400 — Consolidator Parts</title>
-  <link rel="icon" type="image/svg+xml" href="{% static 'marketplace/consolidator-logo.svg' %}"/>
+  <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-white.svg' %}"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
     html,body{height:100%;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;}
     .err-page{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;}
-    .err-code{font-family:'Golos Text',sans-serif;font-weight:800;font-size:140px;color:#E85C0D;line-height:1;letter-spacing:-0.04em;}
+    .err-code{font-family:'Golos Text',sans-serif;font-weight:800;font-size:140px;color:#E85C0D;line-height:1;letter-spacing:0;}
     .err-title{font-family:'Golos Text',sans-serif;font-weight:700;font-size:28px;color:#ECECEC;margin-top:8px;margin-bottom:12px;}
     .err-text{color:#919191;font-size:14px;max-width:440px;line-height:1.6;margin-bottom:32px;}
     .err-btn{padding:11px 22px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;background:#E84A21;color:#1A1A1A;}
     .err-btn:hover{background:#FF6B3D;}
+    .err-logo{position:absolute;top:24px;left:32px;display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:800;font-size:16px;color:#ECECEC;text-decoration:none;}
+    .err-logo img{width:26px;height:26px;display:block;}
+    @media(max-width:640px){.err-logo{top:16px;left:16px;font-size:14px;}.err-code{font-size:84px;}.err-title{font-size:24px;}.err-page{padding:88px 20px 32px;}}
   </style>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01">
   <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
+  <a href="/" class="err-logo"><img src="{% static 'brand/logo-icon-white.svg' %}" alt="" width="26" height="26">Consolidator Parts</a>
   <div class="err-page">
     <div class="err-code">400</div>
     <h1 class="err-title">{% trans "Неверный запрос" %}</h1>

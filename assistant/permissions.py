@@ -12,10 +12,25 @@ SECURITY (P0-1, прод-аудит 2026-05-21):
 SWITCHABLE_ROLES = {"buyer", "seller", "operator", "admin"}
 ROLE_LABELS = {
     "buyer": "Покупатель",
-    "seller": "Продавец",
+    "seller": "Поставщик",
     "operator": "Оператор",
     "admin": "Администратор",
 }
+OPERATOR_ROLE_LABELS = {
+    "operator_manager": "Менеджер по работе с клиентами",
+    "operator_logist": "Оператор по логистике",
+    "operator_customs": "Оператор по таможенному оформлению",
+    "operator_payment": "Оператор по расчётам",
+    "operator_payments": "Оператор по расчётам",
+}
+
+
+def display_role_label(role: str | None) -> str:
+    """Человекочитаемое название роли без вывода внутреннего кода."""
+    value = (role or "").strip().lower()
+    if value in OPERATOR_ROLE_LABELS:
+        return OPERATOR_ROLE_LABELS[value]
+    return ROLE_LABELS.get(_role_base(value), "Пользователь")
 
 
 def _normalize_override(value: str | None) -> str | None:

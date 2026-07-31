@@ -206,10 +206,10 @@ def _event_text_seller(code: str) -> str | None:
 _EVENT_TEXTS_BUYER = {}    # deprecated, see _event_text_buyer()
 _EVENT_TEXTS_SELLER = {}   # deprecated, see _event_text_seller()
 _EVENT_TEXTS_OPERATOR = {
-    "sla_semi_overdue":   _lazy("⚠️ SEMI RFQ #{rfq_id} — просрочен 15-минутный SLA. Approve или эскалация."),
-    "sla_manual_overdue": _lazy("⚠️ MANUAL RFQ #{rfq_id} — собирается КП >48ч. Эскалация."),
-    "sla_breach":         _lazy("⚠️ ORD-{id}: SLA breach (статус {status}). Нужна реакция."),
-    "claim_opened":       _lazy("🛡 ORD-{id}: открыта рекламация. Требуется review."),
+    "sla_semi_overdue":   _lazy("⚠️ Заявка #{rfq_id} ждёт подтверждения больше 15 минут. Нужна проверка или эскалация."),
+    "sla_manual_overdue": _lazy("⚠️ Ручной подбор по заявке #{rfq_id} длится больше 48 часов. Нужна эскалация."),
+    "sla_breach":         _lazy("⚠️ Заказ {id}: нарушен срок этапа «{status}». Нужна реакция."),
+    "claim_opened":       _lazy("🛡 Заказ {id}: открыта рекламация. Требуется проверка."),
     "claim_escalated":    _lazy("🚨 ЭСКАЛАЦИЯ · рекламация открыта >7 дней без решения."),
     "user_registered":    _lazy("👤 Новый пользователь: {username} · {role} · {email}"),
     "kyb_submitted":      _lazy("🛡 {username} отправил KYB на проверку — компания «{legal_name}»."),
@@ -312,10 +312,14 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None, user_obj=None,
         "status": (order.status if order else "—"),
         "username": (user_obj.username if user_obj else "—"),
         "email":    (user_obj.email if user_obj else "—"),
-        "role":     ((extra or {}).get("role") or "—"),
+        "role":     {
+            "buyer": gettext("Покупатель"),
+            "seller": gettext("Поставщик"),
+            "operator": gettext("Оператор"),
+        }.get((extra or {}).get("role"), (extra or {}).get("role") or "—"),
         "legal_name": (extra or {}).get("legal_name", "—"),
     }
-    body = text or _EVENT_TEXTS_OPERATOR.get(event, f"Alert: {event}")
+    body = text or _EVENT_TEXTS_OPERATOR.get(event, gettext("Системное уведомление"))
     try:
         body = body.format(**fmt)
     except KeyError:
@@ -331,7 +335,7 @@ def notify_operator_alert(*, rfq=None, order=None, claim=None, user_obj=None,
     elif rfq:
         title_prefix = f"RFQ #{rfq.id}"
         if event == "sla_semi_overdue":
-            actions.append({"action": "op_approve_kp", "label": gettext("▶️ Approve КП"),
+            actions.append({"action": "op_approve_kp", "label": gettext("▶️ Проверить предложение"),
                               "params": {"rfq_id": rfq.id}})
         if event == "sla_manual_overdue":
             actions.append({"action": "op_dispatch_manual_rfq",

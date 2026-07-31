@@ -158,6 +158,69 @@ def test_no_horizontal_scroll_375px(xb_page, xb_browser_name):
     _shot(xb_page, xb_browser_name, "chat_375")
 
 
+@pytest.mark.parametrize("width,height", [(320, 568), (375, 667)])
+def test_mobile_header_controls_fit_viewport(xb_page, width, height):
+    """Гостевые действия помещаются в шапку и не сталкиваются с логотипом."""
+    xb_page.set_viewport_size({"width": width, "height": height})
+    xb_page.goto(BASE_URL + "/chat/", wait_until="domcontentloaded")
+
+    metrics = xb_page.evaluate(
+        """() => {
+          const box = (selector) => {
+            const rect = document.querySelector(selector).getBoundingClientRect();
+            return {left: rect.left, right: rect.right};
+          };
+          return {
+            brand: box(".top-brand"),
+            actions: box(".top-right"),
+            registration: box("button[onclick*='start_registration']"),
+            welcomeLogoDisplay: getComputedStyle(
+              document.querySelector(".welcome-logo")
+            ).display,
+          };
+        }"""
+    )
+
+    assert metrics["brand"]["right"] <= metrics["actions"]["left"]
+    assert metrics["registration"]["left"] >= 0
+    assert metrics["registration"]["right"] <= width
+    assert metrics["welcomeLogoDisplay"] == "none"
+
+
+def test_mobile_message_uses_full_available_width(xb_page):
+    """Скрытый мобильный аватар не должен оставлять пустую колонку."""
+    xb_page.set_viewport_size({"width": 375, "height": 667})
+    xb_page.goto(BASE_URL + "/chat/", wait_until="domcontentloaded")
+
+    metrics = xb_page.evaluate(
+        """() => {
+          const row = document.createElement("div");
+          row.className = "msg";
+          row.style.width = "347px";
+          row.innerHTML = `
+            <div class="msg-avatar"></div>
+            <div class="msg-body"><div class="msg-content">Проверка</div></div>
+          `;
+          document.body.appendChild(row);
+          const body = row.querySelector(".msg-body");
+          const avatar = row.querySelector(".msg-avatar");
+          const result = {
+            rowWidth: row.getBoundingClientRect().width,
+            bodyWidth: body.getBoundingClientRect().width,
+            bodyOffset: body.getBoundingClientRect().left
+              - row.getBoundingClientRect().left,
+            avatarDisplay: getComputedStyle(avatar).display,
+          };
+          row.remove();
+          return result;
+        }"""
+    )
+
+    assert metrics["avatarDisplay"] == "none"
+    assert metrics["bodyOffset"] == 0
+    assert metrics["bodyWidth"] == metrics["rowWidth"]
+
+
 def test_seo_files(xb_page, xb_browser_name):
     """/sitemap.xml + /robots.txt → 200 + содержат ожидаемый контент."""
     r = xb_page.request.get(BASE_URL + "/robots.txt")

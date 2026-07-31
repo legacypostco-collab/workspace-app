@@ -2,8 +2,8 @@
 <html lang="{{ CURRENT_LANG|default:'ru' }}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-  <title>{% blocktrans with rfq_id=rfq_id %}КП по RFQ #{{ rfq_id }}{% endblocktrans %} — Consolidator Parts</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% blocktrans with rfq_id=rfq_id %}Предложение по заявке №{{ rfq_id }}{% endblocktrans %} — Consolidator Parts</title>
   <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-black.svg' %}"/>
   <script src="{% url 'javascript-catalog' %}" defer></script>
   <style>
@@ -21,7 +21,7 @@
     .topbar{padding:14px 24px;display:flex;align-items:center;gap:12px;z-index:5;background:linear-gradient(180deg,rgba(168,184,216,0.5),transparent);}
     .top-back{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;background:rgba(255,255,255,0.5);font-size:13px;font-weight:600;color:#1a1a1a;}
     .top-back:hover{background:rgba(255,255,255,0.85);}
-    .top-brand{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;letter-spacing:-0.01em;margin-left:auto;}
+    .top-brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:15px;color:#1a1a1a;margin-left:auto;}
     .top-brand-logo{width:24px;height:24px;display:block;}
 
     .content{flex:1;overflow-y:auto;padding:20px 32px 60px;}
@@ -30,7 +30,7 @@
     .pp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:22px;flex-wrap:wrap;}
     .pp-title-row{display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap;}
     .pp-eyebrow{font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);letter-spacing:0.1em;text-transform:uppercase;}
-    .pp-name{font-family:'Golos Text',sans-serif;font-weight:800;font-size:32px;color:rgba(0,0,0,0.92);letter-spacing:-0.02em;line-height:1.15;}
+    .pp-name{font-weight:800;font-size:32px;color:rgba(0,0,0,0.92);line-height:1.15;}
     .pp-meta{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:rgba(0,0,0,0.6);}
     .pp-meta strong{color:rgba(0,0,0,0.85);font-weight:600;}
     .pp-actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;}
@@ -42,12 +42,12 @@
     .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
     .sum{padding:16px 18px;background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.5);border-radius:14px;}
     .sum-lbl{font-size:11px;font-weight:700;color:rgba(0,0,0,0.5);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;}
-    .sum-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:24px;color:rgba(0,0,0,0.92);}
+    .sum-val{font-weight:800;font-size:24px;color:rgba(0,0,0,0.92);}
     .sum-val.muted{color:rgba(0,0,0,0.55);}
 
     .sec{background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.5);border-radius:18px;padding:22px 24px;margin-bottom:18px;backdrop-filter:blur(10px);}
     .sec-h{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
-    .sec-h h2{font-family:'Golos Text',sans-serif;font-weight:700;font-size:16px;color:rgba(0,0,0,0.85);}
+    .sec-h h2{font-weight:700;font-size:16px;color:rgba(0,0,0,0.85);}
     .sec-pill{font-size:11px;font-weight:600;color:rgba(0,0,0,0.55);background:rgba(0,0,0,0.06);padding:2px 8px;border-radius:10px;}
 
     table.lines{width:100%;border-collapse:collapse;}
@@ -64,7 +64,7 @@
 
     .total-row{display:flex;justify-content:space-between;align-items:baseline;padding:18px 24px;background:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.6);border-radius:16px;margin-top:18px;}
     .total-lbl{font-size:13px;font-weight:600;color:rgba(0,0,0,0.7);}
-    .total-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:28px;color:rgba(0,0,0,0.95);}
+    .total-val{font-weight:800;font-size:28px;color:rgba(0,0,0,0.95);}
 
     .terms{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
     .term{padding:12px 14px;background:rgba(255,255,255,0.4);border-radius:10px;border:1px solid rgba(255,255,255,0.5);}
@@ -86,6 +86,7 @@
       .topbar,.pp-actions{display:none !important;}
     }
   </style>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01">
   <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
 </head>
 <body>
@@ -93,7 +94,7 @@
   <div class="topbar">
     <a href="/chat/rfq/{{ rfq_id }}/" class="top-back">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
-      RFQ #{{ rfq_id }}
+      {% blocktrans with rfq_id=rfq_id %}Заявка №{{ rfq_id }}{% endblocktrans %}
     </a>
     <a href="/chat/" class="top-brand">
       <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}" alt="" width="24" height="24">
@@ -103,7 +104,7 @@
 
   <div class="content">
     <div class="content-inner" id="ppContent">
-      <div class="loading">{% trans "Загрузка КП..." %}</div>
+      <div class="loading">{% trans "Загрузка предложения..." %}</div>
     </div>
   </div>
 </div>

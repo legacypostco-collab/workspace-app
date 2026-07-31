@@ -71,7 +71,7 @@ def upload_competitor_offer(params, user, role):
         or quote.status not in ("submitted", "finalized")
         or quote.rfq.status == "cancelled"
     ):
-        return ActionResult(text=_("Загрузить competitor-оффер может только заказчик RFQ."))
+        return ActionResult(text=_("Загрузить конкурентное предложение может только автор заявки."))
 
     competitor_name = (params.get("competitor_name") or "").strip()
     quoted_price_raw = params.get("quoted_price") or ""
@@ -187,7 +187,7 @@ def respond_to_competitor_offer(params, user, role):
         gap_pct = (gap / offer.quote.total_amount * 100).quantize(Decimal("0.1")) if offer.quote.total_amount else 0
         _their = f"{offer.quoted_price:,.0f}"
         _yours = f"{offer.quote.total_amount:,.0f}"
-        _comment = (_("Комментарий buyer: ") + offer.note) if offer.note else ""
+        _comment = (_("Комментарий покупателя: ") + offer.note) if offer.note else ""
         return ActionResult(
             text=(
                 _("📄 Конкурентное предложение по RFQ #%(rfq)s\n"
@@ -198,7 +198,7 @@ def respond_to_competitor_offer(params, user, role):
                    "yours": _yours, "gap": gap_pct, "comment": _comment}
             ),
             cards=[{"type": "form", "data": {
-                "title": _("💬 Ответ на competitor #%(id)s") % {"id": offer.id},
+                "title": _("💬 Ответ на конкурентное предложение #%(id)s") % {"id": offer.id},
                 "submit_action": "respond_to_competitor_offer",
                 "fields": [
                     {"name": "discount_pct", "label": _("Ваша скидка (%)"),
@@ -240,7 +240,7 @@ def respond_to_competitor_offer(params, user, role):
             offer = locked_offer
         if offer.uploaded_by:
             _notify(offer.uploaded_by, kind="rfq",
-                    title=_("Поставщик отклонил вашу competitor-оффер"),
+                    title=_("Поставщик отклонил ваше конкурентное предложение"),
                     body=_("Комментарий: %(c)s") % {"c": seller_comment[:200]},
                     url=f"/chat/?rfq={offer.rfq_id}")
         return ActionResult(
@@ -328,7 +328,7 @@ def respond_to_competitor_offer(params, user, role):
         _new = f"{new_total:,.0f}"
         _was = f"{offer.quote.total_amount:,.0f}"
         _notify(offer.uploaded_by, kind="rfq",
-                title=_("Скидка %(pct)s%% по competitor-оффер") % {"pct": pct},
+                title=_("Скидка %(pct)s%% в ответ на конкурентное предложение") % {"pct": pct},
                 body=_("Новая цена: $%(new)s (было $%(was)s)") % {"new": _new, "was": _was},
                 url=f"/chat/?rfq={offer.rfq_id}")
 

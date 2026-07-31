@@ -185,7 +185,8 @@
     .side-item-stack:hover{background:rgba(0,0,0,0.05);}
     .side-item-stack-content{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;gap:2px;min-width:0;overflow:hidden;}
     .side-item-stack-title{grid-column:1;grid-row:1;font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;display:flex;align-items:center;gap:6px;}
-    .conv-cat-icon{font-size:11px;flex-shrink:0;opacity:0.85;}
+    .conv-cat-icon{width:15px;height:15px;display:grid;place-items:center;flex-shrink:0;opacity:0.72;}
+    .conv-cat-icon svg{width:15px;height:15px;display:block;}
     .side-item-stack-meta{grid-column:1;grid-row:2;font-size:11px;color:rgba(0,0,0,0.6);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;}
     .side-item-stack-content .side-item-stack-title,.side-item-stack-content .side-item-stack-meta{grid-column:auto;grid-row:auto;}
     .side-item-stack-more{grid-column:2 !important;grid-row:1 / span 2 !important;align-self:center;justify-self:end;flex-shrink:0;width:26px;height:26px;border:none;background:transparent;color:rgba(0,0,0,0.66);border-radius:6px;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:18px;line-height:1;padding:0;transition:background .12s,color .12s;}
@@ -220,15 +221,19 @@
     /* ── Settings panel ── */
     .settings-panel{position:absolute;left:10px;right:10px;bottom:62px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.12);padding:6px;z-index:20;}
     .settings-panel[hidden]{display:none !important;}
-    .settings-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px;font-size:12px;font-weight:700;color:#1a1a1a;text-transform:uppercase;letter-spacing:0.04em;}
-    .settings-close{background:none;border:none;font-size:18px;color:rgba(0,0,0,0.65);cursor:pointer;line-height:1;}
+    .settings-head{display:flex;align-items:center;justify-content:space-between;padding:6px 6px 6px 10px;font-size:12px;font-weight:700;color:#1a1a1a;text-transform:uppercase;letter-spacing:0;}
+    .settings-close{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;background:none;border:none;border-radius:8px;font-size:18px;color:rgba(0,0,0,0.65);cursor:pointer;line-height:1;}
     .settings-close:hover{color:#1a1a1a;}
-    .settings-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:#1a1a1a;}
+    .settings-row{min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:#1a1a1a;}
     .settings-row:hover{background:rgba(0,0,0,0.04);}
-    .settings-row input[type=checkbox]{width:32px;height:18px;-webkit-appearance:none;appearance:none;background:rgba(0,0,0,0.18);border-radius:9px;position:relative;cursor:pointer;transition:background .15s;outline:none;}
-    .settings-row input[type=checkbox]::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.2);transition:left .15s;}
+    .settings-row-label{display:inline-flex;align-items:center;gap:9px;min-width:0;}
+    .settings-row-icon{width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 17px;color:rgba(0,0,0,0.58);}
+    .settings-row-icon svg{width:17px;height:17px;}
+    body.dark-mode .settings-row-icon{color:rgba(255,255,255,0.68);}
+    .settings-row input[type=checkbox]{width:44px;height:24px;flex:0 0 44px;-webkit-appearance:none;appearance:none;background:rgba(0,0,0,0.18);border-radius:12px;position:relative;cursor:pointer;transition:background .15s;outline:none;}
+    .settings-row input[type=checkbox]::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.2);transition:left .15s;}
     .settings-row input[type=checkbox]:checked{background:#1a1a1a;}
-    .settings-row input[type=checkbox]:checked::after{left:16px;}
+    .settings-row input[type=checkbox]:checked::after{left:22px;}
     .settings-row-block select{font-family:inherit;font-size:13px;padding:4px 8px;border:1px solid rgba(0,0,0,0.15);border-radius:6px;background:#fff;cursor:pointer;}
     /* Вторичный текст-значение в строках настроек (домен, JSON, имя пользователя) */
     .settings-row-meta{color:rgba(0,0,0,0.62);font-size:11px;}
@@ -267,6 +272,11 @@
     body.dark-mode .top-classic,body.dark-mode .top-bell{background:rgba(255,255,255,0.06);}
     body.dark-mode .top-classic:hover,body.dark-mode .top-bell:hover{background:rgba(255,255,255,0.1);}
     body.dark-mode .top-brand{color:#e8e8e8;}
+    body.dark-mode .top-brand-logo{filter:invert(1);}
+    body.dark-mode .top-auth-login{background:rgba(255,255,255,0.06);color:#f2f2f2;}
+    body.dark-mode .top-auth-login:hover{background:rgba(255,255,255,0.12);}
+    body.dark-mode .top-auth-register{background:#f2f2f2;color:#111;}
+    body.dark-mode .top-auth-register:hover{background:#fff;}
     body.dark-mode .role-toggle{background:rgba(255,255,255,0.06);}
     body.dark-mode .role-tab{color:rgba(255,255,255,0.55);}
     body.dark-mode .role-tab:hover{color:#e8e8e8;}
@@ -309,15 +319,21 @@
     .top-brand{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:700;font-size:15px;color:#1a1a1a;letter-spacing:-0.01em;}
     .top-brand-logo{width:24px;height:24px;flex-shrink:0;display:block;}
     .top-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+    .top-auth-action{height:34px;padding:0 12px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:13px;font-weight:650;white-space:nowrap;flex-shrink:0;}
+    .top-auth-login{background:rgba(255,255,255,0.5);color:#1a1a1a;}
+    .top-auth-login:hover{background:rgba(255,255,255,0.78);}
+    .top-auth-register{background:#1a1a1a;color:#fff;}
+    .top-auth-register:hover{background:#000;}
+    .top-auth-icon{display:none;flex-shrink:0;}
     .top-classic{display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:8px;background:rgba(255,255,255,0.5);color:#1a1a1a;font-size:12px;font-weight:600;text-decoration:none;}
     .top-classic:hover{background:rgba(255,255,255,0.7);text-decoration:none;}
     @media(max-width:600px){.top-classic span{display:none;}}
 
     /* ── Home button ── */
-    .top-home{width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;flex-shrink:0;}
+    .top-home,.top-theme{width:34px;height:34px;border:none;border-radius:50%;background:rgba(255,255,255,0.5);color:#1a1a1a;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;transition:background .12s;flex-shrink:0;}
     .top-home:hover{background:rgba(255,255,255,0.78);}
-    body.dark-mode .top-home{background:rgba(255,255,255,0.06);color:#e8e8e8;}
-    body.dark-mode .top-home:hover{background:rgba(255,255,255,0.1);}
+    body.dark-mode .top-home,body.dark-mode .top-theme{background:rgba(255,255,255,0.06);color:#e8e8e8;}
+    body.dark-mode .top-home:hover,body.dark-mode .top-theme:hover{background:rgba(255,255,255,0.1);}
     .resume-conversation{display:inline-flex;align-items:center;gap:8px;margin:2px auto 18px;padding:9px 14px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;background:rgba(255,255,255,0.56);color:#1a1a1a;font-size:13px;font-weight:700;}
     .resume-conversation:hover{background:rgba(255,255,255,0.82);}
     .resume-conversation[hidden]{display:none;}
@@ -330,7 +346,7 @@
     .notif-panel{position:absolute;top:54px;right:14px;width:340px;max-height:420px;background:#fff;border:1px solid rgba(0,0,0,0.08);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.14);z-index:30;display:flex;flex-direction:column;overflow:hidden;}
     .notif-panel[hidden]{display:none !important;}
     .notif-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid rgba(0,0,0,0.06);font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:#1a1a1a;}
-    .notif-mark-all{background:none;border:none;color:#E84A21;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;}
+    .notif-mark-all{min-height:32px;padding:4px 8px;background:none;border:none;border-radius:7px;color:#b53a1b;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;}
     .notif-mark-all:hover{text-decoration:underline;}
     .notif-list{overflow-y:auto;max-height:360px;}
     .notif-empty{padding:24px 14px;text-align:center;color:rgba(0,0,0,0.65);font-size:12px;}
@@ -340,14 +356,14 @@
     .notif-item.unread{background:rgba(232,74,33,0.08);}
     .notif-item.unread:hover{background:rgba(232,74,33,0.14);}
     .notif-row{display:flex;align-items:center;gap:6px;}
-    .notif-kind{font-size:9px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.65);flex-shrink:0;}
+    .notif-kind{font-size:11px;font-weight:700;letter-spacing:0;text-transform:none;padding:3px 7px;border-radius:5px;background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.68);flex-shrink:0;}
     .notif-kind.order{background:rgba(232,74,33,0.18);color:#9a3412;}
     .notif-kind.payment{background:rgba(76,175,80,0.18);color:#2e7d32;}
     .notif-kind.rfq{background:rgba(255,167,38,0.22);color:#bd5c00;}
     .notif-kind.sla,.notif-kind.claim{background:rgba(232,92,13,0.22);color:#9c3300;}
-    .notif-time{font-size:10px;color:rgba(0,0,0,0.65);margin-left:auto;}
-    .notif-title{font-size:12.5px;font-weight:600;color:#1a1a1a;line-height:1.35;}
-    .notif-body{font-size:11.5px;color:rgba(0,0,0,0.62);line-height:1.4;}
+    .notif-time{font-size:12px;color:rgba(0,0,0,0.65);margin-left:auto;}
+    .notif-title{font-size:13px;font-weight:600;color:#1a1a1a;line-height:1.4;}
+    .notif-body{font-size:12px;color:rgba(0,0,0,0.68);line-height:1.45;}
     @media(max-width:600px){.notif-panel{right:8px;width:calc(100vw - 16px);max-width:340px;}}
 
     /* ── Welcome state ── */
@@ -390,6 +406,8 @@
        поэтому нужные стили дублируем статически: «×» (pill-del) скрыт по умолчанию,
        кнопка-меню «+» (pill-add) — кружок. JS позже переинжектит те же правила. */
     .pill{position:relative;}
+    .pill-icon{width:17px;height:17px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 17px;}
+    .pill-icon svg{width:17px;height:17px;}
     .pill-txt{display:inline-flex;align-items:center;gap:8px;}
     .pill-del{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:rgba(70,70,70,.5);color:#fff;font-size:13px;line-height:17px;text-align:center;font-weight:600;opacity:0;transform:scale(.4);pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:4;}
     /* Бейдж «требует действия» (непрочитанные уведомления раздела пилюли). */
@@ -429,6 +447,9 @@
     .msg-avatar-act{background:rgba(255,255,255,0.4);color:#1a1a1a;}
     .msg-body{flex:1;min-width:0;}
     .msg-author{font-size:11px;color:rgba(0,0,0,0.66);margin-bottom:5px;font-weight:600;}
+    .msg-assistant,.msg-action{gap:0;}
+    .msg-assistant>.msg-avatar,.msg-assistant .msg-author,
+    .msg-action>.msg-avatar,.msg-action .msg-author{display:none;}
     .msg-content{color:#1a1a1a;font-size:14px;line-height:1.65;white-space:pre-wrap;word-wrap:break-word;background:rgba(255,255,255,0.55);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.4);padding:12px 16px;border-radius:14px;}
     .msg-content:empty{display:none;}
     .msg-user .msg-content{background:rgba(40,28,28,0.92);color:#fff;border-color:rgba(0,0,0,0.15);}
@@ -439,13 +460,8 @@
     .entity-link{color:#1a1a1a;background:transparent;padding:1px 7px;border-radius:5px;cursor:pointer;font-weight:600;text-decoration:none;border:1px solid rgba(0,0,0,0.55);transition:background 0.12s,border-color 0.12s;display:inline-block;line-height:1.3;}
     .entity-link:hover{background:rgba(0,0,0,0.06);border-color:#000;}
 
-    /* ── AI text marker (💬) — отличает «речь снабженца» от фактов в карточках ── */
-    .msg-content-ai.msg-has-text{position:relative;padding-left:42px !important;}
-    .msg-content-ai.msg-has-text::before{
-      content:'💬';position:absolute;left:12px;top:11px;font-size:18px;line-height:1;
-      z-index:1;
-    }
-    /* Caption-стиль: компактный текст под cards, без bubble-фона и без 💬-иконки.
+    .msg-content-ai.msg-has-text{position:relative;}
+    /* Caption-стиль: компактный текст под cards, без отдельной подложки.
        Используется когда у одного assistant-message есть и cards, и text — чтобы
        не выглядело как «два сообщения подряд». */
     .msg-content-ai.msg-caption{
@@ -461,13 +477,13 @@
 
     /* ── Contextual actions (Уровень 2): «💡 Также можете» — кнопки-действия от кода по правилам ── */
     .ctx-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;}
-    .ctx-label{font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;margin-right:4px;}
+    .ctx-label{font-size:11px;color:rgba(0,0,0,0.72);font-weight:600;margin-right:4px;}
     .ctx-btn{background:rgba(255,255,255,0.55);color:rgba(0,0,0,0.85);border:1px solid rgba(0,0,0,0.08);padding:5px 12px;border-radius:18px;font-size:11px;font-weight:500;}
     .ctx-btn:hover{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
 
     /* ── Suggestions (text chips, подставляются в input) ── */
     .sg-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px;padding-top:8px;border-top:1px dashed rgba(0,0,0,0.08);}
-    .sg-label{font-size:11px;color:rgba(0,0,0,0.55);font-weight:500;margin-right:4px;}
+    .sg-label{font-size:11px;color:rgba(0,0,0,0.72);font-weight:600;margin-right:4px;}
     .sg-chip{background:rgba(255,255,255,0.55);border:1px solid rgba(0,0,0,0.08);color:rgba(0,0,0,0.8);padding:4px 10px;border-radius:20px;font-size:11px;font-family:inherit;cursor:pointer;transition:all 0.12s;}
     .sg-chip:hover{background:#fff;border-color:rgba(0,0,0,0.2);color:#1a1a1a;}
 
@@ -577,9 +593,9 @@
     .obp-card{padding:0!important;overflow:hidden;}
     .obp-head{padding:14px 20px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(0,0,0,0.06);}
     .obp-head-lbl{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;color:rgba(0,0,0,0.88);letter-spacing:-0.005em;}
-    .obp-head-status{font-size:11px;font-weight:600;color:rgba(0,0,0,0.55);background:rgba(0,0,0,0.05);padding:3px 9px;border-radius:99px;letter-spacing:0.02em;}
+    .obp-head-status{font-size:11px;font-weight:600;color:rgba(0,0,0,0.72);background:rgba(0,0,0,0.05);padding:3px 9px;border-radius:99px;letter-spacing:0.02em;}
     .obp-progress{padding:14px 20px 10px;}
-    .obp-progress-num{font-family:'Golos Text',sans-serif;font-size:13px;color:rgba(0,0,0,0.45);margin-bottom:7px;font-variant-numeric:tabular-nums;}
+    .obp-progress-num{font-family:'Golos Text',sans-serif;font-size:13px;color:rgba(0,0,0,0.68);margin-bottom:7px;font-variant-numeric:tabular-nums;}
     .obp-progress-cur{font-weight:700;font-size:18px;color:rgba(0,0,0,0.88);}
     .obp-progress-bar{height:6px;background:rgba(0,0,0,0.06);border-radius:99px;overflow:hidden;}
     .obp-progress-fill{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:99px;transition:width 0.4s;}
@@ -595,7 +611,7 @@
     .obp-step-current .obp-step-dot{background:#1a1a1a;color:#fff;box-shadow:0 0 0 3px rgba(26,26,26,0.12);}
     .obp-step-current .obp-step-lbl{color:rgba(0,0,0,0.92);font-weight:600;}
     .obp-step-pending .obp-step-dot{background:rgba(0,0,0,0.06);color:rgba(0,0,0,0.42);}
-    .obp-step-pending .obp-step-lbl{color:rgba(0,0,0,0.55);}
+    .obp-step-pending .obp-step-lbl{color:rgba(0,0,0,0.68);}
     body.dark-mode .obp-head{border-bottom-color:rgba(255,255,255,0.08);}
     body.dark-mode .obp-head-lbl{color:rgba(255,255,255,0.92);}
     body.dark-mode .obp-head-status{color:rgba(255,255,255,0.65);background:rgba(255,255,255,0.08);}
@@ -1522,7 +1538,8 @@
     .command-list{display:flex;flex-direction:column;gap:2px;overflow:auto;padding:6px;}
     .command-item{width:100%;min-height:42px;display:flex;align-items:center;gap:10px;padding:7px 10px;text-align:left;border:0;border-radius:6px;background:transparent;color:inherit;font-size:13px;font-weight:650;}
     .command-item:hover,.command-item:focus-visible{background:rgba(232,74,33,0.08);outline:none;}
-    .command-item-icon{width:25px;height:25px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 25px;border-radius:6px;background:rgba(0,0,0,0.05);font-size:15px;}
+    .command-item-icon{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;border-radius:6px;background:rgba(0,0,0,0.05);color:rgba(0,0,0,0.72);}
+    .command-item-icon svg{width:16px;height:16px;}
     .command-empty{padding:20px 12px;text-align:center;color:rgba(0,0,0,0.54);font-size:13px;}
     body.dark-mode .command-dialog{border-color:rgba(255,255,255,0.12);background:rgba(25,25,27,0.98);color:#f4f4f4;box-shadow:0 14px 36px rgba(0,0,0,0.46);}
     body.dark-mode .command-search-wrap{border-color:rgba(255,255,255,0.08);}
@@ -2347,7 +2364,7 @@
     .rcard-money-cell{padding:6px 0;}
     .rcard-money-empty{opacity:0.55;}
     .rcard-money-best{background:linear-gradient(135deg,rgba(34,197,94,0.10),transparent);padding:8px 12px;border-radius:8px;margin:-2px;}
-    .rcard-money-lbl{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(0,0,0,0.55);margin-bottom:3px;}
+    .rcard-money-lbl{font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(0,0,0,0.70);margin-bottom:3px;}
     .rcard-money-val{font-family:'Golos Text',sans-serif;font-weight:800;font-size:20px;color:rgba(0,0,0,0.92);line-height:1;display:flex;align-items:baseline;gap:8px;}
     .rcard-money-arrow{font-size:18px;color:rgba(0,0,0,0.30);font-weight:300;}
     .rcard-delta{font-size:12px;font-weight:700;padding:2px 7px;border-radius:5px;}
@@ -2355,7 +2372,7 @@
     .rcard-delta-bad{background:rgba(239,68,68,0.18);color:#b91c1c;}
     /* Items table */
     .rcard-items{padding:12px 14px;border-radius:10px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.05);margin-bottom:14px;}
-    .rcard-items-head{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(0,0,0,0.55);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+    .rcard-items-head{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(0,0,0,0.70);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
     /* Мини-карточки позиций (новая компоновка) */
     .rcard-items-list{display:flex;flex-direction:column;gap:2px;}
     .rcard-it{padding:9px 10px;border-radius:8px;transition:background 0.12s;}
@@ -2363,7 +2380,7 @@
     .rcard-it-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:3px;}
     .rcard-it-art{font-family:'JetBrains Mono','SF Mono',monospace;font-weight:600;font-size:13px;color:rgba(0,0,0,0.88);}
     .rcard-it-meta{display:inline-flex;align-items:baseline;gap:10px;flex-shrink:0;}
-    .rcard-it-qty{font-size:11.5px;font-weight:600;color:rgba(0,0,0,0.50);}
+    .rcard-it-qty{font-size:11.5px;font-weight:600;color:rgba(0,0,0,0.68);}
     .rcard-it-price{font-family:'Golos Text',sans-serif;font-weight:700;font-size:13px;color:rgba(0,0,0,0.85);min-width:50px;text-align:right;display:inline-block;}
     .rcard-it-price-none{color:rgba(0,0,0,0.25);font-weight:400;}
     .rcard-it-name{font-size:12.5px;color:rgba(0,0,0,0.62);padding-left:0;line-height:1.4;}
@@ -2695,8 +2712,9 @@
     body.dark-mode .spec-kpis{border-bottom-color:rgba(255,255,255,0.08);}
     body.dark-mode .spec-kpi{border-right-color:rgba(255,255,255,0.08);}
 
-    .spec-tbl-wrap{overflow-x:auto;}
-    .spec-tbl{width:100%;border-collapse:collapse;font-size:13.5px;}
+    .spec-tbl-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;}
+    .spec-tbl{width:100%;min-width:920px;border-collapse:collapse;font-size:13px;}
+    .spec-tbl.qf-spec-tbl{min-width:820px;}
     /* Фиксированные ширины колонок (colgroup) — одинаковая раскладка у заказа и
        котировки независимо от содержимого; длинный текст переносится. */
     .spec-tbl-fixed{table-layout:fixed;}
@@ -2706,7 +2724,7 @@
     .spec-tbl-fixed th:last-child,.spec-tbl-fixed td:last-child{padding-right:10px;}
     .spec-tbl-fixed .qf-price-wrap{display:flex;padding:3px 6px;gap:4px;}
     .spec-tbl-fixed .qf-price-input{flex:1;width:auto;min-width:0;text-align:right;}
-    .spec-tbl th{text-align:left;color:rgba(0,0,0,0.62);font-weight:700;padding:10px 3px;background:rgba(0,0,0,0.03);font-size:11.5px;letter-spacing:0.04em;text-transform:uppercase;border-bottom:1px solid rgba(0,0,0,0.06);}
+    .spec-tbl th{text-align:left;color:rgba(0,0,0,0.68);font-weight:700;padding:10px 3px;background:rgba(0,0,0,0.03);font-size:12px;letter-spacing:0;text-transform:none;border-bottom:1px solid rgba(0,0,0,0.06);}
     .spec-tbl td{padding:10px 3px;border-bottom:1px solid rgba(0,0,0,0.04);vertical-align:middle;color:#1a1a1a;}
     .spec-tbl tr:last-child td{border-bottom:none;}
     .spec-tbl tr:hover td{background:rgba(0,0,0,0.02);}
@@ -2935,6 +2953,7 @@
     .fm-submit:focus-visible,
     .top-icon:focus-visible,
     .top-home:focus-visible,
+    .top-auth-action:focus-visible,
     .top-bell:focus-visible,
     .top-theme:focus-visible,
     .role-tab:focus-visible,
@@ -3002,23 +3021,25 @@
     .working-text{font-size:13px;color:rgba(0,0,0,0.85);font-weight:500;display:inline-block;min-width:140px;transition:opacity .2s;}
 
     @media(max-width:600px){
-      .topbar{padding:12px 14px;gap:8px;}
-      .top-brand{font-size:0;gap:0;}
+      .topbar{padding:10px 12px;gap:7px;}
+      .top-brand{gap:0;}
+      .top-brand-label{display:none;}
       .top-brand-logo{width:26px;height:26px;}
-      .top-right{gap:5px;}
-      .top-right > .top-icon:not(.top-theme){
-        padding:6px 8px!important;
-        font-size:12px!important;
-        white-space:nowrap;
-      }
-      .welcome{padding:64px 16px 28px;gap:22px;}
-      .welcome-logo{width:88px;height:88px;}
-      .welcome-text h1{font-size:24px;}
+      .top-right{gap:4px;}
+      .top-auth-action{width:34px;min-width:34px;padding:0;border-radius:50%;}
+      .top-auth-icon{display:block;}
+      .top-auth-label{display:none;}
+      .welcome{padding:72px 14px 24px;gap:20px;}
+      .welcome-logo{display:none;}
+      .welcome-text h1{font-size:24px!important;}
       .welcome-text p{font-size:13px;}
       .stream{padding:8px 14px 0;}
       .input-dock{padding:10px 14px 14px;}
       .pills{gap:6px;}
       .pill{padding:8px 14px;font-size:12px;}
+      .msg{gap:0;}
+      .msg-avatar{display:none;}
+      .msg-body{width:100%;}
     }
 
     /* ════════════════════════════════════════════════════════════
@@ -4063,6 +4084,7 @@
     /* В чат-инпуте кнопки tool-spacer на конце — auto-flip. */
 
   </style>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01">
   <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
   <script>
     // Apply dark-mode before paint to avoid flash
@@ -4188,16 +4210,16 @@
         </div>
         {% if user.is_authenticated %}
           <label class="settings-row">
-          <span>🔔 <span data-i18n="settings.notifications">{% trans "Звук уведомлений" %}</span></span>
+          <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M14 21h-4"/></svg></span><span data-i18n="settings.notifications">{% trans "Звук уведомлений" %}</span></span>
           <input type="checkbox" id="settingNotifSound" onchange="onSettingChange('sound', this.checked)">
           </label>
         {% endif %}
         <label class="settings-row">
-          <span>🌙 <span data-i18n="topbar.theme_dark">{% trans "Тёмная тема" %}</span></span>
+          <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></svg></span><span data-i18n="topbar.theme_dark">{% trans "Тёмная тема" %}</span></span>
           <input type="checkbox" id="settingDarkMode" onchange="onSettingChange('dark', this.checked)">
         </label>
         <div class="settings-row settings-row-block">
-          <span>🌐 <span data-i18n="settings.language">{% trans "Язык интерфейса" %}</span></span>
+          <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span><span data-i18n="settings.language">{% trans "Язык интерфейса" %}</span></span>
           <select id="settingLang" onchange="onSettingChange('lang', this.value)">
             <option value="ru">Русский</option>
             <option value="en">English</option>
@@ -4208,7 +4230,7 @@
         {# ── Account block ── #}
         <div class="settings-sep"></div>
         <a class="settings-row" href="/" style="text-decoration:none;color:inherit;">
-          <span>🌐 <span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
+          <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4 11 13"/><path d="M18 13v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h6"/></svg></span><span data-i18n="settings.landing">{% trans "Перейти на сайт" %}</span></span>
           <span class="settings-row-meta">consolidatorparts.com</span>
         </a>
         {% if user.is_authenticated %}
@@ -4216,30 +4238,30 @@
         <button type="button" class="settings-row"
                 onclick="toggleSettingsPanel(false); window.quickAction && window.quickAction('seller_team', {});"
                 style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:inherit;">
-          <span>👥 <span data-i18n="settings.team">{% trans "Команда компании" %}</span></span>
+          <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></span><span data-i18n="settings.team">{% trans "Команда компании" %}</span></span>
           <span style="opacity:0.5;font-size:11px;">→</span>
         </button>
         {# ── Пригласить (реферал/бонус для всех ролей) — на месте бывшего «Скачать данные» ── #}
         <button type="button" class="settings-row"
                 onclick="toggleSettingsPanel(false); window.quickAction && window.quickAction('invite_customer', {});"
                 style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:inherit;">
-          <span>📨 <span data-i18n="pill.invite">{% trans "Пригласить" %}</span></span>
+          <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 7 8 6 8-6"/></svg></span><span data-i18n="pill.invite">{% trans "Пригласить" %}</span></span>
           <span class="settings-row-meta">→</span>
         </button>
         {# Конфиденциальность и аккаунт: свёрнуто — экспорт ПДн / смена пароля в подразделе #}
         <details class="settings-subsection">
           <summary class="settings-row">
-            <span>🔒 <span data-i18n="settings.privacy">{% trans "Конфиденциальность и аккаунт" %}</span></span>
+            <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span><span data-i18n="settings.privacy">{% trans "Конфиденциальность и аккаунт" %}</span></span>
             <span class="settings-sub-chevron">›</span>
           </summary>
           <div class="settings-subsection-body">
             <a class="settings-row" href="/password_reset/"
                style="text-decoration:none;color:inherit;">
-              <span>🔑 <span data-i18n="settings.password">{% trans "Сменить пароль" %}</span></span>
+              <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 8-8M15 4h4v4"/></svg></span><span data-i18n="settings.password">{% trans "Сменить пароль" %}</span></span>
             </a>
             <a class="settings-row" href="/api/me/export/" download
                style="text-decoration:none;color:inherit;">
-              <span>📥 <span data-i18n="settings.export">{% trans "Скачать мои данные" %}</span></span>
+              <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></svg></span><span data-i18n="settings.export">{% trans "Скачать мои данные" %}</span></span>
               <span class="settings-row-meta">JSON</span>
             </a>
           </div>
@@ -4250,7 +4272,7 @@
           {# запечённый {% csrf_token %} устаревает после ротации куки (логин) #}
           {% csrf_token %}
           <button type="submit" class="settings-row" style="width:100%;border:none;background:transparent;cursor:pointer;text-align:left;font:inherit;color:#b91c1c;">
-            <span>🚪 <span data-i18n="settings.logout">{% trans "Выйти" %}</span></span>
+            <span class="settings-row-label"><span class="settings-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 3h6v18h-6"/></svg></span><span data-i18n="settings.logout">{% trans "Выйти" %}</span></span>
             <span class="settings-row-meta">{{ user.username }}</span>
           </button>
         </form>
@@ -4311,7 +4333,7 @@
          aria-label="{% trans 'Перейти на сайт' %}">
         <img class="top-brand-logo" src="{% static 'brand/logo-icon-black.svg' %}"
              alt="" loading="lazy" width="24" height="24">
-        Consolidator Parts
+        <span class="top-brand-label">Consolidator Parts</span>
       </a>
       <div class="top-right">
         <!-- Рабочий стол чата: не закрывает и не очищает текущий диалог. -->
@@ -4343,12 +4365,18 @@
           {# Верхний аватар убран: был нефункциональным дублем (личность — снизу, смена роли — вкладками сверху). #}
         {% else %}
           <!-- Anonymous: триггерят chat-action прямо в чате, без редиректов -->
-          <button type="button" class="top-icon"
+          <button type="button" class="top-auth-action top-auth-login"
                   onclick="quickAction('start_login', {})"
-                  style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-weight:600;border:none;background:transparent;border-radius:8px;">{% trans "Войти" %}</button>
-          <button type="button" class="top-icon"
+                  title="{% trans 'Войти' %}" aria-label="{% trans 'Войти' %}">
+            <svg class="top-auth-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5"/><path d="M15 12H3"/></svg>
+            <span class="top-auth-label">{% trans "Войти" %}</span>
+          </button>
+          <button type="button" class="top-auth-action top-auth-register"
                   onclick="quickAction('start_registration', {})"
-                  style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:13px;font-weight:700;color:#fff;background:#1a1a1a;border:none;border-radius:8px;">{% trans "Регистрация" %}</button>
+                  title="{% trans 'Регистрация' %}" aria-label="{% trans 'Регистрация' %}">
+            <svg class="top-auth-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 21a6 6 0 0 0-12 0"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+            <span class="top-auth-label">{% trans "Регистрация" %}</span>
+          </button>
         {% endif %}
       </div>
       {% if user.is_authenticated %}
@@ -4367,9 +4395,11 @@
 
     <!-- Welcome state -->
     <div class="welcome" id="welcomeStage">
-      <div class="welcome-logo">
+      {% if not user.is_authenticated %}
+      <div class="welcome-logo" aria-hidden="true">
         <img src="{% static 'brand/logo-icon-white.svg' %}" alt="Consolidator" width="120" height="120" style="filter:drop-shadow(0 4px 12px rgba(0,0,0,0.12));">
       </div>
+      {% endif %}
       <div class="welcome-text">
         {% if auth_welcome_title %}
         <h1 id="welcomeTitle" data-i18n="{{ auth_welcome_title_key }}">{{ auth_welcome_title }}</h1>
@@ -4415,7 +4445,7 @@
 
       <div class="pills{% if not auth_pills %} wp-guest{% endif %}" id="welcomePills">
         {% if auth_pills %}{# Залогиненный: пилюли его роли серверно (совпадают с ROLE_WELCOME в JS) — нет «пустой» главной до JS. #}
-        {% for p in auth_pills %}<button class="pill" type="button" data-pill-action="{{ p.action }}" data-pill-params="{{ p.params }}"><span class="pill-del" aria-label="{% trans 'Убрать' %}" title="{% trans 'Убрать' %}">×</span><span class="pill-txt">{{ p.emoji }} {{ p.label }}</span></button>{% endfor %}<button class="pill-add" type="button" data-pill-master aria-label="{% trans 'Добавить пилюлю' %}" title="{% trans 'Меню пилюль' %}">+</button>
+        {% for p in auth_pills %}<button class="pill" type="button" data-pill-action="{{ p.action }}" data-pill-params="{{ p.params }}"><span class="pill-del" aria-label="{% trans 'Убрать' %}" title="{% trans 'Убрать' %}">×</span><span class="pill-txt">{{ p.label }}</span></button>{% endfor %}<button class="pill-add" type="button" data-pill-master aria-label="{% trans 'Добавить действие' %}" title="{% trans 'Настроить быстрые действия' %}">+</button>
         {% else %}{# Аноним: статичный fallback (в т.ч. для no-JS). #}
         <button class="pill" type="button" data-pill-action="search_parts" data-pill-params="{}">🔍 {% trans "Найти запчасть" %}</button>
         <button class="pill" type="button" data-pill-action="compare_suppliers" data-pill-params="{}">🏭 {% trans "Сравнить поставщиков" %}</button>

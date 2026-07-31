@@ -137,7 +137,7 @@
     };
     const actionsHtml = (actions) => {
       if (!actions || !actions.length) return '';
-      return `<div class="auth-actions">${actions.map((a) => `<button type="button" class="auth-link-btn" data-modal-action="${esc(a.action || '')}" data-modal-params="${esc(JSON.stringify(a.params || {}))}">${esc(a.label || a.action || '')}</button>`).join('')}</div>`;
+      return `<div class="auth-actions">${actions.map((a) => `<button type="button" class="auth-link-btn" data-modal-action="${esc(a.action || '')}" data-modal-params="${esc(JSON.stringify(a.params || {}))}">${esc(a.label || tr('Действие'))}</button>`).join('')}</div>`;
     };
     const splitSteps = (fields) => {
       const byName = {};
@@ -181,7 +181,7 @@
     };
     const render = (action, data) => {
       const formCard = (data.cards || []).find((c) => c && c.type === 'form' && c.data);
-      const msg = data.text ? `<p class="auth-message">${esc(data.text)}</p>` : '';
+      let msg = data.text ? `<p class="auth-message">${esc(data.text)}</p>` : '';
       if (!formCard) {
         wizard = null;
         body.innerHTML = msg + actionsHtml(data.actions || []);
@@ -189,6 +189,11 @@
       }
       const d = formCard.data;
       const fixedObj = d.fixed_params || {};
+      const isSellerRegistration = (d.submit_action || action) === 'start_registration'
+        && fixedObj.role === 'seller';
+      if (isSellerRegistration) {
+        msg = '<p class="auth-message">Создайте аккаунт. Реквизиты компании заполните на следующем шаге.</p>';
+      }
       title.textContent = cleanTitle(d.title) || (action === 'start_registration' ? 'Создание аккаунта' : 'Вход');
       const useWizard = (d.submit_action || action) === 'start_registration' && (fixedObj.role || 'buyer') === 'buyer' && (d.fields || []).length > 5;
       if (useWizard) {
@@ -199,7 +204,7 @@
         return;
       }
       wizard = null;
-      body.innerHTML = msg + `<form class="auth-form" data-action="${esc(d.submit_action || action)}" data-fixed="${esc(JSON.stringify(fixedObj))}">${d.subtitle || d.intent ? `<p class="auth-message">${esc(d.subtitle || d.intent)}</p>` : ''}${(d.fields || []).map(fieldHtml).join('')}<button class="auth-submit" type="submit">${esc(d.submit_label || 'Продолжить')}</button></form>${actionsHtml(data.actions || [])}`;
+      body.innerHTML = msg + `<form class="auth-form" data-action="${esc(d.submit_action || action)}" data-fixed="${esc(JSON.stringify(fixedObj))}">${!isSellerRegistration && (d.subtitle || d.intent) ? `<p class="auth-message">${esc(d.subtitle || d.intent)}</p>` : ''}${(d.fields || []).map(fieldHtml).join('')}<button class="auth-submit" type="submit">${esc(d.submit_label || 'Продолжить')}</button></form>${actionsHtml(data.actions || [])}`;
     };
     const call = async (action, params) => {
       const wasHidden = modal.hidden;
@@ -1711,6 +1716,56 @@
   // возвращает оригинал, если перевода нет → данные, бэкенд-строки (уже на языке)
   // и HTML-разметка не страдают; переводятся только известные UI-литералы.
   const esc = s => _escRaw(window.t ? window.t(s == null ? '' : String(s)) : s);
+  const DISPLAY_TEXT_KEYS = new Set([
+    'title', 'subtitle', 'label', 'text', 'hint', 'body', 'description',
+    'sub', 'status_label', 'footer', 'empty',
+  ]);
+  function humanizeVisibleText(value) {
+    let result = String(value == null ? '' : value).replace(
+      /(^|\n)[ \t]*(?:[\p{Extended_Pictographic}←-⇿⬀-⯿️‍]+[ \t]*)+/gu,
+      '$1',
+    );
+    const lang = (document.documentElement.lang || 'ru').toLowerCase();
+    const labels = lang.startsWith('es')
+      ? {request: 'Solicitud', requestWord: 'solicitud', proposal: 'propuesta', buyer: 'comprador', seller: 'proveedor', operator: 'operador'}
+      : lang.startsWith('zh')
+      ? {request: '询价单', requestWord: '询价单', proposal: '报价', buyer: '买家', seller: '供应商', operator: '运营人员'}
+      : lang.startsWith('ar')
+      ? {request: 'طلب', requestWord: 'طلب', proposal: 'عرض', buyer: 'المشتري', seller: 'المورد', operator: 'المشغل'}
+      : lang.startsWith('en')
+      ? {request: 'Request', requestWord: 'request', proposal: 'proposal', buyer: 'buyer', seller: 'supplier', operator: 'operator'}
+      : {request: 'Заявка', requestWord: 'заявка', proposal: 'предложение', buyer: 'покупатель', seller: 'поставщик', operator: 'оператор'};
+    result = result
+      .replace(/\bRFQ\s*[#№-]?\s*(\d+)\b/gi, `${labels.request} №$1`)
+      .replace(/\bRFQ\b/gi, labels.requestWord)
+      .replace(/(?<![\p{L}\p{N}_])КП(?![\p{L}\p{N}_])/giu, labels.proposal)
+      .replace(/\bAUTO\b/gi, lang.startsWith('ru') ? 'Автоподбор' : 'Automatic')
+      .replace(/\bSEMI\b/gi, lang.startsWith('ru') ? 'Нужно подтвердить' : 'Needs confirmation')
+      .replace(/\bMANUAL\b/gi, lang.startsWith('ru') ? 'Ручной подбор' : 'Manual')
+      .replace(/\bSLA\s+breach\b/gi, lang.startsWith('ru') ? 'нарушение срока' : 'overdue')
+      .replace(/\bSLA\b/gi, lang.startsWith('ru') ? 'срок' : 'deadline')
+      .replace(/\bbuyer\b/gi, labels.buyer)
+      .replace(/\bseller\b/gi, labels.seller)
+      .replace(/\boperator\b/gi, labels.operator)
+      .replace(/\bGMV\b/gi, lang.startsWith('ru') ? 'оборот' : 'turnover')
+      .replace(/\bKYB\b/gi, lang.startsWith('ru') ? 'проверка компании' : 'company verification');
+    return result.trim();
+  }
+  function humanizeDisplayPayload(value, key=null) {
+    if (Array.isArray(value)) return value.map(item => humanizeDisplayPayload(item));
+    if (value && typeof value === 'object') {
+      return Object.fromEntries(
+        Object.entries(value).map(([itemKey, itemValue]) => [
+          itemKey,
+          humanizeDisplayPayload(itemValue, itemKey),
+        ]),
+      );
+    }
+    if (typeof value === 'string' && DISPLAY_TEXT_KEYS.has(key)) {
+      return humanizeVisibleText(value);
+    }
+    return value;
+  }
   function safeSameOriginUrl(value) {
     if (!value || typeof value !== 'string') return '';
     try {
@@ -2163,11 +2218,19 @@
       list.innerHTML = '<div class="notif-empty">Нет уведомлений</div>';
       return;
     }
+    const kindLabels = {
+      info: tr('Система'),
+      order: tr('Заказ'),
+      payment: tr('Оплата'),
+      rfq: tr('Заявка'),
+      sla: tr('Срок'),
+      claim: tr('Обращение'),
+    };
     list.innerHTML = notif.items.map(n =>
       // esc() для всех полей, включая id (защита от подмены типа в JSON)
       '<div class="notif-item' + (n.is_read ? '' : ' unread') + '" data-id="' + esc(n.id) + '" data-url="' + esc(n.url || '') + '">' +
         '<div class="notif-row">' +
-          '<span class="notif-kind ' + esc(n.kind || 'info') + '">' + esc(n.kind || 'info') + '</span>' +
+          '<span class="notif-kind ' + esc(n.kind || 'info') + '">' + esc(kindLabels[n.kind] || kindLabels.info) + '</span>' +
           '<span class="notif-time">' + esc(notifTimeAgo(n.created_at)) + '</span>' +
         '</div>' +
         '<div class="notif-title">' + esc(n.title || '') + '</div>' +
@@ -2828,7 +2891,7 @@
             <div><span class="cat-dl">Название:</span> ${ti('title', r.title)}</div>
             <div><span class="cat-dl">Бренд:</span> ${ti('brand', r.brand)}</div>
             <div><span class="cat-dl">Завод-производитель:</span> ${ti('manufacturer', r.manufacturer)}</div>
-            <div><span class="cat-dl">Состояние:</span> ${sel('condition', {oem: 'OEM', aftermarket: 'Aftermarket', reman: 'REMAN'}, r.condition || 'oem')}</div>
+            <div><span class="cat-dl">Состояние:</span> ${sel('condition', {oem: 'OEM', aftermarket: 'Аналог', reman: 'Восстановленная'}, r.condition || 'oem')}</div>
             <div><span class="cat-dl">Наличие:</span> ${sel('availability', {in_stock: 'В наличии', backorder: 'Под заказ'}, r.availability || 'in_stock')}</div>
             <div class="cat-edit-line"><span class="cat-dl">Остаток:</span> <input class="cat-edit-field cat-edit-stock" type="number" min="0" step="1" data-field="stock_qty" value="${r.stock_qty || 0}" /> шт <span class="cat-edit-hint">&gt; 0 — в наличии</span></div>
             <div class="cat-edit-line"><span class="cat-dl">Цена EXW:</span> ${sel('currency', CCY, r.currency || 'USD')} <input class="cat-edit-field cat-edit-price" type="number" min="0" step="0.01" data-field="price" value="${r.price != null ? r.price : ''}" /></div>
@@ -3175,7 +3238,7 @@
       const nCat = items.filter((it) => it.in_catalog).length;
       const total = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
       const meta = [
-        {label: 'RFQ', value: '#' + rfqId},
+        {label: 'Заявка', value: '№' + rfqId},
         {label: tr('Режим'), value: String(d.mode_badge || tr('Стандарт'))},
         {label: tr('Срочность'), value: String(d.urgency_label || 'Standard')},
         {label: tr('Покупатель'), value: String(d.customer_name || tr('Покупатель'))},
@@ -3186,7 +3249,7 @@
       // Рендерим ТЕМ ЖЕ рендером, что и заказ (spec_results) — гарантированно
       // одинаковая вёрстка; единственное отличие — колонка Price редактируемая.
       return this.spec_results({
-        title: window.t('💬 Котировка по RFQ #{n}', {n: rfqId}),
+        title: window.t('Предложение по заявке №{n}', {n: rfqId}),
         title_meta: items.length + ' ' + tr('позиций') + (d.request_text ? ' · ' + d.request_text : ''),
         meta: meta,
         found: nCat,
@@ -4206,7 +4269,7 @@
             <div class="rlc-arrow">›</div>
           </button>
           <button type="button" class="rl-row-del"
-              title="${isPendingOrder ? 'Отменить заказ' : 'Удалить RFQ'} ${esc(r.number)}"
+              title="${isPendingOrder ? 'Отменить заказ' : 'Удалить заявку'} ${esc(r.number)}"
               onclick="event.stopPropagation();${delHandler}">×</button>
         </div>`;
       }).join('');
@@ -4220,7 +4283,7 @@
              onclick="window.__toggleCollapsibleCard&amp;&amp;window.__toggleCollapsibleCard(this)"
              onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window.__toggleCollapsibleCard&amp;&amp;window.__toggleCollapsibleCard(this);}">
           <span class="rl-coll-chev">${chev}</span>
-          <span class="rl-head-title">${esc(d.title || 'RFQ')}</span>
+          <span class="rl-head-title">${esc(d.title || 'Заявки')}</span>
           <span class="rl-head-count">${(d.rows || []).length}</span>
         </div>
         <div class="rl-list rl-coll-body" ${collapsedInit ? 'style="display:none;"' : ''}>${rows}</div>
@@ -4269,7 +4332,7 @@
           </div>
           <div class="rcard-money">
             <div class="rcard-money-cell">
-              <div class="rcard-money-lbl">${tr('Бюджет (estimate)')}</div>
+              <div class="rcard-money-lbl">${tr('Ориентировочный бюджет')}</div>
               <div class="rcard-money-val">${fmtMoney(d.budget_usd)}</div>
             </div>
             <div class="rcard-money-arrow">${d.best_quote_usd != null ? '→' : ''}</div>
@@ -4322,18 +4385,18 @@
 
       // ── CTAs ──
       const ctaCompare = (d.quotes_count > 0)
-        ? `<button class="rcard-cta act-btn" data-action="compare_quotes" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Сравнить котировки">${window.t('📊 Сравнить котировки ({n})', {n: d.quotes_count})}</button>`
+        ? `<button class="rcard-cta act-btn" data-action="compare_quotes" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Сравнить предложения">${window.t('Сравнить предложения ({n})', {n: d.quotes_count})}</button>`
         : '';
       const ctaProposal = (d.quotes_count > 0)
-        ? `<button class="rcard-cta-ghost act-btn" data-action="generate_proposal" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Скачать КП">${tr('📥 КП в PDF')}</button>`
+        ? `<button class="rcard-cta-ghost act-btn" data-action="generate_proposal" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Скачать предложение">${tr('Предложение в PDF')}</button>`
         : '';
-      const ctaAsk = `<button class="rcard-cta-ghost act-btn" data-action="ask_about_rfq" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Спросить оператора">${tr('💬 Оператору')}</button>`;
+      const ctaAsk = `<button class="rcard-cta-ghost act-btn" data-action="ask_about_rfq" data-params='{"rfq_id":${parseInt(rid,10)}}' data-label="Спросить оператора">${tr('Спросить оператора')}</button>`;
 
       return `<div class="card rcard">
         <div class="rcard-head">
-          <span class="rcard-emoji">📋</span>
+          <span class="rcard-emoji">${commandIconSvg('get_rfq_status')}</span>
           <div class="rcard-head-text">
-            <div class="rcard-title">RFQ #${esc(d.number || d.id)} ${urgencyBadge} ${modeBadge}</div>
+            <div class="rcard-title">Заявка №${esc(d.number || d.id)} ${urgencyBadge} ${modeBadge}</div>
             <div class="rcard-sub">${esc((d.description || d.status_label || '').substring(0,140))}</div>
           </div>
           <span class="rcard-status">${esc(d.status_label || d.status || 'new')}</span>
@@ -4606,7 +4669,7 @@
           <div class="so-desc">${esc(r.incoterm_desc)}</div>
           <div class="so-meta">
             <span class="so-ship">${tr('Доставка')}: ${fmtMoney(r.shipping, d.currency || 'USD')}${r.days ? ` · ~${r.days}${tr('д')}` : ''}</span>
-            <span class="so-landed">Landed: <b>${fmtMoney(r.landed, d.currency || 'USD')}</b></span>
+            <span class="so-landed">${tr('Итого с доставкой')}: <b>${fmtMoney(r.landed, d.currency || 'USD')}</b></span>
           </div>
         </div>`;
       }).join('');
@@ -4617,7 +4680,11 @@
     },
     spec_results(d) {
       const stkClass = (s) => ({in_stock:'in', backorder:'back', not_found:'no'})[s] || 'in';
-      const stkLabel = (s) => ({in_stock:tr('stock.in_stock'), backorder:'Backorder', not_found:'—'})[s] || s;
+      const stkLabel = (s) => ({
+        in_stock: tr('stock.in_stock'),
+        backorder: tr('Под заказ'),
+        not_found: '—',
+      })[s] || tr('Статус уточняется');
       const condLabel = (c) => {
         if (c === 'oem') return '<span class="spec-cond-oem">OEM</span>';
         if (c === 'analogue') return `<span class="spec-cond-an">${tr('Аналог')}</span>`;
@@ -4642,16 +4709,16 @@
       // Колонки non-qf таблицы списком — чтобы Qty/Доставку убирать чисто
       // (синхронно colgroup + thead + ячейки строки ниже).
       const specCols = [
-        {w: 8, th: 'Stock'},
+        {w: 8, th: tr('Наличие')},
         {w: 3, th: '#'},
         {w: 2, th: ''},
-        {w: 11, th: 'ID'},
-        {w: 16, th: 'Name'},
-        {w: 9, th: 'Brand'},
+        {w: 11, th: tr('Артикул')},
+        {w: 16, th: tr('Наименование')},
+        {w: 9, th: tr('Бренд')},
         {w: 8, th: tr('Состояние')},
-        {w: 4, th: 'Qty', right: true},
-        {w: 9, th: 'Price', right: true},
-        {w: 9, th: 'Weight', right: true},
+        {w: 4, th: tr('Кол-во'), right: true},
+        {w: 9, th: tr('Цена'), right: true},
+        {w: 9, th: tr('Вес'), right: true},
         ...(showSupplierCol ? [{w: 6, th: tr('Рейтинг'), right: true}] : []),
         ...(showShip ? [{w: 10, th: `${shipIcon} ${tr('Доставка')}`, right: true}] : []),
         ...(showShip ? [] : [{w: 7, th: tr('Котировки'), right: true}]),
@@ -4734,7 +4801,7 @@
               <td><span style="color:${_stColor};font-weight:600;">${esc(_noBall(s.status_badge))}</span></td>
               <td class="as-num">${s.rating}</td>
               <td class="as-num as-price">${fmtMoney(s.price, s.currency)}</td>
-              <td class="as-cond">${esc(({oem:'OEM',aftermarket:'Aftermarket',analog:'Aftermarket',reman:'REMAN'})[s.condition] || s.condition || '')}</td>
+	              <td class="as-cond">${esc(({oem:'OEM',aftermarket:tr('Аналог'),analog:tr('Аналог'),reman:tr('Восстановленная')})[s.condition] || s.condition || '')}</td>
               <td class="as-num">${s.stock || '—'}</td>
               <td class="as-wh" title="${esc(s.warehouse || '')}">${esc(s.warehouse || '—')}</td>
               <td class="as-num as-score">${s.score != null ? s.score : '—'}</td>
@@ -4747,7 +4814,7 @@
                 <div class="as-title">🔍 ${window.t('{n} поставщик(ов) по OEM', {n: suppliers.length})} <b>${esc(it.id)}</b></div>
                 <table class="as-table">
                   <thead><tr>
-                    <th class="as-col-rank">#</th><th class="as-col-label">Поставщик</th><th class="as-col-status">Статус</th><th class="as-col-rating">Рейтинг</th><th class="as-col-price">Цена EXW</th><th class="as-col-cond">Состояние</th><th class="as-col-stock">Остаток</th><th class="as-col-wh">Склад</th><th class="as-col-score">Score</th><th class="as-col-pick"></th>
+                    <th class="as-col-rank">#</th><th class="as-col-label">Поставщик</th><th class="as-col-status">Статус</th><th class="as-col-rating">Рейтинг</th><th class="as-col-price">Цена EXW</th><th class="as-col-cond">Состояние</th><th class="as-col-stock">Остаток</th><th class="as-col-wh">Склад</th><th class="as-col-score">Оценка</th><th class="as-col-pick"></th>
                   </tr></thead>
                   <tbody>${supRows}</tbody>
                 </table>
@@ -4758,13 +4825,13 @@
         // ── Маркер режима подбора per-row (ТЗ §4) ──
         // auto = зелёная точка, semi = жёлтый ⚠, manual = красный ✕
         const MODE_DOT = {
-          auto:   '<span class="spec-mode-dot spec-mode-dot-auto" title="AUTO · готово к покупке">●</span>',
-          semi:   '<span class="spec-mode-dot spec-mode-dot-semi" title="SEMI · нужно подтверждение оператора">⚠</span>',
-          manual: '<span class="spec-mode-dot spec-mode-dot-manual" title="MANUAL · нет в каталоге, нужна рассылка">✕</span>',
+          auto:   '<span class="spec-mode-dot spec-mode-dot-auto" title="Автоподбор · готово к покупке">●</span>',
+          semi:   '<span class="spec-mode-dot spec-mode-dot-semi" title="Нужно подтверждение оператора">⚠</span>',
+          manual: '<span class="spec-mode-dot spec-mode-dot-manual" title="Ручной подбор · позиции нет в каталоге">✕</span>',
         };
         const modeDot = MODE_DOT[it.item_mode] || '';
         const freshHint = (it.is_fresh === false && it.freshness_days != null)
-          ? ` <span class="spec-stale" title="Данные устарели на ${it.freshness_days} дн — попадает в SEMI">⏰${it.freshness_days}д</span>` : '';
+          ? ` <span class="spec-stale" title="Данные устарели на ${it.freshness_days} дн — требуется подтверждение">⏰${it.freshness_days}д</span>` : '';
         // Per-позиционные поля котировки (только когда форма редактируемая)
         const qfEditable = d.editable_price && it.rfq_item_id != null;
         const condSel = qfEditable
@@ -4801,7 +4868,12 @@
             <td class="spec-ship qf-lead-cell">${leadInp || (it.delivery_days != null ? esc(String(it.delivery_days)) + ' дн' : '—')}</td>
           </tr>${detailRow}`;
         }
-        const _CONDL = {oem:'OEM', aftermarket:'Aftermarket', analog:'Aftermarket', reman:'REMAN'};
+	        const _CONDL = {
+	          oem: 'OEM',
+	          aftermarket: tr('Аналог'),
+	          analog: tr('Аналог'),
+	          reman: tr('Восстановленная'),
+	        };
         const condBadge = it.condition
           ? esc(_CONDL[it.condition] || it.condition)
           : '—';
@@ -4844,14 +4916,14 @@
       const subParts = [];
       if (offers != null) subParts.push(window.t('{n} предложений', {n: offers}));
       if (sellers != null) subParts.push(window.t('{n} поставщиков', {n: sellers}));
-      if (bestMix != null) subParts.push(`best mix ${fmtMoney(bestMix, d.currency || 'USD')}`);
+      if (bestMix != null) subParts.push(`лучший набор ${fmtMoney(bestMix, d.currency || 'USD')}`);
 
       // ── Бейдж режима подбора (ТЗ §4) ──
       const MODE_BADGE = {
-        auto:   {label: '⚡ AUTO',          cls: 'spec-mode-auto',   hint: 'найдено в каталоге · Надёжные поставщики · свежие данные'},
-        semi:   {label: '⏳ SEMI',          cls: 'spec-mode-semi',   hint: 'нужно подтверждение оператора (~15 мин)'},
-        manual: {label: '📨 MANUAL',        cls: 'spec-mode-manual', hint: 'позиции нет в каталоге — нужна рассылка поставщикам'},
-        mixed:  {label: '🔀 MIXED',         cls: 'spec-mode-mixed',  hint: 'часть позиций auto, часть требует операторской работы'},
+        auto:   {label: 'Автоподбор',          cls: 'spec-mode-auto',   hint: 'найдено в каталоге · надёжные поставщики · свежие данные'},
+        semi:   {label: 'Нужно подтвердить',   cls: 'spec-mode-semi',   hint: 'требуется подтверждение оператора, срок около 15 минут'},
+        manual: {label: 'Ручной подбор',       cls: 'spec-mode-manual', hint: 'позиции нет в каталоге — требуется запрос поставщикам'},
+        mixed:  {label: 'Смешанный подбор',    cls: 'spec-mode-mixed',  hint: 'часть позиций подобрана автоматически, остальные проверяет оператор'},
       };
       const mb = MODE_BADGE[d.card_mode] || null;
       // Бейдж маршрутизации (AUTO/SEMI/MANUAL) — внутренний, показываем только
@@ -4859,7 +4931,7 @@
       const _showMode = !!(d.editable_price || d.qf || (d.meta && d.meta.length));
       const modeBadge = (mb && _showMode) ? `<span class="spec-mode-badge ${mb.cls}" title="${esc(mb.hint)}">${esc(mb.label)}</span>` : '';
       const modeBreakdown = d.card_mode === 'mixed'
-        ? `<span class="spec-mode-mini">${d.auto_count||0} auto · ${d.semi_count||0} semi · ${d.manual_count||0} manual</span>`
+        ? `<span class="spec-mode-mini">${d.auto_count||0} автоматически · ${d.semi_count||0} на подтверждении · ${d.manual_count||0} вручную</span>`
         : '';
       // Опциональный meta-блок (для заказов: статус/оплата/покупатель/резерв)
       const metaRows = (d.meta && d.meta.length) ? `
@@ -4868,7 +4940,11 @@
         </div>` : '';
       // Котировка (d.qf) рендерится этим же рендером: добавляем класс qf-card,
       // дата-атрибуты RFQ, кастомные подписи KPI и подвал-форму с кнопкой.
-      const _kpiL = d.kpi_labels || ['Found', 'Analogue', 'Not found'];
+	      const _kpiL = d.kpi_labels || [
+	        tr('Найдено'),
+	        tr('Аналоги'),
+	        tr('Не найдено'),
+	      ];
       const _liveRfqId = String(d.rfq_id || (d.qf && d.qf.rfq_id) || '');
       const _liveAttrs = _liveRfqId ? ` data-live-rfq-id="${esc(_liveRfqId)}"` : '';
       const _qfAttrs = d.qf
@@ -4888,12 +4964,12 @@
           <div class="spec-kpi"><div class="spec-kpi-num red">${notFound}</div><div class="spec-kpi-label">${esc(_kpiL[2])}</div></div>
         </div>
         <div class="spec-tbl-wrap">
-          <table class="spec-tbl spec-tbl-fixed">
+	          <table class="spec-tbl spec-tbl-fixed${qfMode ? ' qf-spec-tbl' : ''}">
             <colgroup>${qfMode
               ? '<col style="width:11%"><col style="width:4%"><col style="width:13%"><col style="width:19%"><col style="width:12%"><col style="width:10%"><col style="width:13%"><col style="width:6%"><col style="width:12%">'
               : nonQfColgroup}</colgroup>
             <thead><tr>${qfMode
-              ? `<th>Stock</th><th>#</th><th>ID</th><th>Name</th><th>Brand</th><th>${tr('Тип')}</th><th>Price</th><th>Qty</th><th>${tr('Срок')}</th>`
+	              ? `<th>${tr('Наличие')}</th><th>#</th><th>${tr('Артикул')}</th><th>${tr('Наименование')}</th><th>${tr('Бренд')}</th><th>${tr('Тип')}</th><th>${tr('Цена')}</th><th>${tr('Кол-во')}</th><th>${tr('Срок')}</th>`
               : nonQfHead}
             </tr></thead>
             <tbody>${rows}</tbody>
@@ -5334,7 +5410,7 @@
       .map(([k, v]) => `<div style="display:flex;gap:8px;padding:3px 0;font-size:12px;"><span style="color:rgba(0,0,0,0.55);min-width:90px;">${esc(k)}:</span><span>${esc(String(v))}</span></div>`)
       .join('');
     return `<div class="card">
-      <div class="card-title" style="margin-bottom:8px;">${esc(type)} <span style="font-weight:400;color:rgba(0,0,0,0.45);font-size:11px;">(обновите страницу — Cmd+Shift+R)</span></div>
+      <div class="card-title" style="margin-bottom:8px;">Не удалось отобразить этот блок <span style="font-weight:400;color:rgba(0,0,0,0.65);font-size:11px;">Обновите страницу и повторите действие</span></div>
       ${rows}
     </div>`;
   }
@@ -5345,7 +5421,7 @@
       // style: primary (главный зелёный/чёрный CTA), warn (янтарный SEMI),
       // soft (мягкий outline для MANUAL), default (обычная чёрная кнопка)
       const styleCls = a.style ? ` act-btn-${esc(a.style)}` : '';
-      const label = a.label || (a.params && a.params._label) || a.action || tr('Действие');
+      const label = a.label || (a.params && a.params._label) || tr('Действие');
       return `<button class="act-btn${styleCls}" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(label)}">${esc(label)}</button>`;
     }).join('') + '</div>';
   }
@@ -5420,15 +5496,13 @@
     // вообще не показывали индикатор, и при дольше 200-300мс юзер думал
     // «не работает».
     if (minimal) {
-      wrap.innerHTML = `${avatar('assistant')}
-        <div class="msg-body">
+      wrap.innerHTML = `<div class="msg-body">
           <div class="working working-min">
             <span class="working-dots"><span></span><span></span><span></span></span>
           </div>
         </div>`;
     } else {
-      wrap.innerHTML = `${avatar('assistant')}
-        <div class="msg-body">
+      wrap.innerHTML = `<div class="msg-body">
           <div class="working">
             <div class="working-logo">${STAR_SVG_BLACK}</div>
             <span class="working-text" id="workingText">${esc(messages[0])}</span>
@@ -5472,6 +5546,17 @@
 
   function addMessage(role, content, cards=[], actions=[], contextRefs=[], messageId=null, suggestions=[], contextualActions=[], fromServer=true) {
     showConv();
+    if (role === 'assistant') {
+      content = humanizeVisibleText(content);
+      cards = humanizeDisplayPayload(cards);
+      actions = humanizeDisplayPayload(actions);
+      contextualActions = humanizeDisplayPayload(contextualActions);
+      suggestions = (suggestions || []).map(item => (
+        typeof item === 'string'
+          ? humanizeVisibleText(item)
+          : humanizeDisplayPayload(item)
+      ));
+    }
     const wrap = document.createElement('div');
     wrap.className = 'msg msg-' + role;
     if (messageId) wrap.dataset.messageId = messageId;
@@ -5480,10 +5565,11 @@
     // цен / результат / форма) должен быть сразу виден, а текст-комментарий
     // («Проверил 13 артикулов…») — как подпись снизу. Для user/action
     // сообщений порядок не важен (карточек обычно нет).
+    const showIdentity = role === 'user';
     wrap.innerHTML = `
-      ${avatar(role)}
+      ${showIdentity ? avatar(role) : ''}
       <div class="msg-body">
-        <div class="msg-author">${esc(authorLabel(role))}</div>
+        ${showIdentity ? `<div class="msg-author">${esc(authorLabel(role))}</div>` : ''}
         <div class="msg-cards"></div>
         <div class="msg-content${role === 'action' ? ' msg-action-tag' : ''}${isAi ? ' msg-content-ai' : ''}"></div>
         <div class="msg-refs"></div>
@@ -5549,11 +5635,11 @@
   function renderContextualActions(items) {
     if (!items || !items.length) return '';
     const btns = items.map(a => {
-      const label = a.label || (a.params && a.params._label) || a.action || tr('Действие');
+      const label = a.label || (a.params && a.params._label) || tr('Действие');
       return `<button class="act-btn ctx-btn" data-action="${esc(a.action)}" data-params='${esc(JSON.stringify(a.params || {}))}' data-label="${esc(label)}">${esc(label)}</button>`;
     }).join('');
     return `<div class="ctx-row">
-      <span class="ctx-label">💡 Также можете:</span>
+      <span class="ctx-label">Также можете:</span>
       ${btns}
     </div>`;
   }
@@ -5567,8 +5653,8 @@
     // Заказ #N — самое частое
     html = html.replace(/(?<![\w-])(заказ|order|зак\.)\s*#?\s*(\d{1,7})\b/gi,
       (full, kw, id) => `<span class="entity-link" data-action="track_order" data-params='{"order_id":${id}}'>${full}</span>`);
-    // RFQ #N
-    html = html.replace(/(?<![\w-])RFQ\s*[#-]?\s*(\d{1,7})\b/gi,
+    // Заявка №N и сохранённый старый формат RFQ #N
+    html = html.replace(/(?<![\w-])(?:заявка|запрос|RFQ)\s*[№#-]?\s*(\d{1,7})\b/gi,
       (full, id) => `<span class="entity-link" data-action="rfq_detail" data-params='{"rfq_id":${id}}'>${full}</span>`);
     // Просто #N — последний фолбек, если идёт сразу после слов «заказ/order» уже обработано
     // \n → <br> чтобы каждая строка была отдельным text node для localizeNode/i18n
@@ -5642,7 +5728,7 @@
     const priceCell = mainRow.querySelector('.spec-price');
     if (priceCell) priceCell.innerHTML = sym + Number(offer.price||0).toLocaleString('en-US',{maximumFractionDigits:0});
     const condCell = mainRow.querySelector('.spec-cond-cell');
-    if (condCell) condCell.textContent = ({oem:'OEM',aftermarket:'Aftermarket',analog:'Aftermarket',reman:'REMAN'})[offer.condition]||offer.condition||'—';
+    if (condCell) condCell.textContent = ({oem:'OEM',aftermarket:'Аналог',analog:'Аналог',reman:'Восстановленная'})[offer.condition]||offer.condition||'—';
     const spPlain = mainRow.querySelector('.sp-plain');
     if (spPlain) {
       spPlain.style.color = ({trusted:'#16a34a',sandbox:'#b45309',risky:'#dc2626'})[offer.status]||'inherit';
@@ -5733,7 +5819,7 @@
     // Без фальшивых наград — посыл «ответь, пока запрос активен».
     const sp = q.speed || null;
     const speedBits = [];
-    if (q.rfq_age) speedBits.push('⏱ ' + esc(q.rfq_age));
+    if (q.rfq_age) speedBits.push(esc(q.rfq_age));
     if (sp && sp.median_min != null) {
       speedBits.push('ваша скорость ответа ' + esc(sp.median_label)
         + (sp.faster_than_pct != null ? ' · быстрее ' + esc(String(sp.faster_than_pct)) + '% продавцов' : ''));
@@ -6624,7 +6710,7 @@
             try { loadConv(state.convId, {silent: true}); } catch(_){}
           } else {
             showNotifToast({
-              title: '📦 Обновление по ORD-' + d.order_id,
+              title: 'Обновление по заказу №' + d.order_id,
               body: 'Открыть чат сделки →',
               url: d.conversation_id ? '/chat/' : null,
             });
@@ -6632,12 +6718,12 @@
           loadConvList();  // bump «непрочитанных» в sidebar
         } else if (d.type === 'operator_alert') {
           showNotifToast({
-            title: (d.event === 'sla_semi_overdue'   ? '⚠️ SEMI просрочен' :
-                    d.event === 'sla_manual_overdue' ? '⚠️ MANUAL >48ч' :
-                    d.event === 'sla_breach'         ? '🔥 SLA breach' :
-                    d.event === 'claim_opened'       ? '🛡 Открыт claim' :
-                    'Алерт оператору'),
-            body: 'Откройте «Алерты оператора» в сайдбаре',
+            title: (d.event === 'sla_semi_overdue'   ? 'Просрочено подтверждение заявки' :
+                    d.event === 'sla_manual_overdue' ? 'Просрочен ручной подбор' :
+                    d.event === 'sla_breach'         ? 'Нарушен срок выполнения' :
+                    d.event === 'claim_opened'       ? 'Открыта рекламация' :
+                    'Новое уведомление оператору'),
+            body: 'Откройте уведомления оператора в боковом меню',
           });
           loadConvList();
         }
@@ -8004,7 +8090,7 @@
   //  Хранение — localStorage per role (мгновенно, без сервера).
   // ============================================================
   const ROLE_RU = {
-    buyer: 'Покупатель', seller: 'Продавец', operator: 'Оператор',
+    buyer: 'Покупатель', seller: 'Поставщик', operator: 'Оператор',
     operator_manager: 'KAM', operator_logist: 'Логист',
     operator_customs: 'Таможня', operator_payment: 'Платежи', admin: 'Администратор',
   };
@@ -8041,7 +8127,7 @@
     return {
       id: pillId(b.action, b.params),
       emoji: b.emoji || b.icon || '•',
-      text: (b.label != null ? b.label : (b.tkey ? tr(b.tkey) : b.action)),
+      text: humanizeVisibleText(b.label != null ? b.label : (b.tkey ? tr(b.tkey) : b.action)),
       sub: (b.sub != null ? b.sub : (b.subKey ? tr(b.subKey) : '')),
       action: b.action, params: b.params || {}, srcRole: srcRole || null,
     };
@@ -8096,6 +8182,33 @@
     return { visible, avail, cat, global, prefs, byId };
   }
 
+  function commandIconSvg(action) {
+    const name = String(action || '');
+    let body = '<rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 9h8M8 13h8M8 17h5"></path>';
+    if (/support|claim/.test(name)) {
+      body = '<path d="M4 13a8 8 0 0 1 16 0"></path><path d="M4 13v5a2 2 0 0 0 2 2h2v-7H4ZM20 13v5a2 2 0 0 1-2 2h-2v-7h4Z"></path>';
+    } else if (/analytics|dashboard|gmv|saving|discount/.test(name)) {
+      body = '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"></path>';
+    } else if (/balance|payment|pay_|deposit|accrual/.test(name)) {
+      body = '<rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M16 14h2"></path>';
+    } else if (/drawing/.test(name)) {
+      body = '<path d="M3 17 17 3l4 4L7 21H3v-4Z"></path><path d="m13 7 4 4"></path>';
+    } else if (/team|user|customer|supplier/.test(name)) {
+      body = '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path>';
+    } else if (/search|catalog|part|product|warehouse/.test(name)) {
+      body = '<circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path>';
+    } else if (/order|deal|rfq|queue|quote|shipment|logistic/.test(name)) {
+      body = '<path d="m21 8-9-5-9 5 9 5 9-5Z"></path><path d="m3 8 9 5 9-5v8l-9 5-9-5V8Z"></path>';
+    } else if (/upload|import/.test(name)) {
+      body = '<path d="M12 16V4M7 9l5-5 5 5"></path><path d="M5 20h14"></path>';
+    } else if (/verification|onboarding|kyb|moderation/.test(name)) {
+      body = '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path>';
+    } else if (/setting|integration/.test(name)) {
+      body = '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1-2.9 2.9-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21h-4v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1-2.9-2.9.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1 2.9-2.9.1.1a1.7 1.7 0 0 0 1.8.3 1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1 2.9 2.9-.1.1a1.7 1.7 0 0 0-.3 1.8 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z"></path>';
+    }
+    return `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+  }
+
   function applyRoleWelcome(role) {
     _ensurePillCSS();
     // Гость на публичном экране получает отдельный безопасный набор действий.
@@ -8111,7 +8224,7 @@
     p.classList.toggle('wp-guest', isGuest);
     const pills = pillState(role).visible;
     const html = pills.map(b => {
-      const label = `${b.emoji} ${b.text}`;
+      const label = humanizeVisibleText(b.text);
       const params = { ...(b.params || {}), _label: label };
       const subHtml = b.sub ? ` <span class="pill-sub">${esc(b.sub)}</span>` : '';
       // Бейдж «требует действия» на ГЛАВНОЙ не показываем — только в меню пилюль.
@@ -8120,6 +8233,7 @@
         data-pill-action="${esc(b.action)}"
         data-pill-params="${esc(JSON.stringify(params))}">
         <span class="pill-del" aria-label="Убрать" title="Убрать">×</span>
+        <span class="pill-icon" aria-hidden="true">${commandIconSvg(b.action)}</span>
         <span class="pill-txt">${esc(label)}${subHtml}</span>
       </button>`;
     }).join('');
@@ -8161,8 +8275,8 @@
     }
     list.innerHTML = commands.map((command, index) => `
       <button class="command-item" type="button" data-command-index="${index}">
-        <span class="command-item-icon" aria-hidden="true">${esc(command.icon || '•')}</span>
-        <span>${esc(command.label || command.action)}</span>
+        <span class="command-item-icon" aria-hidden="true">${commandIconSvg(command.action)}</span>
+        <span>${esc(humanizeVisibleText(command.label || command.action))}</span>
       </button>
     `).join('');
     list.querySelectorAll('.command-item').forEach(button => {
@@ -8590,7 +8704,8 @@
       + '.pm-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid rgba(0,0,0,.09);border-radius:10px;margin-bottom:6px;background:#fff}'
       + '.pm-row.dragover{border-color:#E84A21;background:rgba(232,74,33,.07)}'
       + '.pm-grip{opacity:.35;cursor:grab;font-size:13px;user-select:none}'
-      + '.pm-emoji{font-size:15px;width:20px;text-align:center}'
+      + '.pm-emoji{width:20px;height:20px;display:grid;place-items:center}'
+      + '.pm-emoji svg{width:17px;height:17px;display:block}'
       + '.pm-lbl{flex:1;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '.pm-src{font-size:10px;opacity:.45;border:1px solid rgba(0,0,0,.14);border-radius:6px;padding:1px 5px;white-space:nowrap}'
       + '.pm-badge{min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:#e0245e;color:#fff;font-size:11px;font-weight:700;line-height:18px;text-align:center}'
@@ -8658,7 +8773,7 @@
       window.t('<div class="pm-sec">Убрано из стандартных ({n})</div>', {n: missingDefaults.length})
       + `<div class="pm-hint">Похоже, вот это вы убирали — нажмите «Вернуть».</div>`
       + missingDefaults.map(p => `<div class="pm-row pm-missing">
-          <span class="pm-emoji">${esc(p.emoji)}</span>
+          <span class="pm-emoji">${commandIconSvg(p.action)}</span>
           <span class="pm-lbl">${esc(p.text)}</span>${pillBadgeHtml(p.action, 'pm-badge')}
           <button class="pm-act pin" data-pm="pin" data-pid="${esc(p.id)}" title="Вернуть">＋ Вернуть</button>
         </div>`).join('')
@@ -8673,31 +8788,30 @@
            <button class="pm-act danger" data-pm="del-yes" data-pid="${esc(p.id)}" title="Да">✓</button>
            <button class="pm-act" data-pm="del-no" title="Отмена">✕</button>`
         : (isCustom
-            ? `<button class="pm-act danger" data-pm="del" data-pid="${esc(p.id)}" title="Удалить пилюлю">🗑</button>`
+            ? `<button class="pm-act danger" data-pm="del" data-pid="${esc(p.id)}" title="Удалить пилюлю" aria-label="Удалить"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 10v6M14 10v6"/></svg></button>`
             : `<button class="pm-act" data-pm="unpin" data-pid="${esc(p.id)}" title="Убрать с экрана">−</button>`);
       return `<div class="pm-row" draggable="true" data-pid="${esc(p.id)}">
         <span class="pm-grip" title="Перетащите, чтобы переставить">⠿</span>
-        <span class="pm-emoji">${esc(p.emoji)}</span>
+        <span class="pm-emoji">${commandIconSvg(p.action)}</span>
         <span class="pm-lbl">${esc(p.text)}</span>${pillBadgeHtml(p.action, 'pm-badge')}
         ${del}
       </div>`;
     }).join('') || `<div class="pm-empty">Нет закреплённых пилюль</div>`;
 
     const availRows = st.avail.map(p => `
-      <div class="pm-row pm-avail-row" data-text="${esc((p.emoji + ' ' + p.text).toLowerCase())}">
-        <span class="pm-emoji">${esc(p.emoji)}</span>
+      <div class="pm-row pm-avail-row" data-text="${esc(p.text.toLowerCase())}">
+        <span class="pm-emoji">${commandIconSvg(p.action)}</span>
         <span class="pm-lbl">${esc(p.text)}</span>${pillBadgeHtml(p.action, 'pm-badge')}
         ${p.srcRole && p.srcRole !== role ? `<span class="pm-src">${esc(ROLE_RU[p.srcRole] || p.srcRole)}</span>` : ''}
         <button class="pm-act pin" data-pm="pin" data-pid="${esc(p.id)}" title="Закрепить">＋</button>
       </div>`).join('') || `<div class="pm-empty">Все пилюли уже на экране</div>`;
 
     const actionOpts = st.global.filter(p => __pillAllowed(role, p.action)).map(p =>
-      `<option value="${esc(p.id)}">${esc(p.emoji + ' ' + p.text)} — ${esc(ROLE_RU[p.srcRole] || p.srcRole || '')}</option>`
+      `<option value="${esc(p.id)}">${esc(p.text)} — ${esc(ROLE_RU[p.srcRole] || p.srcRole || '')}</option>`
     ).join('');
     const addForm = __pmAddOpen ? `
       <div class="pm-form">
         <div class="pm-frow">
-          <input id="pm-add-emoji" class="pm-emoji-in" placeholder="✨" maxlength="3" value="✨">
           <input id="pm-add-label" placeholder="Название пилюли">
         </div>
         <select id="pm-add-action"><option value="" disabled>— действие пилюли —</option>${actionOpts}</select>
@@ -8705,7 +8819,7 @@
           <button class="pm-addbtn" data-pm="add-save" style="flex:1">Добавить на экран</button>
           <button class="pm-act" data-pm="add-cancel" style="height:auto;padding:0 14px">Отмена</button>
         </div>
-      </div>` : `<button class="pm-addbtn" data-pm="add-open" style="margin-top:8px">➕ Своя пилюля</button>`;
+      </div>` : `<button class="pm-addbtn" data-pm="add-open" style="margin-top:8px">Добавить свою пилюлю</button>`;
 
     box.innerHTML = `
       <div class="pm-head">
@@ -8722,7 +8836,7 @@
       <input class="pm-search" id="pm-search" placeholder="Поиск пилюли по всем кабинетам…">
       <div id="pm-avail">${availRows}</div>
       <div class="pm-sec">Стандартный набор</div>
-      <div class="pm-hint">${((ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills || []).length} пилюль по умолчанию для кабинета «${esc(roleName)}». Вернёт всё как было — порядок и состав.</div>
+      <div class="pm-hint">${((ROLE_WELCOME[role] || ROLE_WELCOME.buyer).pills || []).length} команд по умолчанию для кабинета «${esc(roleName)}». Будут восстановлены исходные порядок и состав.</div>
       <button class="pm-reset" data-pm="reset">↺ Восстановить стандартный набор</button>`;
     wirePillMaster();
   }
@@ -8743,7 +8857,6 @@
       if (pm === 'add-cancel') { __pmAddOpen = false; renderPillMaster(); return; }
       if (pm === 'reset') { __pmConfirmId = null; __pillResetRole(); return; }
       if (pm === 'add-save') {
-        const emoji = (document.getElementById('pm-add-emoji') || {}).value || '✨';
         const label = (document.getElementById('pm-add-label') || {}).value || '';
         const sel = document.getElementById('pm-add-action');
         const chosenId = sel && sel.value;
@@ -8751,7 +8864,7 @@
         const src = globalPillCatalog().find(p => p.id === chosenId);
         if (!src) return;
         __pmAddOpen = false;
-        __pillAddCustom(emoji.trim(), label.trim() || src.text, src.action, src.params);
+        __pillAddCustom('', label.trim() || src.text, src.action, src.params);
         return;
       }
     };
@@ -8892,7 +9005,7 @@
     if (r.indexOf('operator') === 0) {
       var sub = r.replace('operator_', '').replace('operator', 'manager') || 'manager';
       var ON = {
-        manager: '🎛 Проект — это сделка / консолидированная поставка. Контракты, таможня, логистика, платежи — вся поставка от RFQ до доставки; видны и покупатель, и продавцы.',
+        manager: 'Проект — это сделка или консолидированная поставка. Контракты, таможня, логистика и платежи собраны от заявки до доставки; видны покупатель и поставщики.',
         logist:  '🚚 Проект — это поставка с фокусом на доставке. Соберите логистику (BL/CMR, маршрут) и статус таможни — все отгрузки сделки под контролем.',
         customs: '🛂 Проект — это поставка с фокусом на растаможке. Декларации, HS-коды, инвойсы, сертификаты — таможня по всей сделке в одном месте.',
         payment: '💳 Проект — это поставка с фокусом на финансах. Инвойсы, эскроу, акты, выплаты — деньги по сделке: оплата покупателя и payout продавцам.',
@@ -8901,8 +9014,8 @@
     }
     var base = (r === 'seller') ? 'seller' : 'buyer';
     var NOTE = {
-      buyer: '📦 Проект — это ваша закупка под технику или объект. Загрузите парк техники, историю закупок и чертежи — AI точнее подберёт запчасти и соберёт RFQ в контексте проекта.',
-      seller: '🏷 Проект — это ваше товарное направление (сегмент). Соберите прайс, чертежи, сертификаты и фото по нему — быстрее формируете КП по входящим RFQ, и покупатель больше доверяет.',
+      buyer: '📦 Проект — это ваша закупка под технику или объект. Загрузите парк техники, историю закупок и чертежи — помощник точнее подберёт запчасти и соберёт заявку в контексте проекта.',
+      seller: '🏷 Проект — это ваше товарное направление. Соберите прайс, чертежи, сертификаты и фото — так предложения по входящим заявкам формируются быстрее и вызывают больше доверия.',
     };
     var PH = {buyer: 'Напр. Парк Komatsu — Ковдор', seller: 'Напр. Ходовка Komatsu'};
     return {note: NOTE[base], placeholder: PH[base]};
@@ -8965,12 +9078,12 @@
 
 
 
-  // Category icons → визуальное отделение admin/purchase/support от обычных
+  // Категории истории отделяем тем же контурным набором, что и команды.
   const CATEGORY_ICON = {
-    admin:    '🛡',
-    purchase: '🛒',
-    support:  '🎧',
-    general:  '💬',
+    admin:    commandIconSvg('admin_dashboard'),
+    purchase: commandIconSvg('get_my_deals'),
+    support:  commandIconSvg('support_home'),
+    general:  commandIconSvg('conversation'),
   };
 
   // Группировка чатов по датам (ChatGPT/Linear-style).
@@ -9015,7 +9128,7 @@
       const date = c.updated_at ? new Date(c.updated_at) : null;
       const meta = date ? relativeTime(date) : '';
       const lastMeta = c.last_message ? c.last_message.content.substring(0, 40) : meta;
-      const icon = CATEGORY_ICON[c.category || 'general'] || '💬';
+      const icon = CATEGORY_ICON[c.category || 'general'] || CATEGORY_ICON.general;
       const cid = esc(c.id);
       return `<div class="side-item-stack ${c.id === state.convId ? 'active' : ''}" data-conv-id="${cid}" onclick="openConv('${cid}')" oncontextmenu="return openConvCtxMenu(event,'${cid}')">
         <div class="side-item-stack-content">
@@ -9981,31 +10094,31 @@
       // ключевые правила сразу: одна страна, Q=1, AI оценка, и т.п.
       cards.push({type:'raw_html', data:{html:
         '<div class="card import-intro">'
-        + '<div class="ii-title">' + tr('📘 Как работает загрузка прайса') + '</div>'
-        + '<div class="ii-sub">' + tr('Несколько шагов — и ваш файл превратится в готовые карточки маркетплейса.') + '</div>'
+        + '<div class="ii-title">' + tr('Как работает загрузка прайса') + '</div>'
+        + '<div class="ii-sub">' + tr('Несколько шагов — и ваш файл превратится в готовые карточки товаров.') + '</div>'
         + '<div class="ii-steps">'
         +   '<div class="ii-step"><span class="ii-n">1</span>'
-        +     '<div><b>' + tr('🔍 Распознаём колонки в вашем файле') + '</b><br>'
+        +     '<div><b>' + tr('Распознаём колонки в вашем файле') + '</b><br>'
         +       '<span class="ii-hint">Системный словарь поддерживает заголовки на 5 языках. '
-        +       'Если что-то непонятное — подключаем AI.</span></div></div>'
+        +       'Если что-то непонятно — подключаем умный анализ.</span></div></div>'
         +   '<div class="ii-step"><span class="ii-n">2</span>'
-        +     '<div><b>💬 Семь коротких вопросов</b><br>'
+        +     '<div><b>Семь коротких вопросов</b><br>'
         +       '<span class="ii-hint">Бренд, тип товара, наличие, завод-производитель, '
         +       'наценки FOB SEA и FOB AIR. Можно отвечать тапом по подсказке.</span></div></div>'
         +   '<div class="ii-step"><span class="ii-n">3</span>'
-        +     '<div><b>📋 Общие поля поставщика</b><br>'
-        +       '<span class="ii-hint">🌍 Страна отправления, адрес склада, морпорт и аэропорт. '
+        +     '<div><b>Общие поля поставщика</b><br>'
+        +       '<span class="ii-hint">Страна отправления, адрес склада, морской порт и аэропорт. '
         +       'Подсказки с международными кодами UN/LOCODE.</span></div></div>'
         +   '<div class="ii-step"><span class="ii-n">4</span>'
-        +     '<div><b>📊 Готовый XLSX в формате маркетплейса</b><br>'
+        +     '<div><b>Готовый файл в формате площадки</b><br>'
         +       '<span class="ii-hint">Открывается справа в превью — можно проверить и скачать.</span></div></div>'
         +   '<div class="ii-step"><span class="ii-n">5</span>'
-        +     '<div><b>📥 Загрузка в каталог</b><br>'
+        +     '<div><b>Загрузка в каталог</b><br>'
         +       '<span class="ii-hint">Перед записью в базу — итоговая сводка: '
         +       'что взято из файла, что вы указали, какие правила применены.</span></div></div>'
         + '</div>'
         + '<div class="ii-rules">'
-        +   '<div class="ii-rule-title">' + tr('⚠️ Что важно знать') + '</div>'
+        +   '<div class="ii-rule-title">' + tr('Что важно знать') + '</div>'
         +   '<ul>'
         +     '<li><b>Одна загрузка — одна страна отправления.</b> '
         +     'Для разных стран — отдельные файлы.</li>'
@@ -10022,7 +10135,7 @@
       // 1. Превью «как ляжет в базу»
       if (data.mapped_preview && (data.mapped_preview.rows || []).length) {
         cards.push({type:'table_preview', data:{
-          title: '✅ Как ляжет в базу (первые строки)',
+          title: 'Как данные будут сохранены (первые строки)',
           headers: data.mapped_preview.headers,
           rows: data.mapped_preview.rows,
         }});
@@ -12036,7 +12149,12 @@
       $('sideUserName').textContent = name;
       $('sideUserRole').textContent = state.config.anonymous
         ? tr('guest.mode')
-        : (state.config.role || '').replace('operator_', '').replace(/_/g, ' ');
+        : (state.config.role_label || {
+            buyer: 'Покупатель',
+            seller: 'Поставщик',
+            operator: 'Оператор',
+            admin: 'Администратор',
+          }[(state.config.role || '').replace(/^operator_.+$/, 'operator')] || 'Пользователь');
       if (!state.config.anonymous) $('sideAvatar').textContent = initial;
       // Активная вкладка role-toggle
       const r = state.config.role || 'buyer';

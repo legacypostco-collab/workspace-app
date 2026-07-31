@@ -31,7 +31,7 @@
     const lineTotal = it => (Number(it.price) || 0) * (Number(it.qty) || 1);
     const total = priced.reduce((s, it) => s + lineTotal(it), 0);
     const currency = (priced[0] || {}).currency || 'USD';
-    const proposalNo = `КП-${String(d.id).padStart(5, '0')}`;
+    const proposalNo = `Предложение-${String(d.id).padStart(5, '0')}`;
     const validUntil = (() => {
       const dd = new Date(); dd.setDate(dd.getDate() + 14);
       return dd.toLocaleDateString('ru-RU', {day:'2-digit', month:'long', year:'numeric'});
@@ -43,7 +43,7 @@
           <div class="pp-eyebrow">${esc(proposalNo)}</div>
           <h1 class="pp-name">Коммерческое предложение</h1>
           <div class="pp-meta" style="margin-top:8px;">
-            <span>RFQ <strong>#${esc(d.id)}</strong></span>
+            <span>Заявка <strong>№${esc(d.id)}</strong></span>
             ${d.customer_name ? `<span>Клиент: <strong>${esc(d.customer_name)}</strong></span>` : ''}
             ${d.created_at ? `<span>Дата: <strong>${esc(fmtDate(d.created_at))}</strong></span>` : ''}
             <span>Действительно до: <strong>${esc(validUntil)}</strong></span>
@@ -59,7 +59,7 @@
             Скачать PDF
           </a>
           <a class="pp-btn primary" href="/chat/rfq/${esc(d.id)}/">
-            Вернуться к RFQ
+            Вернуться к заявке
           </a>
         </div>
       </div>
@@ -85,10 +85,10 @@
 
       <div class="sec">
         <div class="sec-h">
-          <h2>Состав КП</h2>
+          <h2>Состав предложения</h2>
           <span class="sec-pill">${items.length} позиций</span>
         </div>
-        ${items.length === 0 ? '<div class="loading" style="padding:30px;">В RFQ нет позиций для КП</div>' : `
+        ${items.length === 0 ? '<div class="loading" style="padding:30px;">В заявке нет позиций для предложения</div>' : `
         <table class="lines">
           <thead>
             <tr>
@@ -154,7 +154,7 @@
       if (!r.ok) throw new Error('HTTP ' + r.status);
       render(await r.json());
     } catch(e) {
-      $('ppContent').innerHTML = `<div class="loading">⚠️ Не удалось загрузить КП: ${esc(e.message)}</div>`;
+      $('ppContent').innerHTML = `<div class="loading">Не удалось загрузить предложение: ${esc(e.message)}</div>`;
     }
   }
   load();
