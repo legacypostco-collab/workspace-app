@@ -12,6 +12,8 @@ from decimal import Decimal
 from django.utils import timezone
 from django.utils.translation import gettext as _, gettext_lazy as _l, ngettext
 
+from marketplace.participant_identity import customer_label
+
 from .actions import ActionResult, register
 from .rfq_mode_badge import mode_badge_with_sla
 from .security import confirmation_is_true
@@ -577,7 +579,10 @@ def generate_qr(params, user, role):
                 "title": _("QR · Заказ #%(id)s") % {"id": order.id},
                 "payload": payload,
                 "image_url": qr_url,
-                "subtitle": _("Покупатель · $%(amt)s") % {"amt": f"{order.total_amount:,.0f}"},
+                "subtitle": _("%(customer)s · $%(amt)s") % {
+                    "customer": customer_label(order.buyer, fallback_id=order.id),
+                    "amt": f"{order.total_amount:,.0f}",
+                },
             },
         }],
         actions=[
@@ -601,7 +606,7 @@ def seller_analytics_hub(params, user, role):
     from django.db.models import Sum
     from django.utils import timezone
 
-    from assistant.models import Wallet, WalletTx
+    from assistant.models import Wallet
     from marketplace.models import Order, OrderClaim, Part, RFQ
 
     seller = _effective_seller(user)
@@ -708,7 +713,7 @@ def seller_executive_report(params, user, role):
     from django.db.models import Sum
     from django.utils import timezone
 
-    from marketplace.models import Order, OrderClaim, Part, RFQ
+    from marketplace.models import Order, OrderClaim, Part
     from assistant.models import Wallet
 
     seller = _effective_seller(user)
@@ -810,7 +815,10 @@ def recent_activity(params, user, role):
     events = []  # [{ts, icon, label, sub, action?, params?}]
 
     # 1) Заказы — OrderEvent
-    oe_qs = OrderEvent.objects.select_related("order", "actor").order_by("-created_at")
+    oe_qs = OrderEvent.objects.select_related(
+        "order__buyer__profile",
+        "actor",
+    ).order_by("-created_at")
     if role == "buyer":
         oe_qs = oe_qs.filter(order__buyer=user)
     elif role == "seller":
@@ -845,7 +853,12 @@ def recent_activity(params, user, role):
             label = _("Заказ #%(id)s создан") % {"id": e.order_id}
         else:
             label = _("Заказ #%(id)s: %(et)s") % {"id": e.order_id, "et": e.event_type}
-        actor = e.actor.username if e.actor else "system"
+        if role == "seller" and e.actor_id == e.order.buyer_id:
+            actor = customer_label(e.order.buyer, fallback_id=e.order_id)
+        elif role == "seller" and e.actor_id:
+            actor = _("Ваша команда") if e.source == "seller" else _("Оператор платформы")
+        else:
+            actor = e.actor.username if e.actor else _("Система")
         events.append({
             "ts":      e.created_at,
             "icon":    icon,
@@ -1059,7 +1072,12 @@ def audit_log(params, user, role):
             meta_str = f"${meta['amount']:,.0f}"
         elif e.event_type == "status_changed" and meta.get("tracking_number"):
             meta_str = f"tracking {meta['tracking_number']}"
-        actor = (e.actor.username if e.actor else "—")
+        if role == "seller" and e.actor_id == order.buyer_id:
+            actor = customer_label(order.buyer, fallback_id=order.id)
+        elif role == "seller" and e.actor_id:
+            actor = _("Ваша команда") if e.source == "seller" else _("Оператор платформы")
+        else:
+            actor = e.actor.username if e.actor else _("Система")
         rows.append({
             "title": f"{label} {meta_str}".strip(),
             "subtitle": f"{e.created_at.strftime('%d.%m %H:%M:%S')} · {e.get_source_display()} · {actor}",
@@ -1192,6 +1210,7 @@ def kb_search(params, user, role):
     """
     from django.db.models import Q
 
+    from .embeddings import knowledge_chunks_for_user
     from .models import KnowledgeChunk
 
     query = (params.get("query") or "").strip()
@@ -1216,9 +1235,12 @@ def kb_search(params, user, role):
     cond = Q()
     for w in words:
         cond |= Q(title__icontains=w) | Q(content__icontains=w)
-    candidates = list(
-        KnowledgeChunk.objects.filter(is_active=True).filter(cond)[:50]
+    visible_chunks = knowledge_chunks_for_user(
+        KnowledgeChunk.objects.filter(is_active=True),
+        role=role,
+        user=user,
     )
+    candidates = list(visible_chunks.filter(cond)[:50])
     # Сортировка по числу совпавших слов
     def _score(c):
         haystack = (c.title + " " + c.content).lower()
@@ -1498,10 +1520,13 @@ def seller_qr(params, user, role):
     qs = (
         Order.objects.filter(items__part__seller=user,
                              status__in=["ready_to_ship", "shipped", "transit_abroad"])
-        .distinct().order_by("-created_at")[:10]
+        .select_related("buyer__profile").distinct().order_by("-created_at")[:10]
     )
     rows = [{
-        "title": _('Заказ #%(p0)s · Покупатель') % {"p0": f'{o.id}'},
+        "title": _("Заказ #%(id)s · %(customer)s") % {
+            "id": o.id,
+            "customer": customer_label(o.buyer, fallback_id=o.id),
+        },
         "subtitle": _('Сумма $%(p0)s · %(p1)s') % {"p0": f'{o.total_amount:,.0f}', "p1": f'{o.get_status_display()}'},
         "badge": "QR",
         "url": f"/chat/?action=generate_qr&order_id={o.id}",
@@ -1539,7 +1564,7 @@ def seller_logistics(params, user, role):
             items__part__seller=user,
             status__in=["transit_abroad", "customs", "transit_rf", "issuing", "shipped"],
         )
-        .distinct().order_by("-created_at")[:15]
+        .select_related("buyer__profile").distinct().order_by("-created_at")[:15]
     )
     if not qs:
         return ActionResult(
@@ -1558,7 +1583,10 @@ def seller_logistics(params, user, role):
         if tracking:
             sub += f" · {carrier}: {tracking}"
         rows.append({
-            "title": _('Заказ #%(p0)s · Покупатель') % {"p0": f'{o.id}'},
+            "title": _("Заказ #%(id)s · %(customer)s") % {
+                "id": o.id,
+                "customer": customer_label(o.buyer, fallback_id=o.id),
+            },
             "subtitle": sub,
             "badge": _("Трекинг"),
         })
@@ -1579,15 +1607,27 @@ def seller_logistics(params, user, role):
 @register("seller_negotiations")
 def seller_negotiations(params, user, role):
     """Активные переговоры по RFQ — упрощённая версия /seller/negotiations/."""
+    from django.db.models import Q
     from marketplace.models import RFQ
-    qs = RFQ.objects.filter(status__in=["new", "processing"]).order_by("-created_at")[:15]
+
+    seller = _effective_seller(user)
+    qs = (
+        RFQ.objects.filter(status__in=["new", "processing"])
+        .filter(Q(items__matched_part__seller=seller) | Q(quotes__seller=seller))
+        .select_related("created_by__profile")
+        .distinct()
+        .order_by("-created_at")[:15]
+    )
     if not qs:
         return ActionResult(
             text=_("💬 Активных переговоров нет. Все RFQ обработаны."),
             actions=[{"label": _("📋 Все RFQ"), "action": "get_rfq_status", "params": {}}],
         )
     rows = [{
-        "title": _('RFQ #%(p0)s · Покупатель') % {"p0": f'{r.id}'},
+        "title": _("RFQ #%(id)s · %(customer)s") % {
+            "id": r.id,
+            "customer": customer_label(r.created_by, fallback_id=r.id),
+        },
         "subtitle": f"{r.get_status_display()} · {r.created_at.strftime('%d.%m.%Y')}",
         "badge": _("Открыть"),
     } for r in qs]
@@ -2425,7 +2465,7 @@ def rfq_detail(params, user, role):
     if not rfq_id:
         return ActionResult(text=_("Не указан ID RFQ."))
     try:
-        rfq = RFQ.objects.select_related("created_by").get(id=rfq_id)
+        rfq = RFQ.objects.select_related("created_by__profile").get(id=rfq_id)
     except RFQ.DoesNotExist:
         return ActionResult(text=_('RFQ #%(p0)s не найден.') % {"p0": f'{rfq_id}'})
 
@@ -2450,7 +2490,7 @@ def rfq_detail(params, user, role):
     text = (
         f"📋 RFQ #{rfq.id} · {rfq.get_status_display()}\n"
         f"{badge_line}"
-        f"От: Покупатель\n"
+        f"От: {customer_label(rfq.created_by, fallback_id=rfq.id)}\n"
         f"Создан: {rfq.created_at.strftime('%d.%m.%Y %H:%M')}\n"
         f"Позиций: {len(items)}\n\n"
         f"Список:\n{items_text}"
@@ -2508,12 +2548,11 @@ def seller_customers(params, user, role):
             actions=[add_btn, home_btn],
         )
     from assistant.models import Project
-    from marketplace.models import Order
     rows = []
     leads = 0
     for c in custs:
         _autolink_orders(c)  # точная привязка по ИНН до подсчёта
-        c_orders = list(Order.objects.filter(customer_ref=c).only("created_at"))
+        c_orders = list(_linked_customer_orders(c).only("created_at"))
         nproj = Project.objects.filter(customer_ref=c, is_active=True).count()
         nship = len(c_orders)
         ret = _retention(c, c_orders)
@@ -2619,25 +2658,38 @@ def _get_customer(user, params):
     """Заказчик из CRM по id, строго в рамках продавца-владельца."""
     from marketplace.models import Customer
     owner = _effective_seller(user)
-    cid = (params.get("id") or params.get("customer_id") or "").strip()
+    cid = str(params.get("id") or params.get("customer_id") or "").strip()
     if not cid:
         return None
     return Customer.objects.filter(owner=owner, id=cid).first()
 
 
 def _autolink_orders(c):
-    """Точная привязка заказов к заказчику по ИНН покупателя (write-through).
-    Заказ, где у покупателя в KYB указан тот же ИНН, что у заказчика CRM, и
-    который ещё не привязан, привязывается к этому заказчику. Возвращает кол-во."""
-    if not c or not c.inn:
+    """Link orders only after the customer explicitly accepted the invitation."""
+    if not c or not c.user_id:
         return 0
+    from django.db.models import Q
+
     from marketplace.models import Order
     try:
         return (Order.objects
-                .filter(customer_ref__isnull=True, buyer__kyb__inn=c.inn)
+                .filter(
+                    customer_ref__isnull=True,
+                    buyer_id=c.user_id,
+                )
+                .filter(Q(assigned_kam__isnull=True) | Q(assigned_kam_id=c.owner_id))
                 .update(customer_ref=c, assigned_kam_id=c.owner_id))
     except Exception:
         return 0
+
+
+def _linked_customer_orders(c):
+    """Return only orders belonging to the account that accepted this CRM link."""
+    from marketplace.models import Order
+
+    if not c or not c.user_id:
+        return Order.objects.none()
+    return Order.objects.filter(customer_ref=c, buyer_id=c.user_id)
 
 
 # Вознаграждение менеджера за ведение клиента — % от GMV проведённых сделок.
@@ -2773,6 +2825,7 @@ def customer_detail(params, user, role):
     """Карточка заказчика: инсайты + реквизиты + проекты + контроль отгрузок."""
     from assistant.models import Project
     from marketplace.models import Order
+
     c = _get_customer(user, params)
     if not c:
         return ActionResult(
@@ -2824,14 +2877,17 @@ def customer_detail(params, user, role):
             row["params"] = {"id": str(c.id), "order_id": o.id}
         return row
 
-    linked = list(Order.objects.filter(customer_ref=c).order_by("-created_at")[:20])
+    linked = list(_linked_customer_orders(c).order_by("-created_at")[:20])
     ship_rows = [_ship_row(o) for o in linked]
 
-    # --- Кандидаты: совпали по названию, но ещё не привязаны (нужно подтвердить) ---
+    # --- Кандидаты: только заказы аккаунта, принявшего приглашение ---
     cand_rows = []
-    if c.name:
+    if c.user_id:
+        from django.db.models import Q
+
         cands = list(Order.objects
-                     .filter(customer_name__icontains=c.name, customer_ref__isnull=True)
+                     .filter(buyer_id=c.user_id, customer_ref__isnull=True)
+                     .filter(Q(assigned_kam__isnull=True) | Q(assigned_kam_id=c.owner_id))
                      .order_by("-created_at")[:8])
         cand_rows = [_ship_row(o, link_action=True) for o in cands]
 
@@ -2911,7 +2967,9 @@ def customer_detail(params, user, role):
 
 @register("link_order_to_customer")
 def link_order_to_customer(params, user, role):
-    """Ручная привязка заказа к заказчику CRM (подтверждение кандидата по имени)."""
+    """Link an order only to the customer account that accepted the invitation."""
+    from django.db import transaction
+
     from marketplace.models import Order
     c = _get_customer(user, params)
     if not c:
@@ -2919,13 +2977,26 @@ def link_order_to_customer(params, user, role):
             text=_("Заказчик не найден."),
             actions=[{"label": _("← К заказчикам"), "action": "seller_customers", "params": {}}],
         )
-    oid = params.get("order_id")
-    o = Order.objects.filter(id=oid).first()
-    if not o:
-        return customer_detail({"id": str(c.id), "flash": _("Заказ не найден — возможно, уже привязан.")}, user, role)
-    o.customer_ref = c
-    o.assigned_kam_id = c.owner_id
-    o.save(update_fields=["customer_ref", "assigned_kam"])
+    if not c.user_id:
+        return ActionResult(
+            text=_("Сначала заказчик должен принять приглашение в платформу."),
+            actions=[{"label": _("Карточка заказчика"), "action": "customer_detail", "params": {"id": str(c.id)}}],
+        )
+    try:
+        oid = int(params.get("order_id") or 0)
+    except (TypeError, ValueError):
+        return ActionResult(text=_("Заказ не найден или не относится к этому заказчику."))
+    with transaction.atomic():
+        o = Order.objects.select_for_update().filter(id=oid, buyer_id=c.user_id).first()
+        if (
+            not o
+            or (o.customer_ref_id and o.customer_ref_id != c.id)
+            or (o.assigned_kam_id and o.assigned_kam_id != c.owner_id)
+        ):
+            return ActionResult(text=_("Заказ не найден или не относится к этому заказчику."))
+        o.customer_ref = c
+        o.assigned_kam_id = c.owner_id
+        o.save(update_fields=["customer_ref", "assigned_kam"])
     return customer_detail(
         {"id": str(c.id), "flash": f"🔗 Заказ #{o.id} привязан к «{c.name}» — теперь в отгрузках."},
         user, role)
@@ -3225,7 +3296,7 @@ def customer_bonuses(params, user, role):
             actions=[{"label": _("← К заказчикам"), "action": "seller_customers", "params": {}}],
         )
     _autolink_orders(c)
-    orders = list(Order.objects.filter(customer_ref=c).order_by("-created_at"))
+    orders = list(_linked_customer_orders(c).order_by("-created_at"))
     summ = _customer_bonus_summary(orders)
 
     def _m(v):
@@ -3269,7 +3340,7 @@ def customer_bonuses(params, user, role):
 @register("my_accruals")
 def my_accruals(params, user, role):
     """Все начисления менеджера — по всем заказчикам (реальные + расчётные)."""
-    from marketplace.models import Customer, Order
+    from marketplace.models import Customer
     owner = _effective_seller(user)
     custs = list(Customer.objects.filter(owner=owner, is_active=True))
 
@@ -3280,7 +3351,7 @@ def my_accruals(params, user, role):
     tot_accr = tot_est = 0.0
     for c in custs:
         _autolink_orders(c)
-        orders = list(Order.objects.filter(customer_ref=c))
+        orders = list(_linked_customer_orders(c))
         s = _customer_bonus_summary(orders)
         tot_accr += s["accrued"]
         tot_est += s["estimated"]
@@ -3315,10 +3386,16 @@ def my_accruals(params, user, role):
 @register("kam_deals")
 def kam_deals(params, user, role):
     """Сделки KAM — заказы его аккаунтов (assigned_kam), отдельно от очереди оператора."""
+    from django.db.models import F
+
     from marketplace.models import Order
     owner = _effective_seller(user)
-    qs = (Order.objects.filter(assigned_kam=owner)
-          .select_related("customer_ref").order_by("-created_at"))
+    qs = (Order.objects.filter(
+              assigned_kam=owner,
+              customer_ref__owner=owner,
+              customer_ref__user_id=F("buyer_id"),
+          )
+          .select_related("customer_ref", "buyer__profile").order_by("-created_at"))
     ACTIVE = {"shipped", "in_transit", "customs", "ready_to_ship",
               "in_production", "confirmed", "reserve_paid"}
     orders = list(qs[:60])
@@ -3340,7 +3417,7 @@ def kam_deals(params, user, role):
         tone = ("warn" if hoff == "escalation"
                 else ("ok" if o.status in ("delivered", "completed")
                       else ("warn" if o.status in ACTIVE else "info")))
-        cname = o.customer_ref.name if o.customer_ref_id else (o.customer_name or "—")
+        cname = o.customer_ref.name
         sub = [(_m(o.total_amount) if o.total_amount else "—"),
                HOFF.get(hoff, _("🔵 ведёт оператор"))]
         if hoff == "escalation" and o.kam_handoff_note:
@@ -3350,7 +3427,7 @@ def kam_deals(params, user, role):
             "subtitle": " · ".join(sub),
             "badge": {"label": st, "tone": tone}, "tone": tone,
         }
-        if o.customer_ref_id:  # read-only: открыть карточку клиента (отношения)
+        if o.customer_ref_id:  # read-only: открыть карточку подтверждённого клиента
             row["action"] = "customer_detail"
             row["params"] = {"id": str(o.customer_ref_id)}
         rows.append(row)

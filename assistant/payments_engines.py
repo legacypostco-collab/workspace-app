@@ -18,6 +18,8 @@ import uuid
 from decimal import Decimal
 from typing import Protocol
 
+from marketplace.participant_identity import partner_label
+
 logger = logging.getLogger(__name__)
 
 
@@ -137,14 +139,14 @@ class StripeEngine:
         # Требует, чтобы у seller был подключённый Stripe Connect аккаунт
         seller_account = getattr(seller, "stripe_account_id", "")
         if not seller_account:
-            return {"ok": False, "reason": f"seller {seller.username} has no stripe_account_id"}
+            return {"ok": False, "reason": "У партнёра не подключён платёжный счёт."}
         transfer = self._stripe.Transfer.create(
             amount=int(Decimal(str(amount)) * 100),
             currency="usd",
             destination=seller_account,
             metadata={"order_id": str(order.id)},
         )
-        return {"ok": True, "amount": float(amount), "to": seller.username,
+        return {"ok": True, "amount": float(amount), "to": partner_label(seller),
                 "transfer_id": transfer.id, "engine": "stripe"}
 
     def refund_to_buyer(self, *, order, buyer, amount):

@@ -2851,12 +2851,39 @@ class NegotiationFlowTests(TestCase):
         r = view_rfq_quotes({"rfq_id": self.rfq.id}, self.buyer, "buyer")
         items = r.cards[0]["data"]["items"]
         self.assertEqual(len(items), 2)
-        # Самый дешёвый первый — но имя скрыто для buyer'а («Поставщик №1»)
-        self.assertIn("Поставщик №1", items[0]["title"])
+        # Самый дешёвый первый, но сторона обозначена постоянным номером.
+        self.assertIn("Партнёр CP · ", items[0]["title"])
         self.assertIn("$2,600", items[0]["title"])
         # Реального username seller_b не должно быть в выдаче buyer'у
         self.assertNotIn(self.seller_b.username, items[0]["title"])
         self.assertNotIn(self.seller_a.username, items[1]["title"])
+
+    def test_multirole_rfq_owner_cannot_see_competing_seller_identity(self):
+        from .negotiation import submit_quote, view_rfq_quotes
+
+        submit_quote({
+            "rfq_id": self.rfq.id,
+            f"price_{self.rfq_item1.id}": "1100",
+            f"price_{self.rfq_item2.id}": "100",
+            "confirmed": True,
+        }, self.seller_a, "seller")
+        submit_quote({
+            "rfq_id": self.rfq.id,
+            f"price_{self.rfq_item1.id}": "900",
+            f"price_{self.rfq_item2.id}": "80",
+            "confirmed": True,
+        }, self.seller_b, "seller")
+
+        result = view_rfq_quotes(
+            {"rfq_id": self.rfq.id},
+            self.buyer,
+            "seller",
+        )
+        serialized = str(result.cards) + str(result.actions)
+
+        self.assertIn("Партнёр CP · ", serialized)
+        self.assertNotIn(self.seller_a.username, serialized)
+        self.assertNotIn(self.seller_b.username, serialized)
 
     def test_view_rfq_quotes_blocks_non_owner(self):
         from .negotiation import view_rfq_quotes
@@ -3013,21 +3040,21 @@ class NegotiationFlowTests(TestCase):
         self.assertEqual(q.status, "declined")
 
     def test_buyer_anonymity_in_top_suppliers(self):
-        """top_suppliers скрывает имена для buyer и показывает для seller/operator."""
+        """top_suppliers скрывает личности поставщиков от сторон сделки."""
         from .actions import top_suppliers
         # Buyer
         r_buyer = top_suppliers({}, self.buyer, "buyer")
         suppliers = r_buyer.cards[0]["data"]["suppliers"]
         names = [s["name"] for s in suppliers]
-        assert all(n.startswith("Поставщик №") for n in names), \
+        assert all(n.startswith("Партнёр CP · ") for n in names), \
             f"buyer should see anonymized names, got {names}"
         # Реальные имена не утекают
         assert self.seller_a.username not in str(suppliers)
-        # Seller — видит реальные имена
+        # Продавец также не получает данные конкурентов.
         r_seller = top_suppliers({}, self.seller_a, "seller")
         seller_names = [s["name"] for s in r_seller.cards[0]["data"]["suppliers"]]
-        assert self.seller_a.username in seller_names, \
-            f"seller should see real names, got {seller_names}"
+        assert all(n.startswith("Партнёр CP · ") for n in seller_names)
+        assert self.seller_a.username not in str(r_seller.cards)
 
     def test_buyer_search_does_not_expose_supplier_warehouse(self):
         from .actions import search_parts
@@ -3043,6 +3070,25 @@ class NegotiationFlowTests(TestCase):
 
         self.assertNotIn("Secret warehouse", str(result.cards))
 
+    def test_offer_comparison_hides_supplier_ids_and_warehouse(self):
+        from .actions import buyer_best_offers, buyer_offer_compare
+
+        self.part1.warehouse_address = "Secret supplier warehouse, Shanghai"
+        self.part1.save(update_fields=["warehouse_address"])
+
+        best = buyer_best_offers(
+            {"query": self.part1.oem_number}, self.buyer, "buyer"
+        )
+        comparison = buyer_offer_compare(
+            {"oem_number": self.part1.oem_number}, self.buyer, "buyer"
+        )
+        serialized = str(best.cards) + str(comparison.cards)
+
+        self.assertIn("Партнёр CP · ", serialized)
+        self.assertNotIn("Secret supplier warehouse", serialized)
+        self.assertNotIn("seller_id", serialized)
+        self.assertNotIn(self.seller_a.username, serialized)
+
     def test_spec_analysis_without_input_does_not_return_demo_figures(self):
         from .actions import analyze_spec
 
@@ -3052,7 +3098,7 @@ class NegotiationFlowTests(TestCase):
         self.assertFalse(result.cards)
 
     def test_buyer_anonymity_in_view_quote(self):
-        """view_quote показывает «Поставщик №N» для buyer и username для seller."""
+        """Покупатель видит постоянный номер партнёра, продавец — свой логин."""
         from marketplace.models import Quote
 
         from .negotiation import submit_quote, view_quote
@@ -3061,19 +3107,19 @@ class NegotiationFlowTests(TestCase):
             "confirmed": True,
         }, self.seller_a, "seller")
         q = Quote.objects.filter(rfq=self.rfq).first()
-        # Buyer видит «Поставщик №…»
+        # Покупатель видит постоянный обезличенный номер.
         r_buyer = view_quote({"quote_id": q.id}, self.buyer, "buyer")
         rows = r_buyer.cards[0]["data"]["meta"]
         seller_row = next(r for r in rows if r["label"] == "Продавец")
-        assert seller_row["value"].startswith("Поставщик №"), \
+        assert seller_row["value"].startswith("Партнёр CP · "), \
             f"buyer should see anon, got {seller_row['value']!r}"
         # Seller (автор) видит свой username
         r_seller = view_quote({"quote_id": q.id}, self.seller_a, "seller")
         seller_row2 = next(r for r in r_seller.cards[0]["data"]["meta"] if r["label"] == "Продавец")
         assert seller_row2["value"] == self.seller_a.username
 
-    def test_buyer_anonymity_revealed_after_accept(self):
-        """После accept_quote buyer видит реального продавца — заказ оформлен."""
+    def test_buyer_anonymity_remains_after_accept(self):
+        """После принятия предложения реальный продавец по-прежнему скрыт."""
         from marketplace.models import Quote
 
         from .negotiation import accept_quote, submit_quote, view_quote
@@ -3083,12 +3129,27 @@ class NegotiationFlowTests(TestCase):
         }, self.seller_a, "seller")
         q = Quote.objects.filter(rfq=self.rfq).first()
         accept_quote({"quote_id": q.id, "confirmed": True}, self.buyer, "buyer")
-        # После accepted — имя раскрыто
+        # После принятия предложения остаётся тот же публичный номер.
         r = view_quote({"quote_id": q.id}, self.buyer, "buyer")
         rows = r.cards[0]["data"]["meta"]
         seller_row = next(r for r in rows if r["label"] == "Продавец")
-        assert seller_row["value"] == self.seller_a.username, \
-            f"after accept buyer should see real username, got {seller_row['value']!r}"
+        assert seller_row["value"].startswith("Партнёр CP · ")
+        assert self.seller_a.username not in str(r.cards)
+
+    def test_quote_with_direct_contacts_is_rejected(self):
+        from marketplace.models import Quote
+
+        from .negotiation import submit_quote
+
+        result = submit_quote({
+            "rfq_id": self.rfq.id,
+            f"price_{self.rfq_item1.id}": "900",
+            "message": "Напишите мне на seller-secret@example.com",
+            "confirmed": True,
+        }, self.seller_a, "seller")
+
+        self.assertIn("контактные данные", result.text)
+        self.assertFalse(Quote.objects.filter(rfq=self.rfq).exists())
 
     def test_mark_quote_final_only_by_seller(self):
         from marketplace.models import Quote
@@ -4117,7 +4178,7 @@ class CompetitorOfferTests(TestCase):
         )
 
     def test_upload_creates_competitor_offer(self):
-        from marketplace.models import CompetitorOffer
+        from marketplace.models import CompetitorOffer, Notification
 
         from .competitor_offers import upload_competitor_offer
         r = upload_competitor_offer({
@@ -4132,6 +4193,59 @@ class CompetitorOfferTests(TestCase):
         offers = CompetitorOffer.objects.filter(quote=self.quote)
         self.assertEqual(offers.count(), 1)
         self.assertEqual(offers.first().status, "uploaded")
+        seller_notification = Notification.objects.filter(user=self.seller).latest("id")
+        self.assertNotIn("Acme Cheap Co.", seller_notification.body)
+        self.assertIn("Другое предложение", seller_notification.body)
+
+    def test_seller_preview_hides_competitor_identity_and_buyer_contacts(self):
+        from marketplace.models import CompetitorOffer
+
+        from .competitor_offers import respond_to_competitor_offer, upload_competitor_offer
+
+        upload_competitor_offer({
+            "quote_id": self.quote.id,
+            "competitor_name": "Secret Outside Vendor",
+            "quoted_price": "150",
+            "note": "Напишите buyer-contact@example.com или +7 999 123-45-67",
+            "confirmed": True,
+        }, self.buyer, "buyer")
+        offer = CompetitorOffer.objects.get(quote=self.quote)
+
+        result = respond_to_competitor_offer(
+            {"offer_id": offer.id},
+            self.seller,
+            "seller",
+        )
+
+        serialized = result.text + str(result.cards)
+        self.assertIn("Другое предложение", serialized)
+        self.assertIn("[контакт скрыт]", serialized)
+        self.assertNotIn("Secret Outside Vendor", serialized)
+        self.assertNotIn("buyer-contact@example.com", serialized)
+        self.assertNotIn("+7 999 123-45-67", serialized)
+
+    def test_seller_cannot_send_contacts_in_competitor_response(self):
+        from marketplace.models import CompetitorOffer, Quote
+
+        from .competitor_offers import respond_to_competitor_offer, upload_competitor_offer
+
+        upload_competitor_offer({
+            "quote_id": self.quote.id,
+            "competitor_name": "X",
+            "quoted_price": "150",
+            "confirmed": True,
+        }, self.buyer, "buyer")
+        offer = CompetitorOffer.objects.get(quote=self.quote)
+
+        result = respond_to_competitor_offer({
+            "offer_id": offer.id,
+            "discount_pct": "10",
+            "seller_comment": "Свяжитесь со мной: seller-contact@example.com",
+            "confirmed": True,
+        }, self.seller, "seller")
+
+        self.assertIn("нельзя передавать", result.text)
+        self.assertFalse(Quote.objects.filter(parent_quote=self.quote).exists())
 
     def test_upload_only_by_rfq_owner(self):
         from .competitor_offers import upload_competitor_offer
@@ -4398,6 +4512,50 @@ class DocumentGeneratorTests(TestCase):
         self.assertIn("Упаковочный лист", r.text)
         doc = OrderDocument.objects.filter(order=self.order, doc_type="packing_list").first()
         self.assertIsNotNone(doc)
+
+    def test_seller_generated_invoice_hides_buyer_identity(self):
+        from pypdf import PdfReader
+
+        from marketplace.models import OrderDocument
+
+        from .documents import generate_invoice_pdf
+
+        result = generate_invoice_pdf(
+            {"order_id": self.order.id}, self.seller, "seller"
+        )
+        self.assertIn("Счёт", result.text)
+        document = OrderDocument.objects.filter(
+            order=self.order,
+            doc_type="invoice",
+            uploaded_by=self.seller,
+        ).latest("id")
+        document.file_obj.open("rb")
+        try:
+            pdf_text = "\n".join(
+                page.extract_text() or ""
+                for page in PdfReader(document.file_obj).pages
+            )
+        finally:
+            document.file_obj.close()
+
+        self.assertIn("Заказчик CP", pdf_text)
+        self.assertNotIn("Test Buyer", pdf_text)
+        self.assertNotIn("b@t.c", pdf_text)
+
+    def test_seller_cannot_open_buyer_uploaded_document(self):
+        from marketplace.models import OrderDocument
+        from marketplace.order_access import seller_can_access_document
+
+        from .documents import generate_invoice_pdf
+
+        generate_invoice_pdf({"order_id": self.order.id}, self.buyer, "buyer")
+        document = OrderDocument.objects.filter(
+            order=self.order,
+            doc_type="invoice",
+            uploaded_by=self.buyer,
+        ).latest("id")
+
+        self.assertFalse(seller_can_access_document(self.seller, document))
 
     def test_generate_qc_report_pdf(self):
         from marketplace.models import OrderDocument

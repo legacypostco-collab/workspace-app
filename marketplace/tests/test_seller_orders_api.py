@@ -19,6 +19,18 @@ from marketplace.models import (
 
 class SellerOrdersApiTests(TestCase):
     def setUp(self):
+        self.buyer = User.objects.create_user(
+            username="buyer_orders_private",
+            password="pass12345",
+            email="buyer-orders-private@example.com",
+            first_name="Private",
+            last_name="Customer",
+        )
+        UserProfile.objects.create(
+            user=self.buyer,
+            role="buyer",
+            company_name="Private Orders Buyer",
+        )
         self.seller = User.objects.create_user(username="seller_orders_api", password="pass12345")
         UserProfile.objects.create(
             user=self.seller,
@@ -39,6 +51,7 @@ class SellerOrdersApiTests(TestCase):
             category=self.category,
         )
         self.order = Order.objects.create(
+            buyer=self.buyer,
             customer_name="Orders Buyer",
             customer_email="orders_buyer@example.com",
             customer_phone="+1000000002",
@@ -54,11 +67,12 @@ class SellerOrdersApiTests(TestCase):
             order=self.order,
             event_type="order_created",
             source="system",
+            meta={"note": "Buyer contact buyer-orders-private@example.com"},
         )
         self.claim = OrderClaim.objects.create(
             order=self.order,
             title="Damaged package",
-            description="Package has visible damage",
+            description="Package has visible damage; call +1 202 555 0198",
             status="open",
             opened_by=self.seller,
         )
@@ -102,6 +116,11 @@ class SellerOrdersApiTests(TestCase):
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["items"][0]["id"], self.order.id)
         self.assertEqual(body["items"][0]["items_count"], 1)
+        serialized = str(body["items"][0])
+        self.assertIn("Заказчик CP · ", serialized)
+        self.assertNotIn("Private Customer", serialized)
+        self.assertNotIn("buyer-orders-private@example.com", serialized)
+        self.assertNotIn("Private Orders Buyer", serialized)
 
     def test_seller_order_detail_and_timeline_endpoints(self):
         detail_response = self.client.get(f"/api/v1/seller/orders/{self.order.id}/")
@@ -110,6 +129,9 @@ class SellerOrdersApiTests(TestCase):
         self.assertEqual(detail["id"], self.order.id)
         self.assertEqual(len(detail["seller_items"]), 1)
         self.assertEqual(len(detail["claims"]), 1)
+        self.assertNotIn("buyer-orders-private@example.com", str(detail))
+        self.assertNotIn("+1 202 555 0198", str(detail))
+        self.assertIn("[контакт скрыт]", str(detail))
 
         timeline_response = self.client.get(f"/api/v1/seller/orders/{self.order.id}/timeline/")
         self.assertEqual(timeline_response.status_code, 200)
@@ -187,6 +209,21 @@ class SellerOrdersApiTests(TestCase):
         self.claim.refresh_from_db()
         self.assertEqual(self.claim.status, "open")
         self.assertNotIn("self resolution", self.claim.description)
+
+    def test_seller_claim_response_rejects_direct_contacts(self):
+        response = self.client.post(
+            f"/api/v1/seller/orders/claims/{self.claim.id}/respond/",
+            data={
+                "status": "in_review",
+                "comment": "Write to seller-direct@example.com",
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.claim.refresh_from_db()
+        self.assertEqual(self.claim.status, "open")
+        self.assertNotIn("seller-direct@example.com", self.claim.description)
 
     def test_multi_seller_order_is_scoped_to_current_seller(self):
         second_seller, _second_item = self._add_second_seller()

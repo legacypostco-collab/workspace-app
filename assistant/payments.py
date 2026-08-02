@@ -30,6 +30,8 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from marketplace.participant_identity import customer_label, partner_label
+
 from .models import Wallet, WalletTx
 
 logger = logging.getLogger(__name__)
@@ -359,7 +361,7 @@ def _wallet_release_to_seller(*, order, seller, amount: Decimal) -> dict:
         description=_("Поступление по заказу #%(id)s") % {"id": order.id},
         order_id=order.id, balance_after=seller_wallet.balance,
     )
-    return {"ok": True, "amount": float(amount), "to": seller.username}
+    return {"ok": True, "amount": float(amount), "to": partner_label(seller)}
 
 
 def refund_to_buyer(*, order, buyer, amount=None) -> dict:
@@ -409,7 +411,7 @@ def _wallet_refund_to_buyer(*, order, buyer, amount: Decimal) -> dict:
         description=_("Возврат по заказу #%(id)s") % {"id": order.id},
         order_id=order.id, balance_after=buyer_wallet.balance,
     )
-    return {"ok": True, "amount": float(amount), "to": buyer.username}
+    return {"ok": True, "amount": float(amount), "to": customer_label(buyer)}
 
 
 # ── Аналитика эскроу ─────────────────────────────────────────

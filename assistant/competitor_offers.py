@@ -21,6 +21,8 @@ from decimal import Decimal
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from marketplace.participant_identity import redact_party_contacts
+
 from .actions import ActionResult, _notify, register
 from .security import confirmation_is_true
 
@@ -131,7 +133,7 @@ def upload_competitor_offer(params, user, role):
                 title=_("📄 Конкурентное предложение по RFQ #%(rfq)s") % {"rfq": quote.rfq_id},
                 body=(
                     _("%(comp)s: $%(their)s (вы: $%(yours)s, разница %(gap)s%%). Можете снизить?")
-                    % {"comp": competitor_name, "their": _their, "yours": _yours, "gap": gap_pct}
+                    % {"comp": _("Другое предложение"), "their": _their, "yours": _yours, "gap": gap_pct}
                 ),
                 url=f"/chat/?rfq={quote.rfq_id}")
 
@@ -181,20 +183,28 @@ def respond_to_competitor_offer(params, user, role):
     )
     if len(seller_comment) > MAX_COMPETITOR_NOTE_LENGTH:
         return ActionResult(text=_("Комментарий слишком длинный."))
+    if seller_comment and redact_party_contacts(seller_comment) != seller_comment:
+        return ActionResult(
+            text=_(
+                "Прямые контакты и ссылки нельзя передавать другой стороне. "
+                "Связь по сделке проходит через платформу."
+            )
+        )
 
     if not confirmed:
         gap = offer.quote.total_amount - offer.quoted_price
         gap_pct = (gap / offer.quote.total_amount * 100).quantize(Decimal("0.1")) if offer.quote.total_amount else 0
         _their = f"{offer.quoted_price:,.0f}"
         _yours = f"{offer.quote.total_amount:,.0f}"
-        _comment = (_("Комментарий покупателя: ") + offer.note) if offer.note else ""
+        safe_note = redact_party_contacts(offer.note)
+        _comment = (_("Комментарий покупателя: ") + safe_note) if safe_note else ""
         return ActionResult(
             text=(
                 _("📄 Конкурентное предложение по RFQ #%(rfq)s\n"
                   "Конкурент: %(comp)s — $%(their)s\n"
                   "Ваша цена: $%(yours)s (разница %(gap)s%%)\n"
                   "%(comment)s")
-                % {"rfq": offer.rfq_id, "comp": offer.competitor_name, "their": _their,
+                % {"rfq": offer.rfq_id, "comp": _("Другое предложение"), "their": _their,
                    "yours": _yours, "gap": gap_pct, "comment": _comment}
             ),
             cards=[{"type": "form", "data": {
@@ -301,8 +311,8 @@ def respond_to_competitor_offer(params, user, role):
             delivery_days=quote.delivery_days,
             total_amount=new_total,
             message=(
-                _("Скидка %(pct)s%% в ответ на конкурентное предложение от %(comp)s. %(comment)s")
-                % {"pct": pct, "comp": offer.competitor_name, "comment": seller_comment}
+                _("Скидка %(pct)s%% в ответ на конкурентное предложение. %(comment)s")
+                % {"pct": pct, "comment": seller_comment}
             )[:500],
         )
         QuoteItem.objects.bulk_create([

@@ -16,7 +16,7 @@
 Anti-collusion (см. detect_offplatform_contact в conv_security.py):
   • Все коммуникации buyer↔seller↔operator идут через систему
   • Email/phone в свободном тексте — флаг для оператора
-  • Контакты раскрываются только после оплаты (см. accept_quote)
+  • Контакты сторон не раскрываются друг другу после оформления сделки
 """
 from __future__ import annotations
 
@@ -197,7 +197,7 @@ def support_home(params, user, role):
         actions=actions,
         suggestions=[
             _("Как открыть рекламацию?"),
-            _("Когда раскрываются контакты поставщика?"),
+            _("Как обозначаются партнёры в сделках?"),
             _("Что входит в комиссию платформы?"),
             _("Можно ли договариваться напрямую с поставщиком?"),
         ],
@@ -690,7 +690,8 @@ FAQ_ENTRIES = [
         "q": _("Можно ли договариваться напрямую с поставщиком?"),
         "a": (_("Нет, никогда. Платформа намеренно не раскрывает контакты "
               "поставщика покупателю. Вся переписка идёт через оператора:\n\n"
-              "• Покупатель видит «Поставщик №1, №2…» — анонимная нумерация\n"
+              "• Покупатель видит постоянный номер вида «Партнёр CP · 4827»\n"
+              "• Поставщик видит постоянный номер вида «Заказчик CP · 1934»\n"
               "• Любой вопрос / уточнение / спор — через чат-форму\n"
               "• Оператор передаёт между сторонами и фиксирует переписку\n\n"
               "Это защищает обе стороны: у покупателя есть audit-log и "
@@ -866,7 +867,7 @@ def kb_faq(params, user, role):
         }],
         suggestions=[
             _("Как открыть рекламацию?"), _("Минимальная сумма заказа"),
-            _("Когда раскрываются контакты"), _("Как работают бонусы"),
+            _("Как обозначаются партнёры в сделках?"), _("Как работают бонусы"),
         ],
         contextual_actions=[
             {"action": "support_home", "label": _("← Поддержка")},
@@ -1124,6 +1125,8 @@ def open_complaint(params, user, role):
     confirmed = confirmation_is_true(params.get("confirmed"))
     text = (params.get("text") or "").strip()
     against = (params.get("against") or "").strip()
+    participant_code = re.sub(r"[^0-9]", "", str(params.get("participant_code") or ""))[:16]
+    order_id = re.sub(r"[^0-9]", "", str(params.get("order_id") or ""))[:16]
 
     if not confirmed:
         return ActionResult(
@@ -1131,7 +1134,7 @@ def open_complaint(params, user, role):
             cards=[{
                 "type": "form",
                 "data": {
-                    "title": _("🚨 Жалоба на платформу"),
+                    "title": _("🚨 Жалоба"),
                     "submit_action": "open_complaint",
                     "submit_label": _("🚨 Подать жалобу"),
                     "fields": [
@@ -1139,10 +1142,16 @@ def open_complaint(params, user, role):
                          "required": True, "options": [
                             {"value": "platform", "label": _("Платформа в целом")},
                             {"value": "operator", "label": _("Оператор или поддержка")},
-                            {"value": "seller",   "label": _("Поставщик (укажите номер заказа)")},
-                            {"value": "buyer",    "label": _("Покупатель")},
+                            {"value": "seller",   "label": _("Партнёр")},
+                            {"value": "buyer",    "label": _("Заказчик")},
                             {"value": "other",    "label": _("Другое")},
                          ]},
+                        {"name": "participant_code", "label": _("Номер участника"),
+                         "type": "text", "required": False,
+                         "placeholder": _("Например, CP · 4827")},
+                        {"name": "order_id", "label": _("Номер заказа"),
+                         "type": "text", "required": False,
+                         "placeholder": _("Например, 24018")},
                         {"name": "text", "label": _("Подробное описание"),
                          "type": "textarea", "required": True,
                          "placeholder": _("Что произошло, когда, какие доказательства")},
@@ -1161,7 +1170,7 @@ def open_complaint(params, user, role):
         from .support_threads import create_support_conversation, post_support_message
         against_label = {
             "platform": "ПЛАТФОРМА", "operator": "ОПЕРАТОР",
-            "seller": "ПОСТАВЩИК", "buyer": "ПОКУПАТЕЛЬ",
+            "seller": "ПАРТНЁР", "buyer": "ЗАКАЗЧИК",
             "other": "ДРУГОЕ",
         }.get(against, against)
         conv = create_support_conversation(
@@ -1169,7 +1178,12 @@ def open_complaint(params, user, role):
             context=_("жалоба: %(against)s") % {"against": against_label},
             kind="complaint",
         )
-        complaint_text = text[:1500]
+        references = []
+        if participant_code:
+            references.append(f"Участник CP · {participant_code}")
+        if order_id:
+            references.append(f"Заказ ORD-{order_id}")
+        complaint_text = ((" · ".join(references) + "\n\n") if references else "") + text[:1500]
         if flagged:
             complaint_text += _("\n\n[Автоматическая отметка: обнаружены контактные данные]")
         post_support_message(conv, user, role, complaint_text)

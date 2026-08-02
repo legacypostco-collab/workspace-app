@@ -6,6 +6,18 @@ from marketplace.models import RFQ, Category, Part, RFQItem, UserProfile
 
 class SellerRequestsApiTests(TestCase):
     def setUp(self):
+        self.buyer = User.objects.create_user(
+            username="buyer_requests_private",
+            password="pass12345",
+            email="buyer-private@example.com",
+            first_name="Private",
+            last_name="Buyer",
+        )
+        UserProfile.objects.create(
+            user=self.buyer,
+            role="buyer",
+            company_name="Private Buyer Company",
+        )
         self.seller = User.objects.create_user(username="seller_requests_api", password="pass12345")
         UserProfile.objects.create(
             user=self.seller,
@@ -26,9 +38,11 @@ class SellerRequestsApiTests(TestCase):
             category=self.category,
         )
         self.rfq = RFQ.objects.create(
+            created_by=self.buyer,
             customer_name="Requests Buyer",
             customer_email="requests_buyer@example.com",
             company_name="Requests Co",
+            notes="Private note buyer-private@example.com",
             status="new",
         )
         self.rfq_item = RFQItem.objects.create(
@@ -37,6 +51,7 @@ class SellerRequestsApiTests(TestCase):
             quantity=3,
             matched_part=self.part,
             state="auto_matched",
+            decision_reason="Operator note: buyer-private@example.com",
         )
 
     def test_seller_requests_list_endpoint(self):
@@ -46,6 +61,12 @@ class SellerRequestsApiTests(TestCase):
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["items"][0]["id"], self.rfq.id)
         self.assertEqual(body["items"][0]["seller_items_count"], 1)
+        serialized = str(body["items"][0])
+        self.assertIn("Заказчик CP · ", serialized)
+        self.assertNotIn("Private Buyer", serialized)
+        self.assertNotIn("buyer-private@example.com", serialized)
+        self.assertNotIn("Private Buyer Company", serialized)
+        self.assertNotIn("Requests Co", serialized)
 
     def test_seller_request_detail_endpoint(self):
         response = self.client.get(f"/api/v1/seller/requests/{self.rfq.id}/")
@@ -54,6 +75,10 @@ class SellerRequestsApiTests(TestCase):
         self.assertEqual(body["id"], self.rfq.id)
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["items"][0]["query"], "REQ-API-001")
+        self.assertNotIn("requests_buyer@example.com", str(body))
+        self.assertNotIn("Private note", str(body))
+        self.assertNotIn("buyer-private@example.com", str(body))
+        self.assertIn("[контакт скрыт]", str(body))
 
     def test_seller_request_quote_endpoint(self):
         response = self.client.post(
@@ -102,4 +127,7 @@ class SellerRequestsApiTests(TestCase):
         self.rfq_item.refresh_from_db()
         self.assertEqual(too_long.status_code, 400)
         self.assertEqual(self.rfq.status, "new")
-        self.assertEqual(self.rfq_item.decision_reason, "")
+        self.assertEqual(
+            self.rfq_item.decision_reason,
+            "Operator note: buyer-private@example.com",
+        )

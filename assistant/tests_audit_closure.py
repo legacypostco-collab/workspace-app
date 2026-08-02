@@ -31,6 +31,8 @@ from marketplace.models import (
     Notification,
     Part,
     PlatformRevenueLine,
+    Quote,
+    RFQItem,
     Shipment,
     TeamMember,
     UserProfile,
@@ -369,6 +371,49 @@ class MultiSellerOrderIsolationTests(TestCase):
         self.assertIn("несколько поставщиков", invoice.text)
         self.order.refresh_from_db()
         self.assertEqual(self.order.status, "confirmed")
+
+    def test_hybrid_buyer_seller_does_not_see_competitor_identity(self):
+        UserRole.objects.create(user=self.buyer, role="seller", is_enabled=True)
+        hybrid_part = Part.objects.create(
+            seller=self.buyer,
+            category=self.part.category,
+            title="Hybrid own item",
+            slug="hybrid-own-item",
+            oem_number="HYBRID-OWN-001",
+            price=Decimal("75.00"),
+        )
+        hybrid_item = OrderItem.objects.create(
+            order=self.order,
+            part=hybrid_part,
+            quantity=1,
+            unit_price=Decimal("75.00"),
+            status="confirmed",
+        )
+        self.shipment.items.add(hybrid_item)
+
+        detail = execute(
+            "get_order_detail",
+            {"order_id": self.order.id},
+            self.buyer,
+            "seller",
+        )
+        tracking = execute(
+            "track_order",
+            {"order_id": self.order.id},
+            self.buyer,
+            "seller",
+        )
+        competitor_batch = execute(
+            "order_batch_items",
+            {"order_id": self.order.id, "seller_id": self.other_seller.id},
+            self.buyer,
+            "seller",
+        )
+
+        serialized = str(detail.cards) + str(tracking.cards) + str(competitor_batch.cards)
+        self.assertNotIn(self.seller.username, serialized)
+        self.assertNotIn(self.other_seller.username, serialized)
+        self.assertIn("Партнёр CP · ", serialized)
 
 
 class SharedSupportConversationTests(TestCase):
@@ -1634,3 +1679,60 @@ class RfqNotificationAccessTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+    def test_recipient_sees_only_own_items_and_quote_statistics(self):
+        other_seller = User.objects.create_user("rfq_competing_seller")
+        UserProfile.objects.create(user=other_seller, role="seller")
+        category = Category.objects.create(
+            name="RFQ private category",
+            slug="rfq-private-category",
+        )
+        own_part = Part.objects.create(
+            seller=self.seller,
+            category=category,
+            title="Own visible part",
+            slug="own-visible-part",
+            oem_number="OWN-RFQ-001",
+            price="100.00",
+        )
+        competing_part = Part.objects.create(
+            seller=other_seller,
+            category=category,
+            title="Competing secret part",
+            slug="competing-secret-part",
+            oem_number="SECRET-RFQ-002",
+            price="50.00",
+        )
+        RFQItem.objects.create(
+            rfq=self.target,
+            query="OWN-RFQ-001 buyer-contact@example.com",
+            quantity=1,
+            matched_part=own_part,
+        )
+        RFQItem.objects.create(
+            rfq=self.target,
+            query="SECRET-RFQ-002",
+            quantity=1,
+            matched_part=competing_part,
+        )
+        Quote.objects.create(rfq=self.target, seller=self.seller, total_amount="100.00")
+        Quote.objects.create(rfq=self.target, seller=other_seller, total_amount="50.00")
+        Notification.objects.create(
+            user=self.seller,
+            kind="rfq",
+            title="RFQ 12",
+            url=f"/chat/?rfq={self.target.id}",
+        )
+
+        response = self.client.get(f"/api/assistant/rfq/{self.target.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(len(payload["items"]), 1)
+        self.assertEqual(payload["quotes_count"], 1)
+        self.assertEqual(payload["sent_count"], 1)
+        self.assertIn("[контакт скрыт]", payload["items"][0]["article"])
+        serialized = str(payload)
+        self.assertNotIn("buyer-contact@example.com", serialized)
+        self.assertNotIn("SECRET-RFQ-002", serialized)
+        self.assertNotIn(other_seller.username, serialized)

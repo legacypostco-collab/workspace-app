@@ -22,6 +22,13 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from marketplace.participant_identity import (
+    customer_label,
+    partner_label,
+    public_party_code,
+    redact_party_contacts,
+)
+
 from .actions import (
     ActionResult, _anon_register_result, _is_anon, _log_event, _notify, register,
 )
@@ -45,6 +52,17 @@ def _seller_principal(user, role):
     from .seller_actions import _effective_seller
 
     return _effective_seller(user)
+
+
+def _seller_label_for_viewer(seller, user, role, *, fallback_id=None):
+    """Expose a seller identity only to staff or that seller's own account."""
+    if role == "admin" or (role and role.startswith("operator")):
+        return seller.username if seller else "—"
+    if role == "seller" and seller:
+        principal = _seller_principal(user, role)
+        if getattr(principal, "id", None) == seller.id:
+            return seller.username
+    return partner_label(seller, fallback_id=fallback_id)
 
 
 def _valid_quote_price(value: Decimal) -> bool:
@@ -396,8 +414,7 @@ def send_rfq_to_suppliers(params, user, role):
                 seller, kind="rfq",
                 title=_("Новый RFQ #%(id)s от %(who)s") % {
                     "id": rfq.id,
-                    "who": rfq.customer_name
-                    or (rfq.created_by.username if rfq.created_by_id else _("гостя")),
+                    "who": customer_label(rfq.created_by, fallback_id=rfq.id),
                 },
                 body=_("%(n)s позиций · %(urg)s. Откройте чтобы ответить котировкой.") % {"n": rfq.items.count(), "urg": rfq.urgency or 'standard'},
                 url=f"/chat/rfq/{rfq.id}/?source=invite",
@@ -654,6 +671,22 @@ def submit_quote(params, user, role):
         return ActionResult(
             text=_("Комментарий к котировке слишком длинный.")
         )
+    if message:
+        from .support_hub import _detect_offplatform_contact
+
+        if _detect_offplatform_contact(message):
+            logger.warning(
+                "anti-collusion: rejected quote contact data from seller_id=%s rfq_id=%s",
+                seller_user.id,
+                rfq.id,
+            )
+            return ActionResult(
+                text=_(
+                    "Комментарий содержит прямые контактные данные. Уберите "
+                    "телефон, почту, ссылку или имя в мессенджере: общение "
+                    "между сторонами проходит через платформу."
+                )
+            )
     parent_quote_id = params.get("parent_quote_id")
     direction = (params.get("direction") or "seller_to_buyer").strip()
     if direction != "seller_to_buyer":
@@ -839,11 +872,10 @@ def submit_quote(params, user, role):
             "warn" if rfq.urgency == "urgent"   else "info"
         )
 
-        # Код покупателя: продавцу показываем присвоенный анонимный код (узнаёт
-        # повторных клиентов), но НЕ имя. Стабилен на одного покупателя.
-        import hashlib as _hl
-        _seed = str(getattr(rfq, "created_by_id", None) or rfq.customer_email or rfq.id)
-        buyer_code = "B-" + _hl.sha256(_seed.encode()).hexdigest()[:5].upper()
+        # Постоянный обезличенный номер позволяет узнать повторного заказчика и
+        # оформить обращение, не раскрывая его имя, компанию и контакты.
+        buyer_code = public_party_code(rfq.created_by, "buyer", fallback_id=rfq.id)
+        buyer_label = customer_label(rfq.created_by, fallback_id=rfq.id)
         # Способ доставки (тест: морем по умолчанию; реальный выбирается при
         # оформлении заказа) + место назначения.
         ship_mode = "sea"
@@ -875,11 +907,15 @@ def submit_quote(params, user, role):
                     "urgency_tone":    urgency_tone,
                     # ПРИВАТНОСТЬ: продавец видит присвоенный КОД покупателя,
                     # но НИКОГДА имя/компанию. Оператор/админ — реальное имя.
-                    "customer_name":   (_("Покупатель %(code)s") % {"code": buyer_code} if role == "seller"
+                    "customer_name":   (buyer_label if role == "seller"
                                         else (rfq.customer_name or "—")),
                     "company_name":    ("" if role == "seller" else (rfq.company_name or "")),
                     "buyer_code":      buyer_code,
-                    "request_text":    (rfq.notes or "")[:200],
+                    "request_text": (
+                        redact_party_contacts(rfq.notes or "")[:200]
+                        if role == "seller"
+                        else (rfq.notes or "")[:200]
+                    ),
                     # «Куда» = место назначения (страна · порт) + способ доставки.
                     "destination":     _("🇷🇺 Россия (импорт) · %(port)s · %(mode)s") % {"port": dest_port, "mode": ship_mode_ru},
                     "shipping_mode":   ship_mode,
@@ -1035,7 +1071,11 @@ def submit_quote(params, user, role):
         _notify(
             rfq.created_by, kind="rfq",
             title=_("Котировка по RFQ #%(id)s") % {"id": rfq.id},
-            body=_("%(user)s: $%(amt)s · доставка %(d)s дн.") % {"user": seller_user.username, "amt": f"{total:,.0f}", "d": delivery_days},
+            body=_("%(user)s: $%(amt)s · доставка %(d)s дн.") % {
+                "user": partner_label(seller_user),
+                "amt": f"{total:,.0f}",
+                "d": delivery_days,
+            },
             url=f"/chat/?rfq={rfq.id}",
         )
 
@@ -1160,15 +1200,14 @@ def view_rfq_quotes(params, user, role):
     if len(latest) == 1:
         return view_quote({"quote_id": latest[0].id}, user, role)
 
-    # Anonymize seller имена для buyer'а (раскрываются после accept_quote)
-    is_buyer_view = (rfq.created_by_id == user.id) and role == "buyer"
-
     items = []
-    for idx, q in enumerate(latest):
-        if is_buyer_view:
-            seller_name = _("Поставщик №%(n)s") % {"n": idx + 1}
-        else:
-            seller_name = q.seller.username if q.seller else "—"
+    for q in latest:
+        seller_name = _seller_label_for_viewer(
+            q.seller,
+            user,
+            role,
+            fallback_id=q.id,
+        )
         flags = []
         if q.is_final: flags.append(_("🔒 финальная"))
         if q.round_number > 1: flags.append(_("раунд %(r)s") % {"r": q.round_number})
@@ -1181,8 +1220,11 @@ def view_rfq_quotes(params, user, role):
 
     # Suggest accept на самую дешёвую (если она финальная — не предлагаем counter)
     cheapest = latest[0]
-    cheapest_label = _("Поставщик №1") if is_buyer_view else (
-        cheapest.seller.username if cheapest.seller else "?"
+    cheapest_label = _seller_label_for_viewer(
+        cheapest.seller,
+        user,
+        role,
+        fallback_id=cheapest.id,
     )
     actions = []
     if cheapest.is_final:
@@ -1236,20 +1278,12 @@ def view_quote(params, user, role):
     if not (is_buyer or is_seller or (role and role.startswith("operator")) or role == "admin"):
         return ActionResult(text=_("Доступ к котировке ограничен."))
 
-    # Buyer видит «Поставщик №N» (по порядку round_number в данном RFQ);
-    # accepted-котировки раскрывают имя — buyer уже выбрал и теперь нужны контакты.
-    if is_buyer and role == "buyer" and q.status != "accepted":
-        # Определяем порядковый номер среди всех котировок этого RFQ от seller_to_buyer
-        from marketplace.models import Quote as _Q
-        ranked = list(_Q.objects.filter(rfq_id=q.rfq_id, direction="seller_to_buyer")
-                      .order_by("total_amount").values_list("seller_id", flat=True))
-        try:
-            rank = ranked.index(q.seller_id) + 1 if q.seller_id else None
-            seller_label = _("Поставщик №%(n)s") % {"n": rank} if rank else _("Поставщик")
-        except ValueError:
-            seller_label = _("Поставщик")
-    else:
-        seller_label = q.seller.username if q.seller else "—"
+    seller_label = _seller_label_for_viewer(
+        q.seller,
+        user,
+        role,
+        fallback_id=q.id,
+    )
 
     rows = [
         {"label": _("RFQ"), "value": f"#{q.rfq_id}"},
@@ -1261,7 +1295,10 @@ def view_quote(params, user, role):
         {"label": _("Действует до"), "value": q.valid_until.strftime("%d.%m.%Y %H:%M") if q.valid_until else "—"},
     ]
     if q.message:
-        rows.append({"label": _("Комментарий"), "value": q.message[:200]})
+        rows.append({
+            "label": _("Комментарий"),
+            "value": redact_party_contacts(q.message)[:200],
+        })
 
     # КП показываем В ТОМ ЖЕ ВИДЕ, что и состав заказа — таблица spec_results
     # (позиции + цена поставщика построчно), а не тонкий list.
@@ -1400,20 +1437,17 @@ def accept_quote(params, user, role):
     if block:
         return ActionResult(**block)
 
-    # Шаг 1: preview (buyer ещё не должен видеть имя — раскрываем после confirm)
+    # Шаг 1: обе стороны остаются обезличенными и после подтверждения сделки.
     if not confirmed:
-        if role == "buyer":
-            from marketplace.models import Quote as _Q
-            ranked = list(_Q.objects.filter(rfq_id=q.rfq_id, direction="seller_to_buyer")
-                          .order_by("total_amount").values_list("seller_id", flat=True))
-            try:
-                rank = ranked.index(q.seller_id) + 1 if q.seller_id else None
-            except ValueError:
-                rank = None
-            seller_label = _("Поставщик №%(n)s") % {"n": rank} if rank else _("Поставщик")
-            extra_warn = _("После принятия имя поставщика и контакты будут раскрыты для оформления заказа.")
+        seller_label = _seller_label_for_viewer(
+            q.seller,
+            user,
+            role,
+            fallback_id=q.id,
+        )
+        if seller_label != (q.seller.username if q.seller else "—"):
+            extra_warn = _("Партнёр останется обезличенным; взаимодействие и обращения проходят через платформу.")
         else:
-            seller_label = q.seller.username if q.seller else "—"
             extra_warn = ""
         warnings = [
             _("После принятия будет создан заказ. Остальные котировки автоматически отклонятся."),
@@ -1580,7 +1614,7 @@ def auto_accept_and_pay_reserve(params, user, role):
                 "title": _("🎯 Принять лучшее предложение #%(qid)s и оплатить резерв") % {"qid": best.id},
                 "rows": [
                     {"label": _("RFQ"), "value": _("#%(id)s · %(n)s позиций") % {"id": rfq.id, "n": rfq.items.count()}},
-                    {"label": _("Поставщик"), "value": _("🥇 Лучший по цене (имя раскроется)")},
+                    {"label": _("Партнёр"), "value": partner_label(best.seller, fallback_id=best.id)},
                     {"label": _("Сумма заказа"), "value": f"${best.total_amount:,.2f}", "primary": True},
                     {"label": _("Срок поставки"), "value": _("%(d)s дней") % {"d": best.delivery_days}},
                     {"label": _("Резерв 10%"), "value": f"${reserve_amount:,.2f}", "primary": True},
@@ -1633,6 +1667,16 @@ def counter_offer(params, user, role):
     message = (params.get("message") or "").strip()
     if len(message) > MAX_QUOTE_MESSAGE_LENGTH:
         return ActionResult(text=_("Комментарий к контр-офферу слишком длинный."))
+    if message:
+        from .support_hub import _detect_offplatform_contact
+
+        if _detect_offplatform_contact(message):
+            return ActionResult(
+                text=_(
+                    "Комментарий содержит прямые контактные данные. Уберите "
+                    "телефон, почту, ссылку или имя в мессенджере."
+                )
+            )
     try:
         q = Quote.objects.select_related("rfq", "seller").get(id=int(params.get("quote_id") or 0))
     except (Quote.DoesNotExist, ValueError, TypeError):
@@ -1818,7 +1862,10 @@ def mark_quote_final(params, user, role):
     if q.rfq.created_by:
         _notify(q.rfq.created_by, kind="rfq",
                 title=_("🔒 Финальная котировка по RFQ #%(id)s") % {"id": q.rfq_id},
-                body=_("%(user)s: $%(amt)s. Переторжка невозможна — принять или отклонить.") % {"user": seller_user.username, "amt": f"{q.total_amount:,.0f}"},
+                body=_("%(user)s: $%(amt)s. Переторжка невозможна — принять или отклонить.") % {
+                    "user": partner_label(seller_user),
+                    "amt": f"{q.total_amount:,.0f}",
+                },
                 url=f"/chat/?rfq={q.rfq_id}")
     _push_rfq_update(q.rfq, event="quote_finalized", quote_id=q.id)
     return ActionResult(

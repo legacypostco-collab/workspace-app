@@ -14,6 +14,15 @@ def normalize_oem_number(value: str | None) -> str:
     return re.sub(r"[\s\-_./]+", "", (value or "").strip()).upper()[:100]
 
 
+def participant_public_code(user_id: int, role: str) -> str:
+    """Return a stable display-only code which is never used for access checks."""
+    multiplier, offset = ((1973, 2847) if role == "seller" else (3251, 6173))
+    normalized_id = int(user_id)
+    if normalized_id <= 9000:
+        return str(1000 + ((normalized_id * multiplier + offset) % 9000))
+    return str(10000 + normalized_id)
+
+
 class PartQuerySet(models.QuerySet):
     def bulk_create(self, objs, *args, **kwargs):
         for obj in objs:
@@ -1113,6 +1122,22 @@ class UserProfile(models.Model):
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    partner_public_code = models.CharField(
+        max_length=16,
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Постоянный обезличенный номер партнёра. Не используется для проверки доступа.",
+    )
+    customer_public_code = models.CharField(
+        max_length=16,
+        unique=True,
+        null=True,
+        blank=True,
+        editable=False,
+        help_text="Постоянный обезличенный номер заказчика. Не используется для проверки доступа.",
+    )
     # Оператор ВЭД, ведущий этого поставщика (PIVOT 2026-05-27).
     # 1 поставщик = 1 оператор. Закрепляется при KYB-approve = тот кто одобрил.
     # Только для role=seller; для buyer не используется.
@@ -1237,6 +1262,17 @@ class UserProfile(models.Model):
     def save(self, *args, **kwargs):
         self.recalculate_supplier_rating()
         super().save(*args, **kwargs)
+        # Коды зависят только от неизменяемого ID аккаунта и сохраняются в БД.
+        # Прямой update не ломает save(update_fields=...) у существующих вызовов.
+        missing = {}
+        if self.user_id and not self.partner_public_code:
+            missing["partner_public_code"] = participant_public_code(self.user_id, "seller")
+        if self.user_id and not self.customer_public_code:
+            missing["customer_public_code"] = participant_public_code(self.user_id, "buyer")
+        if missing:
+            type(self).objects.filter(pk=self.pk).update(**missing)
+            for field, value in missing.items():
+                setattr(self, field, value)
 
     def __str__(self) -> str:
         return f"{self.user.username} ({self.role})"

@@ -19,6 +19,12 @@ from decimal import Decimal
 from django.db.models import Q
 from django.utils.translation import gettext as _, ngettext
 
+from marketplace.participant_identity import (
+    customer_label,
+    partner_label,
+    redact_party_contacts,
+)
+
 from .rfq_mode_badge import mode_badge
 from .security import confirmation_is_true
 
@@ -1994,15 +2000,14 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
                 _freshness_days = int((_tz_mode.now() - p.data_updated_at).total_seconds() // 86400)
 
             alt_suppliers = []
-            for supplier_index, offer in enumerate(ranked, 1):
+            for offer in ranked:
                 offer_part = offer["part"]
                 seller = offer_part.seller
                 buyer_view = _is_buyer_view(role)
                 alt_suppliers.append(
                     {
                         "label": (
-                            _("Поставщик №%(number)s")
-                            % {"number": supplier_index}
+                            partner_label(seller, fallback_id=offer_part.seller_id or offer_part.id)
                             if buyer_view
                             else (
                                 getattr(offer_part.warehouse, "supplier_name", None)
@@ -2535,7 +2540,6 @@ def _search_articles_list(articles: list[str], quantities: dict | None = None,
             "ddp_available": ddp_available,
             "delivery_address": delivery_address,
             "arrival_port": arrival_port,
-            "dest_country": dest,
             "orig_articles": list(articles),  # для повторного вызова с адресом
             # OEM-ключи нужны calcShipping: _search_articles_list ожидает {oem: qty}
             "article_quantities": ({art: int(qmap.get(art, 1) or 1) for art in articles
@@ -3143,7 +3147,7 @@ def get_orders(params, user, role):
     from marketplace.models import Order
     limit = min(int(params.get("limit") or 6), MAX_ANALYTICS_RECORDS)
     qs = (
-        Order.objects.select_related("buyer")
+        Order.objects.select_related("buyer", "buyer__profile")
         .prefetch_related("items__part")
         .order_by("-created_at")
     )
@@ -3191,7 +3195,11 @@ def get_orders(params, user, role):
                 "status": o.get_status_display(), "status_code": o.status,
                 "payment_status": o.payment_status,
                 "total": float(visible_total), "currency": "USD",
-                "customer": _('Покупатель') if role == "seller" else (o.customer_name or "—"),
+                "customer": (
+                    customer_label(o.buyer, fallback_id=o.id)
+                    if role == "seller"
+                    else (o.customer_name or "—")
+                ),
                 "created_at": o.created_at.strftime("%d.%m.%Y"),
                 "can_cancel": (role == "buyer" and o.payment_status == "awaiting_reserve"),
             },
@@ -3248,7 +3256,7 @@ def get_order_detail(params, user, role):
     if not oid:
         return ActionResult(text=_('⚠️ Не указан ID заказа'))
     try:
-        o = (Order.objects.select_related("buyer")
+        o = (Order.objects.select_related("buyer", "buyer__profile")
              .prefetch_related("items__part__brand", "documents").get(id=oid))
     except Order.DoesNotExist:
         # Заказ не найден — обычно случается с устаревшими ссылками
@@ -3394,7 +3402,11 @@ def get_order_detail(params, user, role):
         {"label": _('Статус'),     "value": o.get_status_display()},
         {"label": _('Оплата'),     "value": o.get_payment_status_display()},
         {"label": _('Сумма'),      "value": f"${visible_total:,.2f}"},
-        {"label": _('Покупатель'), "value": (o.customer_name or "—") if role != "seller" else _('Покупатель')},
+        {"label": _('Покупатель'), "value": (
+            (o.customer_name or "—")
+            if role != "seller"
+            else customer_label(o.buyer, fallback_id=o.id)
+        )},
         {"label": _('Создан'),     "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
     ]
     # PIVOT 2026-05-27: sub-order контекст
@@ -3504,8 +3516,12 @@ def get_order_detail(params, user, role):
                     _item_to_shipment[it.id] = sh
         except Exception:
             pass
-        for idx, (sid, g) in enumerate(sorted(by_seller.items(), key=lambda kv: -kv[1]["amount"])):
-            display_name = g["name"] if (is_op or is_seller) else f"Поставщик {chr(ord('A') + idx)}"
+        for sid, g in sorted(by_seller.items(), key=lambda kv: -kv[1]["amount"]):
+            display_name = (
+                g["name"]
+                if is_op or (is_seller and sid == _seller_uid)
+                else partner_label(None, fallback_id=sid)
+            )
             sts = sorted(g["statuses"])
             if len(sts) == 1:
                 stage_lbl = _ORDER_STATUS_LABEL_RU.get(sts[0], sts[0])
@@ -3702,7 +3718,14 @@ def get_order_detail(params, user, role):
         {"label": _('Оплата'),           "value": o.get_payment_status_display()},
         {"label": _('Сумма'),            "value": f"${visible_total:,.2f}",                    "primary": True},
         {"label": _('Создан'),           "value": o.created_at.strftime("%d.%m.%Y %H:%M") if o.created_at else "—"},
-        {"label": _('Покупатель'),       "value": (o.customer_name or "—") if role != "seller" else _('Покупатель')},
+        {
+            "label": _('Заказчик') if role == "seller" else _('Покупатель'),
+            "value": (
+                customer_label(o.buyer, fallback_id=o.id)
+                if role == "seller"
+                else (o.customer_name or "—")
+            ),
+        },
     ]
     if o.logistics_cost and not seller_scoped:
         rows.append({"label": _('Логистика'), "value": f"${o.logistics_cost:,.2f}"})
@@ -3894,13 +3917,7 @@ def order_batch_items(params, user, role):
 
     spec_items = []
     total = 0.0
-    # Суммы по поставщикам — чтобы анонимный лейбл «Поставщик A/B/C» совпадал
-    # с карточкой «По поставщикам» (порядок по сумме, по убыванию).
-    by_amt = {}
     for it in o.items.all():
-        if it.part and it.part.seller_id:
-            by_amt[it.part.seller_id] = by_amt.get(it.part.seller_id, 0.0) \
-                + float(it.unit_price or 0) * (it.quantity or 0)
         if not it.part or it.part.seller_id != sid:
             continue
         mp = it.part
@@ -3920,16 +3937,12 @@ def order_batch_items(params, user, role):
     if not spec_items:
         return ActionResult(text=_('В этой партии нет позиций.'))
 
-    if is_buyer and role == "buyer":
-        order_sids = [s for s, _u1 in sorted(by_amt.items(), key=lambda kv: -kv[1])]
-        try:
-            sup_label = _('Поставщик %(sid)s') % {'sid': chr(ord('A') + order_sids.index(sid))}
-        except ValueError:
-            sup_label = _('Поставщик')
+    _su = next((it.part.seller for it in o.items.all()
+                if it.part and it.part.seller_id == sid and it.part.seller), None)
+    if is_op or is_this_seller:
+        sup_label = _su.username if _su else _('Поставщик')
     else:
-        _su = next((it.part.seller for it in o.items.all()
-                    if it.part and it.part.seller_id == sid and it.part.seller), None)
-        sup_label = (_su.username if _su else _('Поставщик'))
+        sup_label = partner_label(_su, fallback_id=sid)
 
     spec_card = {"type": "spec_results", "data": {
         "title": _('Партия · %(sup_label)s · ORD-%(id)s') % {'sup_label': sup_label, 'id': o.id},
@@ -4083,7 +4096,12 @@ def track_shipment(params, user, role):
                 if item.id in _visible_item_ids
             ]
             names = sorted({(it.part.seller.username if (it.part and it.part.seller_id) else "—") for it in its})
-            disp = ", ".join(names) if _is_real_op else f"Партия {idx + 1}"
+            public_names = sorted({
+                partner_label(it.part.seller, fallback_id=it.part.seller_id)
+                for it in its
+                if it.part and it.part.seller_id
+            })
+            disp = ", ".join(names) if _is_real_op else (", ".join(public_names) or _("Партнёр платформы"))
             amt = sum(
                 float(item.unit_price or 0) * (item.quantity or 0)
                 for item in its
@@ -4115,7 +4133,7 @@ def track_shipment(params, user, role):
                 g["statuses"].add((it.status if hasattr(it,"status") and it.status else None) or o.status)
             base = len(_sh_parts)
             for j, (sid, g) in enumerate(sorted(_lg.items(), key=lambda kv: -kv[1]["amount"])):
-                disp = g["name"] if _is_real_op else f"Поставщик {chr(ord('A') + base + j)}"
+                disp = g["name"] if _is_real_op else partner_label(None, fallback_id=sid)
                 if len(g["statuses"]) == 1:
                     only = next(iter(g["statuses"]))
                     lbl = _STAGE_LABEL_RU.get(only, only)
@@ -4143,7 +4161,7 @@ def track_shipment(params, user, role):
             g["statuses"].add((it.status if hasattr(it,"status") and it.status else None) or o.status)
         if len(_g_by_sup) > 1:
             for idx, (sid, g) in enumerate(sorted(_g_by_sup.items(), key=lambda kv: -kv[1]["amount"])):
-                disp = g["name"] if _is_real_op else f"Поставщик {chr(ord('A') + idx)}"
+                disp = g["name"] if _is_real_op else partner_label(None, fallback_id=sid)
                 if len(g["statuses"]) == 1:
                     only = next(iter(g["statuses"]))
                     lbl = _STAGE_LABEL_RU.get(only, only)
@@ -4390,7 +4408,8 @@ def _seller_deals(user, params):
         "refunded":         _('возвращён'),
     }
 
-    qs = (Order.objects.filter(items__part__seller=user).distinct()
+    qs = (Order.objects.filter(items__part__seller=user)
+          .select_related("buyer", "buyer__profile").distinct()
           .order_by("-created_at"))
     if allowed is not None:
         qs = qs.filter(status__in=list(allowed))
@@ -4446,7 +4465,10 @@ def _seller_deals(user, params):
             else:
                 lbl, act = btn_label, btn_action
             rows.append({
-                "title":    _('Заказ #%(id)s · Покупатель') % {'id': o.id},
+                "title": _('Заказ #%(id)s · %(customer)s') % {
+                    'id': o.id,
+                    'customer': customer_label(o.buyer, fallback_id=o.id),
+                },
                 "subtitle": _sub(o, is_done),
                 "action":   {"label": lbl, "action": act, "params": {"order_id": o.id}},
             })
@@ -4464,11 +4486,15 @@ def _seller_deals(user, params):
         # (а) Мои КП — уже отправленные котировки, ждут решения покупателя.
         quoted_rfqs = list(
             RFQ.objects.filter(quotes__seller=user, status="quoted")
+                       .select_related("created_by", "created_by__profile")
                        .distinct().order_by("-created_at")[:12]
         )
         if quoted_rfqs:
             rrows = [{
-                "title":    _('RFQ #%(id)s · Покупатель') % {'id': r.id},
+                "title": _('RFQ #%(id)s · %(customer)s') % {
+                    'id': r.id,
+                    'customer': customer_label(r.created_by, fallback_id=r.id),
+                },
                 "subtitle": ngettext('%(n)s позиция · КП отправлен, ждём ответа', '%(n)s позиций · КП отправлен, ждём ответа', r.items.count()) % {'n': r.items.count()},
                 "action":   {"label": _('💬 Открыть КП'), "action": "respond_rfq_form",
                              "params": {"rfq_id": r.id}},
@@ -4492,6 +4518,7 @@ def _seller_deals(user, params):
             RFQ.objects.filter(status__in=("new", "processing"),
                                created_at__gte=two_weeks)
                        .exclude(quotes__seller=user)
+                       .select_related("created_by", "created_by__profile")
                        .prefetch_related("items__matched_part")
                        .order_by("-created_at")[:60]
         )
@@ -4527,7 +4554,10 @@ def _seller_deals(user, params):
                 badge = mode_badge_with_sla(r.mode)
                 bp = f"{badge} · " if badge else ""
                 lrows.append({
-                    "title":    _('RFQ #%(id)s · Покупатель') % {'id': r.id},
+                    "title": _('RFQ #%(id)s · %(customer)s') % {
+                        'id': r.id,
+                        'customer': customer_label(r.created_by, fallback_id=r.id),
+                    },
                     "subtitle": (bp + ngettext('%(n)s позиция · создан %(Y)s', '%(n)s позиций · создан %(Y)s', r.items.count()) % {'n': r.items.count(), 'Y': r.created_at.strftime('%d.%m.%Y')}),
                     "action":   {"label": _('💬 Ответить'), "action": "respond_rfq_form",
                                  "params": {"rfq_id": r.id}},
@@ -5592,7 +5622,14 @@ def get_supply_report(params, user, role):
                 "warn" if o.sla_status == "at_risk" else "ok")
             items_n = OrderItem.objects.filter(order=o).count()
             st_rows.append({
-                "title": _('ORD-%(id)s · %(username)s') % {'id': o.id, 'username': _('Покупатель') if role == 'seller' else (o.customer_name or o.buyer.username)},
+                "title": _('ORD-%(id)s · %(username)s') % {
+                    'id': o.id,
+                    'username': (
+                        customer_label(o.buyer, fallback_id=o.id)
+                        if role == 'seller'
+                        else (o.customer_name or o.buyer.username)
+                    ),
+                },
                 "subtitle": (
                     _('%(items_n)s поз · $%(or)s · ETA ~%(eta)s (%(days_left)sд)') % {'items_n': items_n, 'or': f"{float(o.total_amount or 0):,.0f}", 'eta': eta, 'days_left': days_left}
                 ),
@@ -5696,23 +5733,26 @@ def compare_products(params, user, role):
 
 
 # ══════════════════════════════════════════════════════════
-# Buyer-anonymity: имена поставщиков скрыты до акцепта котировки
+# Buyer-anonymity: партнёры всегда отображаются под постоянными номерами
 # ══════════════════════════════════════════════════════════
 
 def _is_buyer_view(role: str) -> bool:
-    """Buyer не должен видеть реальные имена поставщиков, чтобы не обходить
-    платформу. Имена раскрываются только в Quote после accept_quote.
-    Operator/admin/seller видят настоящие.
-    """
-    return role == "buyer"
+    """Trading parties do not receive identifying data about suppliers."""
+    return role in {"buyer", "seller"}
 
 
 def _anonymize_supplier(s: dict, idx: int) -> dict:
     """Скрывает name/email/identifying fields, оставляя метрики и рейтинг."""
     safe = dict(s)
-    safe["name"] = _('Поставщик №%(idx)s') % {'idx': idx + 1}
+    safe["name"] = partner_label(
+        None,
+        fallback_id=s.get("_seller_id") or s.get("seller_id") or s.get("id") or idx + 1,
+    )
     # Удаляем потенциально идентифицирующие поля
-    for k in ("email", "phone", "company_name", "username", "legal_name", "inn"):
+    for k in (
+        "email", "phone", "company_name", "username", "legal_name", "inn",
+        "seller_id", "_seller_id", "user", "warehouse", "warehouse_address",
+    ):
         safe.pop(k, None)
     safe["anonymous"] = True
     return safe
@@ -5730,16 +5770,16 @@ def compare_suppliers(params, user, role):
     # related_name = 'profile' (см. marketplace.UserProfile), а не 'userprofile'
     sellers = list(User.objects.filter(profile__role="seller")[:5])
     if _is_buyer_view(role):
-        # Для buyer — анонимизируем: только rank + рейтинг, без имени и email
+        # Для сторон сделки — постоянный номер + рейтинг, без имени и email.
         rows = [
-            [f"Поставщик №{i + 1}", "—"]
-            for i, _u1 in enumerate(sellers)
+            [partner_label(seller), "—"]
+            for seller in sellers
         ]
     else:
         rows = [[s.get_full_name() or s.username, s.email or "—"] for s in sellers]
     return ActionResult(
         text=(_("Топ поставщиков (%(n)s):") % {"n": len(sellers)}) + (
-            _("\n💡 Имена скрыты — раскрываются после принятия котировки.") if _is_buyer_view(role) else ""
+            _("\nПартнёры отображаются под постоянными обезличенными номерами.") if _is_buyer_view(role) else ""
         ),
         cards=[{
             "type": "comparison",
@@ -5898,11 +5938,19 @@ def buyer_best_offers(params, user, role):
 
     offers = _rank_offers(list(by_key.values()))[:limit]
 
-    # Анонимизация для buyer — стабильный псевдоним по seller_id
+    # Анонимизация для сторон сделки — постоянный номер по seller_id.
     anon = _is_buyer_view(role)
-    for i, o in enumerate(offers, 1):
+    sellers_by_id = {part.seller_id: part.seller for part in parts if part.seller_id}
+    for o in offers:
         if anon:
-            o["supplier_label"] = _('Поставщик #S%(seller_id)s') % {'seller_id': f"{o['seller_id'] % 1000:03d}"}
+            o["supplier_label"] = partner_label(
+                sellers_by_id.get(o["seller_id"]),
+                fallback_id=o["seller_id"],
+            )
+            o.pop("seller_id", None)
+            o.pop("warehouse", None)
+            o.pop("sea_port", None)
+            o.pop("air_port", None)
         else:
             try:
                 u = next(p.seller for p in parts if p.seller_id == o["seller_id"])
@@ -5926,7 +5974,7 @@ def buyer_best_offers(params, user, role):
 
     intro = (_('🛒 Топ %(offers)s предложений по «%(query)s» (ранжировано по цене + рейтингу поставщика)') % {'offers': len(offers), 'query': query})
     if anon:
-        intro += _('\n💡 Имена скрыты до принятия котировки — виден только рейтинг.')
+        intro += _('\nПартнёры отображаются под постоянными обезличенными номерами.')
 
     return ActionResult(
         text=intro,
@@ -6019,9 +6067,17 @@ def buyer_offer_compare(params, user, role):
     offers = _rank_offers(offers)
 
     anon = _is_buyer_view(role)
+    sellers_by_id = {part.seller_id: part.seller for part in parts if part.seller_id}
     for o in offers:
         if anon:
-            o["supplier_label"] = _('Поставщик #S%(seller_id)s') % {'seller_id': f"{o['seller_id'] % 1000:03d}"}
+            o["supplier_label"] = partner_label(
+                sellers_by_id.get(o["seller_id"]),
+                fallback_id=o["seller_id"],
+            )
+            o.pop("seller_id", None)
+            o.pop("warehouse", None)
+            o.pop("sea_port", None)
+            o.pop("air_port", None)
         else:
             try:
                 u = next(p.seller for p in parts if p.seller_id == o["seller_id"])
@@ -6048,7 +6104,7 @@ def buyer_offer_compare(params, user, role):
     intro = (f"🔍 Сравнение {len(offers)} поставщиков по OEM «{oem}»\n"
              + "\n".join(insight_lines))
     if anon:
-        intro += _('\n💡 Имена скрыты — виден только рейтинг и статус.')
+        intro += _('\nПартнёры отображаются под постоянными обезличенными номерами.')
 
     return ActionResult(
         text=intro,
@@ -6584,7 +6640,14 @@ def get_sla_report(params, user, role):
     stuck.sort(key=lambda x: -x[1])
     if stuck:
         items_stuck = [{
-            "title":    _('Заказ #%(id)s · %(or)s') % {'id': o.id, 'or': _('Покупатель') if role == 'seller' else (o.customer_name or '')[:30]},
+            "title": _('Заказ #%(id)s · %(customer)s') % {
+                'id': o.id,
+                'customer': (
+                    customer_label(o.buyer, fallback_id=o.id)
+                    if role == 'seller'
+                    else (o.customer_name or '')[:30]
+                ),
+            },
             "subtitle": (_('в статусе «%(status)s» уже %(age)s дн (норматив %(sla)s дн)') % {'status': STAGE_LABELS.get(o.status, o.status), 'age': age, 'sla': sla}),
             "badge":    {"label": _('+%(sla)sд') % {'sla': age - sla}, "tone": "bad"},
             "action":   "track_order",
@@ -6665,7 +6728,15 @@ def get_claims(params, user, role):
 
     from marketplace.models import OrderClaim, OrderItem
 
-    qs = OrderClaim.objects.select_related("order", "order__buyer").order_by("-created_at")
+    is_operator = bool(role) and (role == "operator" or role.startswith("operator_"))
+    if role not in {"buyer", "seller", "admin"} and not is_operator:
+        return ActionResult(text=_("Доступ к рекламациям ограничен."))
+
+    qs = OrderClaim.objects.select_related(
+        "order",
+        "order__buyer",
+        "order__buyer__profile",
+    ).order_by("-created_at")
     if role == "buyer":
         qs = qs.filter(order__buyer=user)
     elif role == "seller":
@@ -6673,7 +6744,7 @@ def get_claims(params, user, role):
         s = _effective_seller(user)
         order_ids = OrderItem.objects.filter(part__seller=s).values_list("order_id", flat=True).distinct()
         qs = qs.filter(order_id__in=list(order_ids))
-    # operator → без фильтра
+    # operator/admin → без фильтра
 
     # Параметры-фильтры (drill-down с KPI-ячеек):
     #   status=<X>       — конкретный статус (approved/rejected/closed/…)
@@ -6901,10 +6972,19 @@ def get_claims(params, user, role):
     def _row(c, age_d, *, sla_bad=False):
         order = c.order
         order_tag = f"#{order.id}"
-        who = _('Покупатель') if role == "seller" else (order.buyer.username if order.buyer_id else (order.customer_name or "—"))[:24]
+        who = (
+            customer_label(order.buyer, fallback_id=order.id)
+            if role == "seller"
+            else (order.buyer.username if order.buyer_id else (order.customer_name or "—"))[:24]
+        )
         money = f" · возврат ${int(c.refund_amount):,}".replace(",", " ") if c.refund_amount else ""
+        visible_title = (
+            redact_party_contacts(c.title)
+            if role == "seller"
+            else c.title
+        )
         return {
-            "title": c.title[:60] or KIND_LABEL.get(c.kind, c.kind),
+            "title": visible_title[:60] or KIND_LABEL.get(c.kind, c.kind),
             "subtitle": (
                 _('%(kind)s · заказ %(order_tag)s · %(who)s · %(age_d)s дн назад%(money)s') % {'kind': KIND_LABEL.get(c.kind, c.kind), 'order_tag': order_tag, 'who': who, 'age_d': age_d, 'money': money}
             ),
@@ -7825,11 +7905,15 @@ def create_claim(params, user, role):
                 qs = qs.filter(items__part__seller=user).distinct()
             # operator → видит все
             qs = qs.order_by("-id")[:20]
-            order_options = [{"value": str(o.id),
-                              "label": f"ORD-{o.id} · {o.customer_name or ''} · "
-                                       f"{o.get_status_display()} · "
-                                       f"${float(o.total_amount or 0):,.0f}"}
-                             for o in qs]
+            order_options = [{
+                "value": str(o.id),
+                "label": (
+                    f"ORD-{o.id} · "
+                    f"{customer_label(o.buyer, fallback_id=o.id) if role == 'seller' else (o.customer_name or '')} · "
+                    f"{o.get_status_display()} · "
+                    f"${float(o.total_amount or 0):,.0f}"
+                ),
+            } for o in qs]
             if not order_options:
                 return ActionResult(
                     text=_('🧾 У вас нет заказов, по которым можно открыть рекламацию.\nРекламация открывается на доставленные / в пути / готовые к отгрузке заказы.'),
@@ -7848,7 +7932,10 @@ def create_claim(params, user, role):
         if order:
             fields.append({"name": "_order_label",
                             "label": _('Заказ'),
-                            "value": f"ORD-{order.id} · {order.customer_name or ''}",
+                            "value": (
+                                f"ORD-{order.id} · "
+                                f"{customer_label(order.buyer, fallback_id=order.id) if role == 'seller' else (order.customer_name or '')}"
+                            ),
                             "readonly": True})
         else:
             fields.append({"name": "order_id", "label": _('Заказ'),
@@ -8336,6 +8423,7 @@ def top_suppliers(params, user, role):
                 % {"count": seller.active_parts},
                 "lead_time": _("%(days)s дней")
                 % {"days": round(float(seller.average_lead or 0))},
+                "_seller_id": seller.id,
                 "currency": "USD",
                 "price_label": _("Минимальная цена позиции"),
                 "_rank": (rating["rating"], seller.active_parts),
@@ -8351,10 +8439,13 @@ def top_suppliers(params, user, role):
             text=_("В активном каталоге пока нет поставщиков для сравнения.")
         )
     visible = _maybe_anonymize_suppliers(suppliers, role)
+    if not _is_buyer_view(role):
+        for supplier in visible:
+            supplier.pop("_seller_id", None)
 
     if _is_buyer_view(role):
         intro = _(
-            "Лучшие поставщики активного каталога. Имена скрыты до принятия котировки."
+            "Лучшие поставщики активного каталога. Партнёры показаны под постоянными номерами."
         )
     else:
         intro = _("Лучшие поставщики активного каталога по рейтингу и покрытию.")
@@ -8841,7 +8932,11 @@ def quick_order(params, user, role):
     _notify_seller_of_order(
         order, kind="order",
         title=_('Новый заказ #%(id)s') % {'id': order.id},
-        body=_('Покупатель %(username)s оформил заказ на $%(total)s (%(parts)s поз.).') % {'username': user.username, 'total': f"{total:,.0f}", 'parts': len(parts)},
+        body=_('%(customer)s оформил заказ на $%(total)s (%(parts)s поз.).') % {
+            'customer': customer_label(user, fallback_id=order.id),
+            'total': f"{total:,.0f}",
+            'parts': len(parts),
+        },
     )
 
     enough = wallet.balance >= reserve_amount
@@ -11004,7 +11099,7 @@ def track_order(params, user, role):
     except (ValueError, TypeError):
         return ActionResult(text=_('Заказ #%(order_id)s не найден.') % {'order_id': order_id})
     # Buyer видит только свой заказ; seller — заказы с его товарами; operator — все
-    qs = Order.objects.select_related("buyer")
+    qs = Order.objects.select_related("buyer", "buyer__profile")
     effective_seller = None
     if role == "buyer":
         qs = qs.filter(id=order_id, buyer=user)
@@ -11062,7 +11157,7 @@ def track_order(params, user, role):
                 if it.id in visible_item_ids:
                     in_shipment_ids.add(it.id)
         # Партии (реальные Shipment'ы)
-        for idx, sh in enumerate(shipments):
+        for sh in shipments:
             its = [
                 item
                 for item in sh.items.all()
@@ -11071,13 +11166,17 @@ def track_order(params, user, role):
             sup_names = []
             for it in its:
                 if it.part and it.part.seller_id:
-                    try:
+                    if is_real_op or (
+                        role == "seller"
+                        and effective_seller
+                        and it.part.seller_id == effective_seller.id
+                    ):
                         sup_names.append(it.part.seller.username)
-                    except Exception:
-                        sup_names.append(f"#S{it.part.seller_id}")
-            sup_name_for_display = (", ".join(sorted(set(sup_names))) if sup_names else "—") \
-                                    if (is_real_op or role == "seller") \
-                                    else f"Партия {idx + 1}"
+                    else:
+                        sup_names.append(
+                            partner_label(it.part.seller, fallback_id=it.part.seller_id)
+                        )
+            sup_name_for_display = ", ".join(sorted(set(sup_names))) if sup_names else "—"
             kind_lbl = sh.get_kind_display()
             amt = sum(
                 float(item.unit_price or 0) * (item.quantity or 0)
@@ -11119,13 +11218,20 @@ def track_order(params, user, role):
                 g["items"].append(it)
                 g["amount"] += float(it.unit_price or 0) * (it.quantity or 0)
                 g["statuses"].add((it.status if hasattr(it, "status") and it.status else None) or order.status)
-            base_idx = len(parts_data)
-            for j, (sid, g) in enumerate(sorted(left_groups.items(), key=lambda kv: -kv[1]["amount"])):
+            for sid, g in sorted(left_groups.items(), key=lambda kv: -kv[1]["amount"]):
                 sts = sorted(g["statuses"])
                 worst = min(sts, key=lambda s: _ORDER_CODES.index(s) if s in _ORDER_CODES else 99)
                 worst_idx = TRACKING_INDEX.get(worst, 0)
                 worst_lbl = TRACKING_STAGES[worst_idx][1] if worst_idx < len(TRACKING_STAGES) else worst
-                disp = g["name"] if (is_real_op or role == "seller") else f"Поставщик {chr(ord('A') + base_idx + j)}"
+                disp = (
+                    g["name"]
+                    if is_real_op or (
+                        role == "seller"
+                        and effective_seller
+                        and sid == effective_seller.id
+                    )
+                    else partner_label(None, fallback_id=sid)
+                )
                 parts_data.append({
                     "supplier": _('%(disp)s · ждёт партию') % {'disp': disp},
                     "amount": g["amount"],
@@ -11150,12 +11256,20 @@ def track_order(params, user, role):
             g["amount"] += float(it.unit_price or 0) * (it.quantity or 0)
             g["statuses"].add((it.status if hasattr(it, "status") and it.status else None) or order.status)
         if len(_sup_groups) > 1:
-            for idx, (sid, g) in enumerate(sorted(_sup_groups.items(), key=lambda kv: -kv[1]["amount"])):
+            for sid, g in sorted(_sup_groups.items(), key=lambda kv: -kv[1]["amount"]):
                 sts = sorted(g["statuses"])
                 worst = min(sts, key=lambda s: _ORDER_CODES.index(s) if s in _ORDER_CODES else 99)
                 worst_idx = TRACKING_INDEX.get(worst, 0)
                 worst_lbl = TRACKING_STAGES[worst_idx][1] if worst_idx < len(TRACKING_STAGES) else worst
-                display_name = g["name"] if (is_real_op or role == "seller") else f"Поставщик {chr(ord('A') + idx)}"
+                display_name = (
+                    g["name"]
+                    if is_real_op or (
+                        role == "seller"
+                        and effective_seller
+                        and sid == effective_seller.id
+                    )
+                    else partner_label(None, fallback_id=sid)
+                )
                 parts_data.append({
                     "supplier": display_name,
                     "amount": g["amount"],
@@ -12724,6 +12838,14 @@ def _wallet_account_user(user, role):
     return user
 
 
+def _wallet_party_label(user, role_hint=None):
+    """Public account label for transfers; never expose login or legal name."""
+    if role_hint not in {"buyer", "seller"}:
+        profile = getattr(user, "profile", None)
+        role_hint = "seller" if getattr(profile, "role", "") == "seller" else "buyer"
+    return partner_label(user) if role_hint == "seller" else customer_label(user)
+
+
 @register("request_payout")
 def request_payout(params, user, role):
     """Совместимое название для нового контролируемого процесса вывода."""
@@ -12945,8 +13067,15 @@ def transfer_wallet(params, user, role):
             "submit_action": "submit_wallet_transfer",
             "submit_label": _("Проверить перевод"),
             "fields": [
-                {"name": "recipient", "label": _("Имя пользователя получателя"),
-                 "type": "text", "required": True},
+                {"name": "recipient_role", "label": _("Тип получателя"),
+                 "type": "select", "required": True, "value": "seller",
+                 "options": [
+                     {"value": "seller", "label": _("Партнёр")},
+                     {"value": "buyer", "label": _("Заказчик")},
+                 ]},
+                {"name": "recipient_code", "label": _("Номер получателя CP"),
+                 "type": "text", "required": True,
+                 "placeholder": _("Например, 4827")},
                 {"name": "amount", "label": _("Сумма (USD)"), "type": "number",
                  "required": True, "hint": _("Доступно: $%(amount)s") % {"amount": f"{wallet.balance:,.2f}"}},
                 {"name": "note", "label": _("Назначение"), "type": "text",
@@ -12962,10 +13091,10 @@ def transfer_wallet(params, user, role):
 
 @register("submit_wallet_transfer")
 def submit_wallet_transfer(params, user, role):
-    from django.contrib.auth import get_user_model
     from django.utils import timezone
-    from marketplace.models import CompanyVerification
+    from marketplace.models import CompanyVerification, UserProfile
     from .models import Wallet, WalletTransfer
+    from .permissions import user_allowed_roles
     from .security import user_has_enabled_2fa
 
     amount = _finite_decimal(
@@ -12974,7 +13103,10 @@ def submit_wallet_transfer(params, user, role):
     )
     if amount is None:
         return ActionResult(text=_("Введите корректную сумму перевода."))
-    recipient_name = (params.get("recipient") or "").strip()
+    recipient_role = (params.get("recipient_role") or "").strip().lower()
+    recipient_code = str(
+        params.get("recipient_code") or params.get("recipient") or ""
+    ).strip()
     account_user = _wallet_account_user(user, role)
     if not CompanyVerification.objects.filter(
         user=account_user,
@@ -12983,10 +13115,22 @@ def submit_wallet_transfer(params, user, role):
         return ActionResult(
             text=_("Сначала завершите проверку компании и включите двухфакторную защиту."),
         )
-    recipient_user = get_user_model().objects.filter(
-        username__iexact=recipient_name, is_active=True,
-    ).first()
+    if recipient_role not in {"buyer", "seller"} or not recipient_code.isdigit():
+        return ActionResult(text=_("Получатель не найден или недоступен для перевода."))
+    code_field = (
+        "partner_public_code" if recipient_role == "seller"
+        else "customer_public_code"
+    )
+    recipient_profile = (
+        UserProfile.objects.select_related("user")
+        .filter(**{code_field: recipient_code, "user__is_active": True})
+        .first()
+    )
+    recipient_user = recipient_profile.user if recipient_profile else None
+    recipient_roles = set(user_allowed_roles(recipient_user)) if recipient_user else set()
     if not recipient_user or recipient_user.id == account_user.id:
+        return ActionResult(text=_("Получатель не найден или недоступен для перевода."))
+    if recipient_role not in recipient_roles:
         return ActionResult(text=_("Получатель не найден или недоступен для перевода."))
     if not CompanyVerification.objects.filter(
         user=recipient_user,
@@ -12999,13 +13143,18 @@ def submit_wallet_transfer(params, user, role):
         return ActionResult(text=_("На внутреннем счёте недостаточно средств."))
     if sender_wallet.currency != recipient_wallet.currency:
         return ActionResult(text=_("Валюты внутренних счетов не совпадают."))
+    transfer_note = (params.get("note") or "").strip()[:200]
+    if redact_party_contacts(transfer_note) != transfer_note:
+        return ActionResult(
+            text=_("В назначении перевода нельзя передавать контактные данные."),
+        )
     transfer = WalletTransfer.objects.create(
         sender=sender_wallet, recipient=recipient_wallet, amount=amount,
         currency=sender_wallet.currency, reference_code=WalletTransfer.make_ref(),
-        note=(params.get("note") or "").strip()[:200],
+        note=transfer_note,
         expires_at=timezone.now() + timedelta(minutes=15),
     )
-    recipient_label = recipient_user.get_full_name() or recipient_user.username
+    recipient_label = _wallet_party_label(recipient_user, recipient_role)
     return ActionResult(
         text=_(
             "Проверьте перевод: $%(amount)s пользователю %(recipient)s. "
@@ -13082,7 +13231,7 @@ def confirm_wallet_transfer(params, user, role):
             title=_("Внутренний перевод зачислен"),
             body=_("На ваш внутренний счёт поступило $%(amount)s от %(sender)s.") % {
                 "amount": f"{transfer.amount:,.2f}",
-                "sender": account_user.username,
+                "sender": _wallet_party_label(account_user, role),
             },
         )
     except Exception:
@@ -13116,14 +13265,17 @@ def list_wallet_transfers(params, user, role):
     account_user = _wallet_account_user(user, role)
     transfers = WalletTransfer.objects.filter(
         Q(sender__user=account_user) | Q(recipient__user=account_user),
-    ).select_related("sender__user", "recipient__user")[:50]
+    ).select_related(
+        "sender__user__profile",
+        "recipient__user__profile",
+    )[:50]
     rows = []
     for transfer in transfers:
         outgoing = transfer.sender.user_id == account_user.id
         counterpart = transfer.recipient.user if outgoing else transfer.sender.user
         sign = "−" if outgoing else "+"
         rows.append({
-            "title": f"{sign}${transfer.amount:,.2f} · {counterpart.username}",
+            "title": f"{sign}${transfer.amount:,.2f} · {_wallet_party_label(counterpart)}",
             "subtitle": f"{transfer.reference_code} · {transfer.get_status_display()} · {transfer.created_at:%d.%m.%Y %H:%M}",
             "tone": "ok" if transfer.status == "completed" else "info",
         })

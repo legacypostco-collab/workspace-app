@@ -22,13 +22,14 @@ import os
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.utils.translation import gettext as _
 from django.utils import timezone
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
+
+from marketplace.participant_identity import customer_label, partner_label
 
 from .actions import ActionResult, register
 
@@ -233,7 +234,14 @@ def _regenerate_signed_pdf(doc) -> bool:
         return False
     try:
         sigs = list(doc.signatures.all())
-        buf = builder(doc.order, signatures=sigs)
+        from marketplace.order_access import seller_ids_for_order
+
+        anonymize_buyer = doc.uploaded_by_id in seller_ids_for_order(doc.order)
+        buf = builder(
+            doc.order,
+            signatures=sigs,
+            anonymize_buyer=anonymize_buyer,
+        )
         buf.seek(0)
         fn = (doc.file_obj.name.rsplit("/", 1)[-1]
               if doc.file_obj and doc.file_obj.name
@@ -333,7 +341,7 @@ def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
     y = _draw_header(c, "PRO-FORMA INVOICE", doc_no)
 
     seller_label = (
-        f"Supplier #{quote.id} (rank by price)"
+        partner_label(quote.seller, fallback_id=quote.id)
         if anonymize_seller and buyer.id != (quote.seller_id or 0)
         else (quote.seller.username if quote.seller else "—")
     )
@@ -441,8 +449,19 @@ def _draw_signatures(c, signatures, order):
     for s in signatures:
         role = _SIG_ROLE_RU.get(s.signer_role, s.signer_role or "—")
         mark = "✓" if s.method == "ep" else "📎"
+        if s.signer_role == "buyer":
+            signer_name = customer_label(order.buyer, fallback_id=order.id)
+        elif s.signer_role == "seller":
+            from marketplace.order_access import seller_principal
+
+            signer_name = partner_label(
+                seller_principal(s.signer),
+                fallback_id=s.signer_id or order.id,
+            )
+        else:
+            signer_name = s.signer_name or "—"
         c.setFont(FONT_BOLD, 11)
-        c.drawString(22 * mm, y, f"{mark} {role}: {s.signer_name or '—'}")
+        c.drawString(22 * mm, y, f"{mark} {role}: {signer_name}")
         y -= 6 * mm
         c.setFont(FONT_REGULAR, 9)
         when = s.signed_at.strftime("%d.%m.%Y %H:%M") if s.signed_at else "—"
@@ -459,25 +478,31 @@ def _draw_signatures(c, signatures, order):
     c.showPage()
 
 
-def _build_invoice_pdf(order, signatures=None) -> io.BytesIO:
+def _build_invoice_pdf(order, signatures=None, *, anonymize_buyer=False) -> io.BytesIO:
     """Commercial Invoice — официальный документ на оплату по Order."""
     from reportlab.lib.units import mm
     c, buf = _pdf_canvas(f"Invoice ORD-{order.id}")
     y = _draw_header(c, "COMMERCIAL INVOICE", f"ORD-{order.id}")
 
     seller_label = "via Consolidator Parts (escrow)"
+    buyer_name = (
+        customer_label(order.buyer, fallback_id=order.id)
+        if anonymize_buyer
+        else (order.customer_name or (order.buyer.username if order.buyer else "—"))
+    )
+    buyer_email = "via Consolidator Parts" if anonymize_buyer else (order.customer_email or "—")
     y = _draw_parties_block(
         c, y,
-        buyer_name=order.customer_name or (order.buyer.username if order.buyer else "—"),
-        buyer_email=order.customer_email or "—",
+        buyer_name=buyer_name,
+        buyer_email=buyer_email,
         seller_name="—",
         seller_label=seller_label,
     )
 
     y = _draw_kv_block(c, y, [
-        ("Buyer", order.customer_name or (order.buyer.username if order.buyer else "—")),
-        ("Email", order.customer_email or "—"),
-        ("Delivery", order.delivery_address or "—"),
+        ("Buyer", buyer_name),
+        ("Email", buyer_email),
+        ("Delivery", "Managed by Consolidator Parts" if anonymize_buyer else (order.delivery_address or "—")),
         ("Payment status", order.get_payment_status_display()),
         ("Order created", order.created_at.strftime("%Y-%m-%d") if order.created_at else "—"),
     ])
@@ -523,7 +548,7 @@ def _build_invoice_pdf(order, signatures=None) -> io.BytesIO:
     return buf
 
 
-def _build_packing_list_pdf(order, signatures=None) -> io.BytesIO:
+def _build_packing_list_pdf(order, signatures=None, *, anonymize_buyer=False) -> io.BytesIO:
     from reportlab.lib.units import mm
     c, buf = _pdf_canvas(f"Packing List ORD-{order.id}")
     y = _draw_header(c, "PACKING LIST", f"ORD-{order.id}")
@@ -534,8 +559,8 @@ def _build_packing_list_pdf(order, signatures=None) -> io.BytesIO:
             total_weight += Decimal(str(it.part.gross_weight_kg)) * it.quantity
 
     y = _draw_kv_block(c, y, [
-        ("Buyer", order.customer_name or "—"),
-        ("Delivery", order.delivery_address or "—"),
+        ("Buyer", customer_label(order.buyer, fallback_id=order.id) if anonymize_buyer else (order.customer_name or "—")),
+        ("Delivery", "Managed by Consolidator Parts" if anonymize_buyer else (order.delivery_address or "—")),
         ("Total positions", str(order.items.count())),
         ("Total gross weight", f"{total_weight:,.2f} kg"),
     ])
@@ -571,14 +596,14 @@ def _build_packing_list_pdf(order, signatures=None) -> io.BytesIO:
     return buf
 
 
-def _build_qc_report_pdf(order, signatures=None) -> io.BytesIO:
+def _build_qc_report_pdf(order, signatures=None, *, anonymize_buyer=False) -> io.BytesIO:
     from reportlab.lib.units import mm
     c, buf = _pdf_canvas(f"QC Report ORD-{order.id}")
     y = _draw_header(c, "QUALITY CONTROL REPORT", f"ORD-{order.id}")
 
     y = _draw_kv_block(c, y, [
         ("Order", f"ORD-{order.id}"),
-        ("Buyer", order.customer_name or "—"),
+        ("Buyer", customer_label(order.buyer, fallback_id=order.id) if anonymize_buyer else (order.customer_name or "—")),
         ("Status", order.get_status_display() if order.status else "—"),
         ("Inspection date", timezone.now().strftime("%Y-%m-%d")),
     ])
@@ -799,7 +824,7 @@ def generate_invoice_pdf(params, user, role):
                 ),
             )
     try:
-        buf = _build_invoice_pdf(order)
+        buf = _build_invoice_pdf(order, anonymize_buyer=(role == "seller"))
         doc = _save_pdf(order, "invoice", f"Счёт на оплату ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("invoice PDF generation failed")
@@ -843,7 +868,7 @@ def generate_packing_list_pdf(params, user, role):
                 ),
             )
     try:
-        buf = _build_packing_list_pdf(order)
+        buf = _build_packing_list_pdf(order, anonymize_buyer=(role == "seller"))
         doc = _save_pdf(order, "packing_list", f"Упаковочный лист ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("packing list PDF generation failed")
@@ -880,7 +905,7 @@ def generate_qc_report_pdf(params, user, role):
                 ),
             )
     try:
-        buf = _build_qc_report_pdf(order)
+        buf = _build_qc_report_pdf(order, anonymize_buyer=(role == "seller"))
         doc = _save_pdf(order, "quality_report", f"Акт контроля качества ORD-{order.id}", buf, user)
     except Exception as e:
         logger.exception("QC report PDF generation failed")

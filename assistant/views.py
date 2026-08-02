@@ -2237,7 +2237,17 @@ class RFQDetailView(APIView):
     def get(self, request, rfq_id):
 
         from marketplace.models import RFQ, Notification, Quote
-        rfq = get_object_or_404(RFQ, id=rfq_id)
+        from marketplace.order_access import seller_principal
+        from marketplace.participant_identity import (
+            customer_label,
+            partner_label,
+            redact_party_contacts,
+        )
+
+        rfq = get_object_or_404(
+            RFQ.objects.select_related("created_by__profile"),
+            id=rfq_id,
+        )
 
         # SECURITY (IDOR fix): доступ к RFQ имеют только:
         #  • владелец (создатель RFQ),
@@ -2270,7 +2280,15 @@ class RFQDetailView(APIView):
         from marketplace.fx import to_usd_float  # живой бирж. курс
         items = []
         total_usd = 0.0
-        for it in rfq.items.select_related("matched_part__brand").all():
+        item_qs = rfq.items.select_related(
+            "matched_part__brand",
+            "matched_part__seller__profile",
+        )
+        recipient_seller = None
+        if is_recipient and not (is_owner or is_operator):
+            recipient_seller = seller_principal(request.user)
+            item_qs = item_qs.filter(matched_part__seller=recipient_seller)
+        for it in item_qs:
             mp = it.matched_part
             price = float(mp.price) if (mp and mp.price is not None) else None
             ccy = (getattr(mp, "currency", "USD") if mp else "USD") or "USD"
@@ -2282,35 +2300,49 @@ class RFQDetailView(APIView):
             show_price = price_usd if is_owner else price
             show_ccy = "USD" if is_owner else ccy
             items.append({
-                "article": it.query,
+                "article": (
+                    redact_party_contacts(it.query)
+                    if recipient_seller
+                    else it.query
+                ),
                 "qty": qty,
                 "state": "matched" if mp else ("no_match" if it.state == "needs_review" else "pending"),
                 "match": mp.title if mp else None,
                 "brand": (mp.brand.name if (mp and mp.brand) else None),
-                "supplier": getattr(mp, "supplier_name", None) if mp else None,
+                "supplier": (
+                    getattr(mp, "supplier_name", None)
+                    if mp and is_operator
+                    else (partner_label(mp.seller, fallback_id=mp.id) if mp else None)
+                ),
                 "price": show_price,
                 "currency": show_ccy,
             })
 
         # Quotes-аналитика
         quotes = Quote.objects.filter(rfq=rfq, direction="seller_to_buyer")
+        if recipient_seller:
+            quotes = quotes.filter(seller=recipient_seller)
         quotes_count = quotes.values_list("seller_id", flat=True).distinct().count()
         # Supplier reach: сколько уведомлений было разослано.
         # _notify пишет url'ы двух форматов:
         #   /chat/?rfq=<id>           — общая ссылка (старый формат)
         #   /chat/rfq/<id>/?source=…  — детальная страница (новый формат)
         # Считаем оба варианта, по distinct user_id.
-        sent_count = len({
-            user_id
-            for user_id, url in (
-                Notification.objects.filter(
-                    kind="rfq",
-                    url__contains=str(rfq.id),
+        sent_count = (
+            1
+            if recipient_seller
+            else len({
+                user_id
+                for user_id, url in (
+                    Notification.objects.filter(
+                        kind="rfq",
+                        url__contains=str(rfq.id),
+                    )
+                    .values_list("user_id", "url")
                 )
-                .values_list("user_id", "url")
-            )
-            if _notification_targets_rfq(url, rfq.id)
-        })
+                if _notification_targets_rfq(url, rfq.id)
+            })
+        )
 
         # Состояние «что делать дальше»
         if rfq.status == "cancelled":
@@ -2357,7 +2389,7 @@ class RFQDetailView(APIView):
         }
         # PII-protection: продавцу-адресату не видны имя/компания/заметки покупателя
         if redact_pii:
-            payload["customer_name"] = None
+            payload["customer_name"] = customer_label(rfq.created_by, fallback_id=rfq.id)
             payload["company_name"] = None
             payload["notes"] = None
         return Response(payload)

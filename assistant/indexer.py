@@ -5,6 +5,8 @@ import logging
 
 from django.utils.translation import gettext as _
 
+from marketplace.participant_identity import customer_label, partner_label
+
 from .embeddings import get_embedding
 from .models import KnowledgeChunk
 
@@ -72,15 +74,20 @@ def index_all_parts(batch_size: int = 100, limit: int = None) -> int:
 
 # ── Orders ─────────────────────────────────────────────────
 def _order_to_text(order) -> str:
+    seller_users = {
+        item.part.seller_id: item.part.seller
+        for item in order.items.select_related("part__seller", "part__seller__profile")
+        if item.part and item.part.seller_id
+    }
     lines = [
         f"Заказ #{order.id}",
         f"Дата: {order.created_at.strftime('%d.%m.%Y')}",
         f"Статус: {order.get_status_display() if hasattr(order, 'get_status_display') else order.status}",
         f"Сумма: {order.total_amount}",
-        f"Покупатель: {order.customer_name or order.buyer.get_full_name()}",
+        f"Заказчик: {customer_label(order.buyer, fallback_id=order.id)}",
     ]
-    if hasattr(order, "seller") and order.seller:
-        lines.append(f"Поставщик: {order.seller.get_full_name() or order.seller.username}")
+    for seller in seller_users.values():
+        lines.append(f"Поставщик: {partner_label(seller)}")
     if hasattr(order, "items"):
         items = order.items.all()[:20]
         if items:
@@ -93,10 +100,15 @@ def _order_to_text(order) -> str:
 def index_order(order) -> KnowledgeChunk:
     content = _order_to_text(order)
     embedding = get_embedding(content)
+    seller_ids = sorted({
+        item.part.seller_id
+        for item in order.items.select_related("part")
+        if item.part and item.part.seller_id
+    })
     access_roles = ["operator_logist", "operator_manager", "operator_payment", "admin"]
     if order.buyer_id:
         access_roles.append("buyer")
-    if hasattr(order, "seller_id") and order.seller_id:
+    if seller_ids:
         access_roles.append("seller")
 
     chunk, _created = KnowledgeChunk.objects.update_or_create(
@@ -110,7 +122,8 @@ def index_order(order) -> KnowledgeChunk:
                 "status": order.status,
                 "total": str(order.total_amount),
                 "buyer_id": order.buyer_id,
-                "seller_id": getattr(order, "seller_id", None),
+                "seller_ids": seller_ids,
+                "seller_ids_csv": "|" + "|".join(map(str, seller_ids)) + "|",
             },
             "language": "ru",
             "access_roles": access_roles,
@@ -122,7 +135,7 @@ def index_order(order) -> KnowledgeChunk:
 
 def index_all_orders(limit: int = None) -> int:
     from marketplace.models import Order
-    qs = Order.objects.select_related("buyer").order_by("-created_at")
+    qs = Order.objects.select_related("buyer", "buyer__profile").order_by("-created_at")
     if limit:
         qs = qs[:limit]
     indexed = 0
@@ -141,7 +154,7 @@ def _rfq_to_text(rfq) -> str:
     lines = [
         f"RFQ #{rfq.id}",
         f"Дата: {rfq.created_at.strftime('%d.%m.%Y')}",
-        f"Покупатель: {rfq.customer_name}",
+        f"Заказчик: {customer_label(rfq.created_by, fallback_id=rfq.id)}",
         f"Статус: {rfq.get_status_display() if hasattr(rfq, 'get_status_display') else rfq.status}",
     ]
     if hasattr(rfq, "items"):
@@ -156,16 +169,25 @@ def _rfq_to_text(rfq) -> str:
 def index_rfq(rfq) -> KnowledgeChunk:
     content = _rfq_to_text(rfq)
     embedding = get_embedding(content)
+    seller_ids = set(rfq.quotes.values_list("seller_id", flat=True))
+    seller_ids.update(
+        rfq.items.exclude(matched_part__seller_id=None)
+        .values_list("matched_part__seller_id", flat=True)
+    )
+    seller_ids.discard(None)
+    seller_ids = sorted(seller_ids)
     chunk, _created = KnowledgeChunk.objects.update_or_create(
         source_type=KnowledgeChunk.SourceType.RFQ,
         source_id=str(rfq.id),
         defaults={
-            "title": f"RFQ #{rfq.id} — {rfq.customer_name[:80]}",
+            "title": f"RFQ #{rfq.id}",
             "content": content,
             "embedding": embedding,
             "metadata": {
                 "status": rfq.status,
-                "buyer_id": getattr(rfq, "buyer_id", None),
+                "buyer_id": rfq.created_by_id,
+                "seller_ids": seller_ids,
+                "seller_ids_csv": "|" + "|".join(map(str, seller_ids)) + "|",
             },
             "language": "ru",
             "access_roles": ["buyer", "seller", "operator_manager", "admin"],
@@ -177,7 +199,7 @@ def index_rfq(rfq) -> KnowledgeChunk:
 
 def index_all_rfqs(limit: int = None) -> int:
     from marketplace.models import RFQ
-    qs = RFQ.objects.order_by("-created_at")
+    qs = RFQ.objects.select_related("created_by", "created_by__profile").order_by("-created_at")
     if limit:
         qs = qs[:limit]
     indexed = 0

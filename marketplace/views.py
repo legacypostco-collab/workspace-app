@@ -425,6 +425,7 @@ def _seller_rfqs_qs(user: User):
     return (
         RFQ.objects.filter(items__matched_part__seller=user)
         .distinct()
+        .select_related("created_by__profile")
         .prefetch_related("items__matched_part__brand", "items__matched_part__category")
         .order_by("-created_at")
     )

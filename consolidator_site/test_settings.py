@@ -33,3 +33,18 @@ CSRF_COOKIE_SECURE = False
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.MD5PasswordHasher",
 ]
+
+# Tests must not depend on a locally running Redis or worker process.
+CHANNEL_LAYERS = {
+    "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"},
+}
+CELERY_BROKER_URL = "memory://"
+CELERY_RESULT_BACKEND = "cache+memory://"
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
+
+# File-content validation is covered separately; ordinary upload tests must not
+# require a ClamAV daemon on the developer machine or in CI.
+ENABLE_VIRUS_SCAN = False
+VIRUS_SCAN_REQUIRED = False
+KYB_ENABLED = True

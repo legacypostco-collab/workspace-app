@@ -25,6 +25,8 @@ from decimal import Decimal
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from marketplace.participant_identity import partner_label
+
 from .actions import ActionResult, _full_order_cards, _notify, register
 from .security import confirmation_is_true
 
@@ -243,7 +245,7 @@ def present_kp_to_buyer(params, user, role):
     rows = [
         {"label": _("Документ"),   "value": f"PRO-{rfq.id}/{best.id} · Pro-forma Invoice"},
         {"label": _("Покупатель"), "value": user.get_full_name() or user.username},
-        {"label": _("Поставщик"),  "value": _("Поставщик №1 (имя раскрывается после подтверждения)")},
+        {"label": _("Партнёр"), "value": partner_label(best.seller, fallback_id=best.id)},
         {"label": _("Режим"),      "value": {
             "auto": _("Автоподбор"),
             "semi": _("Нужно подтверждение"),

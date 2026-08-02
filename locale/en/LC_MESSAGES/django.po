@@ -39771,3 +39771,51 @@ msgstr "Set a new password for your account."
 
 msgid "Если письма нет, проверьте папку «Спам» или подождите несколько минут."
 msgstr "If the email has not arrived, check your Spam folder or wait a few minutes."
+
+msgid "Партнёр CP · %(code)s"
+msgstr "Partner CP · %(code)s"
+
+msgid "Заказчик CP · %(code)s"
+msgstr "Customer CP · %(code)s"
+
+msgid "[контакт скрыт]"
+msgstr "[contact hidden]"
+
+msgid "Как обозначаются партнёры в сделках?"
+msgstr "How are partners identified in transactions?"
+
+msgid "Партнёры отображаются под постоянными обезличенными номерами."
+msgstr "Partners are displayed with permanent anonymous numbers."
+
+msgid "Партнёр останется обезличенным; взаимодействие и обращения проходят через платформу."
+msgstr "The partner remains anonymous; communication and complaints go through the platform."
+
+msgid "Другое предложение"
+msgstr "Other offer"
+
+msgid "Скидка %(pct)s%% в ответ на конкурентное предложение. %(comment)s"
+msgstr "A %(pct)s%% discount in response to a competing offer. %(comment)s"
+
+msgid "Сначала заказчик должен принять приглашение в платформу."
+msgstr "The customer must first accept the platform invitation."
+
+msgid "Заказ не найден или не относится к этому заказчику."
+msgstr "The order was not found or does not belong to this customer."
+
+msgid "Доступ к рекламациям ограничен."
+msgstr "Access to claims is restricted."
+
+msgid "Тип получателя"
+msgstr "Recipient type"
+
+msgid "Партнёр"
+msgstr "Partner"
+
+msgid "Номер получателя CP"
+msgstr "Recipient CP number"
+
+msgid "Например, 4827"
+msgstr "For example, 4827"
+
+msgid "В назначении перевода нельзя передавать контактные данные."
+msgstr "Contact details are not allowed in the transfer description."

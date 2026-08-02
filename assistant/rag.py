@@ -205,7 +205,7 @@ def _get_history(conversation: Conversation) -> list[dict]:
     return msgs
 
 
-def _search_context(query: str, role: str, language: str = None):
+def _search_context(query: str, role: str, language: str = None, user=None):
     """Embed query + hybrid vector+keyword search."""
     try:
         embedding = get_embedding(query)
@@ -216,6 +216,7 @@ def _search_context(query: str, role: str, language: str = None):
         embedding=embedding,
         role=role,
         language=language,
+        user=user,
         limit=MAX_CONTEXT_CHUNKS,
         min_score=MIN_SIMILARITY_SCORE,
         query_text=query,
@@ -592,7 +593,9 @@ def process_query_sync(conversation: Conversation, user_message: str, user=None,
 
     # 3. Slow-path: Claude tool-use for everything else
     language = _detect_language(user_message)
-    context_chunks = _search_context(user_message, conversation.role, language)
+    context_chunks = _search_context(
+        user_message, conversation.role, language, user=conversation.user
+    )
     context_refs = _build_context_refs(context_chunks)
     available = [
         tool["name"]
@@ -964,7 +967,9 @@ def process_query_stream(conversation: Conversation, user_message: str, ui_lang:
         return
 
     language = _detect_language(user_message)
-    context_chunks = _search_context(user_message, conversation.role, language)
+    context_chunks = _search_context(
+        user_message, conversation.role, language, user=conversation.user
+    )
     context_refs = _build_context_refs(context_chunks)
     yield {"type": "context", "refs": context_refs}
 

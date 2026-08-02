@@ -36986,3 +36986,51 @@ msgstr "Establezca una nueva contraseña para su cuenta."
 
 msgid "Если письма нет, проверьте папку «Спам» или подождите несколько минут."
 msgstr "Si no recibió el correo, revise la carpeta «Spam» o espere unos minutos."
+
+msgid "Партнёр CP · %(code)s"
+msgstr "Socio CP · %(code)s"
+
+msgid "Заказчик CP · %(code)s"
+msgstr "Cliente CP · %(code)s"
+
+msgid "[контакт скрыт]"
+msgstr "[contacto oculto]"
+
+msgid "Как обозначаются партнёры в сделках?"
+msgstr "¿Cómo se identifican los socios en las operaciones?"
+
+msgid "Партнёры отображаются под постоянными обезличенными номерами."
+msgstr "Los socios se muestran con números anónimos permanentes."
+
+msgid "Партнёр останется обезличенным; взаимодействие и обращения проходят через платформу."
+msgstr "El socio seguirá siendo anónimo; la comunicación y las reclamaciones se gestionan a través de la plataforma."
+
+msgid "Другое предложение"
+msgstr "Otra oferta"
+
+msgid "Скидка %(pct)s%% в ответ на конкурентное предложение. %(comment)s"
+msgstr "Descuento del %(pct)s%% en respuesta a una oferta competidora. %(comment)s"
+
+msgid "Сначала заказчик должен принять приглашение в платформу."
+msgstr "El cliente debe aceptar primero la invitación a la plataforma."
+
+msgid "Заказ не найден или не относится к этому заказчику."
+msgstr "El pedido no se encontró o no pertenece a este cliente."
+
+msgid "Доступ к рекламациям ограничен."
+msgstr "El acceso a las reclamaciones está restringido."
+
+msgid "Тип получателя"
+msgstr "Tipo de destinatario"
+
+msgid "Партнёр"
+msgstr "Socio"
+
+msgid "Номер получателя CP"
+msgstr "Número CP del destinatario"
+
+msgid "Например, 4827"
+msgstr "Por ejemplo, 4827"
+
+msgid "В назначении перевода нельзя передавать контактные данные."
+msgstr "No se permiten datos de contacto en el concepto de la transferencia."

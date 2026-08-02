@@ -27,6 +27,8 @@ from decimal import Decimal
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
+from marketplace.participant_identity import redact_party_contacts
+
 from .actions import ActionResult, _log_event, _notify, register
 from .security import confirmation_is_true
 
@@ -124,7 +126,7 @@ def open_claim(params, user, role):
 def start_claim_review(params, user, role):
     if not _is_operator(role) and role != "admin":
         return ActionResult(text=_("Доступно только оператору."))
-    from marketplace.models import Order, OrderClaim
+    from marketplace.models import OrderClaim
     from django.db import transaction as _txn
     try:
         _cid = int(params.get("claim_id") or 0)
@@ -635,21 +637,37 @@ def claim_detail(params, user, role):
 
     is_owner = claim.opened_by_id == user.id
     is_op = _is_operator(role) or role == "admin"
-    if not (is_owner or is_op):
+    is_seller = False
+    if role == "seller":
+        from marketplace.order_access import seller_can_access_claim
+
+        is_seller = seller_can_access_claim(user, claim)
+    if not (is_owner or is_op or is_seller):
         return ActionResult(text=_("Доступ к рекламации ограничен."))
+
+    visible_title = (
+        redact_party_contacts(claim.title)
+        if is_seller and not is_owner
+        else claim.title
+    )
 
     rows = [
         {"label": _("Заказ"), "value": f"#{claim.order_id}"},
         {"label": _("Тип"), "value": claim.get_kind_display(), "primary": True},
         {"label": _("Статус"), "value": claim.get_status_display()},
-        {"label": _("Описание"), "value": claim.title[:120]},
+        {"label": _("Описание"), "value": visible_title[:120]},
     ]
     if claim.resolution_kind != "none":
         rows.append({"label": _("Решение"), "value": claim.get_resolution_kind_display()})
     if claim.refund_amount and claim.refund_amount > 0:
         rows.append({"label": _("Возврат"), "value": f"${claim.refund_amount:,.2f}"})
     if claim.rejection_reason:
-        rows.append({"label": _("Причина отклонения"), "value": claim.rejection_reason[:200]})
+        rejection_reason = (
+            redact_party_contacts(claim.rejection_reason)
+            if is_seller and not is_owner
+            else claim.rejection_reason
+        )
+        rows.append({"label": _("Причина отклонения"), "value": rejection_reason[:200]})
     rows.append({"label": _("Открыта"), "value": claim.created_at.strftime("%d.%m.%Y %H:%M")})
 
     actions = []

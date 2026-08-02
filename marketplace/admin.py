@@ -153,6 +153,8 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_display = (
         "user",
         "role",
+        "partner_public_code",
+        "customer_public_code",
         "department",
         "company_name",
         "rating_score",
@@ -163,7 +165,20 @@ class UserProfileAdmin(admin.ModelAdmin):
         "can_view_analytics",
     )
     list_filter = ("role", "department", "supplier_status", "can_manage_assortment", "can_manage_pricing", "can_manage_orders")
-    readonly_fields = ("rating_score", "supplier_status", "last_rating_recalculated_at")
+    readonly_fields = (
+        "partner_public_code",
+        "customer_public_code",
+        "rating_score",
+        "supplier_status",
+        "last_rating_recalculated_at",
+    )
+    search_fields = (
+        "partner_public_code",
+        "customer_public_code",
+        "user__username",
+        "user__email",
+        "company_name",
+    )
     filter_horizontal = ("allowed_brands",)
     actions = ("apply_department_permission_template",)
 

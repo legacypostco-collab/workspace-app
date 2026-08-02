@@ -174,6 +174,7 @@ def search_similar_chunks(
     embedding: list[float],
     role: str,
     language: str = None,
+    user=None,
     limit: int = 5,
     min_score: float = 0.7,
     query_text: str = "",
@@ -183,16 +184,17 @@ def search_similar_chunks(
     """
     from .models import KnowledgeChunk
 
-    # Filter by role + language
-    qs = KnowledgeChunk.objects.filter(is_active=True)
+    # Filter by role, participant ownership and language. Role-only filtering is
+    # insufficient for order/RFQ chunks: every buyer must not see every order.
+    qs = knowledge_chunks_for_user(
+        KnowledgeChunk.objects.filter(is_active=True),
+        role=role,
+        user=user,
+    )
     if language:
         qs = qs.filter(language=language)
 
     is_pg = "postgres" in settings.DATABASES["default"]["ENGINE"]
-    if is_pg:
-        qs = qs.filter(access_roles__contains=role)
-    else:
-        qs = qs.filter(access_roles__icontains=f'"{role}"')
 
     # Postgres: real pgvector cosine search
     if is_pg and not _is_stub_mode():
@@ -229,3 +231,36 @@ def search_similar_chunks(
             scored.append(c)
     scored.sort(key=lambda c: -c.similarity_score)
     return scored[:limit]
+
+
+def knowledge_chunks_for_user(qs, *, role: str, user=None):
+    """Apply role and object-level visibility to knowledge-base chunks."""
+    from django.db.models import Q
+
+    is_pg = "postgres" in settings.DATABASES["default"]["ENGINE"]
+    if is_pg:
+        qs = qs.filter(access_roles__contains=[role])
+    else:
+        qs = qs.filter(access_roles__icontains=f'"{role}"')
+
+    if role == "admin" or role.startswith("operator"):
+        return qs
+
+    public_sources = ("product", "brand", "category", "regulation", "faq")
+    if not user or not getattr(user, "is_authenticated", False):
+        return qs.filter(source_type__in=public_sources)
+
+    if role == "buyer":
+        return qs.filter(
+            Q(source_type__in=public_sources) | Q(metadata__buyer_id=user.id)
+        )
+    if role == "seller":
+        from marketplace.order_access import seller_principal
+
+        principal = seller_principal(user)
+        principal_id = getattr(principal, "id", None)
+        return qs.filter(
+            Q(source_type__in=public_sources)
+            | Q(metadata__seller_ids_csv__icontains=f"|{principal_id}|")
+        )
+    return qs.filter(source_type__in=public_sources)

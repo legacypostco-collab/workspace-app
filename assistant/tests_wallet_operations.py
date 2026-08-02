@@ -66,7 +66,10 @@ class WalletTransferTests(TestCase):
         self.sender = user_model.objects.create_user(username="transfer_sender")
         self.recipient = user_model.objects.create_user(username="transfer_recipient")
         UserProfile.objects.create(user=self.sender, role="buyer")
-        UserProfile.objects.create(user=self.recipient, role="buyer")
+        self.recipient_profile = UserProfile.objects.create(
+            user=self.recipient,
+            role="buyer",
+        )
         CompanyVerification.objects.create(user=self.sender, status="verified")
         CompanyVerification.objects.create(user=self.recipient, status="verified")
         from marketplace.models import TwoFactorAuth
@@ -85,11 +88,17 @@ class WalletTransferTests(TestCase):
     def test_confirmed_transfer_moves_funds_once_and_notifies_recipient(self):
         result = execute(
             "submit_wallet_transfer",
-            {"recipient": self.recipient.username, "amount": "125.50", "note": "Invoice"},
+            {
+                "recipient_role": "buyer",
+                "recipient_code": self.recipient_profile.customer_public_code,
+                "amount": "125.50",
+                "note": "Invoice",
+            },
             self.sender,
             "buyer",
         )
         self.assertTrue(result.actions)
+        self.assertNotIn(self.recipient.username, result.text)
         transfer = WalletTransfer.objects.get()
 
         execute(
@@ -120,6 +129,13 @@ class WalletTransferTests(TestCase):
             Notification.objects.filter(user=self.recipient, kind="payment").count(),
             1,
         )
+        notification = Notification.objects.get(user=self.recipient, kind="payment")
+        self.assertNotIn(self.sender.username, notification.body)
+        self.assertIn("Заказчик CP · ", notification.body)
+
+        history = execute("list_wallet_transfers", {}, self.sender, "buyer")
+        self.assertNotIn(self.recipient.username, str(history.cards))
+        self.assertIn("Заказчик CP · ", str(history.cards))
 
     def test_expired_transfer_stays_expired_without_moving_funds(self):
         transfer = WalletTransfer.objects.create(
@@ -145,7 +161,11 @@ class WalletTransferTests(TestCase):
     def test_transfer_is_not_completed_without_valid_second_factor(self):
         execute(
             "submit_wallet_transfer",
-            {"recipient": self.recipient.username, "amount": "50.00"},
+            {
+                "recipient_role": "buyer",
+                "recipient_code": self.recipient_profile.customer_public_code,
+                "amount": "50.00",
+            },
             self.sender,
             "buyer",
         )
@@ -171,7 +191,26 @@ class WalletTransferTests(TestCase):
 
         result = execute(
             "submit_wallet_transfer",
-            {"recipient": self.recipient.username, "amount": "50.00"},
+            {
+                "recipient_role": "buyer",
+                "recipient_code": self.recipient_profile.customer_public_code,
+                "amount": "50.00",
+            },
+            self.sender,
+            "buyer",
+        )
+
+        self.assertFalse(WalletTransfer.objects.exists())
+        self.assertIn("не найден", result.text)
+
+    def test_username_cannot_be_used_as_recipient_identifier(self):
+        result = execute(
+            "submit_wallet_transfer",
+            {
+                "recipient_role": "buyer",
+                "recipient_code": self.recipient.username,
+                "amount": "50.00",
+            },
             self.sender,
             "buyer",
         )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 
 from .models import Order, OrderClaim, OrderDocument, OrderEvent, TeamMember
 
@@ -71,11 +71,9 @@ def seller_can_access_document(user, document: OrderDocument) -> bool:
     principal = seller_principal(user)
     if principal.id not in seller_ids_for_order(document.order):
         return False
-    return document.uploaded_by_id in {
-        None,
-        document.order.buyer_id,
-        *seller_company_user_ids(principal),
-    }
+    # Без отдельной маркировки аудитории продавцу доступны только документы
+    # его команды. Покупательские и системные файлы могут содержать реквизиты.
+    return document.uploaded_by_id in seller_company_user_ids(principal)
 
 
 def seller_visible_documents(order: Order, user) -> QuerySet:
@@ -83,9 +81,7 @@ def seller_visible_documents(order: Order, user) -> QuerySet:
     if not principal or principal.id not in seller_ids_for_order(order):
         return OrderDocument.objects.none()
     return order.documents.filter(
-        Q(uploaded_by__isnull=True)
-        | Q(uploaded_by_id__in=seller_company_user_ids(principal))
-        | Q(uploaded_by_id=order.buyer_id)
+        uploaded_by_id__in=seller_company_user_ids(principal),
     )
 
 

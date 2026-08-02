@@ -27,6 +27,12 @@ from .models import (
     RFQItem,
     WebhookDeliveryLog,
 )
+from .participant_identity import (
+    customer_label,
+    public_party_code,
+    redact_party_contacts,
+    redact_party_payload,
+)
 from .serializers import CategorySerializer, OrderSerializer, PartSerializer
 from .order_access import (
     seller_can_access_claim,
@@ -88,15 +94,14 @@ def _seller_requests_queryset(user):
 
 def _serialize_seller_rfq(rfq: RFQ, seller_user) -> dict:
     seller_items = [item for item in rfq.items.all() if item.matched_part and item.matched_part.seller_id == seller_user.id]
+    buyer_label = customer_label(rfq.created_by, fallback_id=rfq.id)
     return {
         "id": rfq.id,
-        "customer_name": rfq.customer_name,
-        "customer_email": rfq.customer_email,
-        "company_name": rfq.company_name,
+        "customer_name": buyer_label,
+        "customer_code": public_party_code(rfq.created_by, "buyer", fallback_id=rfq.id),
         "mode": rfq.mode,
         "urgency": rfq.urgency,
         "status": rfq.status,
-        "notes": rfq.notes,
         "created_at": rfq.created_at.isoformat(),
         "seller_items_count": len(seller_items),
         "total_quantity": sum(item.quantity for item in seller_items),
@@ -104,11 +109,11 @@ def _serialize_seller_rfq(rfq: RFQ, seller_user) -> dict:
         "items": [
             {
                 "id": item.id,
-                "query": item.query,
+                "query": redact_party_contacts(item.query),
                 "quantity": item.quantity,
                 "state": item.state,
                 "confidence": item.confidence,
-                "decision_reason": item.decision_reason,
+                "decision_reason": redact_party_contacts(item.decision_reason),
                 "matched_part_id": item.matched_part_id,
                 "matched_part_title": item.matched_part.title if item.matched_part else "",
                 "matched_part_oem": item.matched_part.oem_number if item.matched_part else "",
@@ -123,6 +128,7 @@ def _seller_orders_queryset(user):
     return (
         Order.objects.filter(items__part__seller=seller)
         .distinct()
+        .select_related("buyer__profile")
         .prefetch_related("items__part", "events", "documents", "claims")
         .order_by("-created_at")
     )
@@ -146,10 +152,11 @@ def _serialize_seller_order(order: Order, seller_user) -> dict:
         if claim.status in {"open", "in_review"}
     ]
     visible_documents = seller_visible_documents(order, seller_user)
+    buyer_label = customer_label(order.buyer, fallback_id=order.id)
     return {
         "id": order.id,
-        "customer_name": order.customer_name,
-        "customer_email": order.customer_email,
+        "customer_name": buyer_label,
+        "customer_code": public_party_code(order.buyer, "buyer", fallback_id=order.id),
         "status": order.status,
         "payment_status": order.payment_status,
         "sla_status": order.sla_status,
@@ -181,27 +188,50 @@ def _serialize_seller_order(order: Order, seller_user) -> dict:
     }
 
 
-def _serialize_order_event(event: OrderEvent) -> dict:
+def _serialize_seller_order_event(event: OrderEvent, order: Order, seller_user) -> dict:
+    seller_ids = seller_company_user_ids(seller_user)
+    if event.actor_id == order.buyer_id:
+        actor_name = customer_label(order.buyer, fallback_id=order.id)
+    elif event.actor_id in seller_ids:
+        actor_name = "Ваша команда"
+    elif event.actor_id:
+        actor_name = "Оператор платформы"
+    else:
+        actor_name = "Система"
+    sensitive_meta_keys = {
+        "actor_id", "buyer", "buyer_id", "seller", "seller_id", "username",
+        "customer_name", "customer_email", "company_name", "email", "phone", "by",
+    }
+    safe_meta = {
+        key: value
+        for key, value in (event.meta or {}).items()
+        if str(key).lower() not in sensitive_meta_keys
+    }
     return {
         "id": event.id,
         "event_type": event.event_type,
         "source": event.source,
-        "actor_id": event.actor_id,
-        "actor_name": event.actor.username if event.actor else "",
-        "meta": event.meta,
+        "actor_name": actor_name,
+        "meta": redact_party_payload(safe_meta),
         "created_at": event.created_at.isoformat(),
     }
 
 
-def _serialize_order_claim(claim: OrderClaim) -> dict:
+def _serialize_seller_order_claim(claim: OrderClaim, seller_user) -> dict:
+    seller_ids = seller_company_user_ids(seller_user)
+    if claim.opened_by_id == claim.order.buyer_id:
+        opened_by = customer_label(claim.order.buyer, fallback_id=claim.order_id)
+    elif claim.opened_by_id in seller_ids:
+        opened_by = "Ваша команда"
+    else:
+        opened_by = "Оператор платформы"
     return {
         "id": claim.id,
         "order_id": claim.order_id,
-        "title": claim.title,
-        "description": claim.description,
+        "title": redact_party_contacts(claim.title),
+        "description": redact_party_contacts(claim.description),
         "status": claim.status,
-        "opened_by_id": claim.opened_by_id,
-        "resolved_by_id": claim.resolved_by_id,
+        "opened_by": opened_by,
         "created_at": claim.created_at.isoformat(),
         "updated_at": claim.updated_at.isoformat(),
     }
@@ -413,14 +443,15 @@ def api_seller_requests(request):
     if status:
         rfqs = rfqs.filter(status=status)
     if q:
-        rfqs = rfqs.filter(
-            Q(customer_name__icontains=q)
-            | Q(company_name__icontains=q)
-            | Q(customer_email__icontains=q)
+        request_filter = (
+            Q(created_by__profile__customer_public_code__icontains=q)
             | Q(items__query__icontains=q)
             | Q(items__matched_part__oem_number__icontains=q)
             | Q(items__matched_part__title__icontains=q)
-        ).distinct()
+        )
+        if q.isdigit():
+            request_filter |= Q(id=int(q))
+        rfqs = rfqs.filter(request_filter).distinct()
     seller = seller_principal(request.user)
     items = [_serialize_seller_rfq(rfq, seller) for rfq in rfqs[:100]]
     return Response({"items": items})
@@ -526,12 +557,14 @@ def api_seller_orders(request):
     if sla:
         orders = orders.filter(sla_status=sla)
     if q:
-        orders = orders.filter(
-            Q(customer_name__icontains=q)
-            | Q(customer_email__icontains=q)
+        order_filter = (
+            Q(buyer__profile__customer_public_code__icontains=q)
             | Q(items__part__oem_number__icontains=q)
             | Q(items__part__title__icontains=q)
-        ).distinct()
+        )
+        if q.isdigit():
+            order_filter |= Q(id=int(q))
+        orders = orders.filter(order_filter).distinct()
     seller = seller_principal(request.user)
     return Response({"items": [_serialize_seller_order(order, seller) for order in orders[:100]]})
 
@@ -547,7 +580,7 @@ def api_seller_order_detail(request, order_id: int):
     seller = seller_principal(request.user)
     payload = _serialize_seller_order(order, seller)
     payload["events"] = [
-        _serialize_order_event(event)
+        _serialize_seller_order_event(event, order, seller)
         for event in seller_visible_events(order, seller)[:100]
     ]
     visible_documents = seller_visible_documents(order, seller)
@@ -566,7 +599,7 @@ def api_seller_order_detail(request, order_id: int):
         for doc in visible_documents[:100]
     ]
     payload["claims"] = [
-        _serialize_order_claim(claim)
+        _serialize_seller_order_claim(claim, seller)
         for claim in seller_visible_claims(order, seller)[:100]
     ]
     return Response(payload)
@@ -583,7 +616,7 @@ def api_seller_order_timeline(request, order_id: int):
     return Response({
         "order_id": order.id,
         "items": [
-            _serialize_order_event(event)
+            _serialize_seller_order_event(event, order, seller)
             for event in seller_visible_events(order, seller)[:100]
         ],
     })
@@ -655,7 +688,7 @@ def api_seller_claims(request):
     claims = (
         OrderClaim.objects.filter(order__items__part__seller=seller)
         .distinct()
-        .select_related("order", "opened_by", "resolved_by")
+        .select_related("order__buyer__profile", "opened_by", "resolved_by")
         .prefetch_related("order__items__part")
         .order_by("-created_at")
     )
@@ -667,7 +700,12 @@ def api_seller_claims(request):
         for claim in claims[:300]
         if seller_can_access_claim(seller, claim)
     ][:100]
-    return Response({"items": [_serialize_order_claim(claim) for claim in visible]})
+    return Response({
+        "items": [
+            _serialize_seller_order_claim(claim, seller)
+            for claim in visible
+        ],
+    })
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
@@ -694,10 +732,15 @@ def api_seller_claim_respond(request, claim_id: int):
         )
     if len(comment) > 2_000:
         return Response({"error": "comment is too long"}, status=400)
+    if redact_party_contacts(comment) != comment:
+        return Response(
+            {"error": "contact details are not allowed"},
+            status=400,
+        )
     with transaction.atomic():
         claim = (
             OrderClaim.objects.select_for_update()
-            .select_related("order")
+            .select_related("order__buyer__profile")
             .get(id=claim.id)
         )
         if claim.status not in {"open", "in_review"}:
@@ -723,7 +766,10 @@ def api_seller_claim_respond(request, claim_id: int):
         meta={"claim_id": claim.id, "status": status},
     )
     _refresh_seller_dashboard_projection(request.user)
-    return Response({"ok": True, "claim": _serialize_order_claim(claim)})
+    return Response({
+        "ok": True,
+        "claim": _serialize_seller_order_claim(claim, seller_principal(request.user)),
+    })
 
 
 @extend_schema(responses=OpenApiTypes.OBJECT)
