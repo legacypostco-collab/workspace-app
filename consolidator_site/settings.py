@@ -188,6 +188,7 @@ except ImportError:
 
 MIDDLEWARE = [
     "consolidator_site.middleware.SecurityHeadersMiddleware",
+    "marketplace.services.observability.OperationsMetricsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -580,7 +581,11 @@ KYB_EXTERNAL_REQUIRED = _env_bool("KYB_EXTERNAL_REQUIRED", False)
 # Контроль после запуска. Heartbeat должен указывать на внешний dead-man
 # монитор, webhook — на канал оповещений дежурной команды.
 UPTIME_HEARTBEAT_URL = os.getenv("UPTIME_HEARTBEAT_URL", "").strip()
+UPTIME_HEARTBEAT_FAIL_URL = os.getenv("UPTIME_HEARTBEAT_FAIL_URL", "").strip()
 MONITOR_WEBHOOK_URL = os.getenv("MONITOR_WEBHOOK_URL", "").strip()
+MONITOR_TELEGRAM_BOT_TOKEN = os.getenv("MONITOR_TELEGRAM_BOT_TOKEN", "").strip()
+MONITOR_TELEGRAM_CHAT_ID = os.getenv("MONITOR_TELEGRAM_CHAT_ID", "").strip()
+MONITOR_CONTROLLER_ENABLED = _env_bool("MONITOR_CONTROLLER_ENABLED", False)
 MONITORING_REQUIRED = _env_bool("MONITORING_REQUIRED", False)
 
 # ── Sentry error tracking ─────────────────────────────────
@@ -588,16 +593,28 @@ MONITORING_REQUIRED = _env_bool("MONITORING_REQUIRED", False)
 SENTRY_DSN = os.getenv("SENTRY_DSN", "").strip()
 if SENTRY_DSN:
     try:
+        import logging
+
         import sentry_sdk
+        from consolidator_site.observability import scrub_sentry_event
+        from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.django import DjangoIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        from sentry_sdk.integrations.redis import RedisIntegration
         sentry_sdk.init(
             dsn=SENTRY_DSN,
-            integrations=[DjangoIntegration()],
+            integrations=[
+                DjangoIntegration(),
+                CeleryIntegration(),
+                RedisIntegration(),
+                LoggingIntegration(event_level=logging.ERROR),
+            ],
             traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
             profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
             send_default_pii=False,
             environment=os.getenv("SENTRY_ENV", "production"),
             release=os.getenv("SENTRY_RELEASE", ""),
+            before_send=scrub_sentry_event,
         )
     except ImportError:
         pass  # sentry-sdk not installed — skip silently
@@ -681,6 +698,10 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # подхватывает управляемые записи django-celery-beat, не затирая этот набор.
 from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
+    "monitoring-heartbeat-every-minute": {
+        "task": "marketplace.tasks.monitoring_heartbeat",
+        "schedule": 60.0,
+    },
     "check-sla-breaches-every-15min": {
         "task": "marketplace.tasks.check_sla_breaches",
         "schedule": crontab(minute="*/15"),

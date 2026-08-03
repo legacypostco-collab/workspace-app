@@ -161,14 +161,30 @@ class Command(BaseCommand):
         monitoring_values = {
             "SENTRY_DSN": getattr(settings, "SENTRY_DSN", ""),
             "UPTIME_HEARTBEAT_URL": getattr(settings, "UPTIME_HEARTBEAT_URL", ""),
-            "MONITOR_WEBHOOK_URL": getattr(settings, "MONITOR_WEBHOOK_URL", ""),
         }
+        has_alert_channel = bool(
+            getattr(settings, "MONITOR_WEBHOOK_URL", "")
+            or (
+                getattr(settings, "MONITOR_TELEGRAM_BOT_TOKEN", "")
+                and getattr(settings, "MONITOR_TELEGRAM_CHAT_ID", "")
+            )
+        )
         missing_monitoring = [name for name, value in monitoring_values.items() if not value]
+        if not has_alert_channel:
+            missing_monitoring.append("MONITOR_ALERT_CHANNEL")
+        if not getattr(settings, "MONITOR_CONTROLLER_ENABLED", False):
+            missing_monitoring.append("MONITOR_CONTROLLER_ENABLED")
         if missing_monitoring:
             message = "Monitoring is incomplete: " + ", ".join(missing_monitoring) + "."
             (errors if getattr(settings, "MONITORING_REQUIRED", False) else warnings).append(message)
-        for name in ("UPTIME_HEARTBEAT_URL", "MONITOR_WEBHOOK_URL"):
-            value = monitoring_values[name]
+        monitoring_urls = {
+            **monitoring_values,
+            "UPTIME_HEARTBEAT_FAIL_URL": getattr(
+                settings, "UPTIME_HEARTBEAT_FAIL_URL", ""
+            ),
+            "MONITOR_WEBHOOK_URL": getattr(settings, "MONITOR_WEBHOOK_URL", ""),
+        }
+        for name, value in monitoring_urls.items():
             parsed = urlparse(value) if value else None
             if value and (
                 parsed.scheme != "https"

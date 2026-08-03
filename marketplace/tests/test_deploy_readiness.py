@@ -14,6 +14,9 @@ class DeployReadinessSecurityTests(SimpleTestCase):
         SENTRY_DSN="",
         UPTIME_HEARTBEAT_URL="",
         MONITOR_WEBHOOK_URL="",
+        MONITOR_TELEGRAM_BOT_TOKEN="",
+        MONITOR_TELEGRAM_CHAT_ID="",
+        MONITOR_CONTROLLER_ENABLED=False,
     )
     def test_required_external_services_are_blocking_errors(self):
         output = StringIO()
@@ -28,6 +31,7 @@ class DeployReadinessSecurityTests(SimpleTestCase):
 
     @override_settings(
         UPTIME_HEARTBEAT_URL="http://monitor.example.com/heartbeat",
+        UPTIME_HEARTBEAT_FAIL_URL="http://monitor.example.com/fail",
         MONITOR_WEBHOOK_URL="https://user:secret@alerts.example.com/hook",
     )
     def test_monitoring_urls_require_https_without_credentials(self):
@@ -38,6 +42,7 @@ class DeployReadinessSecurityTests(SimpleTestCase):
 
         report = output.getvalue()
         self.assertIn("UPTIME_HEARTBEAT_URL must be an HTTPS URL", report)
+        self.assertIn("UPTIME_HEARTBEAT_FAIL_URL must be an HTTPS URL", report)
         self.assertIn("MONITOR_WEBHOOK_URL must be an HTTPS URL", report)
 
     @override_settings(

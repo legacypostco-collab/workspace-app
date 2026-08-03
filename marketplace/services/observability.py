@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import logging
+import time
 from time import monotonic
 
 from django.core.cache import cache
 
 logger = logging.getLogger("marketplace")
+
+HTTP_BUCKET_TTL_SECONDS = 15 * 60
+HTTP_SLOW_REQUEST_MS = 3_000
 
 
 def metric_inc(name: str, value: int = 1) -> int:
@@ -21,6 +25,67 @@ def metric_inc(name: str, value: int = 1) -> int:
 
 def metric_get(name: str) -> int:
     return int(cache.get(f"metric:{name}", 0) or 0)
+
+
+def _http_bucket(minute: int | None = None) -> int:
+    return int(minute if minute is not None else time.time() // 60)
+
+
+def _bucket_inc(bucket: int, name: str, value: int = 1) -> None:
+    key = f"operations:http:{bucket}:{name}"
+    try:
+        cache.add(key, 0, timeout=HTTP_BUCKET_TTL_SECONDS)
+        cache.incr(key, value)
+        cache.touch(key, HTTP_BUCKET_TTL_SECONDS)
+    except Exception:
+        current = int(cache.get(key, 0) or 0) + value
+        cache.set(key, current, timeout=HTTP_BUCKET_TTL_SECONDS)
+
+
+def record_http_request(status: int, elapsed_ms: int) -> None:
+    """Record aggregate request health without URLs, users, or request bodies."""
+    bucket = _http_bucket()
+    metric_inc("http_requests_total")
+    _bucket_inc(bucket, "total")
+
+    status_class = max(0, min(9, int(status) // 100))
+    metric_inc(f"http_responses_{status_class}xx_total")
+    _bucket_inc(bucket, f"status_{status_class}xx")
+    if int(elapsed_ms) >= HTTP_SLOW_REQUEST_MS:
+        metric_inc("http_slow_requests_total")
+        _bucket_inc(bucket, "slow")
+
+
+def http_window(minutes: int = 5, *, now_minute: int | None = None) -> dict[str, int | float]:
+    window = max(1, min(int(minutes), 15))
+    current = _http_bucket(now_minute)
+    totals = {"total": 0, "status_4xx": 0, "status_5xx": 0, "slow": 0}
+    for bucket in range(current - window + 1, current + 1):
+        for name in totals:
+            totals[name] += int(
+                cache.get(f"operations:http:{bucket}:{name}", 0) or 0
+            )
+    total = totals["total"]
+    totals["error_rate"] = totals["status_5xx"] / total if total else 0.0
+    totals["slow_rate"] = totals["slow"] / total if total else 0.0
+    return totals
+
+
+class OperationsMetricsMiddleware:
+    """Low-cardinality request metrics suitable for Redis and health checks."""
+
+    _EXCLUDED_PATHS = {"/healthz/", "/readyz/", "/metrics/"}
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        started_at = monotonic()
+        response = self.get_response(request)
+        if request.path not in self._EXCLUDED_PATHS:
+            elapsed_ms = int((monotonic() - started_at) * 1_000)
+            record_http_request(getattr(response, "status_code", 500), elapsed_ms)
+        return response
 
 
 def log_api_error(endpoint: str, status: int, code: str, extra: dict | None = None) -> None:

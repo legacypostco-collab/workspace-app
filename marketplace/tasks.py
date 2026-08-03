@@ -17,6 +17,16 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+@shared_task(name="marketplace.tasks.monitoring_heartbeat")
+def monitoring_heartbeat():
+    """Prove the full beat -> broker -> worker -> shared-cache path is alive."""
+    from django.core.cache import cache
+
+    timestamp = timezone.now().timestamp()
+    cache.set("operations:celery_heartbeat", timestamp, timeout=5 * 60)
+    return timestamp
+
+
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def send_email_task(self, subject: str, body: str, to: list[str], from_email: str = None):
     """Send an email asynchronously. Auto-retries on transient failures."""

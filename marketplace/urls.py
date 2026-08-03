@@ -107,6 +107,7 @@ def removed_mutation_route(request, *args, **kwargs):
 urlpatterns = [
     path("healthz/", _health.liveness, name="healthz"),
     path("readyz/", _health.readiness, name="readyz"),
+    path("metrics/", _health.metrics, name="metrics"),
     path(
         "password_reset/",
         views.RateLimitedPasswordResetView.as_view(
