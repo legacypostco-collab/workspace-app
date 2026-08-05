@@ -156,7 +156,7 @@
       'welcome.operator_customs.title':'Таможня',
       'welcome.operator_customs.subtitle':'Грузы под растаможкой, ТН ВЭД, документы, санкционный скрининг.',
       'welcome.operator_payment.title':'Платежи',
-      'welcome.operator_payment.subtitle':'Инвойсы, эскроу, возвраты — управляйте через чат.',
+      'welcome.operator_payment.subtitle':'Счета, банковские платежи и сверка поступлений — управляйте через чат.',
       'welcome.operator_manager.title':'Ключевые клиенты',
       'welcome.operator_manager.subtitle':'Ключевые клиенты: заказчики, проекты, отгрузки, начисления.',
       'welcome.admin.title':    'Платформа',
@@ -169,6 +169,7 @@
       'pill.my_orders':       'Мои сделки',
       'pill.open_rfq':        'Открытые заявки',
       'pill.deposit':         'Депозит',
+      'pill.settlements':     'Расчёты',
       'pill.auto_discount':   'Уровни скидки',
       'pill.upload_price':    'Загрузить прайс',
       'pill.my_products':     'Мои товары',
@@ -421,7 +422,7 @@
       'welcome.operator_customs.title':'Customs',
       'welcome.operator_customs.subtitle':'Cargo clearance, HS codes, documents, sanctions screening.',
       'welcome.operator_payment.title':'Payments',
-      'welcome.operator_payment.subtitle':'Invoices, escrow, refunds — manage from chat.',
+      'welcome.operator_payment.subtitle':'Invoices, bank payments, and reconciliation — manage from chat.',
       'welcome.operator_manager.title':'KAM',
       'welcome.operator_manager.subtitle':'Key accounts: customers, projects, shipments, commissions.',
       'welcome.admin.title':    'Platform',
@@ -433,6 +434,7 @@
       'pill.my_orders':       'My deals',
       'pill.open_rfq':        'Open requests',
       'pill.deposit':         'Deposit',
+      'pill.settlements':     'Settlements',
       'pill.auto_discount':   'Auto-discount',
       'pill.upload_price':    'Upload price list',
       'pill.my_products':     'My products',
@@ -692,7 +694,7 @@
       'welcome.operator_customs.title':'海关',
       'welcome.operator_customs.subtitle':'清关货物、海关编码、文件、制裁筛查。',
       'welcome.operator_payment.title':'支付',
-      'welcome.operator_payment.subtitle':'发票、托管、退款 — 通过聊天管理。',
+      'welcome.operator_payment.subtitle':'发票、银行付款和对账 — 通过聊天管理。',
       'welcome.operator_manager.title':'KAM',
       'welcome.operator_manager.subtitle':'关键客户：客户、项目、发货、提成。',
       'welcome.admin.title':    '平台',
@@ -704,6 +706,7 @@
       'pill.my_orders':       '我的交易',
       'pill.open_rfq':        '未结询价',
       'pill.deposit':         '押金',
+      'pill.settlements':     '结算',
       'pill.auto_discount':   '自动折扣',
       'pill.upload_price':    '上传价格表',
       'pill.my_products':     '我的商品',
@@ -956,7 +959,7 @@
       'welcome.operator_customs.title':'الجمارك',
       'welcome.operator_customs.subtitle':'البضائع قيد التخليص، رموز HS، الوثائق، فحص العقوبات.',
       'welcome.operator_payment.title':'المدفوعات',
-      'welcome.operator_payment.subtitle':'الفواتير والضمان والاستردادات — أدرها من المحادثة.',
+      'welcome.operator_payment.subtitle':'الفواتير والمدفوعات البنكية والمطابقة — أدرها من المحادثة.',
       'welcome.operator_manager.title':'KAM',
       'welcome.operator_manager.subtitle':'العملاء الرئيسيون: العملاء، المشاريع، الشحنات، العمولات.',
       'welcome.admin.title':    'المنصّة',
@@ -968,6 +971,7 @@
       'pill.my_orders':       'صفقاتي',
       'pill.open_rfq':        'استفسارات مفتوحة',
       'pill.deposit':         'وديعة',
+      'pill.settlements':     'التسويات',
       'pill.auto_discount':   'خصم تلقائي',
       'pill.upload_price':    'رفع قائمة الأسعار',
       'pill.my_products':     'منتجاتي',
@@ -1220,7 +1224,7 @@
       'welcome.operator_customs.title':'Aduana',
       'welcome.operator_customs.subtitle':'Despacho aduanero, códigos HS, documentos, control de sanciones.',
       'welcome.operator_payment.title':'Pagos',
-      'welcome.operator_payment.subtitle':'Facturas, depósito en garantía, reembolsos — gestiona desde el chat.',
+      'welcome.operator_payment.subtitle':'Facturas, pagos bancarios y conciliación — gestiona desde el chat.',
       'welcome.operator_manager.title':'KAM',
       'welcome.operator_manager.subtitle':'Clientes clave: clientes, proyectos, envíos, comisiones.',
       'welcome.admin.title':    'Plataforma',
@@ -1232,6 +1236,7 @@
       'pill.my_orders':       'Mis operaciones',
       'pill.open_rfq':        'Solicitudes abiertas',
       'pill.deposit':         'Depósito',
+      'pill.settlements':     'Liquidaciones',
       'pill.auto_discount':   'Descuento automático',
       'pill.upload_price':    'Subir lista de precios',
       'pill.my_products':     'Mis productos',
@@ -1538,6 +1543,52 @@
     Object.assign(DICT[l], _ADDENDUM3[l]);
   });
   Object.keys(_ADDENDUM3.en).forEach(function (k) {
+    if (DICT.ru[k] == null) DICT.ru[k] = k;
+  });
+
+  const _SETTLEMENT_UI = {
+    en: {
+      'Первый счёт': 'First invoice', 'Способ оплаты': 'Payment method',
+      'Банковский перевод': 'Bank transfer', 'после сверки выписки': 'after statement reconciliation',
+      'Окончательный счёт': 'Final invoice', 'после готовности к отгрузке': 'when ready to ship',
+      'Подтверждение банковской операции': 'Bank payment evidence',
+      'Файл доступен только финансовым операторам и сохраняется в журнале операции.': 'The file is restricted to finance operators and retained in the operation log.',
+      'Приложить файл': 'Attach file', 'Подтверждение загружено': 'Evidence uploaded',
+      'Подтверждение сохранено в журнале платежа': 'Evidence saved in the payment log',
+    },
+    'zh-hans': {
+      'Первый счёт': '首期发票', 'Способ оплаты': '付款方式',
+      'Банковский перевод': '银行转账', 'после сверки выписки': '银行流水核对后',
+      'Окончательный счёт': '尾款发票', 'после готовности к отгрузке': '备货完成后',
+      'Подтверждение банковской операции': '银行交易凭证',
+      'Файл доступен только финансовым операторам и сохраняется в журнале операции.': '文件仅财务人员可见，并保存在交易日志中。',
+      'Приложить файл': '上传文件', 'Подтверждение загружено': '凭证已上传',
+      'Подтверждение сохранено в журнале платежа': '凭证已保存到付款日志',
+    },
+    es: {
+      'Первый счёт': 'Primera factura', 'Способ оплаты': 'Método de pago',
+      'Банковский перевод': 'Transferencia bancaria', 'после сверки выписки': 'tras conciliar el extracto',
+      'Окончательный счёт': 'Factura final', 'после готовности к отгрузке': 'al estar listo para el envío',
+      'Подтверждение банковской операции': 'Comprobante bancario',
+      'Файл доступен только финансовым операторам и сохраняется в журнале операции.': 'El archivo solo está disponible para finanzas y se conserva en el registro de la operación.',
+      'Приложить файл': 'Adjuntar archivo', 'Подтверждение загружено': 'Comprobante cargado',
+      'Подтверждение сохранено в журнале платежа': 'Comprobante guardado en el registro de pagos',
+    },
+    ar: {
+      'Первый счёт': 'الفاتورة الأولى', 'Способ оплаты': 'طريقة الدفع',
+      'Банковский перевод': 'تحويل بنكي', 'после сверки выписки': 'بعد مطابقة كشف الحساب',
+      'Окончательный счёт': 'الفاتورة النهائية', 'после готовности к отгрузке': 'عند الجاهزية للشحن',
+      'Подтверждение банковской операции': 'إثبات العملية البنكية',
+      'Файл доступен только финансовым операторам и сохраняется в журнале операции.': 'الملف متاح لموظفي المالية فقط ويُحفظ في سجل العملية.',
+      'Приложить файл': 'إرفاق ملف', 'Подтверждение загружено': 'تم رفع الإثبات',
+      'Подтверждение сохранено в журнале платежа': 'تم حفظ الإثبات في سجل الدفع',
+    },
+  };
+  Object.keys(_SETTLEMENT_UI).forEach(function (l) {
+    DICT[l] = DICT[l] || {};
+    Object.assign(DICT[l], _SETTLEMENT_UI[l]);
+  });
+  Object.keys(_SETTLEMENT_UI.en).forEach(function (k) {
     if (DICT.ru[k] == null) DICT.ru[k] = k;
   });
 

@@ -125,6 +125,10 @@ def op_dashboard(params, user, role):
     breached = Order.objects.filter(sla_status="breached").count()
     refund_pending = Order.objects.filter(payment_status="refund_pending").count()
     awaiting_reserve = Order.objects.filter(payment_status="awaiting_reserve").count()
+    from .settlements import settlement_enabled
+
+    invoice_mode = settlement_enabled()
+    finance_access = role in {"admin", "operator_payment"}
 
     # ТЗ KP-flow: SEMI требуют approve в 15 минут, MANUAL — собрать КП за 48ч
     now = timezone.now()
@@ -214,7 +218,57 @@ def op_dashboard(params, user, role):
     in_foreign = Order.objects.filter(status="transit_abroad").count()
     in_customs = Order.objects.filter(status="customs").count()
     in_rf = Order.objects.filter(status__in=("transit_rf", "issuing")).count()
-    paid_in_escrow = Order.objects.filter(payment_status__in=("reserve_paid", "mid_paid", "customs_paid")).count()
+    first_payment_confirmed = Order.objects.filter(
+        payment_status__in=("reserve_paid", "mid_paid", "customs_paid", "paid")
+    ).count()
+
+    if invoice_mode:
+        payment_items = [
+            {
+                "label": _("Ждут первый платёж"),
+                "value": str(awaiting_reserve),
+                "tone": ("warn" if awaiting_reserve else None),
+                "action": "op_queue",
+                "params": {"filter": "awaiting_reserve"},
+            },
+            {
+                "label": _("Первый платёж подтверждён"),
+                "value": str(first_payment_confirmed),
+                **(
+                    {"action": "settlement_finance_queue"}
+                    if finance_access else {}
+                ),
+            },
+            {
+                "label": _("Возвраты"),
+                "value": str(refund_pending),
+                "tone": ("warn" if refund_pending else None),
+                "action": "op_queue",
+                "params": {"filter": "refund"},
+            },
+        ]
+    else:
+        payment_items = [
+            {
+                "label": _("Ждут резерв 10%"),
+                "value": str(awaiting_reserve),
+                "tone": ("warn" if awaiting_reserve else None),
+                "action": "op_queue",
+                "params": {"filter": "awaiting_reserve"},
+            },
+            {
+                "label": _("В эскроу"),
+                "value": str(first_payment_confirmed),
+                "action": "op_payments_dashboard",
+            },
+            {
+                "label": _("Возвраты"),
+                "value": str(refund_pending),
+                "tone": ("warn" if refund_pending else None),
+                "action": "op_queue",
+                "params": {"filter": "refund"},
+            },
+        ]
 
     # ── Подсветка только важных метрик ──────────────────────
     # Принцип: tone='warn'/'bad' ставим ТОЛЬКО там, где требуется внимание
@@ -231,17 +285,8 @@ def op_dashboard(params, user, role):
         cards=[
             # 1. Платежи
             {"type": "kpi_grid", "data": {
-                "title": _("💰 Платежи и резервирование"),
-                "items": [
-                    {"label": _("Ждут резерв 10%"), "value": str(awaiting_reserve),
-                     "tone": ("warn" if awaiting_reserve else None),
-                     "action": "op_queue", "params": {"filter": "awaiting_reserve"}},
-                    {"label": _("В эскроу"), "value": str(paid_in_escrow),
-                     "action": "op_payments_dashboard"},
-                    {"label": _("Возвраты"), "value": str(refund_pending),
-                     "tone": ("warn" if refund_pending else None),
-                     "action": "op_queue", "params": {"filter": "refund"}},
-                ],
+                "title": (_("Счета и платежи") if invoice_mode else _("Платежи и резервирование")),
+                "items": payment_items,
             }},
             # 2. Логистика
             {"type": "kpi_grid", "data": {
@@ -3109,6 +3154,12 @@ def op_logistics_stats(params, user, role):
 
 @register("op_payments_stats")
 def op_payments_stats(params, user, role):
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        from .settlement_actions import settlement_report
+
+        return settlement_report(params, user, role)
     """Платежная аналитика: разбивка по статусам, средний чек, конверсия."""
     err = _ensure_operator(role)
     if err:
@@ -3299,6 +3350,22 @@ def op_analytics_hub(params, user, role):
         {"title": _("📑 Платёжная статистика"), "action": "op_payments_stats", "params": {},
          "subtitle": _("Конверсия резерв → финал · средние сроки оплат")},
     ]
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        reports = [
+            item for item in reports
+            if item["action"] not in {"op_payments_dashboard", "op_payments_stats"}
+        ]
+        if role in {"admin", "operator_payment"}:
+            reports.insert(1, {
+                "title": _("Счета и банковские операции"),
+                "action": "settlement_report",
+                "params": {},
+                "subtitle": _(
+                    "Поступления покупателей · выплаты продавцам · остатки по счетам"
+                ),
+            })
 
     # Текст — конкретные приоритеты для оператора (не CEO-уровень).
 
@@ -3525,6 +3592,12 @@ def op_my_bonuses(params, user, role):
 
 @register("op_payments_dashboard")
 def op_payments_dashboard(params, user, role):
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        from .settlement_actions import settlement_finance_queue
+
+        return settlement_finance_queue(params, user, role)
     err = _ensure_operator(role)
     if err:
         return err

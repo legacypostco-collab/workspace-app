@@ -1888,6 +1888,7 @@
   // Если действия тут нет — оно просто НЕ авто-ретраится (безопасная деградация).
   const READONLY_ACTIONS = new Set([
     'op_dashboard','op_queue','op_sla_breach','op_payments_dashboard','op_payments_stats',
+    'settlement_my_documents','settlement_seller_documents','settlement_finance_queue','settlement_payment_detail','settlement_report',
     'op_customs_dashboard','op_logistics_stats','op_my_suppliers','op_kyb_queue','op_my_user_chats',
     'op_drawings_by_part','op_analytics_hub','op_hs_lookup','op_sanctions_check','op_my_suppliers',
     'seller_inbox','seller_pipeline','seller_dashboard','seller_warehouses','seller_drawings',
@@ -2189,10 +2190,12 @@
   const PILL_NOTIF_KINDS = {
     // покупатель
     get_my_deals: ['order'], get_orders: ['order'], get_rfq_status: ['rfq'], get_balance: ['payment'],
+    settlement_my_documents: ['payment'], settlement_seller_documents: ['payment'],
     // продавец
     seller_inbox: ['rfq', 'order', 'sla'], seller_warehouses: ['order'],
     // оператор / суброли
     op_queue: ['order', 'rfq'], op_sla_breach: ['sla'], op_payments_dashboard: ['payment'],
+    settlement_finance_queue: ['payment'], settlement_report: ['payment'],
     op_payments_stats: ['payment'], op_customs_dashboard: ['sla'], get_claims: ['claim'],
     op_dashboard: ['sla', 'order'], op_my_user_chats: ['rfq', 'order'],
     // КАМ
@@ -4165,6 +4168,18 @@
         </div>
       </div>`;
     },
+    payment_proof_upload(d) {
+      const paymentId = Number(d.payment_id || 0);
+      return `<div class="card">
+        <div class="card-title">${esc(d.title || tr('Подтверждение банковской операции'))}</div>
+        <div class="card-sub">${esc(tr('Файл доступен только финансовым операторам и сохраняется в журнале операции.'))}</div>
+        <div class="card-meta">
+          <button class="act-btn" type="button" data-cf-action="payment-proof-upload" data-payment-id="${paymentId}">
+            ${esc(d.label || tr('Приложить файл'))}
+          </button>
+        </div>
+      </div>`;
+    },
     // Компактный список RFQ: одна строка на запрос. Клик → раскрывает
     // полную spec_results карточку через get_rfq_status(rfq_id).
     // Карточка подтверждения заказа сразу после quick_order (confirmed).
@@ -4180,6 +4195,34 @@
         return `<div class="${cls}"><span class="oc-step-dot">${dot}</span><span class="oc-step-label">${esc(s.label)}</span></div>`;
       }).join('');
       const moneyOK = m.wallet_enough !== false;
+      const invoiceSettlement = m.settlement_mode === 'invoice_contract';
+      const moneyHtml = invoiceSettlement ? `
+            <div class="oc-money-row oc-money-now">
+              <div class="oc-money-lbl">${tr('Первый счёт')}</div>
+              <div class="oc-money-val">${fmtMoney(m.reserve_now, 'USD')}<span class="oc-money-pct">${m.reserve_pct || 10}% по договору</span></div>
+            </div>
+            <div class="oc-money-row">
+              <div class="oc-money-lbl">${tr('Способ оплаты')}</div>
+              <div class="oc-money-val">${tr('Банковский перевод')}<span class="oc-money-pct">${tr('после сверки выписки')}</span></div>
+            </div>
+            <div class="oc-money-row">
+              <div class="oc-money-lbl">${tr('Окончательный счёт')}</div>
+              <div class="oc-money-val">${fmtMoney(m.remaining_to_pay, 'USD')}<span class="oc-money-pct">${esc(m.remaining_when || 'после готовности к отгрузке')}</span></div>
+            </div>
+      ` : `
+            <div class="oc-money-row oc-money-now">
+              <div class="oc-money-lbl">${tr('Сейчас списано')}</div>
+              <div class="oc-money-val">${fmtMoney(m.reserve_now, 'USD')}<span class="oc-money-pct">${m.reserve_pct || 10}% резерв</span></div>
+            </div>
+            <div class="oc-money-row">
+              <div class="oc-money-lbl">${tr('На депозите')}</div>
+              <div class="oc-money-val oc-money-${moneyOK ? 'ok' : 'bad'}">${fmtMoney(m.wallet_balance, 'USD')}${moneyOK ? '' : ' <span class="oc-money-warn">недостаточно</span>'}</div>
+            </div>
+            <div class="oc-money-row">
+              <div class="oc-money-lbl">${tr('К доплате позже')}</div>
+              <div class="oc-money-val">${fmtMoney(m.remaining_to_pay, 'USD')}<span class="oc-money-pct">${esc(m.remaining_when || 'после отгрузки')}</span></div>
+            </div>
+      `;
       // Advanced секция — сворачиваемая, для тех кто хочет копнуть в фрахт.
       const adv = d.advanced || {};
       const advBd = adv.components || {};
@@ -4212,18 +4255,7 @@
         <div class="oc-section">
           <div class="oc-section-title">${tr('💰 Деньги')}</div>
           <div class="oc-money">
-            <div class="oc-money-row oc-money-now">
-              <div class="oc-money-lbl">${tr('Сейчас списано')}</div>
-              <div class="oc-money-val">${fmtMoney(m.reserve_now, 'USD')}<span class="oc-money-pct">${m.reserve_pct || 10}% резерв</span></div>
-            </div>
-            <div class="oc-money-row">
-              <div class="oc-money-lbl">${tr('На депозите')}</div>
-              <div class="oc-money-val oc-money-${moneyOK ? 'ok' : 'bad'}">${fmtMoney(m.wallet_balance, 'USD')}${moneyOK ? '' : ' <span class="oc-money-warn">недостаточно</span>'}</div>
-            </div>
-            <div class="oc-money-row">
-              <div class="oc-money-lbl">${tr('К доплате позже')}</div>
-              <div class="oc-money-val">${fmtMoney(m.remaining_to_pay, 'USD')}<span class="oc-money-pct">${esc(m.remaining_when || 'после отгрузки')}</span></div>
-            </div>
+            ${moneyHtml}
           </div>
         </div>
 
@@ -4646,6 +4678,22 @@
             <div class="card-title">${esc(d.name || tr('card.file'))}</div>
             <div class="card-sub">${esc(d.size || '')}</div>
           </div>
+        </div>
+      </div>`;
+    },
+    doc(d) {
+      const url = safeSameOriginUrl(d.url || '');
+      const status = d.sign_status ? `<div class="card-sub">${esc(d.sign_status)}</div>` : '';
+      const link = url
+        ? `<a class="act-btn" href="${esc(url)}" target="_blank" rel="noopener">${tr('Открыть документ')}</a>`
+        : '';
+      return `<div class="card">
+        <div class="card-row">
+          <div class="card-info">
+            <div class="card-title">${esc(d.title || d.name || tr('Документ'))}</div>
+            ${status}
+          </div>
+          ${link}
         </div>
       </div>`;
     },
@@ -6303,6 +6351,43 @@
     input.click();
   }
 
+  function selectPaymentProof(btn, paymentId) {
+    if (!paymentId || btn.disabled) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.pdf,.png,.jpg,.jpeg,.webp';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0];
+      input.remove();
+      if (!file) return;
+      btn.disabled = true;
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const response = await fetch(`/api/assistant/settlements/payments/${paymentId}/proof/`, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {'X-CSRFToken': csrf()},
+          body: fd,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload.ok) {
+          btn.disabled = false;
+          window.toast && window.toast('❌ ' + (payload.error || tr('Не удалось загрузить документ')), 4000);
+          return;
+        }
+        btn.textContent = tr('Подтверждение загружено');
+        window.toast && window.toast(tr('Подтверждение сохранено в журнале платежа'), 3000);
+      } catch (error) {
+        btn.disabled = false;
+        window.toast && window.toast(tr('❌ Сетевая ошибка при загрузке'), 3500);
+      }
+    }, {once: true});
+    input.click();
+  }
+
   // Inline checklist action. Upload and QR items require real evidence;
   // only ordinary button items use the generic action endpoint.
   window.sqTrigger = async (btn, orderId, status, triggerId, triggerType='button') => {
@@ -6411,11 +6496,11 @@
     card.replaceWith(note);
   };
 
-  // Продавец отменяет неоплаченный заказ (если резерв не пришёл)
+  // Продавец отменяет заказ, пока первый платёж не подтверждён.
   window.sellerCancelPending = async (orderId, total) => {
     const ok = await window.appConfirm({
       title: window.t('Отменить заказ #{n}?', {n: orderId}),
-      message: window.t('Заказ на ${x} будет удалён. Покупатель получит уведомление об отмене. Это используют если резерв не был оплачен в срок.', {x: '$' + Number(total).toLocaleString('en-US')}),
+      message: window.t('Заказ на ${x} будет отменён. Покупатель получит уведомление, а договоры и счета сохранятся в журнале со статусом отмены.', {x: '$' + Number(total).toLocaleString('en-US')}),
       danger: true,
       okLabel: '🗑 Отменить заказ',
       cancelLabel: tr('common.do_not_cancel'),
@@ -6452,7 +6537,7 @@
   window.cancelOrderPrompt = async (orderId, number, total) => {
     const ok = await window.appConfirm({
       title: `Отменить заказ ${number}?`,
-      message: `Заказ на $${Number(total).toLocaleString('en-US')} будет удалён. Это безопасно — резерв ещё не списан с депозита.`,
+      message: `Заказ на $${Number(total).toLocaleString('en-US')} будет отменён. Договоры и счета останутся в журнале со статусом отмены.`,
       danger: true,
       okLabel: '🗑 Отменить заказ',
       cancelLabel: tr('common.do_not_cancel'),
@@ -7000,6 +7085,8 @@
     'get_orders', 'get_order_detail', 'track_order', 'track_shipment',
     'get_rfq_status', 'rfq_detail', 'view_rfq_quotes', 'view_quote',
     'get_balance', 'get_budget', 'get_analytics', 'get_supply_report', 'get_savings', 'get_buyer_discount', 'recent_activity',
+    'settlement_my_documents', 'settlement_seller_documents',
+    'settlement_finance_queue', 'settlement_payment_detail', 'settlement_report',
     'seller_analytics_hub', 'seller_executive_report',
     // Deposit top-up flow
     'topup_wallet', 'start_topup', 'submit_topup', 'confirm_topup_paid',
@@ -7991,7 +8078,7 @@
       subKey:   'welcome.buyer.subtitle',
       pills: [
         {tkey:'pill.my_orders',     emoji:'📦', action:'get_my_deals',       params:{}},
-        {tkey:'pill.deposit',       emoji:'💰', action:'get_balance',        params:{}},
+        {tkey:'pill.settlements',   emoji:'🧾', action:'settlement_my_documents', params:{}},
         {tkey:'pill.auto_discount', emoji:'🎯', action:'get_buyer_discount', params:{}},
         {tkey:'pill.support',       emoji:'🎧', action:'support_home',       params:{}},
       ],
@@ -8018,7 +8105,7 @@
         {tkey:'pill.upload_price',     emoji:'📤', action:'upload_pricelist',  params:{}},
         {tkey:'pill.my_products',      emoji:'📦', action:'seller_warehouses', params:{}},
         {tkey:'pill.drawings',         emoji:'📐', action:'seller_drawings',   params:{}},
-        {tkey:'pill.deposit',          emoji:'💰', action:'get_balance',       params:{}},
+        {tkey:'pill.settlements',      emoji:'🧾', action:'settlement_seller_documents', params:{}},
         {tkey:'pill.verification',     emoji:'🛡', action:'start_onboarding',  params:{}},
         {tkey:'pill.analytics',        emoji:'📊', action:'seller_analytics_hub', params:{}},
         {tkey:'pill.support', emoji:'🎧', action:'support_home',  params:{}},
@@ -8032,7 +8119,7 @@
         // Единая очередь сделок (RFQ + Order). RFQ-специфичная очередь
         // (op_rfq_queue) убрана — это была дублирующая навигация.
         {tkey:'pill.queue',            emoji:'📋', action:'op_queue',              params:{}},
-        {tkey:'pill.payments_escrow',  emoji:'💰', action:'op_payments_dashboard', params:{}},
+        {tkey:'pill.settlements',      emoji:'🧾', action:'settlement_finance_queue', params:{}},
         {tkey:'pill.customs',          emoji:'🛂', action:'op_customs_dashboard',  params:{}},
         {tkey:'pill.logistics',        emoji:'🚚', action:'op_logistics_stats',    params:{}},
         {tkey:'pill.my_suppliers',     emoji:'🏭', action:'op_my_suppliers',       params:{}},
@@ -8069,7 +8156,7 @@
       titleKey: 'welcome.operator_payment.title',
       subKey:   'welcome.operator_payment.subtitle',
       pills: [
-        {tkey:'pill.escrow',           emoji:'💰', action:'op_payments_dashboard', params:{}},
+        {tkey:'pill.settlements',      emoji:'🧾', action:'settlement_finance_queue', params:{}},
         {tkey:'pill.payments_stats',   emoji:'💳', action:'op_payments_stats',     params:{}},
         {tkey:'pill.awaiting_reserve', emoji:'⏳', action:'op_queue',              params:{filter:'awaiting_reserve'}},
         {tkey:'pill.refunds',          emoji:'💸', action:'op_queue',              params:{filter:'refund'}},
@@ -12398,6 +12485,10 @@
         element.dataset.triggerId || '',
         element.dataset.triggerType || 'button',
       );
+    } else if (action === 'payment-proof-upload') {
+      event.stopPropagation();
+      event.preventDefault();
+      selectPaymentProof(element, Number(element.dataset.paymentId));
     } else if (action === 'cancel-order') {
       window.cancelOrderPrompt?.(
         Number(element.dataset.orderId),

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 
 from .models import Order, OrderClaim, OrderDocument, OrderEvent, TeamMember
 
@@ -69,10 +69,16 @@ def seller_can_access_document(user, document: OrderDocument) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
     principal = seller_principal(user)
+    if not principal or not getattr(principal, "id", None):
+        return False
     if principal.id not in seller_ids_for_order(document.order):
         return False
-    # Без отдельной маркировки аудитории продавцу доступны только документы
-    # его команды. Покупательские и системные файлы могут содержать реквизиты.
+    if document.audience == "seller":
+        return document.seller_id == principal.id
+    if document.audience in {"buyer", "operator"}:
+        return False
+    # Для старых документов без отдельной аудитории сохраняем прежнее правило:
+    # продавцу доступны только файлы, загруженные его компанией.
     return document.uploaded_by_id in seller_company_user_ids(principal)
 
 
@@ -81,8 +87,27 @@ def seller_visible_documents(order: Order, user) -> QuerySet:
     if not principal or principal.id not in seller_ids_for_order(order):
         return OrderDocument.objects.none()
     return order.documents.filter(
-        uploaded_by_id__in=seller_company_user_ids(principal),
+        Q(audience="seller", seller=principal)
+        | Q(
+            audience="participants",
+            uploaded_by_id__in=seller_company_user_ids(principal),
+        )
     )
+
+
+def buyer_can_access_document(user, document: OrderDocument) -> bool:
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    return (
+        document.order.buyer_id == user.id
+        and document.audience in {"participants", "buyer"}
+    )
+
+
+def buyer_visible_documents(order: Order, user) -> QuerySet:
+    if not user or order.buyer_id != getattr(user, "id", None):
+        return OrderDocument.objects.none()
+    return order.documents.filter(audience__in=("participants", "buyer"))
 
 
 def seller_visible_events(order: Order, user) -> list[OrderEvent]:

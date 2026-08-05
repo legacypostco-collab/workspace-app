@@ -201,6 +201,52 @@ def cleanup_expired_tokens():
     return f"Deleted {deleted[0]} expired invites"
 
 
+@shared_task(name="marketplace.tasks.mark_overdue_settlement_invoices")
+def mark_overdue_settlement_invoices():
+    """Mark due invoices overdue once and notify the responsible party."""
+    from assistant.actions import _notify
+    from .models import SettlementInvoice, UserProfile
+
+    today = timezone.localdate()
+    invoice_ids = list(
+        SettlementInvoice.objects.filter(
+            due_date__lt=today,
+            status__in=("issued", "awaiting_confirmation", "partially_paid"),
+        ).values_list("id", flat=True)
+    )
+    changed = 0
+    for invoice_id in invoice_ids:
+        with transaction.atomic():
+            invoice = SettlementInvoice.objects.select_for_update().select_related(
+                "order__buyer", "seller"
+            ).get(id=invoice_id)
+            if invoice.status not in {"issued", "awaiting_confirmation", "partially_paid"}:
+                continue
+            invoice.status = "overdue"
+            invoice.save(update_fields=["status", "updated_at"])
+        recipient = invoice.order.buyer if invoice.direction == "receivable" else invoice.seller
+        _notify(
+            recipient,
+            kind="payment",
+            title="Счёт просрочен",
+            body=f"{invoice.number} · срок оплаты {invoice.due_date:%d.%m.%Y}",
+            url=f"/chat/?order={invoice.order_id}",
+        )
+        finance_ids = UserProfile.objects.filter(
+            role="operator", operator_role="payment"
+        ).values_list("user_id", flat=True)
+        for finance_user in User.objects.filter(id__in=finance_ids, is_active=True):
+            _notify(
+                finance_user,
+                kind="payment",
+                title="Просрочен расчётный счёт",
+                body=f"{invoice.number} · ORD-{invoice.order_id}",
+                url=f"/chat/?order={invoice.order_id}",
+            )
+        changed += 1
+    return f"Marked {changed} settlement invoices overdue"
+
+
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def deliver_webhook_task(self, url: str, payload: dict, headers: dict = None):
     """Send webhook with retry on failure. Replaces inline delivery in views."""

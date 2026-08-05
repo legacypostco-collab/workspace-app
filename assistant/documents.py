@@ -224,6 +224,24 @@ def _save_pdf(order, doc_type: str, title: str, buf: io.BytesIO,
 def _regenerate_signed_pdf(doc) -> bool:
     """Перегенерирует PDF документа С ВПЕЧАТАННЫМ блоком подписей и
     перезаписывает file_obj — чтобы открытый PDF уже содержал подписи."""
+    if doc.doc_type in {"buyer_contract", "seller_contract"}:
+        try:
+            from .settlement_documents import save_contract_document
+
+            save_contract_document(doc.settlement_contract)
+            return True
+        except Exception:
+            logger.exception("regenerate settlement contract failed for doc %s", doc.id)
+            return False
+    if doc.doc_type == "settlement_invoice":
+        try:
+            from .settlement_documents import save_invoice_document
+
+            save_invoice_document(doc.settlement_invoice)
+            return True
+        except Exception:
+            logger.exception("regenerate settlement invoice failed for doc %s", doc.id)
+            return False
     builders = {
         "invoice": _build_invoice_pdf,
         "packing_list": _build_packing_list_pdf,
@@ -434,8 +452,13 @@ def _build_proforma_invoice_pdf(rfq, quote, logistics_cost: Decimal,
     return buf
 
 
-_SIG_ROLE_RU = {"buyer": _("Покупатель / Buyer"), "seller": _("Продавец / Seller"),
-                "operator": _("Оператор / Operator"), "admin": _("Оператор / Operator")}
+_SIG_ROLE_RU = {
+    "buyer": _("Покупатель / Buyer"),
+    "seller": _("Продавец / Seller"),
+    "operator": _("Оператор / Operator"),
+    "operator_payment": _("Финансовый оператор / Finance operator"),
+    "admin": _("Администратор / Administrator"),
+}
 
 
 def _draw_signatures(c, signatures, order):
@@ -813,6 +836,16 @@ def generate_invoice_pdf(params, user, role):
     order, err = _get_order(params, user, role)
     if err:
         return err
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        if role == "seller":
+            from .settlement_actions import settlement_seller_documents
+
+            return settlement_seller_documents({"order_id": order.id}, user, role)
+        from .settlement_actions import settlement_prepare
+
+        return settlement_prepare({"order_id": order.id}, user, role)
     if role == "seller":
         from marketplace.order_access import seller_ids_for_order
 
@@ -940,21 +973,52 @@ def list_order_documents(params, user, role):
             order,
             _effective_seller(user),
         )
+    elif role == "buyer":
+        from marketplace.order_access import buyer_visible_documents
+
+        docs_qs = buyer_visible_documents(order, user)
     docs = list(docs_qs.order_by("-created_at").prefetch_related("signatures"))
+    from .settlements import settlement_enabled
+
+    invoice_mode = settlement_enabled()
     if not docs:
+        if invoice_mode and role == "buyer":
+            actions = [{
+                "action": "settlement_prepare",
+                "label": _("Сформировать договор и первый счёт"),
+                "params": {"order_id": order.id},
+            }]
+        elif invoice_mode and role == "seller":
+            actions = [{
+                "action": "settlement_seller_documents",
+                "label": _("Расчёты с платформой"),
+                "params": {"order_id": order.id},
+            }]
+        elif invoice_mode and role in {"operator_payment", "admin"}:
+            actions = [{
+                "action": "settlement_finance_queue",
+                "label": _("Счета и договоры"),
+                "params": {"order_id": order.id},
+            }]
+        else:
+            actions = []
+        actions.extend([
+            {"action": "generate_packing_list_pdf", "label": _("Создать упаковочный лист"),
+             "params": {"order_id": order.id}},
+            {"action": "generate_qc_report_pdf", "label": _("Создать акт качества"),
+             "params": {"order_id": order.id}},
+        ])
         return ActionResult(
             text=_('По заказу ORD-%(p0)s пока нет документов.') % {"p0": f'{order.id}'},
-            actions=[
-                {"action": "generate_invoice_pdf", "label": _("Создать счёт на оплату"),
-                 "params": {"order_id": order.id}},
-                {"action": "generate_packing_list_pdf", "label": _("Создать упаковочный лист"),
-                 "params": {"order_id": order.id}},
-                {"action": "generate_qc_report_pdf", "label": _("Создать акт качества"),
-                 "params": {"order_id": order.id}},
-            ],
+            actions=actions,
         )
-    _ROLE_RU = {"buyer": _("Покупатель"), "seller": _("Продавец"),
-                "operator": _("Оператор"), "admin": _("Оператор")}
+    _ROLE_RU = {
+        "buyer": _("Покупатель"),
+        "seller": _("Продавец"),
+        "operator": _("Оператор"),
+        "operator_payment": _("Финансовый оператор"),
+        "admin": _("Администратор"),
+    }
     is_op_view = bool(role and (role.startswith("operator") or role == "admin"))
     cards = []
     lines = []
@@ -988,18 +1052,30 @@ def list_order_documents(params, user, role):
             "created_at": d.created_at.strftime("%Y-%m-%d %H:%M") if d.created_at else "",
             "sign_status": status,
         }})
-        if not any(s.signer_id == user.id and s.method == "ep" for s in sigs):
+        can_sign = not any(s.signer_id == user.id and s.method == "ep" for s in sigs)
+        if d.doc_type == "settlement_invoice":
+            can_sign = False
+        if (
+            d.doc_type in {"buyer_contract", "seller_contract"}
+            and is_op_view
+            and role not in {"operator_payment", "admin"}
+        ):
+            can_sign = False
+        if can_sign:
             sign_actions.append({"action": "sign_document",
                                   "label": _('✍️ Подписать и отправить: %(p0)s') % {"p0": f'{d.title[:16]}'},
                                   "params": {"document_id": d.id}})
     gen_actions = [
-        {"action": "generate_invoice_pdf", "label": _("+ Счёт на оплату"),
-         "params": {"order_id": order.id}},
         {"action": "generate_packing_list_pdf", "label": _("+ Упаковочный лист"),
          "params": {"order_id": order.id}},
         {"action": "generate_qc_report_pdf", "label": _("+ Акт качества"),
          "params": {"order_id": order.id}},
     ]
+    if not invoice_mode:
+        gen_actions.insert(0, {
+            "action": "generate_invoice_pdf", "label": _("+ Счёт на оплату"),
+            "params": {"order_id": order.id},
+        })
     if not cards:
         return ActionResult(
             text=(_('По заказу ORD-%(p0)s пока нет отправленных документов (контрагент ещё не подписал и не отправил).') % {"p0": f'{order.id}'}),
@@ -1032,6 +1108,15 @@ def sign_document(params, user, role):
     doc = OrderDocument.objects.filter(id=doc_id).select_related("order").first()
     if not doc:
         return ActionResult(text=_("Документ не найден."))
+    try:
+        contract = doc.settlement_contract
+    except Exception:
+        contract = None
+    if contract and role not in {"buyer", "seller", "operator_payment", "admin"}:
+        return ActionResult(
+            text=_("Подписать договор от имени платформы может только финансовый оператор."),
+            action_succeeded=False,
+        )
     # Доступ — тот же гейт, что у списка документов (участник заказа).
     _order, err = _get_order({"order_id": doc.order_id}, user, role)
     if err:
@@ -1041,6 +1126,11 @@ def sign_document(params, user, role):
         from .seller_actions import _effective_seller
 
         if not seller_can_access_document(_effective_seller(user), doc):
+            return ActionResult(text=_("Нет доступа к этому документу."))
+    elif role == "buyer":
+        from marketplace.order_access import buyer_can_access_document
+
+        if not buyer_can_access_document(user, doc):
             return ActionResult(text=_("Нет доступа к этому документу."))
     if DocumentSignature.objects.filter(document=doc, signer=user, method="ep").exists():
         return ActionResult(text=_('Вы уже подписали «%(p0)s».') % {"p0": f'{doc.title}'})
@@ -1061,6 +1151,39 @@ def sign_document(params, user, role):
         method="ep", doc_sha256=sha, ip=(params.get("_client_ip") or "")[:64])
     # Впечатываем подпись в сам PDF (перегенерация с блоком «Подписи»).
     _regenerate_signed_pdf(doc)
+    if contract:
+        signatures = list(doc.signatures.select_related("signer"))
+        operator_signed = any(
+            sig.signer_role == "admin" or sig.signer_role.startswith("operator")
+            for sig in signatures
+        )
+        if contract.kind == "buyer_sale":
+            counterparty_signed = any(
+                sig.signer_id == contract.order.buyer_id for sig in signatures
+            )
+        else:
+            from marketplace.order_access import seller_company_user_ids
+
+            counterparty_signed = any(
+                sig.signer_id in seller_company_user_ids(contract.seller)
+                for sig in signatures
+            )
+        if operator_signed and counterparty_signed:
+            from django.utils import timezone
+
+            contract.status = "active"
+            contract.signed_at = timezone.now()
+            contract.save(update_fields=["status", "signed_at", "updated_at"])
+            if contract.kind == "seller_purchase":
+                try:
+                    from .settlements import activate_payables_for_contract
+
+                    activate_payables_for_contract(contract, user)
+                except Exception:
+                    logger.exception(
+                        "seller settlement invoice activation failed for contract %s",
+                        contract.id,
+                    )
     # Маршрутизация: уведомляем ОСТАЛЬНЫХ участников сделки (покупатель,
     # продавцы, оператор) — документ подписан, дальше их очередь смотреть/
     # подписывать. Оператор платформы — центральный контроль сделки.
@@ -1071,7 +1194,7 @@ def sign_document(params, user, role):
         from .actions import _notify
         order = doc.order
         recipients = {}  # id -> (user, role_label)
-        if order.buyer_id and order.buyer:
+        if doc.audience in {"buyer", "participants"} and order.buyer_id and order.buyer:
             recipients[order.buyer_id] = (order.buyer, _("Покупатель"))
         if order.assigned_operator_id and order.assigned_operator:
             recipients[order.assigned_operator_id] = (order.assigned_operator, _("Оператор"))

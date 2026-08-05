@@ -642,7 +642,7 @@ class QuoteItem(models.Model):
 class Order(models.Model):
     STATUS_CHOICES = [
         ("pending", _("Ожидание оплаты")),
-        ("reserve_paid", _("Резерв оплачен")),
+        ("reserve_paid", _("Первый платёж подтверждён")),
         ("confirmed", _("Формирование заказа")),
         ("in_production", _("В производстве")),
         ("ready_to_ship", _("Готов к отгрузке")),
@@ -656,8 +656,8 @@ class Order(models.Model):
         ("cancelled", _("Отменён")),
     ]
     PAYMENT_STATUS_CHOICES = [
-        ("awaiting_reserve", _("Ожидает резерва")),
-        ("reserve_paid", _("Резерв оплачен")),
+        ("awaiting_reserve", _("Ожидает первого платежа")),
+        ("reserve_paid", _("Первый платёж подтверждён")),
         ("mid_paid", _("Подтверждение оплачено")),
         ("customs_paid", _("Таможня оплачена")),
         ("paid", _("Оплачен")),
@@ -857,6 +857,9 @@ class OrderEvent(models.Model):
         ("mid_payment_paid", "Mid Payment Paid"),
         ("customs_payment_paid", "Customs Payment Paid"),
         ("final_payment_paid", "Final Payment Paid"),
+        ("payment_reported", "Payment Reported"),
+        ("payment_confirmed", "Payment Confirmed"),
+        ("payment_reversed", "Payment Reversed"),
         ("quality_confirmed", "Quality Confirmed"),
         ("document_uploaded", "Document Uploaded"),
         ("claim_opened", "Claim Opened"),
@@ -929,6 +932,10 @@ class ActivityEvent(models.Model):
 class OrderDocument(models.Model):
     DOC_TYPE_CHOICES = [
         ("invoice", "Invoice"),
+        ("buyer_contract", "Buyer contract"),
+        ("seller_contract", "Seller procurement contract"),
+        ("settlement_invoice", "Settlement invoice"),
+        ("payment_proof", "Payment proof"),
         ("packing_list", "Packing List"),
         ("certificate", "Certificate"),
         ("quality_report", "Quality Report"),
@@ -938,6 +945,25 @@ class OrderDocument(models.Model):
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="documents")
     doc_type = models.CharField(max_length=30, choices=DOC_TYPE_CHOICES, default="other")
+    audience = models.CharField(
+        max_length=20,
+        choices=[
+            ("participants", "All order participants"),
+            ("buyer", "Buyer and operators"),
+            ("seller", "Specified seller and operators"),
+            ("operator", "Operators only"),
+        ],
+        default="participants",
+        db_index=True,
+    )
+    seller = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="scoped_order_documents",
+        help_text="Seller allowed to access a seller-scoped document.",
+    )
     title = models.CharField(max_length=255)
     file_url = models.URLField(blank=True)
     file_obj = models.FileField(upload_to="order_documents/%Y/%m/%d", blank=True)
@@ -949,6 +975,264 @@ class OrderDocument(models.Model):
 
     def __str__(self) -> str:
         return f"Order #{self.order_id} {self.title}"
+
+
+class SettlementContract(models.Model):
+    KIND_CHOICES = [
+        ("buyer_sale", "Договор поставки с покупателем"),
+        ("seller_purchase", "Закупочный договор с продавцом"),
+    ]
+    STATUS_CHOICES = [
+        ("draft", "Черновик"),
+        ("issued", "Сформирован"),
+        ("signed", "Подписан"),
+        ("active", "Действует"),
+        ("cancelled", "Отменён"),
+    ]
+
+    order = models.ForeignKey(
+        Order, on_delete=models.CASCADE, related_name="settlement_contracts"
+    )
+    kind = models.CharField(max_length=24, choices=KIND_CHOICES, db_index=True)
+    seller = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="settlement_contracts",
+    )
+    number = models.CharField(max_length=80, unique=True)
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default="draft", db_index=True
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    platform_snapshot = models.JSONField(default=dict)
+    counterparty_snapshot = models.JSONField(default=dict)
+    terms_snapshot = models.JSONField(default=dict)
+    document = models.OneToOneField(
+        OrderDocument,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="settlement_contract",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_settlement_contracts",
+    )
+    issued_at = models.DateTimeField(null=True, blank=True)
+    signed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order_id", "kind", "seller_id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(kind="buyer_sale", seller__isnull=True)
+                    | models.Q(kind="seller_purchase", seller__isnull=False)
+                ),
+                name="sett_contract_seller_scope",
+            ),
+            models.UniqueConstraint(
+                fields=["order"],
+                condition=models.Q(kind="buyer_sale"),
+                name="uniq_order_buyer_contract",
+            ),
+            models.UniqueConstraint(
+                fields=["order", "seller"],
+                condition=models.Q(kind="seller_purchase"),
+                name="uniq_order_seller_contract",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="sett_contract_status_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return self.number
+
+
+class SettlementInvoice(models.Model):
+    DIRECTION_CHOICES = [
+        ("receivable", "Покупатель должен платформе"),
+        ("payable", "Платформа должна продавцу"),
+    ]
+    STAGE_CHOICES = [
+        ("reserve", "Первый платёж 10%"),
+        ("final", "Окончательный платёж 90%"),
+    ]
+    STATUS_CHOICES = [
+        ("draft", "Черновик"),
+        ("issued", "Выставлен"),
+        ("awaiting_confirmation", "Покупатель сообщил об оплате"),
+        ("partially_paid", "Оплачен частично"),
+        ("paid", "Оплачен"),
+        ("overdue", "Просрочен"),
+        ("cancelled", "Отменён"),
+    ]
+
+    order = models.ForeignKey(
+        Order, on_delete=models.CASCADE, related_name="settlement_invoices"
+    )
+    contract = models.ForeignKey(
+        SettlementContract,
+        on_delete=models.PROTECT,
+        related_name="invoices",
+    )
+    seller = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="settlement_invoices",
+    )
+    direction = models.CharField(
+        max_length=16, choices=DIRECTION_CHOICES, db_index=True
+    )
+    stage = models.CharField(max_length=12, choices=STAGE_CHOICES)
+    number = models.CharField(max_length=80, unique=True)
+    reference_code = models.CharField(max_length=40, unique=True)
+    status = models.CharField(
+        max_length=24, choices=STATUS_CHOICES, default="draft", db_index=True
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    paid_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, default=Decimal("0.00")
+    )
+    currency = models.CharField(max_length=10, default="USD")
+    due_date = models.DateField()
+    document = models.OneToOneField(
+        OrderDocument,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="settlement_invoice",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_settlement_invoices",
+    )
+    issued_at = models.DateTimeField(null=True, blank=True)
+    payer_reported_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0), name="sett_invoice_amount_gt_zero"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(paid_amount__gte=0),
+                name="sett_invoice_paid_not_negative",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(paid_amount__lte=models.F("amount")),
+                name="sett_invoice_paid_lte_amount",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(direction="receivable", seller__isnull=True)
+                    | models.Q(direction="payable", seller__isnull=False)
+                ),
+                name="sett_invoice_seller_scope",
+            ),
+            models.UniqueConstraint(
+                fields=["order", "direction", "stage"],
+                condition=models.Q(direction="receivable"),
+                name="uniq_order_receivable_stage",
+            ),
+            models.UniqueConstraint(
+                fields=["order", "seller", "direction", "stage"],
+                condition=models.Q(direction="payable"),
+                name="uniq_order_seller_payable_stage",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["direction", "status", "due_date"], name="sett_invoice_queue_idx"),
+            models.Index(fields=["order", "direction"], name="sett_invoice_order_idx"),
+        ]
+
+    @property
+    def outstanding_amount(self):
+        return max(Decimal("0.00"), self.amount - self.paid_amount)
+
+    def __str__(self) -> str:
+        return self.number
+
+
+class SettlementPayment(models.Model):
+    DIRECTION_CHOICES = [
+        ("incoming", "Поступление от покупателя"),
+        ("outgoing", "Выплата продавцу"),
+    ]
+    STATUS_CHOICES = [
+        ("confirmed", "Подтверждён"),
+        ("reversed", "Отменён обратной проводкой"),
+    ]
+
+    invoice = models.ForeignKey(
+        SettlementInvoice,
+        on_delete=models.PROTECT,
+        related_name="payments",
+    )
+    direction = models.CharField(max_length=12, choices=DIRECTION_CHOICES)
+    status = models.CharField(
+        max_length=12, choices=STATUS_CHOICES, default="confirmed", db_index=True
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="USD")
+    bank_reference = models.CharField(
+        max_length=160,
+        unique=True,
+        help_text="Уникальный номер банковской операции или платёжного поручения.",
+    )
+    paid_at = models.DateTimeField()
+    proof_file = models.FileField(
+        upload_to="settlement_payments/%Y/%m/%d", blank=True
+    )
+    note = models.CharField(max_length=400, blank=True)
+    confirmed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="confirmed_settlement_payments",
+    )
+    reversed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reversed_settlement_payments",
+    )
+    reversed_at = models.DateTimeField(null=True, blank=True)
+    reversal_reason = models.CharField(max_length=400, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-paid_at", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0), name="sett_payment_amount_gt_zero"
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["direction", "status", "-paid_at"], name="sett_payment_report_idx"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.bank_reference} · {self.amount} {self.currency}"
 
 
 class DocumentSignature(models.Model):

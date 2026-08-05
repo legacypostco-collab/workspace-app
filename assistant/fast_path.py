@@ -504,6 +504,8 @@ def _balance(msg: str, lower: str) -> tuple[str, dict] | None:
         "баланс", "депозит", "кошел", "сколько на счет", "сколько на счёт",
         "сколько денег", "остаток на счет", "остаток на счёт",
         "история операц", "история списан", "транзакц",
+        "мои счета", "счета по заказ", "договор по заказ", "мои договор",
+        "расчеты", "расчёты", "банковск оплат",
         "balance", "wallet", "deposit", "transactions",
     )
     if _has_keyword(lower, triggers):
@@ -526,6 +528,10 @@ def _topup(msg: str, lower: str) -> tuple[str, dict] | None:
             amount = num * mult
         except ValueError:
             pass
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        return ("settlement_my_documents", {})
     return ("topup_wallet", {"amount": amount})
 
 

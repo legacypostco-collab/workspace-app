@@ -72,6 +72,11 @@ class AssistantConfig(AppConfig):
             from . import documents  # noqa
         except ImportError:
             pass
+        # Договоры, счета и ручная сверка банковских платежей.
+        try:
+            from . import settlement_actions  # noqa
+        except ImportError:
+            pass
         # Регистрируем pricelist (загрузка прайса с AI-маппингом)
         try:
             from . import pricelist  # noqa

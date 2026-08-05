@@ -1722,6 +1722,202 @@ class KYBDocumentFileView(APIView):
             return Response({"error": _("файл не найден")}, status=404)
 
 
+class SettlementReportCsvView(APIView):
+    """Internal finance register with invoices and immutable bank operations."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import csv
+        import io
+
+        from django.http import StreamingHttpResponse
+        from django.utils import timezone
+        from marketplace.models import SettlementInvoice, SettlementPayment
+
+        role = detect_user_role(request.user, request=request)
+        if role not in {"admin", "operator_payment"}:
+            return Response({"error": _("нет доступа")}, status=403)
+        order_id = request.query_params.get("order_id")
+        if order_id:
+            try:
+                order_id = int(order_id)
+            except (TypeError, ValueError):
+                return Response({"error": _("некорректный номер заказа")}, status=400)
+
+        def safe_cell(value):
+            text = str(value if value is not None else "")
+            if text.startswith(("=", "+", "-", "@")):
+                return "'" + text
+            return text
+
+        def line(values):
+            buffer = io.StringIO()
+            csv.writer(buffer, delimiter=";").writerow(
+                [safe_cell(value) for value in values]
+            )
+            return buffer.getvalue()
+
+        def rows():
+            yield "\ufeff"
+            yield line([
+                "Тип", "Номер", "Заказ", "Направление", "Этап",
+                "Контрагент", "Статус", "Сумма", "Оплачено", "Остаток",
+                "Валюта", "Срок оплаты", "Банковская операция", "Дата операции",
+                "Подтверждающий файл", "Оператор", "Комментарий",
+            ])
+            invoices = SettlementInvoice.objects.select_related(
+                "contract", "order"
+            )
+            if order_id:
+                invoices = invoices.filter(order_id=order_id)
+            invoices = invoices.order_by("created_at").iterator(chunk_size=500)
+            for invoice in invoices:
+                counterparty = (invoice.contract.counterparty_snapshot or {}).get(
+                    "legal_name", ""
+                )
+                yield line([
+                    "Счёт", invoice.number, f"ORD-{invoice.order_id}",
+                    invoice.get_direction_display(), invoice.get_stage_display(),
+                    counterparty, invoice.get_status_display(), invoice.amount,
+                    invoice.paid_amount, invoice.outstanding_amount, invoice.currency,
+                    invoice.due_date.strftime("%d.%m.%Y"), "", "", "", "", "",
+                ])
+            payments = SettlementPayment.objects.select_related(
+                "invoice__contract", "confirmed_by", "reversed_by"
+            )
+            if order_id:
+                payments = payments.filter(invoice__order_id=order_id)
+            payments = payments.order_by("paid_at", "id").iterator(chunk_size=500)
+            for payment in payments:
+                invoice = payment.invoice
+                counterparty = (invoice.contract.counterparty_snapshot or {}).get(
+                    "legal_name", ""
+                )
+                yield line([
+                    "Банковская операция", invoice.number, f"ORD-{invoice.order_id}",
+                    payment.get_direction_display(), invoice.get_stage_display(),
+                    counterparty, payment.get_status_display(), payment.amount,
+                    "", "", payment.currency, "", payment.bank_reference,
+                    timezone.localtime(payment.paid_at).strftime("%d.%m.%Y %H:%M"),
+                    (
+                        f"/api/assistant/settlements/payments/{payment.id}/proof/"
+                        if payment.proof_file else ""
+                    ),
+                    (
+                        payment.reversed_by.username
+                        if payment.status == "reversed" and payment.reversed_by_id
+                        else payment.confirmed_by.username
+                    ),
+                    payment.reversal_reason if payment.status == "reversed" else payment.note,
+                ])
+
+        response = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = (
+            f'attachment; filename="settlement-register-{timezone.localdate():%Y-%m-%d}.csv"'
+        )
+        response["Cache-Control"] = "private, no-store"
+        return response
+
+
+class SettlementPaymentProofView(APIView):
+    """Finance-only upload and download of bank operation evidence."""
+
+    permission_classes = [IsAuthenticated]
+    from rest_framework.parsers import FormParser, MultiPartParser
+    parser_classes = [MultiPartParser, FormParser]
+
+    @staticmethod
+    def _payment(request, payment_id):
+        from marketplace.models import SettlementPayment
+
+        role = detect_user_role(request.user, request=request)
+        if role not in {"admin", "operator_payment"}:
+            return None
+        return SettlementPayment.objects.select_related("invoice").filter(
+            id=payment_id
+        ).first()
+
+    def get(self, request, payment_id):
+        import os
+
+        from django.http import FileResponse
+
+        payment = self._payment(request, payment_id)
+        if not payment:
+            return Response({"error": _("Нет доступа.")}, status=403)
+        if not payment.proof_file:
+            return Response({"error": _("Подтверждающий файл не загружен.")}, status=404)
+        try:
+            stream = payment.proof_file.open("rb")
+        except (FileNotFoundError, OSError):
+            logger.exception("settlement proof missing payment_id=%s", payment.id)
+            return Response({"error": _("Файл подтверждения недоступен.")}, status=404)
+        response = FileResponse(
+            stream,
+            as_attachment=True,
+            filename=os.path.basename(payment.proof_file.name),
+        )
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+    def post(self, request, payment_id):
+        from django.conf import settings
+        from marketplace.upload_security import safe_upload_name, validate_uploaded_file
+
+        payment = self._payment(request, payment_id)
+        if not payment:
+            return Response({"error": _("Нет доступа.")}, status=403)
+        if payment.proof_file:
+            return Response(
+                {"error": _("Подтверждение уже загружено и сохранено в журнале.")},
+                status=409,
+            )
+        uploaded = request.FILES.get("file")
+        try:
+            ext = validate_uploaded_file(
+                uploaded,
+                allowed_ext={".pdf", ".png", ".jpg", ".jpeg", ".webp"},
+                max_bytes=min(
+                    int(getattr(settings, "MAX_ORDER_DOCUMENT_BYTES", 20 * 1024 * 1024)),
+                    20 * 1024 * 1024,
+                ),
+            )
+            uploaded.name = safe_upload_name(uploaded, ext)
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
+        except Exception:
+            logger.exception("settlement proof validation failed payment_id=%s", payment.id)
+            return Response({"error": _("Не удалось проверить файл.")}, status=400)
+        payment.proof_file = uploaded
+        payment.save(update_fields=["proof_file"])
+        from marketplace.models import OrderEvent
+
+        OrderEvent.objects.create(
+            order_id=payment.invoice.order_id,
+            event_type="document_uploaded",
+            source="operator",
+            actor=request.user,
+            meta={
+                "kind": "settlement_payment_proof",
+                "settlement_payment_id": payment.id,
+                "settlement_invoice_id": payment.invoice_id,
+                "bank_reference": payment.bank_reference,
+                "file_name": uploaded.name,
+            },
+        )
+        return Response(
+            {
+                "ok": True,
+                "payment_id": payment.id,
+                "name": uploaded.name,
+                "url": f"/api/assistant/settlements/payments/{payment.id}/proof/",
+            },
+            status=201,
+        )
+
+
 class ProjectDocumentUploadView(APIView):
     """POST multipart/form-data 'file' → создаёт ProjectDocument + сохраняет файл.
     Тип документа угадываем по расширению (xlsx/csv → spec, pdf → other, и т.д.)."""
@@ -1897,12 +2093,15 @@ class OrderDocumentUploadView(APIView):
 
         role = detect_user_role(request.user, request=request)
         allowed = role == "admin" or role.startswith("operator")
+        document_audience = "participants"
+        document_seller = None
         if role == "buyer":
             allowed = (
                 order.buyer_id == request.user.id
                 and status_code == "delivered"
                 and trigger_id == "signed_docs"
             )
+            document_audience = "buyer"
         elif role == "seller":
             from .seller_actions import _effective_seller
 
@@ -1911,6 +2110,8 @@ class OrderDocumentUploadView(APIView):
                 order=order,
                 part__seller=seller,
             ).exists()
+            document_audience = "seller"
+            document_seller = seller
         if not allowed:
             return Response({"error": _("Нет доступа к заказу.")}, status=403)
 
@@ -1947,6 +2148,8 @@ class OrderDocumentUploadView(APIView):
         document = OrderDocument.objects.create(
             order=order,
             doc_type=self.DOC_TYPES.get(trigger_id, "other"),
+            audience=document_audience,
+            seller=document_seller,
             title=str(trigger["label"])[:255],
             file_obj=uploaded,
             uploaded_by=request.user,
@@ -2032,11 +2235,12 @@ class OrderDocumentFileView(APIView):
                 doc,
             )
         else:
-            allowed = (
-                _role.startswith("operator")
-                or _role == "admin"
-                or order.buyer_id == request.user.id
-            )
+            if _role.startswith("operator") or _role == "admin":
+                allowed = True
+            else:
+                from marketplace.order_access import buyer_can_access_document
+
+                allowed = buyer_can_access_document(request.user, doc)
         if not allowed:
             return Response({"error": _("нет доступа")}, status=403)
         if not doc.file_obj:

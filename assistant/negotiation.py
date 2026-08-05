@@ -1429,6 +1429,9 @@ def accept_quote(params, user, role):
             )
         )
     quote_total, _quote_items = financials
+    from .settlements import SettlementError, prepare_settlement_package, settlement_enabled
+
+    document_settlement = settlement_enabled()
 
     # Бизнес-правило: минимальная сумма заказа. Блокируем И на preview,
     # И на confirm — buyer должен сразу понять что котировку нельзя принять.
@@ -1452,6 +1455,8 @@ def accept_quote(params, user, role):
         warnings = [
             _("После принятия будет создан заказ. Остальные котировки автоматически отклонятся."),
         ]
+        if document_settlement:
+            warnings.append(_("Будут сформированы договор и банковский счёт на первый платёж 10%."))
         if extra_warn:
             warnings.append(extra_warn)
         return ActionResult(
@@ -1462,11 +1467,20 @@ def accept_quote(params, user, role):
                     {"label": _("Продавец"), "value": seller_label},
                     {"label": _("Сумма"), "value": f"${quote_total:,.2f}", "primary": True},
                     {"label": _("Доставка"), "value": _("%(d)s дней") % {"d": q.delivery_days}},
-                    {"label": _("Резерв 10%"), "value": f"${(quote_total * Decimal('0.10')):,.2f}"},
+                    {
+                        "label": (
+                            _("Первый платёж 10%")
+                            if document_settlement else _("Резерв 10%")
+                        ),
+                        "value": f"${(quote_total * Decimal('0.10')):,.2f}",
+                    },
                 ],
                 "warnings": warnings,
                 "confirm_action": "accept_quote",
-                "confirm_label": _("✓ Принять и создать заказ"),
+                "confirm_label": (
+                    _("Принять и сформировать документы")
+                    if document_settlement else _("✓ Принять и создать заказ")
+                ),
                 "confirm_params": {"quote_id": q.id, "confirmed": True},
                 "cancel_label": _("Отмена"),
             }}],
@@ -1476,6 +1490,7 @@ def accept_quote(params, user, role):
     # параллельное принятие любых двух котировок RFQ не создало два заказа.
     from django.db import transaction as _txn
     reserve_pct = Decimal("10.00")
+    package = None
     with _txn.atomic():
         locked_rfq = RFQ.objects.select_for_update().get(id=q.rfq_id)
         q = (Quote.objects.select_for_update(of=("self",))
@@ -1537,6 +1552,12 @@ def accept_quote(params, user, role):
         locked_rfq.status = "quoted"
         locked_rfq.save(update_fields=["status"])
         q.rfq = locked_rfq
+        if document_settlement:
+            try:
+                package = prepare_settlement_package(order, user)
+            except SettlementError as exc:
+                _txn.set_rollback(True)
+                return ActionResult(text=str(exc), action_succeeded=False)
 
     _log_event(order, "order_created", actor=user, source="buyer",
                meta={"items": items_count, "total": float(quote_total),
@@ -1544,10 +1565,33 @@ def accept_quote(params, user, role):
     if q.seller:
         _notify(q.seller, kind="order",
                 title=_("Котировка #%(qid)s принята — заказ #%(oid)s") % {"qid": q.id, "oid": order.id},
-                body=_("Покупатель оформил заказ на $%(amt)s. Можно начинать.") % {"amt": f"{quote_total:,.2f}"},
+                body=(
+                    _("Закупочный договор сформирован. Начало работ ожидает подтверждения первого банковского платежа покупателя.")
+                    if document_settlement else
+                    _("Покупатель оформил заказ на $%(amt)s. Можно начинать.") % {"amt": f"{quote_total:,.2f}"}
+                ),
                 url=f"/chat/?order={order.id}")
 
     _push_rfq_update(q.rfq, event="quote_accepted", quote_id=q.id)
+
+    if document_settlement:
+        from .documents import _doc_url
+        from .settlement_actions import _invoice_card
+
+        invoice = package["buyer_reserve_invoice"]
+        return ActionResult(
+            text=_(
+                "Котировка #%(qid)s принята, заказ #%(oid)s создан. "
+                "Договор и первый банковский счёт готовы."
+            ) % {"qid": q.id, "oid": order.id},
+            cards=[_invoice_card(invoice)],
+            actions=[
+                {"action": "open_url", "label": _("Открыть договор"), "params": {"_url": _doc_url(package["buyer_contract"].document)}},
+                {"action": "open_url", "label": _("Открыть счёт"), "params": {"_url": _doc_url(invoice.document)}},
+                {"action": "settlement_report_paid", "label": _("Сообщить об оплате"), "params": {"invoice_id": invoice.id}},
+            ],
+            action_succeeded=True,
+        )
 
     return ActionResult(
         text=(
@@ -1601,30 +1645,59 @@ def auto_accept_and_pay_reserve(params, user, role):
         ))
 
     reserve_amount = (best.total_amount * Decimal("0.10")).quantize(Decimal("0.01"))
+    from .settlements import settlement_enabled
+
+    document_settlement = settlement_enabled()
 
     # Шаг 1: preview
     if not confirmed:
         return ActionResult(
             text=(
-                _("🎯 Лучшее КП по RFQ #%(id)s\n"
-                  "Принимаем котировку #%(qid)s и сразу списываем резерв 10%%.")
-                % {"id": rfq.id, "qid": best.id}
+                _("Лучшее коммерческое предложение по RFQ #%(id)s.\n"
+                  "После подтверждения будет создан заказ и сформированы договор со счётом.")
+                % {"id": rfq.id}
+                if document_settlement
+                else _("🎯 Лучшее КП по RFQ #%(id)s\n"
+                       "Принимаем котировку #%(qid)s и сразу списываем резерв 10%%.")
+                     % {"id": rfq.id, "qid": best.id}
             ),
             cards=[{"type": "draft", "data": {
-                "title": _("🎯 Принять лучшее предложение #%(qid)s и оплатить резерв") % {"qid": best.id},
+                "title": (
+                    _("Принять предложение #%(qid)s и сформировать документы") % {"qid": best.id}
+                    if document_settlement
+                    else _("🎯 Принять лучшее предложение #%(qid)s и оплатить резерв") % {"qid": best.id}
+                ),
                 "rows": [
                     {"label": _("RFQ"), "value": _("#%(id)s · %(n)s позиций") % {"id": rfq.id, "n": rfq.items.count()}},
                     {"label": _("Партнёр"), "value": partner_label(best.seller, fallback_id=best.id)},
                     {"label": _("Сумма заказа"), "value": f"${best.total_amount:,.2f}", "primary": True},
                     {"label": _("Срок поставки"), "value": _("%(d)s дней") % {"d": best.delivery_days}},
-                    {"label": _("Резерв 10%"), "value": f"${reserve_amount:,.2f}", "primary": True},
+                    {
+                        "label": (
+                            _("Первый платёж 10%")
+                            if document_settlement else _("Резерв 10%")
+                        ),
+                        "value": f"${reserve_amount:,.2f}",
+                        "primary": True,
+                    },
                 ],
-                "warnings": [
-                    _("После клика будет создан Order, остальные котировки автоматически отклоняются."),
-                    _("С депозита спишется $%(res)s, удерживается в эскроу платформы.") % {"res": f"{reserve_amount:,.2f}"},
-                ],
+                "warnings": (
+                    [
+                        _("Будет создан заказ, остальные котировки автоматически отклонятся."),
+                        _("Внутренний баланс не списывается. Оплата выполняется по банковскому счёту."),
+                    ]
+                    if document_settlement
+                    else [
+                        _("После клика будет создан Order, остальные котировки автоматически отклоняются."),
+                        _("С депозита спишется $%(res)s, удерживается в эскроу платформы.") % {"res": f"{reserve_amount:,.2f}"},
+                    ]
+                ),
                 "confirm_action": "auto_accept_and_pay_reserve",
-                "confirm_label": _("✓ Принять и списать $%(res)s") % {"res": f"{reserve_amount:,.0f}"},
+                "confirm_label": (
+                    _("Принять и сформировать счёт")
+                    if document_settlement
+                    else _("✓ Принять и списать $%(res)s") % {"res": f"{reserve_amount:,.0f}"}
+                ),
                 "confirm_params": {"rfq_id": rfq.id, "confirmed": True},
                 "cancel_label": _("Сравнить все КП"),
             }}],
@@ -1638,6 +1711,8 @@ def auto_accept_and_pay_reserve(params, user, role):
     res_accept = accept_quote(
         {"quote_id": best.id, "confirmed": True}, user, role,
     )
+    if document_settlement:
+        return res_accept
     if res_accept.text and "создан заказ" not in res_accept.text:
         # accept_quote вернул ошибку — пробрасываем как есть
         return res_accept

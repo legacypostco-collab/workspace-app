@@ -48,3 +48,9 @@ CELERY_TASK_EAGER_PROPAGATES = True
 ENABLE_VIRUS_SCAN = False
 VIRUS_SCAN_REQUIRED = False
 KYB_ENABLED = True
+
+# The historical suite still verifies the archived wallet implementation.
+# New settlement tests opt into invoice_contract explicitly.
+SETTLEMENT_MODE = "legacy_wallet"
+SETTLEMENT_REQUIRED = False
+LEGACY_WALLET_UI_ENABLED = True

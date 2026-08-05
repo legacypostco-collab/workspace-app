@@ -69,12 +69,22 @@ def _switch_conv_to_shipment(conv, order):
     conv.category = "shipment"
     conv.title = f"Сделка ORD-{order.id}"
     conv.save(update_fields=["category", "title", "updated_at"])
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        content = _(
+            "КП подтверждено — сделка перешла в работу.\n"
+            "Заказ ORD-%(id)s · %(amount)s. Договор и первый счёт сформированы; "
+            "заказ ожидает подтверждения банковской оплаты."
+        ) % {"id": order.id, "amount": f"${order.total_amount:,.2f}"}
+    else:
+        content = (
+            _('✅ КП подтверждено — сделка перешла в работу.\nЗаказ ORD-%(p0)s · $%(p1)s · резерв 10%% ($%(p2)s) удержан в эскроу.') % {"p0": f'{order.id}', "p1": f'{order.total_amount:,.2f}', "p2": f'{order.reserve_amount:,.2f}'}
+        )
     Message.objects.create(
         conversation=conv,
         role=Message.Role.SYSTEM,
-        content=(
-            _('✅ КП подтверждено — сделка перешла в работу.\nЗаказ ORD-%(p0)s · $%(p1)s · резерв 10%% ($%(p2)s) удержан в эскроу.') % {"p0": f'{order.id}', "p1": f'{order.total_amount:,.2f}', "p2": f'{order.reserve_amount:,.2f}'}
-        ),
+        content=content,
         cards=[{
             "type": "order",
             "data": {
@@ -86,6 +96,133 @@ def _switch_conv_to_shipment(conv, order):
                 "reserve_amount": float(order.reserve_amount),
             },
         }],
+    )
+
+
+def _confirm_kp_with_documents(*, rfq, quote, user, role):
+    """Accept a quote and create an unpaid order with bilateral documents."""
+    from django.db import transaction
+
+    from marketplace.models import Order, OrderItem, Quote, RFQ
+
+    from .actions import _log_event
+    from .order_limits import check_min_order
+    from .settlement_actions import _invoice_card
+    from .settlements import SettlementError, prepare_settlement_package
+
+    with transaction.atomic():
+        rfq = RFQ.objects.select_for_update().get(id=rfq.id)
+        quote = Quote.objects.select_for_update().prefetch_related("items__part").get(
+            id=quote.id
+        )
+        if rfq.status == "cancelled":
+            return ActionResult(text=_("RFQ отменён — подтвердить КП нельзя."))
+        if quote.rfq_id != rfq.id or quote.status not in ("submitted", "finalized"):
+            return ActionResult(text=_("Заказ по этой котировке уже создан или она недоступна."))
+        if quote.valid_until and timezone.now() > quote.valid_until:
+            return ActionResult(text=_("Срок действия котировки истёк."))
+        financials = _quote_financials(quote)
+        if financials is None:
+            return ActionResult(text=_("Котировка содержит некорректные позиции или сумму."))
+        parts_total, logistics_cost, full_invoice = financials
+        block = check_min_order(full_invoice)
+        if block:
+            return ActionResult(**block)
+        quote_items = list(quote.items.all())
+        if not any(item.part_id for item in quote_items):
+            return ActionResult(
+                text=_("В котировке нет позиций с привязанной запчастью — заказ не создан.")
+            )
+        reserve = (full_invoice * Decimal("0.10")).quantize(Decimal("0.01"))
+        order = Order.objects.create(
+            customer_name=user.get_full_name() or user.username,
+            customer_email=user.email or f"{user.username}@chat.local",
+            customer_phone="",
+            delivery_address="—",
+            buyer=user,
+            status="pending",
+            payment_status="awaiting_reserve",
+            payment_scheme="simple",
+            reserve_percent=Decimal("10.00"),
+            reserve_amount=reserve,
+            total_amount=full_invoice,
+            logistics_cost=logistics_cost,
+        )
+        for quote_item in quote_items:
+            if quote_item.part_id:
+                OrderItem.objects.create(
+                    order=order,
+                    part=quote_item.part,
+                    quantity=quote_item.quantity,
+                    unit_price=quote_item.unit_price,
+                )
+        quote.status = "accepted"
+        quote.save(update_fields=["status"])
+        Quote.objects.filter(rfq=rfq).exclude(id=quote.id).filter(
+            status__in=("submitted", "finalized", "countered")
+        ).update(status="declined")
+        rfq.status = "quoted"
+        rfq.save(update_fields=["status"])
+        try:
+            package = prepare_settlement_package(order, user)
+        except SettlementError as exc:
+            transaction.set_rollback(True)
+            return ActionResult(text=str(exc), action_succeeded=False)
+
+    _log_event(
+        order,
+        "kp_confirmed",
+        actor=user,
+        source="buyer",
+        meta={
+            "quote_id": quote.id,
+            "rfq_id": rfq.id,
+            "parts": float(parts_total),
+            "logistics": float(logistics_cost),
+            "reserve": float(reserve),
+            "mode": rfq.mode,
+            "payment_mode": "invoice_contract",
+        },
+    )
+    if quote.seller:
+        _notify(
+            quote.seller,
+            kind="order",
+            title=_("Коммерческое предложение принято"),
+            body=_(
+                "Создан заказ ORD-%(id)s. Закупочный договор сформирован; "
+                "запуск ожидает подтверждения первого платежа покупателя."
+            ) % {"id": order.id},
+            url=f"/chat/?order={order.id}",
+        )
+    _switch_conv_to_shipment(_conv_for_rfq(user, rfq), order)
+    invoice = package["buyer_reserve_invoice"]
+    from .documents import _doc_url
+
+    return ActionResult(
+        text=_(
+            "Коммерческое предложение принято. Заказ ORD-%(id)s создан без "
+            "списания внутреннего баланса. Договор и первый счёт готовы к оплате."
+        ) % {"id": order.id},
+        cards=[_invoice_card(invoice)],
+        actions=[
+            {
+                "action": "open_url",
+                "label": _("Открыть договор"),
+                "params": {"_url": _doc_url(package["buyer_contract"].document)},
+            },
+            {
+                "action": "open_url",
+                "label": _("Открыть счёт"),
+                "params": {"_url": _doc_url(invoice.document)},
+            },
+            {
+                "action": "settlement_report_paid",
+                "label": _("Сообщить об оплате"),
+                "params": {"invoice_id": invoice.id},
+            },
+        ],
+        action_succeeded=True,
     )
 
 
@@ -231,6 +368,9 @@ def present_kp_to_buyer(params, user, role):
         return ActionResult(**block)
 
     reserve = (full_invoice * Decimal("0.10")).quantize(Decimal("0.01"))
+    from .settlements import settlement_enabled
+
+    document_settlement = settlement_enabled()
 
     # ── Генерируем настоящий PDF Pro-forma Invoice ──────────────
     proforma_url = ""
@@ -256,7 +396,7 @@ def present_kp_to_buyer(params, user, role):
         {"label": _("Запчасти"),   "value": f"${parts_total:,.2f}"},
         {"label": _('Логистика (%(p0)s, %(p1)s кг)') % {"p0": f"{logi['method']}", "p1": f"{logi['weight_kg']:.1f}"},
          "value": f"${logi['cost']:,.2f}"},
-        {"label": _("ИНВОЙС 100%"), "value": f"${full_invoice:,.2f}", "primary": True},
+        {"label": _("Сумма договора"), "value": f"${full_invoice:,.2f}", "primary": True},
         {"label": _("Срок поставки"),  "value": f"{best.delivery_days} дней"},
         {"label": _("Условия оплаты"), "value": _("10% резерв сейчас · 90% перед отгрузкой")},
         {"label": _("Резерв 10%"),     "value": f"${reserve:,.2f}", "primary": True},
@@ -276,7 +416,13 @@ def present_kp_to_buyer(params, user, role):
 
     return ActionResult(
         text=(
-            _('📋 Pro-forma Invoice PRO-%(p0)s/%(p1)s готов.\nСумма: $%(p2)s (запчасти $%(p3)s + логистика $%(p4)s).\nНажмите «Подтвердить» — заблокируем 10%% ($%(p5)s) с депозита, после готовности — остаток 90%%.') % {"p0": f'{rfq.id}', "p1": f'{best.id}', "p2": f'{full_invoice:,.2f}', "p3": f'{parts_total:,.0f}', "p4": f"{logi['cost']:,.0f}", "p5": f'{reserve:,.0f}'}
+            _(
+                "Коммерческое предложение PRO-%(p0)s/%(p1)s готово.\n"
+                "Сумма: $%(p2)s (запчасти $%(p3)s + логистика $%(p4)s).\n"
+                "После подтверждения будут сформированы договор и банковский счёт на 10%% ($%(p5)s)."
+            ) % {"p0": rfq.id, "p1": best.id, "p2": f'{full_invoice:,.2f}', "p3": f'{parts_total:,.0f}', "p4": f"{logi['cost']:,.0f}", "p5": f'{reserve:,.0f}'}
+            if document_settlement
+            else _('📋 Pro-forma Invoice PRO-%(p0)s/%(p1)s готов.\nСумма: $%(p2)s (запчасти $%(p3)s + логистика $%(p4)s).\nНажмите «Подтвердить» — заблокируем 10%% ($%(p5)s) с депозита, после готовности — остаток 90%%.') % {"p0": f'{rfq.id}', "p1": f'{best.id}', "p2": f'{full_invoice:,.2f}', "p3": f'{parts_total:,.0f}', "p4": f"{logi['cost']:,.0f}", "p5": f'{reserve:,.0f}'}
         ),
         cards=[{"type": "draft", "data": {
             "title": f"📋 PRO-{rfq.id}/{best.id} · ${full_invoice:,.2f}",
@@ -287,7 +433,11 @@ def present_kp_to_buyer(params, user, role):
                 _("Остальные котировки по этому RFQ автоматически отклоняются."),
             ],
             "confirm_action": "confirm_kp_and_reserve",
-            "confirm_label": _('✓ Подтвердить и зарезервировать $%(p0)s') % {"p0": f'{reserve:,.0f}'},
+            "confirm_label": (
+                _("Подтвердить и сформировать документы")
+                if document_settlement
+                else _('✓ Подтвердить и зарезервировать $%(p0)s') % {"p0": f'{reserve:,.0f}'}
+            ),
             "confirm_params": {
                 "rfq_id": rfq.id, "quote_id": best.id,
                 "logistics_cost": float(logi["cost"]),
@@ -350,6 +500,11 @@ def confirm_kp_and_reserve(params, user, role):
         return ActionResult(**block)
 
     reserve = (full_invoice * Decimal("0.10")).quantize(Decimal("0.01"))
+
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        return _confirm_kp_with_documents(rfq=rfq, quote=q, user=user, role=role)
 
     wallet = Wallet.for_user(user)
     if wallet.balance < reserve:

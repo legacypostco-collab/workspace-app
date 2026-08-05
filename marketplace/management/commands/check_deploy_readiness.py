@@ -218,8 +218,42 @@ class Command(BaseCommand):
                 "reconciliation are incomplete."
             )
 
+        settlement_mode = str(
+            getattr(settings, "SETTLEMENT_MODE", "invoice_contract") or ""
+        ).strip().lower()
+        if settlement_mode != "invoice_contract":
+            errors.append("SETTLEMENT_MODE must be invoice_contract in production.")
+        if bool(getattr(settings, "LEGACY_WALLET_UI_ENABLED", False)):
+            errors.append("LEGACY_WALLET_UI_ENABLED must be disabled in production.")
+        settlement_required = bool(
+            getattr(settings, "SETTLEMENT_REQUIRED", False)
+        )
+        if not settlement_required:
+            errors.append("SETTLEMENT_REQUIRED must be enabled in production.")
+        else:
+            required_settlement_values = {
+                "PLATFORM_LEGAL_NAME": getattr(settings, "PLATFORM_LEGAL_NAME", ""),
+                "PLATFORM_LEGAL_ADDRESS": getattr(settings, "PLATFORM_LEGAL_ADDRESS", ""),
+                "PLATFORM_TAX_ID": getattr(settings, "PLATFORM_TAX_ID", ""),
+                "PLATFORM_REGISTRATION_NO": getattr(settings, "PLATFORM_REGISTRATION_NO", ""),
+                "PLATFORM_BANK_NAME": getattr(settings, "PLATFORM_BANK_NAME", ""),
+                "PLATFORM_BANK_ACCOUNT": getattr(settings, "PLATFORM_BANK_ACCOUNT", ""),
+                "PLATFORM_BANK_SWIFT": getattr(settings, "PLATFORM_BANK_SWIFT", ""),
+                "PLATFORM_SIGNATORY": getattr(settings, "PLATFORM_SIGNATORY", ""),
+            }
+            missing = [
+                name for name, value in required_settlement_values.items()
+                if not str(value or "").strip()
+                or str(value).strip().upper() == "__CHANGE_ME__"
+            ]
+            if missing:
+                errors.append(
+                    "Settlement legal and bank details are incomplete: "
+                    + ", ".join(missing)
+                )
+
         payment_url = str(getattr(settings, "PAYMENT_PROVIDER_URL", "") or "")
-        if not payment_url:
+        if settlement_mode != "invoice_contract" and not payment_url:
             warnings.append("PAYMENT_PROVIDER_URL not set — payment gateway is not configured.")
 
         if int(getattr(settings, "MAX_IMPORT_ROWS", 0) or 0) > 10000:

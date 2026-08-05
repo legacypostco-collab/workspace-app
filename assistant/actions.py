@@ -40,6 +40,13 @@ MAX_ITEM_QUANTITY = 1_000_000
 MAX_TRANSACTION_AMOUNT = Decimal("999999999999.99")
 
 
+def _invoice_contract_mode() -> bool:
+    """Return the active settlement mode without importing it at module load."""
+    from .settlements import settlement_enabled
+
+    return settlement_enabled()
+
+
 def _bounded_positive_int(value, *, maximum=MAX_ITEM_QUANTITY):
     """Parse an untrusted quantity without accepting bools or huge values."""
     if isinstance(value, bool):
@@ -192,6 +199,7 @@ _BUYER_ACTIONS = [
     "open_url", "generate_proposal",
     # покупка и депозит
     "quick_order", "pay_reserve", "pay_final",
+    "settlement_prepare", "settlement_my_documents", "settlement_report_paid",
     "shipping_choose", "shipping_apply",
     "get_balance", "topup_wallet", "buy_ai_requests", "link_card",
     "withdraw_wallet", "submit_withdrawal", "list_withdrawals", "cancel_withdrawal",
@@ -231,6 +239,7 @@ _BUYER_ACTIONS = [
 # Внутри advance_order ещё проверяется, что в заказе есть товары seller'а.
 _SELLER_ONLY = [
     "request_payout",
+    "settlement_seller_documents",
     "seller_analytics_hub", "seller_executive_report",
     "respond_rfq", "upload_pricelist",
     # Pricelist через AI-маппинг (история, ошибки) + Google Sheets sync
@@ -289,6 +298,10 @@ _OPERATOR_CORE = [
     "op_customs_dashboard", "op_customs_release",
     # Payments / Escrow dashboard
     "op_payments_dashboard",
+    "settlement_prepare", "settlement_my_documents",
+    "settlement_seller_documents", "settlement_finance_queue",
+    "settlement_confirm_payment", "settlement_issue_invoice",
+    "settlement_reverse_payment", "settlement_payment_detail", "settlement_report",
     # Аналитический хаб + отдельные отчёты
     "op_analytics_hub",
     # Deposit top-up confirmation (финансы)
@@ -389,6 +402,16 @@ _OPERATOR_PAYMENT = _OPERATOR_SHARED | {
     "op_withdrawal_queue", "op_approve_withdrawal",
     "op_complete_withdrawal", "op_reject_withdrawal", "apply_settlement",
     "generate_invoice_pdf", "sign_document",
+    "settlement_prepare", "settlement_my_documents",
+    "settlement_seller_documents", "settlement_finance_queue",
+    "settlement_confirm_payment", "settlement_issue_invoice",
+    "settlement_reverse_payment", "settlement_payment_detail", "settlement_report",
+}
+
+_FINANCE_ONLY_ACTIONS = {
+    "settlement_finance_queue", "settlement_confirm_payment",
+    "settlement_issue_invoice", "settlement_reverse_payment",
+    "settlement_payment_detail", "settlement_report",
 }
 
 ROLE_ACTIONS = {
@@ -398,9 +421,26 @@ ROLE_ACTIONS = {
     "operator_customs": [a for a in _OPERATOR_CORE if a in _OPERATOR_CUSTOMS],
     "operator_payment": [a for a in _OPERATOR_CORE if a in _OPERATOR_PAYMENT],
     "operator_manager": _KAM_ACTIONS,   # KAM — коммерция, без исполнения
-    "operator": _OPERATOR_CORE,         # оператор — исполнение, без CRM
+    "operator": [
+        action for action in _OPERATOR_CORE
+        if action not in _FINANCE_ONLY_ACTIONS
+    ],                                  # оператор — исполнение, без финансовой сверки
     "admin": ["*"],  # admin sees everything (wildcard — все actions доступны)
 }
+
+_LEGACY_WALLET_ACTIONS = {
+    "topup_wallet", "buy_ai_requests", "link_card",
+    "withdraw_wallet", "submit_withdrawal", "list_withdrawals", "cancel_withdrawal",
+    "transfer_wallet", "submit_wallet_transfer", "confirm_wallet_transfer",
+    "cancel_wallet_transfer", "list_wallet_transfers",
+    "start_topup", "submit_topup", "confirm_topup_paid", "cancel_topup", "list_topups",
+    "op_topup_queue", "op_confirm_topup", "op_reject_topup",
+    "op_withdrawal_queue", "op_approve_withdrawal",
+    "op_complete_withdrawal", "op_reject_withdrawal",
+    "generate_invoice_pdf",
+}
+
+_INVOICE_FINANCE_ACTIONS = {"op_payments_dashboard", "op_payments_stats"}
 
 # Подмножество actions, специфичных только для admin (вне operator/seller/buyer)
 _ADMIN_ONLY = [
@@ -422,6 +462,13 @@ _KYB_GATED_SELLER = {
 
 
 def can_execute(action_name: str, role: str) -> bool:
+    if action_name in _LEGACY_WALLET_ACTIONS or action_name in _INVOICE_FINANCE_ACTIONS:
+        from .settlements import settlement_enabled
+
+        if settlement_enabled():
+            if action_name in _LEGACY_WALLET_ACTIONS:
+                return False
+            return role in {"admin", "operator_payment"}
     allowed = ROLE_ACTIONS.get(role, [])
     return "*" in allowed or action_name in allowed
 
@@ -855,9 +902,14 @@ def execute(action_name: str, params: dict, user, role: str) -> ActionResult:
 
 def list_actions(role: str) -> list[str]:
     allowed = ROLE_ACTIONS.get(role, [])
-    if "*" in allowed:
-        return list(_REGISTRY.keys())
-    return [a for a in _REGISTRY.keys() if a in allowed]
+    names = list(_REGISTRY.keys()) if "*" in allowed else [
+        a for a in _REGISTRY.keys() if a in allowed
+    ]
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        names = [name for name in names if name not in _LEGACY_WALLET_ACTIONS]
+    return names
 
 
 # ══════════════════════════════════════════════════════════
@@ -874,6 +926,28 @@ _BOOL = {"type": "boolean"}
 _LIST_STR = {"type": "array", "items": {"type": "string"}}
 
 TOOL_SCHEMAS = {
+    "settlement_my_documents": {
+        "description": _("Договоры, счета и статусы банковской оплаты покупателя по заказам."),
+        "input_schema": {
+            "type": "object",
+            "properties": {"order_id": _INT},
+        },
+    },
+    "settlement_seller_documents": {
+        "description": _("Закупочные договоры и выплаты текущего продавца без данных покупателя."),
+        "input_schema": {
+            "type": "object",
+            "properties": {"order_id": _INT},
+        },
+    },
+    "settlement_finance_queue": {
+        "description": _("Очередь входящих и исходящих счетов для финансового оператора."),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    "settlement_report": {
+        "description": _("Сводный отчёт по выставленным счетам и подтверждённым банковским операциям."),
+        "input_schema": {"type": "object", "properties": {}},
+    },
     "search_parts": {
         "description": (
             _('Поиск запчастей по каталогу. Поддерживает свободный текст и список OEM-артикулов (через query как многострочную строку или через articles[]). При >=2 артикулах возвращает spec_results карточку (KPI + таблица), иначе — карточки product.')
@@ -1453,6 +1527,11 @@ _NON_LLM_ACTIONS = {
     "op_approve_withdrawal",
     "op_complete_withdrawal",
     "op_reject_withdrawal",
+    "settlement_prepare",
+    "settlement_report_paid",
+    "settlement_issue_invoice",
+    "settlement_confirm_payment",
+    "settlement_reverse_payment",
 }
 
 
@@ -3283,6 +3362,7 @@ def get_order_detail(params, user, role):
     is_buyer = (o.buyer_id == user.id)
     # Только прикладная роль operator/admin видит любой заказ.
     is_op = role.startswith("operator") or role == "admin"
+    invoice_mode = _invoice_contract_mode()
     if not (is_buyer or is_seller or is_op):
         return ActionResult(text=_('Нет доступа к этому заказу.'))
     seller_scoped = _seller_scoped_order_view(o, user, role)
@@ -3462,6 +3542,10 @@ def get_order_detail(params, user, role):
             o,
             _seller_order_principal(user),
         )
+    elif role == "buyer":
+        from marketplace.order_access import buyer_visible_documents
+
+        visible_documents = buyer_visible_documents(o, user)
     else:
         visible_documents = o.documents.all()
     docs_count = visible_documents.count()
@@ -3557,14 +3641,14 @@ def get_order_detail(params, user, role):
                     sub_parts.append(_('⚠ ушёл в путь без оформленной партии'))
                 else:
                     sub_parts.append(_('ещё у поставщика — партия не нужна'))
-            _STAGE_ORDER_S = ["awaiting_reserve","reserve_paid","confirmed","in_production",
+            _STAGE_ORDER_S = ["pending","reserve_paid","confirmed","in_production",
                               "ready_to_ship","shipped","transit_abroad","customs","transit_rf",
                               "issuing","delivered","completed"]
             _worst_idx = _STAGE_ORDER_S.index(worst) if worst in _STAGE_ORDER_S else 0
             _pct = int(round(_worst_idx / max(1, len(_STAGE_ORDER_S) - 1) * 100))
             # «Дальше: actor event» по слабейшему звену группы
             _actor_map = {
-                "awaiting_reserve": (_('Покупатель'),        _('оплачивает резерв 10%')),
+                "pending":          (_('Покупатель'),        (_('оплачивает первый счёт') if invoice_mode else _('оплачивает резерв 10%'))),
                 "reserve_paid":     (_('Поставщик'),         _('подтверждает заказ')),
                 "confirmed":        (_('Поставщик'),         _('запускает производство')),
                 "in_production":    (_('Поставщик'),         _('сообщает о готовности')),
@@ -3581,7 +3665,7 @@ def get_order_detail(params, user, role):
             # SLA-светофор + дни в стадии (по последнему status_changed для заказа)
             from django.utils import timezone as _tz_g
             from marketplace.models import OrderEvent as _OE_g
-            _STAGE_SLA_G = {"awaiting_reserve":2,"reserve_paid":2,"confirmed":1,"in_production":7,
+            _STAGE_SLA_G = {"pending":2,"reserve_paid":2,"confirmed":1,"in_production":7,
                             "ready_to_ship":2,"shipped":14,"transit_abroad":14,"customs":5,"transit_rf":7,"issuing":3}
             _last_ev_g = (_OE_g.objects.filter(order_id=o.id, event_type="status_changed")
                            .order_by("-created_at").first())
@@ -3605,9 +3689,16 @@ def get_order_detail(params, user, role):
             if o.payment_status == "paid":
                 _pay_lbl_g = _('оплачен полностью ($%(amount)s)') % {'amount': f"{g['amount']:,.0f}"}
             elif o.payment_status == "reserve_paid":
-                _pay_lbl_g = _('резерв оплачен $%(_reserve_supplier)s · остаток $%(_final_supplier)s') % {'_reserve_supplier': f"{_reserve_supplier:,.0f}", '_final_supplier': f"{_final_supplier:,.0f}"}
+                _pay_lbl_g = (
+                    _('первый платёж подтверждён $%(_reserve_supplier)s · окончательный счёт $%(_final_supplier)s')
+                    if invoice_mode else
+                    _('резерв оплачен $%(_reserve_supplier)s · остаток $%(_final_supplier)s')
+                ) % {'_reserve_supplier': f"{_reserve_supplier:,.0f}", '_final_supplier': f"{_final_supplier:,.0f}"}
             elif o.payment_status == "awaiting_reserve":
-                _pay_lbl_g = _('ждём резерв $%(_reserve_supplier)s') % {'_reserve_supplier': f"{_reserve_supplier:,.0f}"}
+                _pay_lbl_g = (
+                    _('ожидается первый платёж $%(_reserve_supplier)s')
+                    if invoice_mode else _('ждём резерв $%(_reserve_supplier)s')
+                ) % {'_reserve_supplier': f"{_reserve_supplier:,.0f}"}
             else:
                 _pay_lbl_g = o.get_payment_status_display()
             # Meta-блок (как в shipment-карточке)
@@ -3730,7 +3821,10 @@ def get_order_detail(params, user, role):
     if o.logistics_cost and not seller_scoped:
         rows.append({"label": _('Логистика'), "value": f"${o.logistics_cost:,.2f}"})
     if visible_reserve:
-        rows.append({"label": _('Резерв'), "value": f"${visible_reserve:,.2f}"})
+        rows.append({
+            "label": _('Первый платёж') if invoice_mode else _('Резерв'),
+            "value": f"${visible_reserve:,.2f}",
+        })
     if items_rows:
         rows.append({"label": _('─── Позиции ───'), "value": ""})
         rows.extend(items_rows)
@@ -3752,8 +3846,21 @@ def get_order_detail(params, user, role):
                          "params": {"order_id": o.id}})
     # Счёт на оплату — это артефакт продавца/оператора, и только пока оплата не закрыта.
     # Покупателю «создать счёт самому себе» не нужно; после full_paid тоже бессмысленно.
-    if (
-        (is_seller or is_op)
+    if invoice_mode and is_seller:
+        actions.append({
+            "label": _("Договор и счета с платформой"),
+            "action": "settlement_seller_documents",
+            "params": {"order_id": o.id},
+        })
+    elif invoice_mode and role in {"operator_payment", "admin"}:
+        actions.append({
+            "label": _("Счета и договоры"),
+            "action": "settlement_finance_queue",
+            "params": {"order_id": o.id},
+        })
+    elif (
+        not invoice_mode
+        and (is_seller or is_op)
         and o.payment_status in ("awaiting_reserve", "reserve_paid", "awaiting_final")
         and not (seller_scoped and is_multi_seller)
     ):
@@ -3793,8 +3900,14 @@ def get_order_detail(params, user, role):
                              "params": {"order_id": o.id}})
     # Buyer-кнопки
     if is_buyer:
-        if o.payment_status == "reserve_paid" and o.status in ("ready_to_ship", "shipped", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"):
-            actions.append({"label": _('💳 Оплатить остаток 90%'),
+        if o.payment_status == "awaiting_reserve":
+            actions.append({
+                "label": (_("Открыть договор и первый счёт") if invoice_mode else _("Оплатить резерв 10%")),
+                "action": "pay_reserve",
+                "params": {"order_id": o.id},
+            })
+        elif o.payment_status == "reserve_paid" and o.status in ("ready_to_ship", "shipped", "transit_abroad", "customs", "transit_rf", "issuing", "delivered"):
+            actions.append({"label": (_('Открыть окончательный счёт') if invoice_mode else _('💳 Оплатить остаток 90%')),
                              "action": "pay_final",
                              "params": {"order_id": o.id}})
         if o.status == "delivered":
@@ -3810,25 +3923,38 @@ def get_order_detail(params, user, role):
         next_step_hint = _('Заказ отменён. Если нужно повторить — создайте новый RFQ.')
         suggestions = ["Создать RFQ", "Все мои заказы"]
     elif o.payment_status == "awaiting_reserve":
-        next_step_hint = (
-            _('⏳ Дальше: оплатите резерв ($%(reserve)s) — после этого продавец подтвердит и запустит производство. Срок без оплаты: 7 дней, потом авто-отмена.') % {'reserve': f"{visible_reserve:,.0f}"}
-        )
-        suggestions = ["Оплатить резерв", "Отменить заказ"]
+        if invoice_mode:
+            next_step_hint = _(
+                'Дальше: оплатите первый банковский счёт ($%(reserve)s) и сообщите об оплате. '
+                'После сверки поступления продавец получит разрешение начать работу.'
+            ) % {'reserve': f"{visible_reserve:,.0f}"}
+            suggestions = ["Мои счета", "Отменить заказ"]
+        else:
+            next_step_hint = (
+                _('⏳ Дальше: оплатите резерв ($%(reserve)s) — после этого продавец подтвердит и запустит производство. Срок без оплаты: 7 дней, потом авто-отмена.') % {'reserve': f"{visible_reserve:,.0f}"}
+            )
+            suggestions = ["Оплатить резерв", "Отменить заказ"]
     elif o.status == "reserve_paid":
         next_step_hint = (
+            _('Первый платёж подтверждён. Продавец подписывает закупочный договор и запускает заказ в работу. Изменения появятся в уведомлениях.')
+            if invoice_mode else
             _('✓ Резерв оплачен. Дальше: продавец подтверждает заказ и запускает производство (SLA 24 ч). Следите за статусом — придёт уведомление.')
         )
         suggestions = ["Трекинг отгрузки", "Все мои заказы"]
     elif o.status == "in_production":
         next_step_hint = (
+            _('Заказ в работе. Окончательный счёт будет сформирован после подтверждения готовности к отгрузке.')
+            if invoice_mode else
             _('🏭 В производстве. Дальше: готовность к отгрузке (срок по контракту с поставщиком). Оплата 90% — перед выходом груза.')
         )
         suggestions = ["Когда отгрузка?", "Трекинг", "Документы"]
     elif o.status == "ready_to_ship":
         next_step_hint = (
+            _('Готов к отгрузке. Оплатите окончательный счёт; отгрузка станет доступна после сверки поступления.')
+            if invoice_mode else
             _('📦 Готов к отгрузке. Дальше: оплата остатка 90% → выход груза с базиса.')
         )
-        suggestions = ["Оплатить остаток 90%", "Документы"]
+        suggestions = (["Мои счета", "Документы"] if invoice_mode else ["Оплатить остаток 90%", "Документы"])
     elif o.status in ("shipped", "transit_abroad", "customs", "transit_rf", "issuing"):
         next_step_hint = (
             _('🚚 В пути (%(get_status_display)s). ETA можно посмотреть в трекинге. Документы (BL, инвойс, упаковочный лист) уже сформированы.') % {'get_status_display': o.get_status_display()}
@@ -3836,11 +3962,16 @@ def get_order_detail(params, user, role):
         suggestions = ["Трекинг отгрузки", "Все документы"]
     elif o.status == "delivered":
         next_step_hint = (
+            _('Доставлен. Подтвердите приёмку, чтобы закрыть заказ. Выплаты продавцам проводит финансовый оператор по отдельным счетам.')
+            if invoice_mode else
             _('✓ Доставлен. Дальше: подтвердите приёмку — после этого деньги уйдут продавцу из эскроу и заказ закроется.')
         )
         suggestions = ["Подтвердить приёмку", "Открыть рекламацию", "Документы"]
     elif o.status == "completed":
-        next_step_hint = _('✓ Заказ закрыт. Эскроу освобождён.')
+        next_step_hint = (
+            _('Заказ закрыт. Расчётные операции сохранены в журнале счетов и платежей.')
+            if invoice_mode else _('✓ Заказ закрыт. Эскроу освобождён.')
+        )
         suggestions = ["Создать новый RFQ", "Все мои заказы", "Аналитика"]
 
     # Оператор/админ — это сам оператор: подсказки «Спросить/Связаться с оператором»
@@ -3983,8 +4114,10 @@ def track_shipment(params, user, role):
     _visible_item_ids = {item.id for item in _items_qs}
 
     # ── Важные поля для шапки: ETA, кто держит мяч, перевозчик ──
+    invoice_mode = _invoice_contract_mode()
     _actor_by_stage = {
-        "awaiting_reserve": (_('Покупатель'),          _('оплачивает резерв 10%')),
+        "pending":          (_('Покупатель'),          (_('оплачивает первый счёт') if invoice_mode else _('оплачивает резерв 10%'))),
+        "awaiting_reserve": (_('Покупатель'),          (_('оплачивает первый счёт') if invoice_mode else _('оплачивает резерв 10%'))),
         "reserve_paid":     (_('Поставщик'),           _('подтверждает заказ')),
         "confirmed":        (_('Поставщик'),           _('запускает производство')),
         "in_production":    (_('Поставщик'),           _('сообщает о готовности к отгрузке')),
@@ -4059,9 +4192,16 @@ def track_shipment(params, user, role):
     if o.payment_status == "paid":
         _pay_label = _('оплачено полностью ($%(_total_d)s)') % {'_total_d': f"{_total_d:,.0f}"}
     elif o.payment_status == "reserve_paid":
-        _pay_label = _('резерв оплачен $%(_reserve_d)s · остаток $%(_reserve_d2)s') % {'_reserve_d': f"{_reserve_d:,.0f}", '_reserve_d2': f"{_total_d - _reserve_d:,.0f}"}
+        _pay_label = (
+            _('первый платёж подтверждён $%(_reserve_d)s · к оплате по окончательному счёту $%(_reserve_d2)s')
+            if invoice_mode else
+            _('резерв оплачен $%(_reserve_d)s · остаток $%(_reserve_d2)s')
+        ) % {'_reserve_d': f"{_reserve_d:,.0f}", '_reserve_d2': f"{_total_d - _reserve_d:,.0f}"}
     elif o.payment_status == "awaiting_reserve":
-        _pay_label = _('ждём резерв $%(_reserve_d)s') % {'_reserve_d': f"{_reserve_d:,.0f}"}
+        _pay_label = (
+            _('ожидается первый платёж $%(_reserve_d)s')
+            if invoice_mode else _('ждём резерв $%(_reserve_d)s')
+        ) % {'_reserve_d': f"{_reserve_d:,.0f}"}
     else:
         _pay_label = o.get_payment_status_display()
 
@@ -4298,20 +4438,28 @@ def _build_track_shipment_actions(o, role, user):
     ]
     is_buyer = role == "buyer"
     is_seller = role == "seller"
-    is_op = role in ("operator", "admin")
+    is_op = role.startswith("operator") or role == "admin"
+    invoice_mode = _invoice_contract_mode()
     # Buyer-специфичное
     if is_buyer:
         if o.payment_status == "reserve_paid" and o.status in (
                 "ready_to_ship", "shipped", "transit_abroad", "customs", "transit_rf",
                 "issuing", "delivered"):
-            acts.append({"label": _('💳 Оплатить остаток 90%'), "action": "pay_final",
+            acts.append({"label": (_('Открыть окончательный счёт') if invoice_mode else _('💳 Оплатить остаток 90%')), "action": "pay_final",
                           "params": {"order_id": o.id}})
         if o.status == "delivered":
             acts.append({"label": _('✓ Подтвердить приёмку'),
                           "action": "confirm_delivery",
                           "params": {"order_id": o.id}})
     # Seller/Operator — счёт пока оплата не закрыта
-    if (is_seller or is_op) and o.payment_status in (
+    if invoice_mode and is_seller:
+        acts.append({"label": _("Договор и счета с платформой"),
+                     "action": "settlement_seller_documents",
+                     "params": {"order_id": o.id}})
+    elif invoice_mode and role in {"operator_payment", "admin"}:
+        acts.append({"label": _("Счета и договоры"),
+                     "action": "settlement_finance_queue", "params": {"order_id": o.id}})
+    elif (is_seller or is_op) and o.payment_status in (
             "awaiting_reserve", "reserve_paid", "awaiting_final"):
         acts.append({"label": _('Создать счёт на оплату'),
                       "action": "generate_invoice_pdf",
@@ -4348,6 +4496,7 @@ def _seller_deals(user, params):
     # был консистентен независимо от точки входа.
     from .seller_actions import _effective_seller
     user = _effective_seller(user)
+    invoice_mode = _invoice_contract_mode()
 
     flt = (params or {}).get("filter", "active")
     if flt == "all":
@@ -4376,9 +4525,9 @@ def _seller_deals(user, params):
          _("📦 Открыть"), "get_order_detail"),
         ("issuing",        "📬", _("Выдача / приёмка"),
          _("📦 Открыть"), "get_order_detail"),
-        ("pending",        "⏳", _("Ждут оплату резерва покупателем"),
+        ("pending",        "⏳", (_("Ждут подтверждения первого платежа") if invoice_mode else _("Ждут оплату резерва покупателем")),
          _("📦 Открыть"), "get_order_detail"),
-        ("delivered",      "🏁", _("Доставлены — оплата из эскроу"),
+        ("delivered",      "🏁", (_("Доставлены — ожидают приёмки") if invoice_mode else _("Доставлены — оплата из эскроу")),
          _("📦 Открыть"), "get_order_detail"),
         ("completed",      "🏁", _("Завершённые"),
          _("📦 Открыть"), "get_order_detail"),
@@ -4398,8 +4547,8 @@ def _seller_deals(user, params):
         allowed = None
 
     PAY_LABEL = {
-        "awaiting_reserve": _('ждёт резерв 10%'),
-        "reserve_paid":     _('резерв 10% оплачен'),
+        "awaiting_reserve": (_('ждёт подтверждения первого платежа') if invoice_mode else _('ждёт резерв 10%')),
+        "reserve_paid":     (_('первый платёж подтверждён') if invoice_mode else _('резерв 10% оплачен')),
         "mid_paid":         _('50% оплачено'),
         "customs_paid":     _('таможня оплачена'),
         "paid":             _('оплачен полностью'),
@@ -4617,13 +4766,14 @@ def _buyer_deals(user, params):
     flt = (params or {}).get("filter", "active")
     if flt == "all":
         flt = "active"
+    invoice_mode = _invoice_contract_mode()
 
     # bucket → (иконка, заголовок, кнопка, тип-действия, фаза)
     #   тип-действия: order=get_order_detail · track=track_order ·
     #                 quotes=view_rfq_quotes · rfq=get_rfq_status
     SECTIONS = [
-        ("pay_reserve", "💳", _("Оплатить резерв 10%"),             _("💳 Оплатить резерв →"), "order",  "decide"),
-        ("pay_final",   "💳", _("Оплатить остаток 90%"),            _("💳 Оплатить остаток →"), "order", "decide"),
+        ("pay_reserve", "💳", (_("Оплатить первый счёт") if invoice_mode else _("Оплатить резерв 10%")), (_("Открыть договор и счёт →") if invoice_mode else _("💳 Оплатить резерв →")), "order",  "decide"),
+        ("pay_final",   "💳", (_("Оплатить окончательный счёт") if invoice_mode else _("Оплатить остаток 90%")), (_("Открыть окончательный счёт →") if invoice_mode else _("💳 Оплатить остаток →")), "order", "decide"),
         ("confirm",     "📦", _("Доставлены — подтвердите приёмку"), _("✅ Принять заказ →"),    "order",  "decide"),
         ("kp_ready",    "📋", _("КП готовы — выбрать и оплатить"),   _("📋 Открыть КП →"),       "quotes", "decide"),
         ("rfq_wait",    "⏳", _("В подборе / у оператора"),          _("📦 Открыть"),            "rfq",    "active"),
@@ -4751,6 +4901,7 @@ def get_my_deals(params, user, role):
         return _buyer_deals(user, params)
 
     from marketplace.models import RFQ, Order
+    invoice_mode = _invoice_contract_mode()
     flt = (params or {}).get("filter", "all")  # all|decide|active|done
     rows = []
 
@@ -4798,7 +4949,10 @@ def get_my_deals(params, user, role):
         elif r.mode == "semi" and r.status in ("new", "processing", "matched"):
             phase, phase_label, action_label = "decide", "Ждёт оператора", "Открыть"
         elif is_quoted:
-            phase, phase_label, action_label = "decide", "КП готов · оплатить резерв", "Оплатить 10%"
+            if invoice_mode:
+                phase, phase_label, action_label = "decide", "КП готов · оформить договор", "Открыть КП"
+            else:
+                phase, phase_label, action_label = "decide", "КП готов · оплатить резерв", "Оплатить 10%"
         else:
             phase, phase_label, action_label = "decide", "Подбор позиций", "Открыть"
         if flt != "all" and flt != phase:
@@ -4846,15 +5000,21 @@ def get_my_deals(params, user, role):
         elif ps == "awaiting_reserve":
             age = (now - o.created_at).days if o.created_at else 0
             if role == "seller":
-                # Продавец резерв не платит — он ждёт оплату от покупателя.
+                # Продавец ждёт подтверждения первого платежа покупателя.
                 phase = "active"
-                phase_label = f"Ждёт оплаты резерва покупателем · {age}д" if age >= 3 \
-                              else "Ждёт оплаты резерва покупателем"
+                if invoice_mode:
+                    phase_label = f"Ждёт подтверждения первого платежа · {age}д" if age >= 3 else "Ждёт подтверждения первого платежа"
+                else:
+                    phase_label = f"Ждёт оплаты резерва покупателем · {age}д" if age >= 3 else "Ждёт оплаты резерва покупателем"
                 action_label = _('Открыть')
             else:
                 phase = "decide"
-                phase_label = f"Оплатить резерв · {age}д висит" if age >= 3 else "Оплатить резерв"
-                action_label = _('Оплатить $%(or)s') % {'or': f"{float(o.reserve_amount or 0):,.0f}"}
+                if invoice_mode:
+                    phase_label = f"Оплатить первый счёт · {age}д" if age >= 3 else "Оплатить первый счёт"
+                    action_label = _('Открыть счёт на $%(or)s') % {'or': f"{float(o.reserve_amount or 0):,.0f}"}
+                else:
+                    phase_label = f"Оплатить резерв · {age}д висит" if age >= 3 else "Оплатить резерв"
+                    action_label = _('Оплатить $%(or)s') % {'or': f"{float(o.reserve_amount or 0):,.0f}"}
         else:
             # reserve_paid / mid_paid / paid + in_production / shipped / customs / transit
             phase = "active"
@@ -5115,7 +5275,7 @@ def get_rfq_status(params, user, role):
                     "action": "compare_quotes", "params": {"rfq_id": rfq.id},
                 })
                 rfq_actions.append({
-                    "label": _('Оплатить резерв 10%'),
+                    "label": (_('Оформить договор и первый счёт') if _invoice_contract_mode() else _('Оплатить резерв 10%')),
                     "action": "auto_accept_and_pay_reserve",
                     "params": {"rfq_id": rfq.id},
                 })
@@ -5182,11 +5342,15 @@ def get_rfq_status(params, user, role):
             rfq_suggestions = ["Создать RFQ", "Все мои сделки"]
         elif quotes_count > 0:
             rfq_hint = (
+                _('%(quotes_count)s предложений получено. Выберите предложение: система оформит заказ, договор и первый банковский счёт.') % {'quotes_count': quotes_count}
+                if _invoice_contract_mode() else
                 _('%(quotes_count)s предложений получено. Выберите поставщика, оформите заказ и оплатите резерв 10%%.') % {'quotes_count': quotes_count}
             )
             rfq_suggestions = ["Сравнить котировки", "Лучшая котировка", "Спросить оператора"]
         elif rfq.mode == "semi":
             rfq_hint = (
+                _('Оператор подтверждает аналоги. После проверки вы получите предложение и сможете оформить договор и первый счёт.')
+                if _invoice_contract_mode() else
                 _('Оператор подтверждает аналоги. Ориентировочный срок — 15 минут. После подтверждения вы получите предложение и сможете оплатить резерв 10%.')
             )
             rfq_suggestions = ["Спросить оператора", "Все мои сделки"]
@@ -5197,6 +5361,8 @@ def get_rfq_status(params, user, role):
             rfq_suggestions = ["Предложить аналог", "Связаться с оператором"]
         else:
             rfq_hint = (
+                _('%(found_n)s позиций найдено в каталоге. Оператор проверит подбор и сформирует предложение для оформления договора и счёта.') % {'found_n': found_n}
+                if _invoice_contract_mode() else
                 _('%(found_n)s позиций найдено в каталоге. Оператор проверит подбор и сформирует предложение для оплаты резерва 10%%.') % {'found_n': found_n}
             )
             rfq_suggestions = ["Спросить оператора", "Создать ещё заявку"]
@@ -5348,10 +5514,13 @@ def get_rfq_status(params, user, role):
         empty_actions = []
         if pending_orders:
             empty_text += (
-                _('\n\n📦 Зато есть %(pending_orders)s %(else)s без оплаты резерва — смотрите в «Мои заказы», нужно подтвердить.') % {'pending_orders': pending_orders, 'else': 'заказ' if pending_orders == 1 else ('заказа' if pending_orders < 5 else 'заказов')}
+                (_('\n\nЕсть %(pending_orders)s %(else)s с неоплаченным первым счётом. Откройте «Мои заказы», чтобы посмотреть договор и реквизиты.')
+                 if _invoice_contract_mode() else
+                 _('\n\n📦 Зато есть %(pending_orders)s %(else)s без оплаты резерва — смотрите в «Мои заказы», нужно подтвердить.'))
+                % {'pending_orders': pending_orders, 'else': 'заказ' if pending_orders == 1 else ('заказа' if pending_orders < 5 else 'заказов')}
             )
             empty_actions.append({
-                "label": _('📦 Открыть заказы без оплаты (%(pending_orders)s)') % {'pending_orders': pending_orders},
+                "label": ((_('Открыть неоплаченные счета (%(pending_orders)s)') if _invoice_contract_mode() else _('📦 Открыть заказы без оплаты (%(pending_orders)s)')) % {'pending_orders': pending_orders}),
                 "action": "get_orders",
                 "params": {"status": "awaiting_reserve"},
                 "style": "primary",
@@ -6472,8 +6641,9 @@ def get_sla_report(params, user, role):
     )
 
     STAGE_LABELS = {
-        "awaiting_reserve": _('⏳ Ожидание резерва'),
-        "reserve_paid":     _('💰 Резерв оплачен'),
+        "pending":          _('Ожидание первого платежа'),
+        "awaiting_reserve": _('Ожидание первого платежа'),
+        "reserve_paid":     _('Первый платёж подтверждён'),
         "confirmed":        _('✅ Подтверждено'),
         "in_production":    _('🏭 В производстве'),
         "ready_to_ship":    _('📦 Готов к отгрузке'),
@@ -7171,8 +7341,9 @@ def contact_supplier(params, user, role):
                           .exclude(status__in=("completed", "cancelled", "delivered"))
                           .distinct()
                           .order_by("ship_deadline", "-created_at")[:10])
-        STAGE_RU = {"awaiting_reserve": _('Ждёт резерв 10%'),
-                    "reserve_paid":     _('Резерв оплачен'),
+        STAGE_RU = {"pending":          _('Ждёт первый платёж'),
+                    "awaiting_reserve": _('Ждёт первый платёж'),
+                    "reserve_paid":     _('Первый платёж подтверждён'),
                     "confirmed":        _('Подтверждён'),
                     "in_production":    _('В производстве'),
                     "ready_to_ship":    _('К отгрузке'),
@@ -8552,6 +8723,8 @@ def quick_order(params, user, role):
 
     from .models import Wallet
 
+    invoice_mode = _invoice_contract_mode()
+
     product_ids = params.get("product_ids") or []
     if not isinstance(product_ids, (list, tuple)):
         return ActionResult(text=_("Список товаров передан в неверном формате."))
@@ -8691,11 +8864,21 @@ def quick_order(params, user, role):
         if max_eta:
             foot_parts.append(f"срок ~{max_eta} дн")
             foot_parts_data.append({"ru": "срок", "v": f"~{max_eta}", "unit": "дн"})
-        text_lines = [
-            _("📦 Подтвердите заказ — это финальная спецификация перед списанием с депозита."),
-            "",
-            _("После клика «Подтвердить»: спишется резерв %(pct)s%% (%(amt)s), оператор подберёт маршрут доставки, статус заказа → «формируется».") % {'pct': 10, 'amt': f'${float(reserve):,.0f}'},
-        ]
+        if invoice_mode:
+            text_lines = [
+                _("Подтвердите финальную спецификацию заказа."),
+                "",
+                _(
+                    "После подтверждения будут созданы заказ, договор и банковский "
+                    "счёт на первый платёж %(pct)s%% (%(amt)s)."
+                ) % {'pct': 10, 'amt': f'${float(reserve):,.0f}'},
+            ]
+        else:
+            text_lines = [
+                _("📦 Подтвердите заказ — это финальная спецификация перед списанием с депозита."),
+                "",
+                _("После клика «Подтвердить»: спишется резерв %(pct)s%% (%(amt)s), оператор подберёт маршрут доставки, статус заказа → «формируется».") % {'pct': 10, 'amt': f'${float(reserve):,.0f}'},
+            ]
         return ActionResult(
             text="\n".join(text_lines),
             cards=[{
@@ -8717,7 +8900,11 @@ def quick_order(params, user, role):
                 },
             }],
             actions=[
-                {"label": _('✓ Подтвердить и зарезервировать 10%% ($%(reserve)s)') % {'reserve': f"{float(reserve):,.0f}"},
+                {"label": (
+                    _('Подтвердить и сформировать документы')
+                    if invoice_mode
+                    else _('✓ Подтвердить и зарезервировать 10%% ($%(reserve)s)') % {'reserve': f"{float(reserve):,.0f}"}
+                 ),
                  "action": "quick_order",
                  "params": {**params, "confirmed": True},
                  "style": "primary"},
@@ -8886,7 +9073,7 @@ def quick_order(params, user, role):
 
     reserve_pct = Decimal("10.00")
     reserve_amount = (landed_total * reserve_pct / Decimal("100")).quantize(Decimal("0.01"))
-    wallet = Wallet.for_user(user)
+    wallet = None if invoice_mode else Wallet.for_user(user)
 
     order = Order.objects.create(
         customer_name=user.get_full_name() or user.username,
@@ -8928,18 +9115,7 @@ def quick_order(params, user, role):
         _split_order_by_operator(order)
     except Exception:
         logger.exception("split_order_by_operator failed for order %s", order.id)
-    # Уведомляем продавцов о новом заказе
-    _notify_seller_of_order(
-        order, kind="order",
-        title=_('Новый заказ #%(id)s') % {'id': order.id},
-        body=_('%(customer)s оформил заказ на $%(total)s (%(parts)s поз.).') % {
-            'customer': customer_label(user, fallback_id=order.id),
-            'total': f"{total:,.0f}",
-            'parts': len(parts),
-        },
-    )
-
-    enough = wallet.balance >= reserve_amount
+    enough = True if invoice_mode else wallet.balance >= reserve_amount
 
     # Сохраняем дефолтные shipping_mode + incoterm на ордер.
     # Покупатель сможет переключить через "shipping_choose" — пересчитаем.
@@ -8952,6 +9128,74 @@ def quick_order(params, user, role):
     order.incoterm = chosen_inc
     order.logistics_cost = ship_total
     order.save(update_fields=["shipping_mode", "incoterm", "logistics_cost"])
+
+    settlement_package = None
+    settlement_document_actions = []
+    if invoice_mode:
+        try:
+            from .documents import _doc_url
+            from .settlements import prepare_settlement_package
+
+            settlement_package = prepare_settlement_package(order, user)
+            settlement_document_actions = [
+                {
+                    "label": _("Открыть договор"),
+                    "action": "open_url",
+                    "params": {"_url": _doc_url(settlement_package["buyer_contract"].document)},
+                },
+                {
+                    "label": _("Открыть счёт"),
+                    "action": "open_url",
+                    "params": {"_url": _doc_url(settlement_package["buyer_reserve_invoice"].document)},
+                },
+                {
+                    "label": _("Сообщить об оплате"),
+                    "action": "settlement_report_paid",
+                    "params": {"invoice_id": settlement_package["buyer_reserve_invoice"].id},
+                    "style": "primary",
+                },
+            ]
+        except Exception:
+            logger.exception("settlement package generation failed for quick order %s", order.id)
+            try:
+                from .settlement_actions import _notify_finance
+
+                _notify_finance(
+                    _("Не сформированы расчётные документы"),
+                    _("Заказ #%(id)s создан, но договоры и счета требуют повторного формирования.") % {"id": order.id},
+                    order.id,
+                )
+            except Exception:
+                logger.exception("finance notification failed for order %s", order.id)
+            return ActionResult(
+                text=_(
+                    "Заказ #%(id)s создан, но расчётные документы не сформированы. "
+                    "Финансовый оператор получил возможность повторить формирование."
+                ) % {"id": order.id},
+                actions=[
+                    {"label": _("Повторить формирование"), "action": "settlement_prepare", "params": {"order_id": order.id}},
+                    {"label": _("Связаться с оператором"), "action": "ask_operator", "params": {"order_id": order.id}},
+                ],
+                action_succeeded=False,
+            )
+
+    _notify_seller_of_order(
+        order,
+        kind="order",
+        title=_('Новый заказ #%(id)s') % {'id': order.id},
+        body=(
+            _(
+                "Закупочные договоры сформированы. Начало работ ожидает "
+                "подтверждения первого банковского платежа покупателя."
+            )
+            if invoice_mode else
+            _('%(customer)s оформил заказ на $%(total)s (%(parts)s поз.).') % {
+                'customer': customer_label(user, fallback_id=order.id),
+                'total': f"{total:,.0f}",
+                'parts': len(parts),
+            }
+        ),
+    )
 
     # ── Чистое сообщение для buyer: только 3 ключевых вопроса ────────
     # 1. Деньги: сейчас списано / на депозите / к доплате
@@ -8998,8 +9242,10 @@ def quick_order(params, user, role):
         _("✓ Заказ #%(id)s принят") % {'id': order.id},
         _("%(n)s позиций · доставка %(mode)s · базис %(inc)s") % {'n': len(parts), 'mode': mode_word, 'inc': chosen_inc},
     ]
-    if not enough:
+    if not enough and not invoice_mode:
         text_lines.append(_('⚠️ Недостаточно на депозите — пополните на $%(balance)s.') % {'balance': f"{reserve_amount - wallet.balance:,.0f}"})
+    elif invoice_mode:
+        text_lines.append(_("Договор и первый счёт сформированы. Заказ начнёт исполняться после подтверждения поступления."))
 
     return ActionResult(
         text="\n".join(text_lines),
@@ -9017,12 +9263,13 @@ def quick_order(params, user, role):
                 "incoterm": chosen_inc,
                 # МОНЕЙ-блок
                 "money": {
+                    "settlement_mode": "invoice_contract" if invoice_mode else "legacy_wallet",
                     "reserve_now": float(reserve_amount),
                     "reserve_pct": 10,
-                    "wallet_balance": float(wallet.balance),
+                    "wallet_balance": float(wallet.balance) if wallet else None,
                     "wallet_enough": enough,
                     "remaining_to_pay": float(remaining_amount),
-                    "remaining_when": _('после отгрузки от поставщика'),
+                    "remaining_when": _('после готовности к отгрузке'),
                 },
                 # СТАТУС-блок (timeline) — зависит от базиса Incoterm.
                 # FOB: ответственность платформы → порт отгрузки (3 дня).
@@ -9030,14 +9277,20 @@ def quick_order(params, user, role):
                 # DDP: + таможня + last mile до двери (all-in).
                 "status_steps": (
                     [
-                        {"label": _('Резерв 10%'),       "state": "current" if enough else "pending"},
+                        {
+                            "label": (_('Первый платёж 10%') if invoice_mode else _('Резерв 10%')),
+                            "state": "current" if enough else "pending",
+                        },
                         {"label": _('Оператор связывается с поставщиком'), "state": "next"},
                         {"label": _('Подтверждение поставщика'), "state": "next"},
                         {"label": _('Подготовка и доставка в порт отгрузки'), "state": "next"},
                         {"label": _('Готов к передаче в порту (ваш форвардер забирает)'), "state": "next"},
                     ] if chosen_inc == "FOB" else
                     [
-                        {"label": _('Резерв 10%'),       "state": "current" if enough else "pending"},
+                        {
+                            "label": (_('Первый платёж 10%') if invoice_mode else _('Резерв 10%')),
+                            "state": "current" if enough else "pending",
+                        },
                         {"label": _('Оператор связывается с поставщиком'), "state": "next"},
                         {"label": _('Подтверждение поставщика'), "state": "next"},
                         {"label": _('Подготовка и отгрузка'),  "state": "next"},
@@ -9045,7 +9298,10 @@ def quick_order(params, user, role):
                         {"label": _('Прибытие в порт назначения'), "state": "next"},
                     ] if chosen_inc == "CIP" else
                     [
-                        {"label": _('Резерв 10%'),       "state": "current" if enough else "pending"},
+                        {
+                            "label": (_('Первый платёж 10%') if invoice_mode else _('Резерв 10%')),
+                            "state": "current" if enough else "pending",
+                        },
                         {"label": _('Оператор связывается с поставщиком'), "state": "next"},
                         {"label": _('Подтверждение поставщика'), "state": "next"},
                         {"label": _('Подготовка и отгрузка'),  "state": "next"},
@@ -9076,6 +9332,7 @@ def quick_order(params, user, role):
             },
         }],
         actions=(
+            (settlement_document_actions if invoice_mode else
             # confirmed=True пропускает повторный draft-экран в pay_reserve.
             # Юзер уже видел order_confirm со всей инфой о деньгах — второе
             # подтверждение «Списать $X · депозит сейчас / после» дублирует
@@ -9090,13 +9347,18 @@ def quick_order(params, user, role):
               "params": {"amount": float(max(reserve_amount * 5, Decimal("10000"))),
                           "pending_order_id": order.id},
               "style": "primary"}]
+            )
         ) + [
             {"label": _('💬 Написать оператору'), "action": "ask_operator",
              "params": {"order_id": order.id}},
             {"label": _('Отменить заказ'), "action": "cancel_order",
              "params": {"order_id": order.id}, "style": "danger"},
         ],
-        suggestions=[_('Статус заказа'), _('Баланс депозита'), _('Все мои заказы')],
+        suggestions=(
+            [_('Статус заказа'), _('Мои счета'), _('Все мои заказы')]
+            if invoice_mode else
+            [_('Статус заказа'), _('Баланс депозита'), _('Все мои заказы')]
+        ),
     )
 
 
@@ -9280,6 +9542,19 @@ def shipping_choose(params, user, role):
         order = Order.objects.get(id=oid, buyer=user)
     except Order.DoesNotExist:
         return ActionResult(text=_('Заказ #%(oid)s не найден.') % {'oid': oid})
+    if _invoice_contract_mode() and order.settlement_contracts.exists():
+        return ActionResult(
+            text=_(
+                "Условия доставки уже включены в сформированный договор. "
+                "Для изменения маршрута обратитесь к оператору: он отменит старые "
+                "документы и сформирует новые после согласования."
+            ),
+            actions=[{
+                "label": _("Связаться с оператором"),
+                "action": "ask_operator",
+                "params": {"order_id": order.id},
+            }],
+        )
     if order.payment_status != "awaiting_reserve":
         return ActionResult(text=_('По заказу #%(oid)s уже выбран базис — резерв оплачен.') % {'oid': oid})
 
@@ -9374,6 +9649,20 @@ def shipping_apply(params, user, role):
         order = Order.objects.get(id=oid, buyer=user)
     except Order.DoesNotExist:
         return ActionResult(text=_('Заказ #%(oid)s не найден.') % {'oid': oid})
+    invoice_mode = _invoice_contract_mode()
+    if invoice_mode and order.settlement_contracts.exists():
+        return ActionResult(
+            text=_(
+                "Изменить стоимость после формирования договора нельзя. "
+                "Запросите у оператора переоформление расчётных документов."
+            ),
+            actions=[{
+                "label": _("Связаться с оператором"),
+                "action": "ask_operator",
+                "params": {"order_id": order.id},
+            }],
+            action_succeeded=False,
+        )
     if order.payment_status != "awaiting_reserve":
         return ActionResult(text=_('Резерв уже оплачен — нельзя менять базис.'))
 
@@ -9402,9 +9691,13 @@ def shipping_apply(params, user, role):
         "total_amount", "reserve_amount",
     ])
 
-    from .models import Wallet
-    wallet = Wallet.for_user(user)
-    enough = wallet.balance >= reserve
+    wallet = None
+    enough = True
+    if not invoice_mode:
+        from .models import Wallet
+
+        wallet = Wallet.for_user(user)
+        enough = wallet.balance >= reserve
 
     mode_label = _("🚢 Морем") if mode == "sea" else _("✈️ Авиа")
     return ActionResult(
@@ -9412,10 +9705,13 @@ def shipping_apply(params, user, role):
             f"✓ Базис заказа #{order.id} обновлён: {mode_label} · {inc}\n"
             f"Товары: ${items_total:,.2f} · Доставка ({inc}): ${ship_total:,.2f}\n"
             f"Итого landed: ${landed:,.2f} · резерв 10%: ${reserve:,.2f}"
-            + ("" if enough else
+            + ("" if enough or invoice_mode else
                f"\n⚠️ Депозит ${wallet.balance:,.0f} — не хватает ${reserve - wallet.balance:,.0f}")
         ),
         actions=(
+            [{"label": _("Сформировать договор и счёт"),
+              "action": "settlement_prepare", "params": {"order_id": order.id}}]
+            if invoice_mode else
             [{"label": _('💳 Списать резерв $%(reserve)s') % {'reserve': f"{reserve:,.0f}"},
               "action": "pay_reserve", "params": {"order_id": order.id}}]
             if enough else
@@ -9452,6 +9748,13 @@ def pay_reserve(params, user, role):
         order = Order.objects.get(id=order_id, buyer=user)
     except Order.DoesNotExist:
         return ActionResult(text=_('Заказ #%(order_id)s не найден.') % {'order_id': order_id})
+
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        from .settlement_actions import settlement_prepare
+
+        return settlement_prepare({"order_id": order.id}, user, role)
 
     if order.payment_scheme != "simple":
         return ActionResult(
@@ -9612,8 +9915,8 @@ def pay_reserve(params, user, role):
 # (status_code, label, eta_days_from_created) — сколько дней с момента создания
 # обычно занимает прохождение этого этапа в нашей логистике.
 TRACKING_STAGES = [
-    ("pending",        "Создан · ожидает оплаты резерва",  0),
-    ("reserve_paid",   "Резерв оплачен",                    1),
+    ("pending",        "Создан · ожидает первого платежа",  0),
+    ("reserve_paid",   "Первый платёж подтверждён",         1),
     ("confirmed",      "Подтверждён поставщиком",           2),
     ("in_production",  "В производстве",                    7),
     ("ready_to_ship",  "Готов к отгрузке",                  10),
@@ -9641,22 +9944,23 @@ def shipment_flow(incoterm: str):
     """
     off = {c: d for c, _u1, d in TRACKING_STAGES}
     inc = (incoterm or "DDP").upper()
+    first_payment_label = _("Первый платёж подтверждён")
     if inc == "FOB":
         return [
-            (_('Резерв оплачен'),  off["reserve_paid"],                        "pay",            "pending",       "reserve_paid"),
+            (first_payment_label,  off["reserve_paid"],                        "pay",            "pending",       "reserve_paid"),
             (_('В производстве'),  off["ready_to_ship"] - off["reserve_paid"], "in_production",  "reserve_paid",  "ready_to_ship"),
             (_('Передан в порту'), 2,                                          "transit_abroad", "ready_to_ship", "transit_abroad"),
         ]
     if inc == "CIP":
         return [
-            (_('Резерв оплачен'),  off["reserve_paid"],                          "pay",            "pending",        "reserve_paid"),
+            (first_payment_label,  off["reserve_paid"],                          "pay",            "pending",        "reserve_paid"),
             (_('В производстве'),  off["ready_to_ship"] - off["reserve_paid"],   "in_production",  "reserve_paid",   "ready_to_ship"),
             (_('Транзит'),         off["transit_abroad"] - off["ready_to_ship"], "transit_abroad", "ready_to_ship",  "transit_abroad"),
             (_('Прибыл в порт'),   off["customs"] - off["transit_abroad"],       "customs",        "transit_abroad", "customs"),
         ]
     # DDP (и дефолт) — полный цикл до двери
     return [
-        (_('Резерв оплачен'), off["reserve_paid"],                        "pay",          "pending",       "reserve_paid"),
+        (first_payment_label, off["reserve_paid"],                        "pay",          "pending",       "reserve_paid"),
         (_('В производстве'), off["ready_to_ship"] - off["reserve_paid"], "in_production","reserve_paid", "ready_to_ship"),
         (_('Транзит'),        off["customs"] - off["ready_to_ship"],      "customs",      "ready_to_ship", "customs"),
         (_('Таможня'),        off["transit_rf"] - off["customs"],         "transit_rf",   "customs",       "transit_rf"),
@@ -10042,6 +10346,14 @@ def complete_trigger(params, user, role):
                 text=_('Подтвердить можно только загруженный вами документ.'),
                 action_succeeded=False,
             )
+        if role == "seller":
+            from marketplace.order_access import seller_can_access_document
+
+            if not seller_can_access_document(user, document):
+                return ActionResult(
+                    text=_("Подтвердить можно только документ вашей компании."),
+                    action_succeeded=False,
+                )
         evidence.update({
             "kind": "document",
             "document_id": document.id,
@@ -10125,6 +10437,7 @@ def seller_demand_payment(params, user, role):
             text=_('❌ Заказ #%(id)s не в статусе ожидания оплаты (%(get_payment_status_d)s).') % {'id': order.id, 'get_payment_status_d': order.get_payment_status_display()},
         )
     deadline = timezone.now() + timedelta(hours=24)
+    invoice_mode = _invoice_contract_mode()
     meta = order.logistics_meta or {}
     meta["payment_deadline"] = deadline.isoformat()
     meta["payment_demanded_by"] = user.username
@@ -10139,14 +10452,20 @@ def seller_demand_payment(params, user, role):
         try:
             notify_user(
                 order.buyer,
-                title=_('⏰ Дедлайн оплаты по заказу #%(id)s') % {'id': order.id},
-                body=(_('Продавец установил дедлайн 24 часа на оплату резерва $%(reserve_amount)s. После %(M)s заказ может быть отменён.') % {'reserve_amount': f"{order.reserve_amount:,.0f}", 'M': deadline.strftime('%d.%m %H:%M')}),
+                title=_('Срок оплаты по заказу #%(id)s') % {'id': order.id},
+                body=(
+                    _('Первый счёт на $%(reserve_amount)s нужно оплатить до %(M)s. После срока заказ может быть отменён.') % {'reserve_amount': f"{order.reserve_amount:,.0f}", 'M': deadline.strftime('%d.%m %H:%M')}
+                    if invoice_mode else
+                    _('Продавец установил дедлайн 24 часа на оплату резерва $%(reserve_amount)s. После %(M)s заказ может быть отменён.') % {'reserve_amount': f"{order.reserve_amount:,.0f}", 'M': deadline.strftime('%d.%m %H:%M')}
+                ),
                 kind="payment",
             )
         except Exception:
             pass
     return ActionResult(
         text=(
+            _('Установлен срок оплаты первого счёта по заказу #%(id)s: %(M)s. Покупатель и финансовый оператор увидят напоминание.') % {'id': order.id, 'M': deadline.strftime('%d.%m.%Y %H:%M')}
+            if invoice_mode else
             _('⏰ Установлен дедлайн оплаты по заказу #%(id)s: %(M)s (24 часа).\nПокупатель уведомлён. Если резерв не придёт — отмените вручную.') % {'id': order.id, 'M': deadline.strftime('%d.%m.%Y %H:%M')}
         ),
         actions=[
@@ -10172,11 +10491,32 @@ def seller_cancel_pending(params, user, role):
             return ActionResult(text=_('Заказ #%(order_id)s не содержит ваших товаров.') % {'order_id': order_id})
         if not OrderItem.objects.filter(order=order, part__seller=seller_user).exists():
             return ActionResult(text=_('Заказ #%(order_id)s не содержит ваших товаров.') % {'order_id': order_id})
+        if OrderItem.objects.filter(order=order).values("part__seller_id").distinct().count() > 1:
+            return ActionResult(
+                text=_(
+                    "В заказе участвуют несколько продавцов. Один продавец не может "
+                    "отменить общий заказ; обратитесь к оператору."
+                ),
+                actions=[{"label": _("Связаться с оператором"), "action": "ask_operator", "params": {"order_id": order.id}}],
+                action_succeeded=False,
+            )
         if order.payment_status != "awaiting_reserve":
             return ActionResult(
                 text=_('❌ Заказ #%(id)s уже оплачен — отмена через спор.') % {'id': order.id},
             )
         total = order.total_amount or 0
+        if _invoice_contract_mode():
+            from .settlements import SettlementError, cancel_settlement_package
+
+            try:
+                cancel_settlement_package(
+                    order,
+                    user,
+                    reason="Не оплачен первый счёт",
+                    source="seller",
+                )
+            except SettlementError as exc:
+                return ActionResult(text=str(exc), action_succeeded=False)
         order.status = "cancelled"
         order.save(update_fields=["status"])
         _log_event(order, "order_cancelled_by_seller", actor=user, source="seller",
@@ -10199,6 +10539,7 @@ def seller_cancel_pending(params, user, role):
         actions=[
             {"label": _('📦 Очередь продавца'), "action": "seller_pipeline", "params": {}},
         ],
+        action_succeeded=True,
     )
 
 
@@ -10207,9 +10548,8 @@ def cancel_order(params, user, role):
     """Отменить заказ, если резерв ещё не списан.
 
     Доступно только покупателю и только пока `payment_status == "awaiting_reserve"`.
-    Удаляет Order + OrderItem (запись не понадобится — заказ был черновиком).
-    После оплаты резерва отмена через эту функцию запрещена (тогда —
-    через спор/возврат).
+    Заказ и расчётные документы сохраняются в журнале со статусом отмены.
+    После подтверждения первого платежа отмена выполняется через оператора.
     """
     from django.db import transaction
     from marketplace.models import Order
@@ -10232,6 +10572,26 @@ def cancel_order(params, user, role):
                 ),
             )
         total = order.total_amount or 0
+        if _invoice_contract_mode():
+            from .settlements import SettlementError, cancel_settlement_package
+
+            try:
+                cancel_settlement_package(
+                    order,
+                    user,
+                    reason="Отмена покупателем до оплаты",
+                    source="buyer",
+                )
+            except SettlementError as exc:
+                return ActionResult(
+                    text=str(exc),
+                    actions=[{
+                        "label": _("Связаться с оператором"),
+                        "action": "ask_operator",
+                        "params": {"order_id": order.id},
+                    }],
+                    action_succeeded=False,
+                )
         order.status = "cancelled"
         order.save(update_fields=["status"])
         _log_event(order, "order_cancelled_by_buyer", actor=user, source="buyer",
@@ -10243,6 +10603,7 @@ def cancel_order(params, user, role):
             {"label": _('📦 Мои заказы'), "action": "get_orders", "params": {}},
             {"label": _('🔍 Новый поиск'), "action": "open_url", "params": {"_url": "/chat/"}},
         ],
+        action_succeeded=True,
     )
 
 
@@ -10359,6 +10720,11 @@ def seller_dashboard(params, user, role):
 @register("seller_finance")
 def seller_finance(params, user, role):
     """Финансы продавца: выручка, ожидающие выплаты, депозит."""
+    if _invoice_contract_mode():
+        from .settlement_actions import settlement_seller_documents
+
+        return settlement_seller_documents(params, user, role)
+
     from datetime import timedelta
     from decimal import Decimal
 
@@ -10497,6 +10863,7 @@ def seller_pipeline(params, user, role):
 
     from .seller_actions import _effective_seller
     user = _effective_seller(user)
+    invoice_mode = _invoice_contract_mode()
 
     items_qs = (
         OrderItem.objects
@@ -10579,10 +10946,10 @@ def seller_pipeline(params, user, role):
     # checklist: список триггеров — должны быть все выполнены прежде чем
     # можно нажать кнопку перехода на следующий статус.
     STATUS_ORDER = [
-        ("reserve_paid",  "💰 Резерв оплачен — подтвердить и в производство", "▶️ Подтвердить",       None,         "Резерв оплачен", {
-            "trigger": _('Предоплата 10% поступила на счёт платформы'),
+        ("reserve_paid",  (_("Первый платёж подтверждён — принять заказ в работу") if invoice_mode else _("💰 Резерв оплачен — подтвердить и в производство")), "Подтвердить", None, (_("Первый платёж подтверждён") if invoice_mode else _("Резерв оплачен")), {
+            "trigger": (_('Первый платёж покупателя подтверждён финансовым оператором') if invoice_mode else _('Предоплата 10% поступила на счёт платформы')),
             "checklist": [
-                {"id": "payment_received", "label": _('Предоплата 10% зачислена'), "type": "auto"},
+                {"id": "payment_received", "label": (_('Первый платёж подтверждён') if invoice_mode else _('Предоплата 10% зачислена')), "type": "auto"},
                 {"id": "confirm_composition", "label": _('Подтвердить состав заказа'), "type": "button"},
             ],
             "actor": _('Поставщик'),
@@ -10663,8 +11030,8 @@ def seller_pipeline(params, user, role):
             "actor": _('Покупатель (рекламации → оператор)'),
             "sla": _('Автозакрытие через 1 час после приёмки'),
         }),
-        ("pending",       "⏳ Ожидает оплаты резерва (на покупателе)",         "📩 Дать 24ч",           "seller_demand_payment", "Ждёт оплаты", {
-            "trigger": _('Счёт сформирован — ожидаем 10% резерв от покупателя'),
+        ("pending",       (_("Ожидает подтверждения первого платежа") if invoice_mode else _("⏳ Ожидает оплаты резерва (на покупателе)")), "Дать 24 часа", "seller_demand_payment", _("Ждёт оплаты"), {
+            "trigger": (_('Первый счёт сформирован — ожидаем подтверждения банковского поступления') if invoice_mode else _('Счёт сформирован — ожидаем 10% резерв от покупателя')),
             "checklist": [],
             "actor": _('Покупатель / система'),
             "sla": _('15 мин (авто) / 48 ч (ручной) — иначе авто-отмена'),
@@ -11350,6 +11717,9 @@ def track_order(params, user, role):
         "mid_payment_paid":      _('💳 Промежуточный платёж'),
         "customs_payment_paid":  _('💳 Таможенный платёж'),
         "final_payment_paid":    _('💳 Остаток 90% оплачен'),
+        "payment_reported":      _('Покупатель сообщил об оплате'),
+        "payment_confirmed":     _('Банковский платёж подтверждён'),
+        "payment_reversed":      _('Банковская операция отменена'),
         "quality_confirmed":     _('✅ Качество подтверждено'),
         "document_uploaded":     _('📄 Документ загружен'),
         "claim_opened":          _('⚠️ Открыта рекламация'),
@@ -11378,11 +11748,16 @@ def track_order(params, user, role):
     text = (
         _('📦 Заказ #%(id)s · %(current_label)s\nСумма: $%(total_amount)s · оплата: %(get_payment_status_d)s\nОжидаемая доставка: %(eta_delivery)s (%(days_left)s дн.)') % {'id': order.id, 'current_label': current_label, 'total_amount': f"{visible_total:,.0f}", 'get_payment_status_d': order.get_payment_status_display(), 'eta_delivery': eta_delivery, 'days_left': days_left}
     )
+    invoice_mode = _invoice_contract_mode()
     # Подсказка для seller: ждём оплату от покупателя
     if role == "seller" and order.status == "ready_to_ship" and order.payment_status != "paid":
         from decimal import Decimal as _D
         rem = (visible_total - visible_reserve).quantize(_D("0.01"))
-        text += _('\n⏳ Ожидаем от покупателя оплату остатка $%(rem)s (90%%) — отгрузка после поступления денег в эскроу.') % {'rem': f"{rem:,.0f}"}
+        text += (
+            _('\nОжидаем подтверждения банковского платежа покупателя по окончательному счёту $%(rem)s (90%%).') % {'rem': f"{rem:,.0f}"}
+            if invoice_mode else
+            _('\n⏳ Ожидаем от покупателя оплату остатка $%(rem)s (90%%) — отгрузка после поступления денег в эскроу.') % {'rem': f"{rem:,.0f}"}
+        )
 
     # ── Карточка «🚚 Перевозчик» — реальные данные логиста ──────
     # Раньше AI выдумывал «напишите в DHL/UPS» — теперь показываем настоящие
@@ -11472,13 +11847,21 @@ def track_order(params, user, role):
     if effective_role == "buyer":
         if order.payment_status == "awaiting_reserve":
             actions_list.append({
-                "label": _('💳 Оплатить резерв $%(reserve_amount)s') % {'reserve_amount': f"{order.reserve_amount:,.0f}"},
+                "label": (
+                    _('Открыть договор и первый счёт')
+                    if invoice_mode else
+                    _('💳 Оплатить резерв $%(reserve_amount)s') % {'reserve_amount': f"{order.reserve_amount:,.0f}"}
+                ),
                 "action": "pay_reserve", "params": {"order_id": order.id},
             })
         elif order.status == "ready_to_ship" and order.payment_status != "paid":
             rem = (visible_total - visible_reserve).quantize(Decimal("0.01"))
             actions_list.append({
-                "label": _('💳 Оплатить остаток $%(rem)s') % {'rem': f"{rem:,.0f}"},
+                "label": (
+                    _('Открыть окончательный счёт $%(rem)s') % {'rem': f"{rem:,.0f}"}
+                    if invoice_mode else
+                    _('💳 Оплатить остаток $%(rem)s') % {'rem': f"{rem:,.0f}"}
+                ),
                 "action": "pay_final", "params": {"order_id": order.id},
             })
         elif order.status == "delivered":
@@ -11486,7 +11869,11 @@ def track_order(params, user, role):
                 "label": _('✅ Подтвердить приёмку'),
                 "action": "confirm_delivery", "params": {"order_id": order.id},
             })
-        actions_list.append({"label": _('Баланс депозита'), "action": "get_balance", "params": {}})
+        actions_list.append({
+            "label": _('Счета и договоры') if invoice_mode else _('Баланс депозита'),
+            "action": "get_balance",
+            "params": {},
+        })
     elif effective_role == "seller" and seller_count <= 1:
         # Продавец двигает заказ по pipeline (производство → отгрузка → таможня)
         if order.status in ("reserve_paid", "confirmed", "in_production"):
@@ -11501,6 +11888,12 @@ def track_order(params, user, role):
         elif order.status in ("transit_abroad", "customs", "transit_rf", "issuing"):
             actions_list.append({"label": _('▶️ Следующий этап'), "action": "advance_order",
                                  "params": {"order_id": order.id}})
+        if invoice_mode:
+            actions_list.append({
+                "label": _("Договор и счета с платформой"),
+                "action": "settlement_seller_documents",
+                "params": {"order_id": order.id},
+            })
 
     actions_list.append({"label": _('Все мои заказы'), "action": "get_orders", "params": {}})
 
@@ -11510,9 +11903,11 @@ def track_order(params, user, role):
     next_actor, next_event = "—", "—"
     if order.payment_status == "awaiting_reserve":
         next_actor = _('Покупатель')
-        next_event = _('оплачивает резерв ($%(reserve_amount)s)') % {
-            'reserve_amount': f"{visible_reserve:,.0f}",
-        }
+        next_event = (
+            _('оплачивает первый банковский счёт ($%(reserve_amount)s)') % {'reserve_amount': f"{visible_reserve:,.0f}"}
+            if invoice_mode else
+            _('оплачивает резерв ($%(reserve_amount)s)') % {'reserve_amount': f"{visible_reserve:,.0f}"}
+        )
     elif order.status == "reserve_paid":
         next_actor = _('Поставщик')
         next_event = _('подтверждает заказ и принимает в работу')
@@ -11542,7 +11937,11 @@ def track_order(params, user, role):
         next_event = _('забирает груз с пункта выдачи')
     elif order.status == "delivered":
         next_actor = _('Покупатель')
-        next_event = _('подтверждает приёмку — после этого эскроу выплачивает поставщику')
+        next_event = (
+            _('подтверждает приёмку; расчёты с продавцом ведутся по отдельным счетам')
+            if invoice_mode else
+            _('подтверждает приёмку — после этого эскроу выплачивает поставщику')
+        )
     elif order.status == "completed":
         next_actor = "—"
         next_event = _('Заказ закрыт')
@@ -11677,6 +12076,63 @@ def pay_final(params, user, role):
         order = Order.objects.get(id=order_id, buyer=user)
     except Order.DoesNotExist:
         return ActionResult(text=_('Заказ #%(order_id)s не найден.') % {'order_id': order_id})
+
+    from .settlements import SettlementError, issue_invoice, prepare_settlement_package, settlement_enabled
+
+    if settlement_enabled():
+        from .settlement_actions import _invoice_card
+
+        try:
+            package = prepare_settlement_package(order, user)
+            invoice = package["buyer_final_invoice"]
+            if order.payment_status == "awaiting_reserve":
+                return ActionResult(
+                    text=_("Сначала оплатите первый счёт по заказу."),
+                    actions=[{
+                        "action": "settlement_my_documents",
+                        "label": _("Открыть счета"),
+                        "params": {"order_id": order.id},
+                    }],
+                )
+            if invoice.status == "draft":
+                if order.status not in {
+                    "ready_to_ship", "transit_abroad", "customs", "transit_rf",
+                    "issuing", "shipped", "delivered", "completed",
+                }:
+                    return ActionResult(
+                        text=_(
+                            "Окончательный счёт будет выставлен после подтверждения "
+                            "готовности заказа к отгрузке."
+                        ),
+                        actions=[{
+                            "action": "track_order",
+                            "label": _("Проверить статус заказа"),
+                            "params": {"order_id": order.id},
+                        }],
+                    )
+                invoice = issue_invoice(invoice, None)
+        except SettlementError as exc:
+            return ActionResult(text=str(exc), action_succeeded=False)
+        actions = []
+        if invoice.document_id:
+            from .documents import _doc_url
+
+            actions.append({
+                "action": "open_url",
+                "label": _("Открыть окончательный счёт"),
+                "params": {"_url": _doc_url(invoice.document)},
+            })
+        if invoice.status in {"issued", "overdue", "partially_paid"}:
+            actions.append({
+                "action": "settlement_report_paid",
+                "label": _("Сообщить об оплате"),
+                "params": {"invoice_id": invoice.id},
+            })
+        return ActionResult(
+            text=_("Окончательный расчёт по заказу."),
+            cards=[_invoice_card(invoice)],
+            actions=actions,
+        )
 
     if order.payment_scheme != "simple":
         return ActionResult(
@@ -11882,7 +12338,11 @@ def advance_order(params, user, role):
     # по UI-роли даже если пользователь технически владеет товарами тоже.
     if role == "buyer":
         return ActionResult(
-            text=(_('Покупатель не может двигать заказ по пайплайну. Это делает поставщик после оплаты резерва. Переключитесь в режим «Продавец» если вы владеете товарами в заказе.')),
+            text=(
+                _('Покупатель не может менять этап исполнения. После подтверждения первого платежа заказ двигает поставщик. Переключитесь в режим «Продавец», если вы владеете товарами в заказе.')
+                if _invoice_contract_mode() else
+                _('Покупатель не может двигать заказ по пайплайну. Это делает поставщик после оплаты резерва. Переключитесь в режим «Продавец» если вы владеете товарами в заказе.')
+            ),
         )
     # Seller — только свои заказы (где есть его позиции). Operator — любой.
     # Тест-юзеры маппятся на demo_seller через _effective_seller.
@@ -11903,6 +12363,7 @@ def advance_order(params, user, role):
         order = Order.objects.get(id=order_id)
     except Order.DoesNotExist:
         return ActionResult(text=_('Заказ #%(order_id)s не найден.') % {'order_id': order_id})
+    invoice_mode = _invoice_contract_mode()
     if role == "seller" and order.status not in {
         "reserve_paid", "confirmed", "in_production",
     }:
@@ -11998,18 +12459,26 @@ def advance_order(params, user, role):
         if role == "buyer":
             return ActionResult(
                 text=(
+                    _('Заказ #%(id)s готов к отгрузке. Оплатите окончательный банковский счёт $%(rem)s (90%%); отгрузка станет доступна после сверки поступления.') % {'id': order.id, 'rem': f"{rem:,.0f}"}
+                    if invoice_mode else
                     _('Заказ #%(id)s готов к отгрузке. До отправки нужно оплатить остаток $%(rem)s (90%%) — деньги списываются с депозита и держатся в эскроу до подтверждения доставки.') % {'id': order.id, 'rem': f"{rem:,.0f}"}
                 ),
                 actions=[
-                    {"label": _('💳 Оплатить остаток $%(rem)s') % {'rem': f"{rem:,.0f}"},
+                    {"label": (
+                        _('Открыть окончательный счёт $%(rem)s') % {'rem': f"{rem:,.0f}"}
+                        if invoice_mode else
+                        _('💳 Оплатить остаток $%(rem)s') % {'rem': f"{rem:,.0f}"}
+                    ),
                      "action": "pay_final", "params": {"order_id": order.id}},
-                    {"label": _('Баланс депозита'), "action": "get_balance", "params": {}},
+                    {"label": _('Счета и договоры') if invoice_mode else _('Баланс депозита'), "action": "get_balance", "params": {}},
                 ],
-                suggestions=[_('Оплатить остаток'), _('Состояние депозита')],
+                suggestions=([_('Мои счета'), _('Сообщить об оплате')] if invoice_mode else [_('Оплатить остаток'), _('Состояние депозита')]),
             )
         # seller / operator
         return ActionResult(
             text=(
+                _('Заказ #%(id)s готов к отгрузке. Ожидаем подтверждения банковского поступления от покупателя по счёту $%(rem)s (90%%).') % {'id': order.id, 'rem': f"{rem:,.0f}"}
+                if invoice_mode else
                 _('Заказ #%(id)s готов к отгрузке. Ожидаем от покупателя остаток $%(rem)s (90%%) — после оплаты сможете отгрузить.') % {'id': order.id, 'rem': f"{rem:,.0f}"}
             ),
             actions=[
@@ -12037,6 +12506,36 @@ def advance_order(params, user, role):
     _log_event(order, "status_changed", actor=user, source=role or "buyer",
                meta={"from": old_status, "to": new_status})
 
+    if invoice_mode and new_status == "ready_to_ship" and order.payment_status != "paid":
+        try:
+            from .settlements import issue_invoice, prepare_settlement_package
+
+            package = prepare_settlement_package(order, user)
+            final_invoice = issue_invoice(package["buyer_final_invoice"], user)
+            if order.buyer_id:
+                _notify(
+                    order.buyer,
+                    kind="payment",
+                    title=_("Выставлен окончательный счёт"),
+                    body=_("Заказ #%(id)s готов к отгрузке. Счёт %(number)s доступен в разделе расчётов.") % {
+                        "id": order.id,
+                        "number": final_invoice.number,
+                    },
+                    url=f"/chat/?order={order.id}",
+                )
+        except Exception:
+            logger.exception("final settlement invoice issue failed for order %s", order.id)
+            try:
+                from .settlement_actions import _notify_finance
+
+                _notify_finance(
+                    _("Не выставлен окончательный счёт"),
+                    _("Заказ #%(id)s готов к отгрузке, но окончательный счёт требует ручной проверки.") % {"id": order.id},
+                    order.id,
+                )
+            except Exception:
+                logger.exception("final invoice finance notification failed")
+
     # Broadcast в shipment-чат buyer'а с обновлённым timeline
     try:
         from .order_events import notify_order_event
@@ -12052,7 +12551,7 @@ def advance_order(params, user, role):
     NEXT_LABELS = {
         "confirmed":      _('▶️ В производство'),
         "in_production":  _('▶️ Готовность'),
-        "ready_to_ship":  _('💳 Оплатить остаток (90%)'),
+        "ready_to_ship":  (_('Открыть окончательный счёт') if invoice_mode else _('💳 Оплатить остаток (90%)')),
         "transit_abroad": _('▶️ На таможню'),
         "customs":        _('▶️ Транзит по РФ'),
         "transit_rf":     _('▶️ Передать на выдачу'),
@@ -12064,16 +12563,24 @@ def advance_order(params, user, role):
         final_amount = (Decimal(str(order.total_amount)) - Decimal(str(order.reserve_amount or 0))).quantize(Decimal("0.01"))
         if role == "buyer":
             next_text = (
+                _('\nДля отгрузки оплатите окончательный банковский счёт $%(final_amount)s (90%%). Статус изменится после сверки поступления.') % {'final_amount': f"{final_amount:,.0f}"}
+                if invoice_mode else
                 _('\nЧтобы запустить отгрузку, оплатите остаток $%(final_amount)s (90%%) — деньги уйдут с депозита в эскроу.') % {'final_amount': f"{final_amount:,.0f}"}
             )
             next_actions.append({
-                "label": _('💳 Оплатить остаток $%(final_amount)s') % {'final_amount': f"{final_amount:,.0f}"},
+                "label": (
+                    _('Открыть окончательный счёт $%(final_amount)s') % {'final_amount': f"{final_amount:,.0f}"}
+                    if invoice_mode else
+                    _('💳 Оплатить остаток $%(final_amount)s') % {'final_amount': f"{final_amount:,.0f}"}
+                ),
                 "action": "pay_final", "params": {"order_id": order.id},
             })
-            suggestions = ["Оплатить остаток", "Состояние депозита"]
+            suggestions = (["Мои счета", "Сообщить об оплате"] if invoice_mode else ["Оплатить остаток", "Состояние депозита"])
         else:
             # seller / operator: ждём покупателя
             next_text = (
+                _('\nОжидаем подтверждения поступления по окончательному счёту покупателя $%(final_amount)s (90%%).') % {'final_amount': f"{final_amount:,.0f}"}
+                if invoice_mode else
                 _('\nОжидаем от покупателя остаток $%(final_amount)s (90%%). Как только эскроу пополнится — сможете отгружать.') % {'final_amount': f"{final_amount:,.0f}"}
             )
             next_actions.append({
@@ -12191,12 +12698,21 @@ def confirm_delivery(params, user, role):
             action_succeeded=False,
         )
 
-    # SECURITY P0-7: confirmed-gate. confirm_delivery высвобождает эскроу
-    # продавцу, генерирует revenue_lines и обновляет рейтинг — это
-    # необратимое финансовое действие. Требуем явный клик «Подтвердить».
+    invoice_mode = _invoice_contract_mode()
+    # Подтверждение приёмки закрывает заказ и влияет на отчётность. Даже в
+    # режиме ручных банковских расчётов оно требует отдельного явного клика.
     if not confirmation_is_true(params.get("confirmed")):
         return ActionResult(
-            text=(_('📦 Подтвердить приёмку заказа #%(id)s?\n\nПосле подтверждения: эскроу-холд перейдёт продавцу, платформа выставит revenue-lines, рейтинг продавца обновится. Действие необратимо.') % {'id': order.id}),
+            text=(
+                _(
+                    'Подтвердить приёмку заказа #%(id)s?\n\n'
+                    'Заказ будет закрыт, факт приёмки попадёт в отчётность, а '
+                    'финансовый оператор увидит актуальное состояние счетов продавцов. '
+                    'Само подтверждение не выполняет банковский платёж.'
+                ) % {'id': order.id}
+                if invoice_mode else
+                _('📦 Подтвердить приёмку заказа #%(id)s?\n\nПосле подтверждения: эскроу-холд перейдёт продавцу, платформа выставит revenue-lines, рейтинг продавца обновится. Действие необратимо.') % {'id': order.id}
+            ),
             cards=[{"type": "kpi_grid", "data": {
                 "title": _('Заказ #%(id)s') % {'id': order.id},
                 "items": [
@@ -12211,6 +12727,172 @@ def confirm_delivery(params, user, role):
                 {"label": _('Открыть рекламацию'),
                  "action": "open_claim", "params": {"order_id": order.id}},
             ],
+        )
+
+    if invoice_mode:
+        from django.db import transaction as _txn
+        from marketplace.models import SettlementInvoice
+
+        if order.payment_status != "paid":
+            return ActionResult(
+                text=_(
+                    "Приёмку нельзя закрыть, пока финансовый оператор не подтвердил "
+                    "полную оплату покупателя по банковским счетам."
+                ),
+                actions=[
+                    {"label": _("Открыть счета"), "action": "settlement_my_documents", "params": {"order_id": order.id}},
+                    {"label": _("Связаться с оператором"), "action": "ask_operator", "params": {"order_id": order.id}},
+                ],
+                action_succeeded=False,
+            )
+        unpaid_receivables = SettlementInvoice.objects.filter(
+            order=order,
+            direction="receivable",
+        ).exclude(status__in=("paid", "cancelled"))
+        if unpaid_receivables.exists():
+            return ActionResult(
+                text=_(
+                    "В заказе остаются неподтверждённые счета покупателя. "
+                    "Финансовому оператору нужно завершить сверку."
+                ),
+                actions=[{"label": _("Открыть счета"), "action": "settlement_my_documents", "params": {"order_id": order.id}}],
+                action_succeeded=False,
+            )
+
+        try:
+            from .revenue import generate_revenue_lines
+
+            with _txn.atomic():
+                order = Order.objects.select_for_update().get(id=order.id, buyer=user)
+                if order.status != "delivered":
+                    return ActionResult(text=_('Заказ #%(id)s уже закрыт.') % {'id': order.id})
+                meta = order.logistics_meta or {}
+                basis = (meta.get("customs", {}) or {}).get("basis") or order.incoterm or "DDP"
+                we_clear = bool((meta.get("customs", {}) or {}).get("hs_code"))
+                supplier_payable = sum(
+                    (Decimal(str(item.unit_price or 0)) * (item.quantity or 0))
+                    for item in order.items.all()
+                )
+                generate_revenue_lines(
+                    order,
+                    basis=basis,
+                    payment_currency="USD",
+                    we_clear_customs=we_clear,
+                    supplier_payable=supplier_payable,
+                )
+                order.status = "completed"
+                order.save(update_fields=["status"])
+                _log_event(
+                    order,
+                    "status_changed",
+                    actor=user,
+                    source="buyer",
+                    meta={
+                        "from": "delivered",
+                        "to": "completed",
+                        "kind": "buyer_accepted",
+                        "settlement_mode": "invoice_contract",
+                    },
+                )
+        except Exception:
+            logger.exception("invoice settlement completion failed for order %s", order.id)
+            return ActionResult(
+                text=_(
+                    "Не удалось закрыть заказ и записать отчётность. "
+                    "Данные платежей не изменены; повторите позже или обратитесь в поддержку."
+                ),
+                actions=[{"label": _("Обратиться в поддержку"), "action": "ask_operator", "params": {"order_id": order.id}}],
+                action_succeeded=False,
+            )
+
+        sellers = list({
+            item.part.seller
+            for item in order.items.select_related("part__seller")
+            if item.part and item.part.seller_id
+        })
+        from .rating import record_rating_event
+
+        for seller in sellers:
+            try:
+                _notify(
+                    seller,
+                    kind="order",
+                    title=_('Приёмка заказа #%(id)s подтверждена') % {'id': order.id},
+                    body=_(
+                        "Покупатель подтвердил получение. Состояние ваших счетов "
+                        "и выплат доступно в разделе расчётов."
+                    ),
+                    url=f"/chat/?order={order.id}",
+                )
+                record_rating_event(
+                    seller,
+                    event_type="delivery_on_time",
+                    meta={"order_id": order.id, "settlement_mode": "invoice_contract"},
+                )
+                from . import ai_credits as _aic
+
+                _aic.grant_on_sale(seller)
+            except Exception:
+                logger.exception("post-delivery seller update failed")
+
+        outstanding_payables = SettlementInvoice.objects.filter(
+            order=order,
+            direction="payable",
+        ).exclude(status__in=("paid", "cancelled"))
+        outstanding_total = sum(
+            (invoice.outstanding_amount for invoice in outstanding_payables),
+            Decimal("0.00"),
+        )
+        try:
+            from .settlement_actions import _notify_finance
+
+            _notify_finance(
+                _("Приёмка заказа подтверждена"),
+                _(
+                    "Заказ #%(id)s закрыт покупателем. Непогашенные счета "
+                    "продавцов: %(count)s на %(amount)s."
+                ) % {
+                    "id": order.id,
+                    "count": outstanding_payables.count(),
+                    "amount": f"{outstanding_total:,.2f} USD",
+                },
+                order.id,
+            )
+        except Exception:
+            logger.exception("finance delivery notification failed")
+
+        try:
+            from .order_events import notify_order_event
+
+            notify_order_event(order, "completed", actor=user)
+        except Exception:
+            logger.exception("notify_order_event in invoice confirm_delivery failed")
+
+        return ActionResult(
+            text=_(
+                "Заказ #%(id)s закрыт. Приёмка зафиксирована. "
+                "Банковские выплаты продавцам проводятся финансовым оператором "
+                "по отдельным счетам."
+            ) % {"id": order.id},
+            cards=_full_order_cards(order, user, role, fallback={
+                "type": "order",
+                "data": {
+                    "id": str(order.id),
+                    "number": order.id,
+                    "status": "completed",
+                    "status_label": _("Завершён"),
+                    "total": float(order.total_amount),
+                    "currency": "USD",
+                    "payment_status_label": order.get_payment_status_display(),
+                },
+            }),
+            actions=[
+                {"label": _("Все мои заказы"), "action": "get_orders", "params": {}},
+                {"label": _("Счета и договоры"), "action": "settlement_my_documents", "params": {"order_id": order.id}},
+                {"label": _("Оставить отзыв"), "action": "leave_review", "params": {"order_id": order.id}},
+            ],
+            suggestions=[_("Что заказать ещё?")],
+            action_succeeded=True,
         )
 
     # Статус, доход платформы и фактический выпуск эскроу составляют одну
@@ -12748,6 +13430,21 @@ def get_balance(params, user, role):
     - seller → выручка: зачислено + ожидается + в работе
     - operator/admin → доход платформы (комиссия)
     """
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        if role == "admin" or (role and role.startswith("operator")):
+            from .settlement_actions import settlement_finance_queue
+
+            return settlement_finance_queue(params, user, role)
+        if role == "seller":
+            from .settlement_actions import settlement_seller_documents
+
+            return settlement_seller_documents(params, user, role)
+        from .settlement_actions import settlement_my_documents
+
+        return settlement_my_documents(params, user, role)
+
     # Operator → единый финансовый дашборд (платформа + личный бонус в одной карточке)
     if role and role.startswith("operator"):
         from .operator_actions import op_payments_dashboard
@@ -12849,6 +13546,12 @@ def _wallet_party_label(user, role_hint=None):
 @register("request_payout")
 def request_payout(params, user, role):
     """Совместимое название для нового контролируемого процесса вывода."""
+    from .settlements import settlement_enabled
+
+    if settlement_enabled() and role == "seller":
+        from .settlement_actions import settlement_seller_documents
+
+        return settlement_seller_documents(params, user, role)
     if role and role.startswith("operator"):
         return ActionResult(
             text=_(
@@ -13394,6 +14097,13 @@ def topup_wallet(params, user, role):
     зачисление без реального платежа. Это нужно для e2e-тестов и демо-показов.
     """
     from django.conf import settings
+
+    from .settlements import settlement_enabled
+
+    if settlement_enabled():
+        from .settlement_actions import settlement_my_documents
+
+        return settlement_my_documents(params, user, role)
 
     if settings.DEBUG and os.getenv("WALLET_DEMO_MODE", "") == "1":
         return _topup_wallet_demo(params, user, role)

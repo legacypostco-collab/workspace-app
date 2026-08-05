@@ -654,6 +654,19 @@ LOGISTICS_DEFAULT_INCOTERM = os.getenv("LOGISTICS_DEFAULT_INCOTERM", "FOB").stri
 PAYMENT_PROVIDER_URL = os.getenv("PAYMENT_PROVIDER_URL", "").strip()
 PAYMENT_MERCHANT_ID = os.getenv("PAYMENT_MERCHANT_ID", "").strip()
 PAYMENT_CURRENCY = os.getenv("PAYMENT_CURRENCY", "USD").strip().upper() or "USD"
+SETTLEMENT_MODE = os.getenv("SETTLEMENT_MODE", "invoice_contract").strip().lower()
+SETTLEMENT_REQUIRED = _env_bool("SETTLEMENT_REQUIRED", False)
+SETTLEMENT_INVOICE_DUE_DAYS = int(os.getenv("SETTLEMENT_INVOICE_DUE_DAYS", "7"))
+LEGACY_WALLET_UI_ENABLED = _env_bool("LEGACY_WALLET_UI_ENABLED", False)
+PLATFORM_LEGAL_NAME = os.getenv("PLATFORM_LEGAL_NAME", "Consolidator Parts").strip()
+PLATFORM_LEGAL_ADDRESS = os.getenv("PLATFORM_LEGAL_ADDRESS", "").strip()
+PLATFORM_TAX_ID = os.getenv("PLATFORM_TAX_ID", "").strip()
+PLATFORM_REGISTRATION_NO = os.getenv("PLATFORM_REGISTRATION_NO", "").strip()
+PLATFORM_BANK_NAME = os.getenv("PLATFORM_BANK_NAME", "").strip()
+PLATFORM_BANK_ACCOUNT = os.getenv("PLATFORM_BANK_ACCOUNT", "").strip()
+PLATFORM_BANK_SWIFT = os.getenv("PLATFORM_BANK_SWIFT", "").strip()
+PLATFORM_SIGNATORY = os.getenv("PLATFORM_SIGNATORY", "").strip()
+PLATFORM_SIGNATORY_TITLE = os.getenv("PLATFORM_SIGNATORY_TITLE", "Director").strip()
 WEBHOOK_ENDPOINTS = os.getenv("WEBHOOK_ENDPOINTS", "").strip()
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "").strip()
 WEBHOOK_TIMEOUT_SEC = float(os.getenv("WEBHOOK_TIMEOUT_SEC", "2"))
@@ -709,6 +722,10 @@ CELERY_BEAT_SCHEDULE = {
     "send-pending-notifications-every-5min": {
         "task": "marketplace.tasks.send_pending_email_notifications",
         "schedule": crontab(minute="*/5"),
+    },
+    "mark-overdue-settlement-invoices-hourly": {
+        "task": "marketplace.tasks.mark_overdue_settlement_invoices",
+        "schedule": crontab(minute=7),
     },
     "cleanup-expired-tokens-daily": {
         "task": "marketplace.tasks.cleanup_expired_tokens",

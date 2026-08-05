@@ -5,6 +5,42 @@ from django.test import SimpleTestCase, override_settings
 
 
 class DeployReadinessSecurityTests(SimpleTestCase):
+    @override_settings(SETTLEMENT_REQUIRED=False)
+    def test_production_requires_strict_settlement_validation(self):
+        output = StringIO()
+
+        with self.assertRaises(SystemExit):
+            call_command("check_deploy_readiness", stdout=output)
+
+        self.assertIn(
+            "SETTLEMENT_REQUIRED must be enabled in production",
+            output.getvalue(),
+        )
+
+    @override_settings(
+        SETTLEMENT_MODE="legacy_wallet",
+        SETTLEMENT_REQUIRED=True,
+        LEGACY_WALLET_UI_ENABLED=True,
+        PLATFORM_LEGAL_NAME="__CHANGE_ME__",
+        PLATFORM_LEGAL_ADDRESS="",
+        PLATFORM_TAX_ID="",
+        PLATFORM_REGISTRATION_NO="",
+        PLATFORM_BANK_NAME="",
+        PLATFORM_BANK_ACCOUNT="",
+        PLATFORM_BANK_SWIFT="",
+        PLATFORM_SIGNATORY="",
+    )
+    def test_production_requires_document_settlement_and_legal_details(self):
+        output = StringIO()
+
+        with self.assertRaises(SystemExit):
+            call_command("check_deploy_readiness", stdout=output)
+
+        report = output.getvalue()
+        self.assertIn("SETTLEMENT_MODE must be invoice_contract", report)
+        self.assertIn("LEGACY_WALLET_UI_ENABLED must be disabled", report)
+        self.assertIn("Settlement legal and bank details are incomplete", report)
+
     @override_settings(
         LLM_REQUIRED=True,
         ANTHROPIC_API_KEY="",

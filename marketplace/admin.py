@@ -13,6 +13,9 @@ from .models import (
     OrderItem,
     Part,
     RFQItem,
+    SettlementContract,
+    SettlementInvoice,
+    SettlementPayment,
     SupplierRatingEvent,
     UserProfile,
     UserRole,
@@ -121,9 +124,45 @@ class OrderEventAdmin(admin.ModelAdmin):
 
 @admin.register(OrderDocument)
 class OrderDocumentAdmin(admin.ModelAdmin):
-    list_display = ("order", "doc_type", "title", "uploaded_by", "created_at")
-    list_filter = ("doc_type", "created_at")
-    search_fields = ("order__id", "title", "file_url")
+    list_display = (
+        "order", "doc_type", "audience", "seller", "title", "uploaded_by", "created_at"
+    )
+    list_filter = ("doc_type", "audience", "created_at")
+    search_fields = ("order__id", "title", "file_url", "seller__username")
+
+
+@admin.register(SettlementContract)
+class SettlementContractAdmin(admin.ModelAdmin):
+    list_display = ("number", "order", "kind", "seller", "status", "amount", "currency", "issued_at")
+    list_filter = ("kind", "status", "currency")
+    search_fields = ("number", "order__id", "seller__username")
+    readonly_fields = ("platform_snapshot", "counterparty_snapshot", "terms_snapshot")
+
+
+@admin.register(SettlementInvoice)
+class SettlementInvoiceAdmin(admin.ModelAdmin):
+    list_display = (
+        "number", "order", "direction", "stage", "seller", "status",
+        "amount", "paid_amount", "currency", "due_date",
+    )
+    list_filter = ("direction", "stage", "status", "currency", "due_date")
+    search_fields = ("number", "reference_code", "order__id", "seller__username")
+    readonly_fields = ("paid_amount", "paid_at")
+
+
+@admin.register(SettlementPayment)
+class SettlementPaymentAdmin(admin.ModelAdmin):
+    list_display = (
+        "bank_reference", "invoice", "direction", "status", "amount",
+        "currency", "paid_at", "confirmed_by",
+    )
+    list_filter = ("direction", "status", "currency", "paid_at")
+    search_fields = ("bank_reference", "invoice__number", "invoice__order__id")
+    readonly_fields = (
+        "invoice", "direction", "status", "amount", "currency",
+        "bank_reference", "paid_at", "confirmed_by", "created_at",
+        "proof_file", "reversed_by", "reversed_at", "reversal_reason",
+    )
 
 
 @admin.register(OrderClaim)
