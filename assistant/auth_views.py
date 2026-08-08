@@ -25,7 +25,6 @@ OAuth scaffolding:
 from __future__ import annotations
 
 import logging
-import os
 import secrets
 import hashlib
 from datetime import timedelta
@@ -104,8 +103,7 @@ class MagicLinkRequestView(View):
             from django.conf import settings
             from django.core.mail import EmailMultiAlternatives
             site = (
-                os.getenv("SITE_URL")
-                or getattr(settings, "SITE_URL", "")
+                getattr(settings, "SITE_URL", "")
                 or request.build_absolute_uri("/")
             )
             link = f"{site.rstrip('/')}/api/assistant/auth/magic-link/{token}/"
