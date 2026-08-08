@@ -23,7 +23,7 @@
     {% endfor %}
   </section>
 
-  <div class="dashboard-split">
+  <div class="dashboard-split{% if not can_view_finance %} dashboard-split--single{% endif %}">
     <section class="control-panel queue-panel">
       <header class="panel-head">
         <div><span class="control-eyebrow">Исполнение</span><h2>Заказы под контролем</h2></div>
@@ -44,7 +44,7 @@
       </div>
     </section>
 
-    <aside class="finance-pulse">
+    {% if can_view_finance %}<aside class="finance-pulse">
       <header><span class="control-eyebrow">Расчёты</span><h2>Денежный поток</h2></header>
       <div class="finance-pulse-values">
         <div><span>К получению</span><div class="money-lines">{% for total in incoming_totals %}<strong>{{ total.amount|floatformat:2 }} <em>{{ total.currency }}</em></strong>{% empty %}<strong>0,00</strong>{% endfor %}</div><small>по открытым счетам</small></div>
@@ -59,8 +59,8 @@
       {% else %}
         <p class="quiet-note">Платежей, требующих немедленной проверки, нет.</p>
       {% endif %}
-      {% if 'operator_payment' == control_role or 'admin' == control_role %}<a class="button button--inverse" href="{% url 'control:finance' %}">Открыть очередь <span>→</span></a>{% endif %}
-    </aside>
+      <a class="button button--inverse" href="{% url 'control:finance' %}">Открыть очередь <span>→</span></a>
+    </aside>{% endif %}
   </div>
 
   <section class="activity-strip">

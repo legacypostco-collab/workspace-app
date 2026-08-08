@@ -49,6 +49,16 @@ class ControlAccessTests(TestCase):
             user=cls.finance_operator,
             defaults={"role": "operator", "operator_role": "payment"},
         )
+        cls.operator_roles = {"operator": cls.operator, "payment": cls.finance_operator}
+        for operator_role in ("manager", "logist", "customs"):
+            user = User.objects.create_user(
+                username=f"control_{operator_role}", password="test-password-123"
+            )
+            UserProfile.objects.update_or_create(
+                user=user,
+                defaults={"role": "operator", "operator_role": operator_role},
+            )
+            cls.operator_roles[operator_role] = user
 
     def test_anonymous_is_sent_to_login(self):
         response = self.client.get("/control/")
@@ -103,6 +113,42 @@ class ControlAccessTests(TestCase):
         response = self.client.get("/control/finance/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Финансы")
+
+    def test_every_operator_subrole_has_only_its_control_sections(self):
+        sections = {
+            "/control/": {"operator", "manager", "logist", "customs", "payment"},
+            "/control/search/": {"operator", "manager", "logist", "customs", "payment"},
+            "/control/notifications/": {"operator", "manager", "logist", "customs", "payment"},
+            "/control/orders/": {"operator", "manager", "logist", "customs", "payment"},
+            "/control/finance/": {"payment"},
+            "/control/users/": {"manager"},
+            "/control/moderation/": {"operator"},
+            "/control/catalog/": {"operator"},
+            "/control/support/": {"operator", "manager"},
+            "/control/audit/": set(),
+            "/control/settings/": set(),
+        }
+
+        for role, user in self.operator_roles.items():
+            self.client.force_login(user)
+            for url, allowed_roles in sections.items():
+                with self.subTest(role=role, url=url):
+                    expected = 200 if role in allowed_roles else 403
+                    self.assertEqual(self.client.get(url).status_code, expected)
+
+    def test_dashboard_does_not_leak_finance_to_non_finance_operator(self):
+        self.client.force_login(self.operator_roles["logist"])
+
+        response = self.client.get("/control/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Денежный поток")
+        self.assertNotContains(response, "/control/finance/")
+
+        self.client.force_login(self.finance_operator)
+        finance_response = self.client.get("/control/")
+        self.assertContains(finance_response, "Денежный поток")
+        self.assertContains(finance_response, "/control/finance/")
 
     def test_view_as_session_does_not_replace_control_actor(self):
         seller = User.objects.create_user(username="viewed_seller")

@@ -175,60 +175,93 @@ def _notification_target(user, notification):
 
 @control_required("dashboard")
 def dashboard(request):
+    can_view_finance = can_access(request.user, "finance")
+    can_view_moderation = can_access(request.user, "moderation")
+    can_view_support = can_access(request.user, "support")
     open_orders = Order.objects.exclude(status__in={"completed", "cancelled"})
-    waiting_invoices = SettlementInvoice.objects.filter(
-        status__in={"awaiting_confirmation", "overdue"}
+    breached_orders = open_orders.filter(sla_status="breached")
+    waiting_invoices = (
+        SettlementInvoice.objects.filter(
+            status__in={"awaiting_confirmation", "overdue"}
+        )
+        if can_view_finance
+        else SettlementInvoice.objects.none()
     )
     open_claims = OrderClaim.objects.exclude(status__in={"closed", "rejected"})
-    pending_kyb = CompanyVerification.objects.filter(status="pending")
-    support_open = Conversation.objects.exclude(support_status="").exclude(support_status="closed")
-    open_receivables = SettlementInvoice.objects.filter(
-        direction="receivable",
-        status__in={"issued", "awaiting_confirmation", "partially_paid", "overdue"},
+    pending_kyb = (
+        CompanyVerification.objects.filter(status="pending")
+        if can_view_moderation
+        else CompanyVerification.objects.none()
     )
-    open_payables = SettlementInvoice.objects.filter(
-        direction="payable",
-        status__in={"issued", "partially_paid", "overdue"},
+    support_open = (
+        Conversation.objects.exclude(support_status="").exclude(
+            support_status="closed"
+        )
+        if can_view_support
+        else Conversation.objects.none()
+    )
+    open_receivables = (
+        SettlementInvoice.objects.filter(
+            direction="receivable",
+            status__in={"issued", "awaiting_confirmation", "partially_paid", "overdue"},
+        )
+        if can_view_finance
+        else SettlementInvoice.objects.none()
+    )
+    open_payables = (
+        SettlementInvoice.objects.filter(
+            direction="payable",
+            status__in={"issued", "partially_paid", "overdue"},
+        )
+        if can_view_finance
+        else SettlementInvoice.objects.none()
     )
 
     cards = [
         {
             "label": "Заказы в работе",
             "value": open_orders.count(),
-            "hint": f"{open_orders.filter(sla_status='breached').count()} с нарушенным сроком",
+            "hint": f"{breached_orders.count()} с нарушенным сроком",
             "url": reverse("control:orders"),
             "tone": "dark",
             "icon": "package",
         },
         {
+            "label": "Нарушения сроков",
+            "value": breached_orders.count(),
+            "hint": "требуют приоритетной обработки",
+            "url": reverse("control:orders") + "?sla=breached",
+            "tone": "light",
+            "icon": "clock",
+        },
+    ]
+    if can_view_finance:
+        cards.append({
             "label": "Платежи к проверке",
             "value": waiting_invoices.count(),
             "hint": "сообщения об оплате и просрочки",
             "url": reverse("control:finance"),
             "tone": "accent",
             "icon": "wallet",
-        },
-        {
+        })
+    if can_view_moderation:
+        cards.append({
             "label": "Требуют решения",
             "value": open_claims.count() + pending_kyb.count(),
             "hint": f"{pending_kyb.count()} компаний на проверке",
-            "url": reverse("control:moderation")
-            if can_access(request.user, "moderation")
-            else reverse("control:orders"),
+            "url": reverse("control:moderation"),
             "tone": "light",
             "icon": "shield",
-        },
-        {
+        })
+    if can_view_support:
+        cards.append({
             "label": "Открытые обращения",
             "value": support_open.count(),
             "hint": "ожидают ответа команды",
-            "url": reverse("control:support")
-            if can_access(request.user, "support")
-            else reverse("control:orders"),
+            "url": reverse("control:support"),
             "tone": "light",
             "icon": "message",
-        },
-    ]
+        })
 
     context = _page(
         request,
@@ -246,6 +279,7 @@ def dashboard(request):
         outgoing_total=_outstanding_total(open_payables),
         incoming_totals=_outstanding_totals_by_currency(open_receivables),
         outgoing_totals=_outstanding_totals_by_currency(open_payables),
+        can_view_finance=can_view_finance,
     )
     return render(request, "control/dashboard.html", context)
 

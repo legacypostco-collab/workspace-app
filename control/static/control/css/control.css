@@ -160,6 +160,7 @@ h1, h2, h3 { font-family: var(--cp-display); }
 .metric-card--accent .metric-card-arrow { color: rgba(255,255,255,.88); }
 
 .dashboard-split { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr); gap: 12px; margin-bottom: 12px; }
+.dashboard-split--single { grid-template-columns: minmax(0, 1fr); }
 .control-panel { border: 1px solid var(--cp-line); border-radius: var(--cp-radius); background: var(--cp-surface); box-shadow: var(--cp-shadow); }
 .queue-panel { min-height: 460px; padding: 24px; }
 .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
