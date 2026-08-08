@@ -7968,7 +7968,10 @@
     }
     // 2. Обычные action-кнопки и любой [data-action] (например, ls-row)
     const btn = e.target.closest('.act-btn,[data-action]');
-    if (!btn) return;
+    // Многошаговые формы тоже хранят submit-action в data-action. Их клики
+    // обрабатывает auth/form controller выше; повторный quickAction здесь
+    // сбрасывал регистрацию обратно к выбору роли после каждого шага.
+    if (!btn || btn.tagName === 'FORM') return;
     // Debounce — защита от двойного клика и дубля event-listener'ов.
     // Без этого «Трекинг» / любая action-кнопка могла выстрелить 2 раза.
     if (btn.dataset._busy === '1') return;
