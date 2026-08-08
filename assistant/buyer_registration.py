@@ -185,6 +185,9 @@ def _form_card(values: dict | None = None, errors: dict | None = None) -> dict:
         {"name": "password2", "label": _("Повторите пароль"), "type": "password",
          "required": True, "minlength": 8, "error": err("password2")},
     ]
+    from .consents import registration_consent_fields
+
+    fields.extend(registration_consent_fields(errors))
     return {
         "type": "form",
         "data": {
@@ -218,7 +221,9 @@ def attempt_register(request, params: dict) -> dict:
     from marketplace.forms import RegisterForm
     from marketplace.models import UserProfile
 
-    errors: dict[str, str] = {}
+    from .consents import registration_consent_errors
+
+    errors: dict[str, str] = registration_consent_errors(params)
     v = {
         "country":          (params.get("country") or "RU").upper(),
         "tax_id":           (params.get("tax_id") or "").strip(),
@@ -317,6 +322,9 @@ def attempt_register(request, params: dict) -> dict:
             messenger_handle=v["messenger_handle"],
             equipment_fleet=v["equipment_fleet"],
         )
+        from .consents import record_registration_consents
+
+        record_registration_consents(request, user, role="buyer")
 
     if email_verification_required:
         from marketplace.views import _send_verification_email

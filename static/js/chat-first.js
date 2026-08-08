@@ -141,6 +141,13 @@
     };
     const fieldHtml = (f) => {
       const type = f.type || 'text';
+      if (type === 'checkbox') {
+        const checked = f.value === true || ['1', 'true', 'yes', 'on', 'да'].includes(String(f.value || '').toLowerCase());
+        const link = f.link_url
+          ? `<a href="${esc(f.link_url)}" target="_blank" rel="noopener">${esc(f.link_label || 'Открыть документ')}</a>`
+          : '';
+        return `<div class="auth-consent${f.error ? ' is-error' : ''}"><label class="auth-consent__choice"><input class="auth-checkbox" type="checkbox" name="${esc(f.name)}"${f.required ? ' required' : ''}${checked ? ' checked' : ''}><span>${esc(f.label || f.name)}${f.required ? ' <span class="auth-required">*</span>' : ''}</span></label>${link}${f.error ? `<span class="auth-error">${esc(f.error)}</span>` : ''}</div>`;
+      }
       const tag = type === 'textarea' ? 'textarea' : (type === 'select' ? 'select' : 'input');
       let cls = tag === 'textarea' ? 'auth-textarea' : (tag === 'select' ? 'auth-select' : 'auth-input');
       if (f.error) cls += ' is-error';
@@ -177,7 +184,7 @@
         {title:'Контакты', note:'Кто будет получать расчеты и уточнения по заявкам.', fields:pick(['contact_name','position','email','phone_e164'])},
         {title:'Связь', note:'Куда оператору и поставщикам отправлять быстрые уточнения.', fields:pick(['messenger_kind','messenger_handle'])},
         {title:'Техника', note:'Коротко опишите парк техники, чтобы подбор запчастей был точнее.', fields:pick(['equipment_fleet'])},
-        {title:'Доступ', note:'Создайте логин и пароль для входа в личный кабинет.', fields:pick(['username','password1','password2'])},
+        {title:'Доступ', note:'Создайте логин и подтвердите правовые условия отдельными флажками.', fields:pick(['username','password1','password2','accept_terms','personal_data_consent'])},
       ].filter((s) => s.fields.length);
     };
     const firstErrorStep = (steps) => {
@@ -190,13 +197,16 @@
       const values = {};
       let bad = false;
       form.querySelectorAll('input,select,textarea').forEach((inp) => {
-        if (inp.required && !String(inp.value || '').trim()) {
+        const value = inp.type === 'checkbox' ? inp.checked : String(inp.value || '').trim();
+        if (inp.required && !value) {
           inp.classList.add('is-error');
+          inp.closest('.auth-consent')?.classList.add('is-error');
           bad = true;
         } else {
           inp.classList.remove('is-error');
+          inp.closest('.auth-consent')?.classList.remove('is-error');
         }
-        values[inp.name] = String(inp.value || '').trim();
+        values[inp.name] = value;
       });
       return {values, bad};
     };

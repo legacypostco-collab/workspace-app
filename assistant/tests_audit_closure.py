@@ -1417,6 +1417,8 @@ class RegistrationSecurityTests(TestCase):
                     "username": "audit_chat_buyer",
                     "password1": "VeryStr0ngPass!42",
                     "password2": "VeryStr0ngPass!42",
+                    "accept_terms": True,
+                    "personal_data_consent": True,
                 },
             },
             content_type="application/json",
@@ -1427,6 +1429,7 @@ class RegistrationSecurityTests(TestCase):
         self.assertFalse(user.is_active)
         self.assertNotIn("_auth_user_id", self.client.session)
         self.assertIn("ссылку подтверждения", response.json()["text"])
+        self.assertEqual(user.consent_records.count(), 2)
         send_email.assert_called_once()
 
     @override_settings(EMAIL_VERIFICATION_REQUIRED=True)
@@ -1443,6 +1446,8 @@ class RegistrationSecurityTests(TestCase):
                     "username": "audit_chat_seller",
                     "password1": "VeryStr0ngPass!42",
                     "password2": "VeryStr0ngPass!42",
+                    "accept_terms": True,
+                    "personal_data_consent": True,
                 },
             },
             content_type="application/json",
@@ -1453,7 +1458,50 @@ class RegistrationSecurityTests(TestCase):
         self.assertFalse(user.is_active)
         self.assertNotIn("_auth_user_id", self.client.session)
         self.assertIn("ссылку подтверждения", response.json()["text"])
+        self.assertEqual(user.consent_records.count(), 2)
         send_email.assert_called_once()
+
+    @patch("assistant.buyer_registration._check_email", return_value=(True, ""))
+    def test_chat_registration_rejects_missing_separate_consents(self, _check_email):
+        response = self.client.post(
+            "/api/assistant/action/",
+            data={
+                "action": "start_registration",
+                "params": {
+                    "confirmed": True,
+                    "role": "buyer",
+                    "country": "RU",
+                    "tax_id": "7708123456",
+                    "contact_name": "No Consent Buyer",
+                    "position": "buyer",
+                    "email": "no-consent@example.com",
+                    "phone_e164": "+79990000001",
+                    "messenger_kind": "telegram",
+                    "messenger_handle": "@no_consent_buyer",
+                    "equipment_fleet": "Test fleet",
+                    "username": "no_consent_buyer",
+                    "password1": "VeryStr0ngPass!42",
+                    "password2": "VeryStr0ngPass!42",
+                },
+            },
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(username="no_consent_buyer").exists())
+        payload = response.json()
+        self.assertIn("отдельным флажком", payload["text"])
+        fields = payload["cards"][0]["data"]["fields"]
+        consent_fields = {
+            field["name"]: field
+            for field in fields
+            if field.get("type") == "checkbox"
+        }
+        self.assertEqual(
+            set(consent_fields),
+            {"accept_terms", "personal_data_consent"},
+        )
+        self.assertTrue(consent_fields["personal_data_consent"]["error"])
 
     def test_registration_rejects_duplicate_email_case_insensitively(self):
         from marketplace.forms import RegisterForm

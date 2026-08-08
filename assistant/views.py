@@ -501,6 +501,11 @@ def _handle_seller_quick_registration(request, params):
     from django.db import transaction
     from marketplace.forms import RegisterForm
     from marketplace.models import UserProfile
+    from .consents import (
+        record_registration_consents,
+        registration_consent_errors,
+        registration_consent_fields,
+    )
 
     confirmed = confirmation_is_true(params.get("confirmed"))
     if not confirmed:
@@ -529,13 +534,22 @@ def _handle_seller_quick_registration(request, params):
                          "type": "password", "required": True, "minlength": 8},
                         {"name": "password2", "label": _("Повторите пароль"),
                          "type": "password", "required": True, "minlength": 8},
-                    ],
+                    ] + registration_consent_fields(),
                     "fixed_params": {"confirmed": True, "role": "seller"},
                 },
             }],
             "actions": [{"action": "start_login", "label": _("У меня уже есть аккаунт"),
                           "params": {"role": "seller"}}],
             "suggestions": [], "contextual_actions": [],
+        }
+
+    consent_errors = registration_consent_errors(params)
+    if consent_errors:
+        return {
+            "text": _("Подтвердите условия регистрации в двух отдельных полях."),
+            "actions": [{"action": "start_registration", "label": _("Попробовать снова"),
+                         "params": {"role": "seller"}}],
+            "cards": [], "suggestions": [], "contextual_actions": [],
         }
 
     form = RegisterForm({
@@ -569,6 +583,7 @@ def _handle_seller_quick_registration(request, params):
             language="ru",
             company_name="",
         )
+        record_registration_consents(request, user, role="seller")
     if email_verification_required:
         from marketplace.views import _send_verification_email
 

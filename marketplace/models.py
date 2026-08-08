@@ -1562,6 +1562,48 @@ class UserProfile(models.Model):
         return f"{self.user.username} ({self.role})"
 
 
+class UserConsent(models.Model):
+    CONSENT_TYPES = [
+        ("terms", "Terms of use"),
+        ("personal_data", "Personal data processing"),
+    ]
+    SOURCES = [
+        ("registration", "Registration"),
+        ("support", "Support request"),
+        ("admin", "Administrative record"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="consent_records",
+    )
+    consent_type = models.CharField(max_length=32, choices=CONSENT_TYPES, db_index=True)
+    version = models.CharField(max_length=40)
+    source = models.CharField(max_length=24, choices=SOURCES, default="registration")
+    document_url = models.CharField(max_length=255)
+    text_snapshot = models.TextField()
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True)
+    language = models.CharField(max_length=10, blank=True)
+    session_key = models.CharField(max_length=64, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    granted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-granted_at", "-id"]
+        indexes = [
+            models.Index(
+                fields=["user", "consent_type", "-granted_at"],
+                name="user_consent_lookup_idx",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user_id}:{self.consent_type}:{self.version}"
+
+
 class UserRole(models.Model):
     ROLE_CHOICES = UserProfile.ROLE_CHOICES
     OPERATOR_ROLE_CHOICES = UserProfile.OPERATOR_ROLE_CHOICES

@@ -293,6 +293,7 @@ def test_gdpr_export_returns_json(client, user):
     assert r["Content-Type"] == "application/json"
     assert b'"user"' in r.content
     assert user.username.encode() in r.content
+    assert b'"consents"' in r.content
 
 
 def test_gdpr_delete_requires_confirm(client, user):
@@ -302,6 +303,16 @@ def test_gdpr_delete_requires_confirm(client, user):
 
 
 def test_gdpr_delete_anonymizes(client, user):
+    from marketplace.models import UserConsent
+
+    consent = UserConsent.objects.create(
+        user=user,
+        consent_type="personal_data",
+        version="PD-TEST",
+        source="registration",
+        document_url="/personal-data-consent/",
+        text_snapshot="test consent",
+    )
     client.force_login(user)
     r = client.post("/api/me/delete/", {"confirm": "DELETE"})
     assert r.status_code == 200
@@ -309,3 +320,5 @@ def test_gdpr_delete_anonymizes(client, user):
     assert user.is_active is False
     assert user.username.startswith("deleted-")
     assert user.email.endswith("@deleted.invalid")
+    consent.refresh_from_db()
+    assert consent.revoked_at is not None

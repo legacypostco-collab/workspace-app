@@ -43,6 +43,7 @@ def export_my_data(request):
         Order,
         OrderClaim,
         Quote,
+        UserConsent,
     )
 
     user = request.user
@@ -96,6 +97,11 @@ def export_my_data(request):
         "conversations": [_serial(c, ["id", "title", "category", "role",
                                         "created_at", "updated_at"])
                           for c in Conversation.objects.filter(user=user)[:200]],
+        "consents": [_serial(c, ["consent_type", "version", "source",
+                                   "document_url", "text_snapshot", "ip_address",
+                                   "user_agent", "language", "granted_at",
+                                   "revoked_at"])
+                     for c in UserConsent.objects.filter(user=user)[:100]],
     }
 
     # DjangoJSONEncoder обрабатывает Decimal/datetime/UUID/Promise.
@@ -169,6 +175,13 @@ def delete_my_account(request):
     )
 
     now = timezone.now()
+    from marketplace.models import UserConsent
+
+    UserConsent.objects.filter(
+        user=user,
+        consent_type="personal_data",
+        revoked_at__isnull=True,
+    ).update(revoked_at=now)
     ApiToken.objects.filter(user=user, revoked_at__isnull=True).update(
         revoked_at=now
     )
