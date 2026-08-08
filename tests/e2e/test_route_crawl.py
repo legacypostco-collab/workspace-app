@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from urllib.parse import urljoin, urlparse
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 PUBLIC_PAGES = (
     "/",
@@ -91,3 +91,17 @@ def test_public_pages_have_no_broken_internal_links(page: Page, base_url: str):
             failures.append(f"{response.status} {url}")
 
     assert not failures, "broken public links:\n" + "\n".join(failures)
+
+
+def test_legal_theme_is_shared_with_landing(page: Page, base_url: str):
+    page.goto(f"{base_url}/privacy/", wait_until="domcontentloaded")
+    page.evaluate("localStorage.setItem('cf_dark_mode', '0')")
+    page.reload(wait_until="domcontentloaded")
+    expect(page.locator("html")).not_to_have_class("dark-mode")
+
+    page.locator(".legal-theme").click()
+    expect(page.locator("html")).to_have_class("dark-mode")
+    assert page.evaluate("localStorage.getItem('cf_dark_mode')") == "1"
+
+    page.goto(f"{base_url}/landing/", wait_until="domcontentloaded")
+    expect(page.locator("body")).to_have_class("dark-mode")
