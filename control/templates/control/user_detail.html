@@ -1,0 +1,20 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <a class="back-link" href="{% url 'control:users' %}">← Вернуться к пользователям</a>
+  <header class="person-hero">
+    <span class="person-avatar">{{ target|initials }}</span>
+    <div><span class="control-eyebrow">Учётная запись №{{ target.id }}</span><h1>{{ target.get_full_name|default:target.username }}</h1><p>{{ target.profile.company_name|default:"Компания не указана" }} · {{ target.email|default:"Почта не указана" }}</p></div>
+    <div class="person-state"><span class="status status--{% if target.is_active %}success{% else %}danger{% endif %}">{% if target.is_active %}Активен{% else %}Заблокирован{% endif %}</span><small>Последний вход<br>{{ target.last_login|date:"d.m.Y H:i"|default:"Не входил" }}</small></div>
+  </header>
+  <div class="detail-layout">
+    <div class="detail-main">
+      <section class="control-panel detail-section"><header class="panel-head"><div><span class="control-eyebrow">Профиль</span><h2>Данные и права</h2></div></header><dl class="data-grid"><div><dt>Логин</dt><dd class="mono">{{ target.username }}</dd></div><div><dt>Основная роль</dt><dd>{% if target.is_superuser %}Администратор{% else %}{{ target.profile.role|role_label }}{% endif %}</dd></div><div><dt>Выданные роли</dt><dd>{% for role in allowed_roles %}<span class="soft-chip">{{ role|role_label }}</span>{% endfor %}</dd></div><div><dt>Страна и налоговый номер</dt><dd>{{ target.profile.country|default:"—" }} · {{ target.profile.tax_id|default:"—" }}</dd></div><div><dt>Контакт</dt><dd>{{ target.profile.contact_name|default:target.get_full_name|default:"—" }}<small>{{ target.profile.phone_e164 }}</small></dd></div><div><dt>Публичный номер</dt><dd class="mono">{% if target.profile.role == 'seller' %}Партнёр №{{ target.profile.partner_public_code }}{% else %}Заказчик №{{ target.profile.customer_public_code }}{% endif %}</dd></div></dl></section>
+      <section class="detail-band"><header class="panel-head"><div><span class="control-eyebrow">Активность</span><h2>Последние заказы</h2></div></header><div class="document-grid">{% for order in target_orders %}<a href="{% url 'control:order_detail' order.id %}"><span class="document-icon"><svg><use href="#i-package"/></svg></span><div><strong>Заказ №{{ order.id }}</strong><small>{{ order.get_status_display }} · {{ order.created_at|date:"d.m.Y" }}</small></div><b>{{ order.total_amount|floatformat:2 }} USD</b></a>{% empty %}<p class="quiet-note">Заказов пока нет.</p>{% endfor %}</div></section>
+    </div>
+    <aside class="detail-aside">
+      <section class="action-card"><span class="action-card-icon"><svg><use href="#i-users"/></svg></span><h2>Управление доступом</h2><p>Блокировка завершит новые сеансы пользователя. История заказов и документы сохранятся.</p>{% if request.user.is_superuser and not target.is_superuser %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="{% if target.is_active %}block{% else %}unblock{% endif %}"><button class="button {% if target.is_active %}button--danger{% else %}button--primary{% endif %} button--wide" type="submit">{% if target.is_active %}Заблокировать доступ{% else %}Восстановить доступ{% endif %}</button></form>{% else %}<span class="quiet-note">Изменение недоступно для вашей роли.</span>{% endif %}</section>
+      <section class="control-panel compact-panel"><span class="control-eyebrow">Уведомления</span>{% for notification in target_notifications %}<div class="note-row"><strong>{{ notification.title }}</strong><small>{{ notification.created_at|date:"d.m.Y H:i" }}</small></div>{% empty %}<p class="quiet-note">Уведомлений нет.</p>{% endfor %}</section>
+    </aside>
+  </div>
+{% endblock %}

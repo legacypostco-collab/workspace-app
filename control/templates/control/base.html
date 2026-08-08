@@ -1,0 +1,100 @@
+{% load static control_tags %}
+<!doctype html>
+<html lang="ru" data-control-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#171717">
+  <title>{{ page_title }} · Consolidator Parts</title>
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+  <link rel="stylesheet" href="{% static 'control/css/control.css' %}">
+  <script src="{% static 'control/js/control.js' %}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#control-main">К содержанию</a>
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-package" viewBox="0 0 24 24"><path d="m4 7 8-4 8 4-8 4-8-4Z"/><path d="M4 7v10l8 4 8-4V7M12 11v10"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 6h15a2 2 0 0 1 2 2v10H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h13"/><path d="M16 11h5v4h-5a2 2 0 0 1 0-4Z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M17 15a6 6 0 0 1 5 6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z"/><path d="m9 12 2 2 4-5"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 4h16v13H8l-4 4V4Z"/><path d="M8 9h8M8 13h5"/></symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5v-3l-2-.7-.7-1.7.9-1.9-2.1-2.1-1.9.9-1.7-.7-.7-2h-3l-.7 2-1.7.7-1.9-.9-2.1 2.1.9 1.9-.7 1.7-2 .7v3l2 .7.7 1.7-.9 1.9 2.1 2.1 1.9-.9 1.7.7.7 2h3l.7-2 1.7-.7 1.9.9 2.1-2.1-.9-1.9.7-1.7 2-.7Z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 13v6H5V6h6"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.3A9 9 0 0 1 8.7 4a9 9 0 1 0 11.3 11.3Z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5M12 18h.01"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6V3Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></symbol>
+  </svg>
+
+  <div class="control-shell">
+    <aside class="control-sidebar" data-sidebar aria-label="Боковая навигация">
+      <a class="control-brand" href="{% url 'control:dashboard' %}" aria-label="Рабочая сводка">
+        <img src="{% static 'brand/logo-full-white.svg' %}" alt="Consolidator Parts" width="184" height="58">
+        <span>операционный центр</span>
+      </a>
+      <nav class="control-nav" aria-label="Разделы кабинета">
+        <span class="control-nav-label">Рабочее пространство</span>
+        {% for item in control_navigation %}
+          <a href="{{ item.url }}" class="control-nav-link{% if item.key == active_key %} is-active{% endif %}">
+            <svg aria-hidden="true"><use href="#i-{{ item.icon }}"/></svg>
+            <span>{{ item.label }}</span>
+            {% if item.key == 'finance' and unread_notifications %}<b>{{ unread_notifications }}</b>{% endif %}
+          </a>
+        {% endfor %}
+      </nav>
+      <div class="control-side-foot">
+        <div class="control-profile">
+          <span>{{ request.user|initials }}</span>
+          <div><strong>{{ request.user.get_full_name|default:request.user.username }}</strong><small>{{ control_role_label }}</small></div>
+        </div>
+        <a class="control-signout" href="{% url 'logout' %}" title="Выйти" aria-label="Выйти"><svg><use href="#i-external"/></svg></a>
+      </div>
+    </aside>
+
+    <div class="control-workspace">
+      <header class="control-topbar">
+        <button class="icon-button control-menu-button" type="button" data-sidebar-toggle aria-label="Открыть меню"><svg><use href="#i-menu"/></svg></button>
+        <form class="control-global-search" action="{% url 'control:search' %}" method="get">
+          <svg aria-hidden="true"><use href="#i-search"/></svg>
+          <input type="search" name="q" value="{{ query|default:'' }}" placeholder="Заказ, счёт, компания или артикул" autocomplete="off">
+          <kbd>⌘ K</kbd>
+        </form>
+        <div class="control-top-actions">
+          <a class="icon-button" href="/chat/?new=1" title="Открыть чат" aria-label="Открыть чат"><svg><use href="#i-message"/></svg></a>
+          <a class="icon-button control-bell" href="/chat/?new=1&run=notifications" title="Уведомления" aria-label="Уведомления"><svg><use href="#i-bell"/></svg>{% if unread_notifications %}<span>{{ unread_notifications }}</span>{% endif %}</a>
+          <button class="icon-button" type="button" data-theme-toggle title="Сменить тему" aria-label="Сменить тему"><svg class="theme-light-icon"><use href="#i-moon"/></svg><svg class="theme-dark-icon"><use href="#i-sun"/></svg></button>
+          <a class="control-site-link" href="/" target="_blank" rel="noopener">Открыть сайт <svg><use href="#i-external"/></svg></a>
+        </div>
+      </header>
+
+      {% if messages %}
+        <div class="control-messages" aria-live="polite">
+          {% for message in messages %}
+            <div class="control-message control-message--{{ message.tags|default:'info' }}">
+              <svg><use href="{% if message.tags == 'error' %}#i-alert{% else %}#i-check{% endif %}"/></svg>
+              <span>{{ message }}</span>
+              <button type="button" data-message-close aria-label="Закрыть"><svg><use href="#i-close"/></svg></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <main class="control-main" id="control-main">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <button class="control-backdrop" type="button" data-sidebar-backdrop aria-label="Закрыть меню"></button>
+  </div>
+</body>
+</html>

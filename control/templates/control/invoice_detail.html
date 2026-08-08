@@ -1,0 +1,61 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <a class="back-link" href="{% url 'control:finance' %}">← Вернуться к финансам</a>
+  <header class="detail-hero detail-hero--finance">
+    <div><span class="control-eyebrow">{{ invoice.get_direction_display }}</span><h1>{{ invoice.number }}</h1><p>Заказ №{{ invoice.order_id }} · {{ invoice.get_stage_display }} · срок {{ invoice.due_date|date:"d.m.Y" }}</p></div>
+    <div class="detail-amount"><span>Остаток</span><strong>{{ invoice.outstanding_amount|floatformat:2 }}</strong><small>{{ invoice.currency }}</small><span class="status status--{{ invoice.status|status_tone }}">{{ invoice.get_status_display }}</span></div>
+  </header>
+
+  <div class="detail-layout">
+    <div class="detail-main">
+      <section class="control-panel detail-section">
+        <header class="panel-head"><div><span class="control-eyebrow">Основание</span><h2>Счёт и договор</h2></div></header>
+        <dl class="data-grid">
+          <div><dt>Заказ</dt><dd><a href="{% url 'control:order_detail' invoice.order_id %}">№{{ invoice.order_id }} · {{ invoice.order.customer_name }}</a></dd></div>
+          <div><dt>Договор</dt><dd>{{ invoice.contract.number }}</dd></div>
+          <div><dt>Сумма счёта</dt><dd>{{ invoice.amount|floatformat:2 }} {{ invoice.currency }}</dd></div>
+          <div><dt>Подтверждено</dt><dd>{{ invoice.paid_amount|floatformat:2 }} {{ invoice.currency }}</dd></div>
+          <div><dt>Код назначения</dt><dd class="mono">{{ invoice.reference_code }}</dd></div>
+          <div><dt>Контрагент</dt><dd>{% if invoice.direction == 'receivable' %}{{ invoice.order.customer_name }}{% else %}Партнёр №{{ invoice.seller.profile.partner_public_code|default:invoice.seller_id }}{% endif %}</dd></div>
+        </dl>
+        <div class="document-actions">
+          {% if invoice.document %}<a class="button button--secondary" href="/api/assistant/orders/{{ invoice.order_id }}/documents/{{ invoice.document_id }}/file/"><svg><use href="#i-file"/></svg>Скачать счёт</a>{% endif %}
+          <a class="button button--secondary" href="/chat/?new=1&run=list_order_documents&order_id={{ invoice.order_id }}"><svg><use href="#i-message"/></svg>Документы сделки</a>
+        </div>
+      </section>
+
+      <section class="control-panel detail-section">
+        <header class="panel-head"><div><span class="control-eyebrow">Банковский след</span><h2>Проводки</h2></div></header>
+        <div class="payment-history">
+          {% for payment in payments %}
+            <article>
+              <span class="payment-history-icon"><svg><use href="#i-check"/></svg></span>
+              <div><strong>{{ payment.bank_reference }}</strong><p>{{ payment.amount|floatformat:2 }} {{ payment.currency }} · {{ payment.paid_at|date:"d.m.Y H:i" }}</p><small>Подтвердил: {{ payment.confirmed_by.get_full_name|default:payment.confirmed_by.username }}{% if payment.note %} · {{ payment.note }}{% endif %}</small>{% if payment.status == 'reversed' %}<em>Отменено: {{ payment.reversal_reason }}</em>{% endif %}</div>
+              <span class="status status--{{ payment.status|status_tone }}">{{ payment.get_status_display }}</span>
+              {% if payment.status == 'confirmed' %}<button class="text-button text-button--danger" type="button" data-reveal-form="reverse-{{ payment.id }}">Отменить</button>{% endif %}
+            </article>
+            {% if payment.status == 'confirmed' %}<form class="inline-confirm" id="reverse-{{ payment.id }}" method="post" hidden>{% csrf_token %}<input type="hidden" name="action" value="reverse"><input type="hidden" name="payment_id" value="{{ payment.id }}"><label><span>Причина отмены</span><input type="text" name="reason" minlength="5" maxlength="400" required placeholder="Укажите причину обратной проводки"></label><button class="button button--danger" type="submit">Отменить проводку</button></form>{% endif %}
+          {% empty %}{% include "control/partials/empty.html" with icon="wallet" title="Проводок ещё нет" text="После проверки банковского поступления операция появится здесь." %}{% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <aside class="detail-aside">
+      {% if invoice.status == 'issued' or invoice.status == 'awaiting_confirmation' or invoice.status == 'partially_paid' or invoice.status == 'overdue' %}
+        <form class="action-card action-card--accent" method="post">
+          {% csrf_token %}<input type="hidden" name="action" value="confirm">
+          <header><span class="action-card-icon"><svg><use href="#i-wallet"/></svg></span><div><span class="control-eyebrow">Ручная сверка</span><h2>Подтвердить платёж</h2></div></header>
+          <p>Сначала сверьте поступление с банковской выпиской. Сообщение покупателя само по себе не подтверждает оплату.</p>
+          <label><span>Полученная сумма</span><div class="input-suffix"><input type="number" name="amount" min="0.01" max="{{ invoice.outstanding_amount }}" step="0.01" value="{{ invoice.outstanding_amount }}" required><b>{{ invoice.currency }}</b></div></label>
+          <label><span>Номер операции</span><input type="text" name="bank_reference" minlength="4" maxlength="160" required placeholder="Платёжное поручение или номер банка"></label>
+          <label><span>Дата и время</span><input type="datetime-local" name="paid_at" value="{{ now_local }}" required></label>
+          <label><span>Комментарий</span><textarea name="note" maxlength="400" rows="3" placeholder="Необязательно"></textarea></label>
+          <button class="button button--inverse button--wide" type="submit"><svg><use href="#i-check"/></svg>Подтвердить платёж</button>
+        </form>
+      {% else %}
+        <section class="action-card"><span class="action-card-icon"><svg><use href="#i-check"/></svg></span><h2>Действий не требуется</h2><p>Состояние этого счёта не допускает новую банковскую проводку.</p></section>
+      {% endif %}
+    </aside>
+  </div>
+{% endblock %}

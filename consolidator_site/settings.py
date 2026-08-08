@@ -154,6 +154,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "django.contrib.humanize",
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
@@ -168,6 +169,7 @@ INSTALLED_APPS = [
     "projections",
     "dashboard",
     "marketplace",
+    "control",
 ]
 
 # ── django-axes: brute-force protection ────────────────────────────

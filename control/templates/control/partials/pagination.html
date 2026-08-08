@@ -1,0 +1,13 @@
+{% load control_tags %}
+{% if page.paginator.num_pages > 1 %}
+  <nav class="control-pagination" aria-label="Страницы">
+    <span>Показано {{ page.start_index }}–{{ page.end_index }} из {{ page.paginator.count }}</span>
+    <div>
+      {% if page.has_previous %}<a href="?{% query_replace page=page.previous_page_number %}" aria-label="Предыдущая страница">←</a>{% endif %}
+      {% for number in page.paginator.page_range %}
+        {% if number == page.number %}<strong>{{ number }}</strong>{% elif number >= page.number|add:'-2' and number <= page.number|add:'2' %}<a href="?{% query_replace page=number %}">{{ number }}</a>{% endif %}
+      {% endfor %}
+      {% if page.has_next %}<a href="?{% query_replace page=page.next_page_number %}" aria-label="Следующая страница">→</a>{% endif %}
+    </div>
+  </nav>
+{% endif %}

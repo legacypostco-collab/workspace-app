@@ -1,0 +1,42 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <a class="back-link" href="{% url 'control:orders' %}">← Вернуться к заказам</a>
+  <header class="detail-hero">
+    <div><span class="control-eyebrow">Заказ №{{ order.id }}</span><h1>{{ order.customer_name }}</h1><p>{{ order.items.count }} позиций · {{ order.get_incoterm_display }} · {{ order.get_shipping_mode_display }}</p></div>
+    <div class="detail-state"><span class="status status--{{ order.status|status_tone }}">{{ order.get_status_display }}</span><strong>{{ order.total_amount|floatformat:2 }} USD</strong><small class="tone-{{ order.sla_status|status_tone }}">{{ order.get_sla_status_display }}{% if order.sla_breaches_count %} · {{ order.sla_breaches_count }} наруш.{% endif %}</small></div>
+  </header>
+  <nav class="anchor-nav" aria-label="Разделы заказа"><a href="#summary">Сводка</a><a href="#items">Позиции</a><a href="#settlements">Расчёты</a><a href="#documents">Документы</a><a href="#events">История</a></nav>
+
+  <section class="detail-band" id="summary">
+    <header class="panel-head"><div><span class="control-eyebrow">Сводка</span><h2>Участники и исполнение</h2></div><a href="/chat/?new=1&run=get_order_detail&order_id={{ order.id }}">Открыть в чате <span>→</span></a></header>
+    <dl class="data-grid data-grid--four">
+      <div><dt>Заказчик</dt><dd>{{ order.customer_name }}<small>{{ order.customer_email }} · {{ order.customer_phone }}</small></dd></div>
+      <div><dt>Оператор</dt><dd>{% if order.assigned_operator %}{{ order.assigned_operator.get_full_name|default:order.assigned_operator.username }}{% else %}Не назначен{% endif %}<small>{{ order.get_kam_handoff_display }}</small></dd></div>
+      <div><dt>Доставка</dt><dd>{{ order.get_shipping_mode_display }} · {{ order.get_incoterm_display }}<small>{{ order.delivery_address }}</small></dd></div>
+      <div><dt>Отслеживание</dt><dd>{{ order.tracking_number|default:"Нет номера" }}<small>{{ order.carrier_name|default:"Перевозчик не назначен" }}</small></dd></div>
+    </dl>
+  </section>
+
+  <section class="control-panel detail-section" id="items">
+    <header class="panel-head"><div><span class="control-eyebrow">Состав заказа</span><h2>Позиции</h2></div></header>
+    <div class="table-wrap"><table class="control-table"><thead><tr><th>Артикул</th><th>Наименование</th><th>Партнёр</th><th>Количество</th><th>Цена</th><th>Состояние</th></tr></thead><tbody>{% for item in order_items %}<tr><td class="mono">{{ item.part.oem_number }}</td><td>{{ item.part.title_ru|default:item.part.title }}<small>{{ item.part.brand.name|default:"Без бренда" }}</small></td><td>Партнёр №{{ item.part.seller.profile.partner_public_code|default:item.part.seller_id }}</td><td>{{ item.quantity }}</td><td class="money">{{ item.unit_price|floatformat:2 }} {{ item.part.currency }}</td><td><span class="status status--{{ item.effective_status|status_tone }}">{{ item.effective_status|order_status_label }}</span></td></tr>{% empty %}<tr><td colspan="6">Нет позиций</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+
+  <section class="detail-band" id="settlements">
+    <header class="panel-head"><div><span class="control-eyebrow">Документы и деньги</span><h2>Расчёты</h2></div></header>
+    <div class="document-grid">
+      {% for invoice in invoices %}<a href="{% url 'control:invoice_detail' invoice.id %}"><span class="document-icon"><svg><use href="#i-file"/></svg></span><div><strong>{{ invoice.number }}</strong><small>{{ invoice.get_direction_display }} · {{ invoice.get_stage_display }}</small></div><b>{{ invoice.amount|floatformat:2 }} {{ invoice.currency }}</b><span class="status status--{{ invoice.status|status_tone }}">{{ invoice.get_status_display }}</span></a>{% empty %}<p class="quiet-note">Расчётные документы ещё не сформированы.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="control-panel detail-section" id="documents">
+    <header class="panel-head"><div><span class="control-eyebrow">Файлы сделки</span><h2>Документы</h2></div></header>
+    <div class="document-list">{% for document in documents %}<a href="/api/assistant/orders/{{ order.id }}/documents/{{ document.id }}/file/"><span class="document-icon"><svg><use href="#i-file"/></svg></span><div><strong>{{ document.title }}</strong><small>{{ document.get_doc_type_display }} · {{ document.created_at|date:"d.m.Y H:i" }}</small></div><span>Скачать →</span></a>{% empty %}{% include "control/partials/empty.html" with icon="file" title="Документов нет" %}{% endfor %}</div>
+  </section>
+
+  <section class="activity-strip" id="events">
+    <header class="panel-head"><div><span class="control-eyebrow">Неизменяемая последовательность</span><h2>История заказа</h2></div></header>
+    <div class="timeline">{% for event in order_events %}<article><i></i><time>{{ event.created_at|date:"d.m.Y H:i" }}</time><div><strong>{{ event.event_type|event_label }}</strong><p>{% if event.actor %}{{ event.actor.get_full_name|default:event.actor.username }}{% else %}Система{% endif %}</p></div></article>{% empty %}<p class="quiet-note">Событий ещё нет.</p>{% endfor %}</div>
+  </section>
+{% endblock %}

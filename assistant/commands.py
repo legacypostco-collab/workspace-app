@@ -2,7 +2,6 @@
 
 from django.utils.translation import gettext as _
 
-
 _ROLE_COMMANDS = {
     "guest": [
         ("🔍", "Найти запчасть", "search_parts", {}),
@@ -31,6 +30,7 @@ _ROLE_COMMANDS = {
         ("🎧", "Поддержка", "support_home", {}),
     ],
     "operator": [
+        ("🎛", "Операционный центр", "open_url", {"_url": "/control/"}),
         ("🎛", "Сводка", "op_dashboard", {}),
         ("📋", "Очередь заказов", "op_queue", {}),
         ("⏱", "Нарушения сроков", "op_sla_breach", {}),
@@ -44,6 +44,7 @@ _ROLE_COMMANDS = {
         ("📊", "Аналитика", "op_analytics_hub", {}),
     ],
     "operator_manager": [
+        ("🎛", "Операционный центр", "open_url", {"_url": "/control/"}),
         ("👥", "Заказчики", "seller_customers", {}),
         ("📋", "Мои сделки", "kam_deals", {}),
         ("💰", "Начисления", "my_accruals", {}),
@@ -53,24 +54,28 @@ _ROLE_COMMANDS = {
         ("🎧", "Поддержка", "support_home", {}),
     ],
     "operator_logist": [
+        ("🎛", "Операционный центр", "open_url", {"_url": "/control/"}),
         ("🚚", "Логистика", "op_logistics_stats", {}),
         ("🎛", "Сводка", "op_dashboard", {}),
         ("📋", "Открытая очередь", "op_queue", {"filter": "open"}),
         ("⏱", "Нарушения сроков", "op_sla_breach", {}),
     ],
     "operator_customs": [
+        ("🎛", "Операционный центр", "open_url", {"_url": "/control/"}),
         ("🛂", "Сводка таможни", "op_customs_dashboard", {}),
         ("🔎", "ТН ВЭД", "op_hs_lookup", {}),
         ("🚫", "Санкции", "op_sanctions_check", {}),
         ("📋", "На таможне", "op_queue", {"filter": "open"}),
     ],
     "operator_payment": [
+        ("🎛", "Операционный центр", "open_url", {"_url": "/control/finance/"}),
         ("🧾", "Очередь платежей", "settlement_finance_queue", {}),
         ("📊", "Отчёт по расчётам", "settlement_report", {}),
         ("⏳", "Ожидают первый платёж", "op_queue", {"filter": "awaiting_reserve"}),
         ("↩", "Возвраты", "op_queue", {"filter": "refund"}),
     ],
     "admin": [
+        ("🎛", "Операционный центр", "open_url", {"_url": "/control/"}),
         ("🛡", "Сводка платформы", "admin_dashboard", {}),
         ("🧾", "Счета и платежи", "settlement_finance_queue", {}),
         ("🌐", "Слепок рынка", "admin_market_twin", {}),
@@ -159,7 +164,4 @@ def suggestions_for_role(role: str, *, anonymous: bool = False) -> list[str]:
 
 
 def commands_for_all_roles() -> dict[str, list[dict]]:
-    return {
-        role: commands_for_role(role, anonymous=(role == "guest"))
-        for role in _ROLE_COMMANDS
-    }
+    return {role: commands_for_role(role, anonymous=(role == "guest")) for role in _ROLE_COMMANDS}

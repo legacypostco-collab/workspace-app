@@ -1,0 +1,35 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <header class="control-page-head">
+    <div><span class="control-eyebrow">Исполнение и контроль сроков</span><h1>Заказы</h1><p>Полный цикл сделки: оплата, производство, перевозка, таможня, выдача и рекламации.</p></div>
+  </header>
+  <section class="control-panel resource-browser">
+    <form class="resource-toolbar" method="get">
+      <label class="filter-search"><svg><use href="#i-search"/></svg><input type="search" name="q" value="{{ query }}" placeholder="Номер, заказчик или трек-номер"></label>
+      <label><span>Состояние</span><select name="status"><option value="active"{% if status_filter == 'active' %} selected{% endif %}>В работе</option><option value="">Все</option>{% for value,label in status_choices %}<option value="{{ value }}"{% if status_filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label><span>Контроль срока</span><select name="sla"><option value="">Любой</option><option value="on_track"{% if sla_filter == 'on_track' %} selected{% endif %}>В норме</option><option value="at_risk"{% if sla_filter == 'at_risk' %} selected{% endif %}>Под угрозой</option><option value="breached"{% if sla_filter == 'breached' %} selected{% endif %}>Нарушен</option></select></label>
+      <button class="button button--primary" type="submit">Показать</button><a class="filter-reset" href="{% url 'control:orders' %}">Сбросить</a>
+    </form>
+    <div class="table-wrap">
+      <table class="control-table">
+        <thead><tr><th>Заказ</th><th>Заказчик</th><th>Сумма</th><th>Исполнение</th><th>Оплата</th><th>Ответственный</th><th>Создан</th><th></th></tr></thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td><a class="table-primary" href="{% url 'control:order_detail' order.id %}">№{{ order.id }}</a><small>{{ order.items_count }} поз.</small></td>
+              <td>{{ order.customer_name }}<small>{{ order.customer_email }}</small></td>
+              <td class="money">{{ order.total_amount|floatformat:2 }} USD<small>{{ order.get_incoterm_display }}</small></td>
+              <td><span class="status status--{{ order.status|status_tone }}">{{ order.get_status_display }}</span><small class="tone-{{ order.sla_status|status_tone }}">{{ order.get_sla_status_display }}</small></td>
+              <td>{{ order.get_payment_status_display }}</td>
+              <td>{% if order.assigned_operator %}{{ order.assigned_operator.get_full_name|default:order.assigned_operator.username }}{% else %}<span class="muted">Не назначен</span>{% endif %}<small>{% if order.assigned_kam %}Менеджер: {{ order.assigned_kam.get_full_name|default:order.assigned_kam.username }}{% endif %}</small></td>
+              <td>{{ order.created_at|date:"d.m.Y" }}<small>{{ order.created_at|date:"H:i" }}</small></td>
+              <td><a class="row-action" href="{% url 'control:order_detail' order.id %}" aria-label="Открыть заказ"><svg><use href="#i-arrow"/></svg></a></td>
+            </tr>
+          {% empty %}<tr><td colspan="8">{% include "control/partials/empty.html" with icon="package" title="Заказы не найдены" %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "control/partials/pagination.html" with page=orders %}
+  </section>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <header class="control-page-head"><div><span class="control-eyebrow">По всей платформе</span><h1>Поиск</h1><p>Заказы, счета, пользователи, заявки и позиции каталога в одном месте.</p></div></header>
+  <form class="search-hero" method="get"><svg><use href="#i-search"/></svg><input type="search" name="q" value="{{ query }}" placeholder="Введите номер, название компании или артикул" autofocus><button class="button button--primary" type="submit">Найти</button></form>
+  {% if query %}
+    <div class="search-results">
+      {% if results.orders %}<section><header><h2>Заказы</h2><span>{{ results.orders|length }}</span></header>{% for item in results.orders %}<a href="{% url 'control:order_detail' item.id %}"><svg><use href="#i-package"/></svg><div><strong>Заказ №{{ item.id }}</strong><small>{{ item.customer_name }} · {{ item.get_status_display }}</small></div><span>→</span></a>{% endfor %}</section>{% endif %}
+      {% if results.invoices %}<section><header><h2>Счета</h2><span>{{ results.invoices|length }}</span></header>{% for item in results.invoices %}<a href="{% url 'control:invoice_detail' item.id %}"><svg><use href="#i-wallet"/></svg><div><strong>{{ item.number }}</strong><small>Заказ №{{ item.order_id }} · {{ item.get_status_display }}</small></div><span>→</span></a>{% endfor %}</section>{% endif %}
+      {% if results.users %}<section><header><h2>Пользователи</h2><span>{{ results.users|length }}</span></header>{% for item in results.users %}<a href="{% url 'control:user_detail' item.id %}"><svg><use href="#i-users"/></svg><div><strong>{{ item.get_full_name|default:item.username }}</strong><small>{{ item.profile.company_name|default:item.email }}</small></div><span>→</span></a>{% endfor %}</section>{% endif %}
+      {% if results.parts %}<section><header><h2>Каталог</h2><span>{{ results.parts|length }}</span></header>{% for item in results.parts %}<a href="{% url 'control:catalog' %}?q={{ item.oem_number|urlencode }}"><svg><use href="#i-layers"/></svg><div><strong>{{ item.oem_number }}</strong><small>{{ item.title }}{% if item.brand %} · {{ item.brand.name }}{% endif %}</small></div><span>→</span></a>{% endfor %}</section>{% endif %}
+      {% if results.rfqs %}<section><header><h2>Заявки</h2><span>{{ results.rfqs|length }}</span></header>{% for item in results.rfqs %}<a href="/chat/?new=1&run=get_rfq_status&rfq_id={{ item.id }}"><svg><use href="#i-file"/></svg><div><strong>Заявка №{{ item.id }}</strong><small>{{ item.company_name|default:item.customer_name }} · {{ item.status|rfq_status_label }}</small></div><span>→</span></a>{% endfor %}</section>{% endif %}
+      {% if not results.orders and not results.invoices and not results.users and not results.parts and not results.rfqs %}{% include "control/partials/empty.html" with title="Совпадений нет" text="Проверьте номер или попробуйте часть названия." %}{% endif %}
+    </div>
+  {% endif %}
+{% endblock %}

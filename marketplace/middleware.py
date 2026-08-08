@@ -16,10 +16,10 @@ that Django's LocaleMiddleware already resolved.
 Must run AFTER `django.middleware.locale.LocaleMiddleware` and AFTER
 `AuthenticationMiddleware` so `request.user` is populated.
 """
-from django.conf import settings
 import json
 
-from django.http import JsonResponse, HttpResponseRedirect
+from django.conf import settings
+from django.http import HttpResponseRedirect, JsonResponse
 from django.utils import translation
 
 # ────────────────────────────────────────────────────────────────────
@@ -193,6 +193,11 @@ class OperatorViewAsMiddleware:
         return self.get_response(request)
 
     def _maybe_swap_user(self, request):
+        # Операционный кабинет всегда работает от имени вошедшего сотрудника.
+        # Режим просмотра поставщика не должен лишать оператора его полномочий
+        # или подменять автора финансового/административного действия.
+        if (request.path_info or "").startswith("/control/"):
+            return
         sess = getattr(request, "session", None)
         if sess is None:
             return

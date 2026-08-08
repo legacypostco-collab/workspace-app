@@ -1,0 +1,53 @@
+{% extends "control/base.html" %}
+{% load humanize control_tags %}
+{% block content %}
+  <header class="control-page-head">
+    <div><span class="control-eyebrow">Расчётный контур</span><h1>Финансы</h1><p>Входящие платежи покупателей, выплаты поставщикам и полный след подтверждений.</p></div>
+    <div class="control-page-actions"><a class="button button--secondary" href="/api/assistant/settlements/report.csv"><svg><use href="#i-file"/></svg>Скачать реестр</a></div>
+  </header>
+
+  <section class="mini-metrics">
+    <div><span>Ожидаем от покупателей</span><div class="money-lines">{% for total in incoming_waiting_totals %}<strong>{{ total.amount|floatformat:2 }} <em>{{ total.currency }}</em></strong>{% empty %}<strong>0,00</strong>{% endfor %}</div></div>
+    <div><span>К выплате поставщикам</span><div class="money-lines">{% for total in outgoing_waiting_totals %}<strong>{{ total.amount|floatformat:2 }} <em>{{ total.currency }}</em></strong>{% empty %}<strong>0,00</strong>{% endfor %}</div></div>
+    <div class="mini-metric--accent"><span>Подтверждено за 30 дней</span><div class="money-lines">{% for total in confirmed_month_totals %}<strong>{{ total.amount|floatformat:2 }} <em>{{ total.currency }}</em></strong>{% empty %}<strong>0,00</strong>{% endfor %}</div></div>
+  </section>
+
+  <section class="control-panel resource-browser">
+    <form class="resource-toolbar" method="get">
+      <label class="filter-search"><svg><use href="#i-search"/></svg><input type="search" name="q" value="{{ query }}" placeholder="Номер счёта, заказа или плательщик"></label>
+      <label><span>Состояние</span><select name="status"><option value="attention"{% if status_filter == 'attention' %} selected{% endif %}>Требуют внимания</option><option value=""{% if not status_filter %} selected{% endif %}>Все</option><option value="issued"{% if status_filter == 'issued' %} selected{% endif %}>Выставлены</option><option value="awaiting_confirmation"{% if status_filter == 'awaiting_confirmation' %} selected{% endif %}>Сообщили об оплате</option><option value="partially_paid"{% if status_filter == 'partially_paid' %} selected{% endif %}>Частично оплачены</option><option value="paid"{% if status_filter == 'paid' %} selected{% endif %}>Оплачены</option><option value="overdue"{% if status_filter == 'overdue' %} selected{% endif %}>Просрочены</option></select></label>
+      <label><span>Направление</span><select name="direction"><option value="">Все</option><option value="receivable"{% if direction_filter == 'receivable' %} selected{% endif %}>От покупателей</option><option value="payable"{% if direction_filter == 'payable' %} selected{% endif %}>Поставщикам</option></select></label>
+      <button class="button button--primary" type="submit">Показать</button>
+      <a class="filter-reset" href="{% url 'control:finance' %}">Сбросить</a>
+    </form>
+    <div class="table-wrap">
+      <table class="control-table">
+        <thead><tr><th>Счёт</th><th>Заказ</th><th>Направление</th><th>Сумма</th><th>Оплачено</th><th>Срок</th><th>Состояние</th><th><span class="visually-hidden">Открыть</span></th></tr></thead>
+        <tbody>
+          {% for invoice in invoices %}
+            <tr>
+              <td><a class="table-primary" href="{% url 'control:invoice_detail' invoice.id %}">{{ invoice.number }}</a><small>{{ invoice.reference_code }}</small></td>
+              <td><a href="{% url 'control:order_detail' invoice.order_id %}">№{{ invoice.order_id }}</a><small>{{ invoice.order.customer_name }}</small></td>
+              <td>{{ invoice.get_direction_display }}<small>{{ invoice.get_stage_display }}</small></td>
+              <td class="money">{{ invoice.amount|floatformat:2 }} {{ invoice.currency }}</td>
+              <td class="money">{{ invoice.paid_amount|floatformat:2 }} {{ invoice.currency }}</td>
+              <td>{{ invoice.due_date|date:"d.m.Y" }}<small>{% if invoice.payer_reported_at %}Сообщено {{ invoice.payer_reported_at|date:"d.m · H:i" }}{% else %}Без сообщения{% endif %}</small></td>
+              <td><span class="status status--{{ invoice.status|status_tone }}">{{ invoice.get_status_display }}</span></td>
+              <td><a class="row-action" href="{% url 'control:invoice_detail' invoice.id %}" aria-label="Открыть"><svg><use href="#i-arrow"/></svg></a></td>
+            </tr>
+          {% empty %}<tr><td colspan="8">{% include "control/partials/empty.html" with icon="wallet" title="Счета не найдены" %}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "control/partials/pagination.html" with page=invoices %}
+  </section>
+
+  <section class="secondary-section">
+    <header class="panel-head"><div><span class="control-eyebrow">Недавние операции</span><h2>Подтверждённые проводки</h2></div></header>
+    <div class="transaction-list">
+      {% for payment in recent_payments %}
+        <a href="{% url 'control:invoice_detail' payment.invoice_id %}"><span class="transaction-mark transaction-mark--{{ payment.direction }}"><svg><use href="#i-wallet"/></svg></span><div><strong>{{ payment.bank_reference }}</strong><small>{{ payment.confirmed_by.get_full_name|default:payment.confirmed_by.username }} · {{ payment.paid_at|date:"d.m.Y H:i" }}</small></div><b>{{ payment.amount|floatformat:2 }} {{ payment.currency }}</b><span class="status status--{{ payment.status|status_tone }}">{{ payment.get_status_display }}</span></a>
+      {% empty %}<p class="quiet-note">Подтверждённых операций пока нет.</p>{% endfor %}
+    </div>
+  </section>
+{% endblock %}

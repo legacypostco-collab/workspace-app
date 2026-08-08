@@ -1,0 +1,10 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <header class="control-page-head"><div><span class="control-eyebrow">Безопасность и ответственность</span><h1>Журнал действий</h1><p>Кто, когда и из какого контура выполнил значимое действие. Записи не редактируются через рабочий кабинет.</p></div></header>
+  <section class="control-panel resource-browser">
+    <form class="resource-toolbar" method="get"><label class="filter-search"><svg><use href="#i-search"/></svg><input type="search" name="action" value="{{ action_filter }}" placeholder="Код действия"></label><button class="button button--primary" type="submit">Показать</button><a class="filter-reset" href="{% url 'control:audit' %}">Сбросить</a></form>
+    <div class="audit-list">{% for event in events %}<article><span class="audit-symbol"><svg><use href="#i-activity"/></svg></span><div><strong>{{ event.title|default:"Системное событие" }}</strong><p>{{ event.actor.get_full_name|default:event.actor.username|default:"Система" }} · {{ event.actor_role|role_label }}{% if event.ip %} · {{ event.ip }}{% endif %}</p></div><code>{{ event.meta.action|default:event.kind|activity_label }}</code><time>{{ event.created_at|date:"d.m.Y H:i:s" }}</time></article>{% empty %}{% include "control/partials/empty.html" with icon="activity" title="Записей нет" %}{% endfor %}</div>
+    {% include "control/partials/pagination.html" with page=events %}
+  </section>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <header class="control-page-head"><div><span class="control-eyebrow">Риски и качество данных</span><h1>Модерация</h1><p>Компании, рекламации и позиции каталога, по которым требуется решение сотрудника.</p></div></header>
+  <div class="moderation-layout">
+    <section class="moderation-lane moderation-lane--kyb">
+      <header><div><span class="control-eyebrow">Проверка компаний</span><h2>Поставщики</h2></div><strong>{{ verifications|length }}</strong></header>
+      <div>{% for item in verifications %}<article><span class="risk-mark risk-mark--{{ item.risk_indicator }}"></span><div><strong>{{ item.legal_name|default:item.user.profile.company_name|default:item.user.username }}</strong><small>{{ item.country|default:"Страна не указана" }} · {{ item.inn|default:item.vat_number|default:"Номер не указан" }}</small></div><span class="status status--{{ item.status|status_tone }}">{{ item.get_status_display }}</span><a href="/chat/?new=1&run=op_kyb_detail&user_id={{ item.user_id }}" aria-label="Открыть проверку"><svg><use href="#i-arrow"/></svg></a></article>{% empty %}<p class="quiet-note">Очередь проверки пуста.</p>{% endfor %}</div>
+    </section>
+    <section class="moderation-lane moderation-lane--claims">
+      <header><div><span class="control-eyebrow">Спорные ситуации</span><h2>Рекламации</h2></div><strong>{{ claims|length }}</strong></header>
+      <div>{% for claim in claims %}<article><span class="lane-icon"><svg><use href="#i-alert"/></svg></span><div><strong>{{ claim.title }}</strong><small>Заказ №{{ claim.order_id }} · {{ claim.get_kind_display }}</small></div><span class="status status--{{ claim.status|status_tone }}">{{ claim.get_status_display }}</span><a href="{% url 'control:order_detail' claim.order_id %}#documents" aria-label="Открыть рекламацию"><svg><use href="#i-arrow"/></svg></a></article>{% empty %}<p class="quiet-note">Открытых рекламаций нет.</p>{% endfor %}</div>
+    </section>
+  </div>
+  <section class="control-panel detail-section">
+    <header class="panel-head"><div><span class="control-eyebrow">Контроль каталога</span><h2>Скрытые и заблокированные позиции</h2></div><a href="{% url 'control:catalog' %}">Перейти в каталог <span>→</span></a></header>
+    <div class="compact-list">{% for part in inactive_parts %}<a class="compact-row" href="{% url 'control:catalog' %}?q={{ part.oem_number|urlencode }}"><span class="row-index mono">{{ part.oem_number }}</span><div class="row-main"><strong>{{ part.title_ru|default:part.title }}</strong><small>{{ part.brand.name|default:"Без бренда" }} · Партнёр №{{ part.seller.profile.partner_public_code|default:part.seller_id }}</small></div><span class="status status--danger">{% if part.is_active %}Заблокирована{% else %}Скрыта{% endif %}</span><svg><use href="#i-arrow"/></svg></a>{% empty %}<p class="quiet-note">Проблемных позиций нет.</p>{% endfor %}</div>
+  </section>
+{% endblock %}

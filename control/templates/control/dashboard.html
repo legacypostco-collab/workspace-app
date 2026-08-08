@@ -1,0 +1,79 @@
+{% extends "control/base.html" %}
+{% load humanize control_tags %}
+{% block content %}
+  <header class="control-page-head">
+    <div>
+      <span class="control-eyebrow">{% now "l, d E" %}</span>
+      <h1>Рабочая сводка</h1>
+      <p>Главные очереди и отклонения платформы. Здесь показывается только то, что требует контроля или решения.</p>
+    </div>
+    <div class="control-page-actions">
+      <a class="button button--secondary" href="{% url 'control:search' %}"><svg><use href="#i-search"/></svg>Найти</a>
+      <a class="button button--primary" href="/chat/?new=1"><svg><use href="#i-message"/></svg>Открыть чат</a>
+    </div>
+  </header>
+
+  <section class="metric-grid" aria-label="Основные показатели">
+    {% for card in cards %}
+      <a class="metric-card metric-card--{{ card.tone }}" href="{{ card.url }}">
+        <span class="metric-card-icon"><svg><use href="#i-{{ card.icon }}"/></svg></span>
+        <div><strong>{{ card.value|intcomma }}</strong><span>{{ card.label }}</span><small>{{ card.hint }}</small></div>
+        <svg class="metric-card-arrow"><use href="#i-arrow"/></svg>
+      </a>
+    {% endfor %}
+  </section>
+
+  <div class="dashboard-split">
+    <section class="control-panel queue-panel">
+      <header class="panel-head">
+        <div><span class="control-eyebrow">Исполнение</span><h2>Заказы под контролем</h2></div>
+        <a href="{% url 'control:orders' %}">Все заказы <span>→</span></a>
+      </header>
+      <div class="compact-list">
+        {% for order in attention_orders %}
+          <a href="{% url 'control:order_detail' order.id %}" class="compact-row">
+            <span class="row-index">{{ order.id }}</span>
+            <div class="row-main"><strong>{{ order.customer_name }}</strong><small>{{ order.get_status_display }} · {{ order.total_amount|floatformat:2 }} USD</small></div>
+            <span class="status status--{{ order.sla_status|status_tone }}">{{ order.get_sla_status_display }}</span>
+            <time>{{ order.created_at|date:"d.m.Y" }}</time>
+            <svg><use href="#i-arrow"/></svg>
+          </a>
+        {% empty %}
+          {% include "control/partials/empty.html" with icon="package" title="Нет активных заказов" text="Новые заказы появятся здесь автоматически." %}
+        {% endfor %}
+      </div>
+    </section>
+
+    <aside class="finance-pulse">
+      <header><span class="control-eyebrow">Расчёты</span><h2>Денежный поток</h2></header>
+      <div class="finance-pulse-values">
+        <div><span>К получению</span><div class="money-lines">{% for total in incoming_totals %}<strong>{{ total.amount|floatformat:2 }} <em>{{ total.currency }}</em></strong>{% empty %}<strong>0,00</strong>{% endfor %}</div><small>по открытым счетам</small></div>
+        <div><span>К выплате</span><div class="money-lines">{% for total in outgoing_totals %}<strong>{{ total.amount|floatformat:2 }} <em>{{ total.currency }}</em></strong>{% empty %}<strong>0,00</strong>{% endfor %}</div><small>поставщикам</small></div>
+      </div>
+      {% if payment_queue %}
+        <div class="finance-pulse-queue">
+          {% for invoice in payment_queue %}
+            <a href="{% url 'control:invoice_detail' invoice.id %}"><span>{{ invoice.number }}</span><strong>{{ invoice.outstanding_amount|floatformat:2 }} {{ invoice.currency }}</strong><small>{{ invoice.get_status_display }}</small></a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="quiet-note">Платежей, требующих немедленной проверки, нет.</p>
+      {% endif %}
+      {% if 'operator_payment' == control_role or 'admin' == control_role %}<a class="button button--inverse" href="{% url 'control:finance' %}">Открыть очередь <span>→</span></a>{% endif %}
+    </aside>
+  </div>
+
+  <section class="activity-strip">
+    <header class="panel-head"><div><span class="control-eyebrow">Последние события</span><h2>Что изменилось</h2></div>{% if control_role == 'admin' %}<a href="{% url 'control:audit' %}">Весь журнал <span>→</span></a>{% endif %}</header>
+    <div class="activity-grid">
+      {% for event in recent_events %}
+        <article>
+          <span class="activity-icon"><svg><use href="#i-activity"/></svg></span>
+          <div><strong>{{ event.event_type|event_label }}</strong><p>Заказ №{{ event.order_id }}{% if event.actor %} · {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}</p><time>{{ event.created_at|date:"d.m.Y · H:i" }}</time></div>
+        </article>
+      {% empty %}
+        <p class="quiet-note">Событий пока нет.</p>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

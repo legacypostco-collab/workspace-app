@@ -1,0 +1,17 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <header class="control-page-head"><div><span class="control-eyebrow">Доступ и компании</span><h1>Пользователи</h1><p>Учётные записи, роли, состояние доступа и активность компаний на платформе.</p></div></header>
+  <section class="control-panel resource-browser">
+    <form class="resource-toolbar" method="get">
+      <label class="filter-search"><svg><use href="#i-search"/></svg><input type="search" name="q" value="{{ query }}" placeholder="Имя, компания, почта или номер"></label>
+      <label><span>Роль</span><select name="role"><option value="">Все роли</option><option value="buyer"{% if role_filter == 'buyer' %} selected{% endif %}>Покупатели</option><option value="seller"{% if role_filter == 'seller' %} selected{% endif %}>Поставщики</option><option value="operator"{% if role_filter == 'operator' %} selected{% endif %}>Операторы</option><option value="admin"{% if role_filter == 'admin' %} selected{% endif %}>Администраторы</option></select></label>
+      <label><span>Доступ</span><select name="state"><option value="active"{% if state_filter == 'active' %} selected{% endif %}>Активен</option><option value="blocked"{% if state_filter == 'blocked' %} selected{% endif %}>Заблокирован</option><option value="">Все</option></select></label>
+      <button class="button button--primary" type="submit">Показать</button><a class="filter-reset" href="{% url 'control:users' %}">Сбросить</a>
+    </form>
+    <div class="table-wrap"><table class="control-table"><thead><tr><th>Пользователь</th><th>Компания</th><th>Роль</th><th>Публичный номер</th><th>Заказы</th><th>Доступ</th><th>Регистрация</th><th></th></tr></thead><tbody>
+      {% for item in users %}<tr><td><a class="user-cell" href="{% url 'control:user_detail' item.id %}"><span>{{ item|initials }}</span><div><strong>{{ item.get_full_name|default:item.username }}</strong><small>{{ item.email|default:item.username }}</small></div></a></td><td>{{ item.profile.company_name|default:"Не указана" }}</td><td>{% if item.is_superuser %}Администратор{% else %}{{ item.profile.role|role_label }}{% endif %}<small>{{ item.profile.get_operator_role_display }}</small></td><td class="mono">{% if item.profile.role == 'seller' %}{{ item.profile.partner_public_code }}{% else %}{{ item.profile.customer_public_code }}{% endif %}</td><td>{{ item.orders_count }}</td><td><span class="status status--{% if item.is_active %}success{% else %}danger{% endif %}">{% if item.is_active %}Активен{% else %}Заблокирован{% endif %}</span></td><td>{{ item.date_joined|date:"d.m.Y" }}</td><td><a class="row-action" href="{% url 'control:user_detail' item.id %}" aria-label="Открыть"><svg><use href="#i-arrow"/></svg></a></td></tr>{% empty %}<tr><td colspan="8">{% include "control/partials/empty.html" with icon="users" title="Пользователи не найдены" %}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% include "control/partials/pagination.html" with page=users %}
+  </section>
+{% endblock %}
