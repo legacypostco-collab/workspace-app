@@ -26,8 +26,10 @@ class DeployReadinessSecurityTests(SimpleTestCase):
         PLATFORM_TAX_ID="",
         PLATFORM_REGISTRATION_NO="",
         PLATFORM_BANK_NAME="",
+        PLATFORM_BANK_ACCOUNT_TITLE="",
         PLATFORM_BANK_ACCOUNT="",
         PLATFORM_BANK_SWIFT="",
+        PLATFORM_BANK_CURRENCY="",
         PLATFORM_SIGNATORY="",
     )
     def test_production_requires_document_settlement_and_legal_details(self):
@@ -45,14 +47,17 @@ class DeployReadinessSecurityTests(SimpleTestCase):
         SETTLEMENT_MODE="invoice_contract",
         SETTLEMENT_REQUIRED=True,
         LEGACY_WALLET_UI_ENABLED=False,
+        PAYMENT_CURRENCY="USD",
         PLATFORM_LEGAL_NAME="",
         PLATFORM_LEGAL_ADDRESS="",
         PLATFORM_TAX_ID="",
         PLATFORM_REGISTRATION_NO="",
         PLATFORM_BANK_NAME="",
+        PLATFORM_BANK_ACCOUNT_TITLE="",
         PLATFORM_BANK_IBAN="",
         PLATFORM_BANK_ACCOUNT="",
         PLATFORM_BANK_SWIFT="",
+        PLATFORM_BANK_CURRENCY="",
         PLATFORM_SIGNATORY="Authorized Director",
         TOPUP_BANK_BENEFICIARY="Legacy Parts LLC",
         TOPUP_BANK_BENEFICIARY_ADDR="Legacy address",
@@ -62,6 +67,7 @@ class DeployReadinessSecurityTests(SimpleTestCase):
         TOPUP_BANK_IBAN="LEGACY-IBAN",
         TOPUP_BANK_ACCOUNT="LEGACY-ACCOUNT",
         TOPUP_BANK_SWIFT="LEGACY00",
+        TOPUP_BANK_CURRENCY="USD",
     )
     def test_legacy_bank_details_satisfy_settlement_readiness(self):
         output = StringIO()
@@ -71,6 +77,35 @@ class DeployReadinessSecurityTests(SimpleTestCase):
 
         self.assertNotIn(
             "Settlement legal and bank details are incomplete",
+            output.getvalue(),
+        )
+
+    @override_settings(
+        SETTLEMENT_MODE="invoice_contract",
+        SETTLEMENT_REQUIRED=True,
+        LEGACY_WALLET_UI_ENABLED=False,
+        PAYMENT_CURRENCY="USD",
+        PLATFORM_LEGAL_NAME="Innovation Idea FZ-LLC",
+        PLATFORM_LEGAL_ADDRESS="Ras Al Khaimah, UAE",
+        PLATFORM_TAX_ID="TAX-001",
+        PLATFORM_REGISTRATION_NO="REG-001",
+        PLATFORM_BANK_NAME="United Bank Limited",
+        PLATFORM_BANK_ACCOUNT_TITLE="Innovation Idea FZ LLC",
+        PLATFORM_BANK_IBAN="AE000000000000000000000",
+        PLATFORM_BANK_ACCOUNT="200830094",
+        PLATFORM_BANK_SWIFT="UNILAEAD",
+        PLATFORM_BANK_CURRENCY="AED",
+        PLATFORM_SIGNATORY="Authorized Representative",
+    )
+    def test_bank_account_currency_must_match_payment_currency(self):
+        output = StringIO()
+
+        with self.assertRaises(SystemExit):
+            call_command("check_deploy_readiness", stdout=output)
+
+        self.assertIn(
+            "Settlement payment currency does not match the bank account currency: "
+            "USD / AED.",
             output.getvalue(),
         )
 

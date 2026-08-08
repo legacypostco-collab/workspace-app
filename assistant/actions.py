@@ -14189,11 +14189,12 @@ def _bank_wire_details(amount, currency, ref_code):
 
     company = platform_snapshot()
     return {
-        "beneficiary": company["legal_name"],
+        "beneficiary": company["bank_account_title"] or company["legal_name"],
         "beneficiary_address": company["address"],
         "trade_license": company["registration_no"],
         "tax_no": company["tax_id"],
         "bank_name": company["bank_name"],
+        "branch_name": company["bank_branch"],
         "branch_code": company["bank_branch_code"],
         "swift": company["bank_swift"],
         "iban": company["bank_iban"],
@@ -14218,9 +14219,15 @@ def _available_topup_methods() -> list[dict]:
         company["bank_name"],
         company["bank_swift"],
         company["bank_account"],
+        company["bank_currency"],
     )
     methods = []
-    if all(value and str(value).strip() for value in bank_required):
+    payment_currency = str(getattr(settings, "PAYMENT_CURRENCY", "USD") or "USD").upper()
+    bank_currency = str(company["bank_currency"] or "").upper()
+    if (
+        all(value and str(value).strip() for value in bank_required)
+        and bank_currency == payment_currency
+    ):
         methods.append(
             {
                 "value": "bank_wire",
@@ -14370,12 +14377,13 @@ def submit_topup(params, user, role):
                     "title": _('Банковские реквизиты'),
                     "rows": [
                         {"label": _('Банк'),         "value": details["bank_name"]},
+                        {"label": _('Отделение'),    "value": details["branch_name"]},
                         {"label": "SWIFT / BIC",  "value": details["swift"], "copy": True, "mono": True},
                         {"label": "IBAN",         "value": details["iban"], "copy": True, "mono": True},
                         {"label": "Account No.",  "value": details["account"], "copy": True, "mono": True},
                         {"label": "Branch Code",  "value": details["branch_code"], "mono": True},
                         {"label": _('Валюта счёта'), "value": details["account_currency"], "mono": True,
-                         "hint": _('Счёт в AED. Банк автоматически конвертирует USD/EUR по курсу дня.')},
+                         "hint": _('Валюта перевода должна совпадать с валютой счёта.')},
                     ],
                 },
                 {
@@ -14396,7 +14404,7 @@ def submit_topup(params, user, role):
                 },
             ],
             "notes": [
-                _('Бенефициар — наша дубайская компания (UAE, юрисдикция RAKEZ). Принимаем переводы в USD / EUR / AED.'),
+                _('Перевод принимается только в валюте, указанной в банковских реквизитах.'),
                 _('После оплаты нажмите кнопку «Я оплатил». Финансовый отдел сверит поступление и зачислит депозит обычно за 1–2 рабочих дня.'),
                 _('Реквизиты выданы для конкретной заявки. Не пересылайте третьим лицам — оплата по чужому payment reference не будет зачислена на ваш аккаунт.'),
             ],

@@ -231,7 +231,10 @@ class Command(BaseCommand):
         if not settlement_required:
             errors.append("SETTLEMENT_REQUIRED must be enabled in production.")
         else:
-            from assistant.settlements import platform_snapshot
+            from assistant.settlements import (
+                platform_snapshot,
+                settlement_currency_mismatch,
+            )
 
             platform = platform_snapshot()
             required_settlement_values = {
@@ -240,8 +243,10 @@ class Command(BaseCommand):
                 "PLATFORM_TAX_ID": platform["tax_id"],
                 "PLATFORM_REGISTRATION_NO": platform["registration_no"],
                 "PLATFORM_BANK_NAME": platform["bank_name"],
+                "PLATFORM_BANK_ACCOUNT_TITLE": platform["bank_account_title"],
                 "PLATFORM_BANK_ACCOUNT": platform["bank_account"],
                 "PLATFORM_BANK_SWIFT": platform["bank_swift"],
+                "PLATFORM_BANK_CURRENCY": platform["bank_currency"],
                 "PLATFORM_SIGNATORY": platform["signatory"],
             }
             missing = [
@@ -253,6 +258,13 @@ class Command(BaseCommand):
                 errors.append(
                     "Settlement legal and bank details are incomplete: "
                     + ", ".join(missing)
+                )
+            currency_mismatch = settlement_currency_mismatch(platform)
+            if currency_mismatch:
+                payment_currency, bank_currency = currency_mismatch
+                errors.append(
+                    "Settlement payment currency does not match the bank account "
+                    f"currency: {payment_currency} / {bank_currency}."
                 )
 
         payment_url = str(getattr(settings, "PAYMENT_PROVIDER_URL", "") or "")

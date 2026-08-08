@@ -92,10 +92,17 @@ def _party_lines(party: dict) -> list[str]:
         lines.append(f"Адрес: {party['address']}")
     if party.get("bank_name"):
         lines.append(f"Банк: {party['bank_name']}")
+    if (
+        party.get("bank_account_title")
+        and party.get("bank_account_title") != party.get("legal_name")
+    ):
+        lines.append(f"Получатель: {party['bank_account_title']}")
     if party.get("bank_account"):
         lines.append(f"Счёт / IBAN: {party['bank_account']}")
     if party.get("bank_swift"):
         lines.append(f"SWIFT / БИК: {party['bank_swift']}")
+    if party.get("bank_branch"):
+        lines.append(f"Отделение банка: {party['bank_branch']}")
     if party.get("bank_branch_code"):
         lines.append(f"Код отделения: {party['bank_branch_code']}")
     if party.get("bank_currency"):

@@ -25,6 +25,7 @@ from assistant.settlements import (
     prepare_settlement_package,
     report_invoice_paid,
     reverse_bank_payment,
+    settlement_currency_mismatch,
     validate_party_snapshot,
 )
 from marketplace.models import (
@@ -52,13 +53,16 @@ SETTLEMENT_SETTINGS = {
     "SETTLEMENT_MODE": "invoice_contract",
     "SETTLEMENT_REQUIRED": True,
     "LEGACY_WALLET_UI_ENABLED": False,
+    "PAYMENT_CURRENCY": "USD",
     "PLATFORM_LEGAL_NAME": "ООО Консолидатор Партс",
     "PLATFORM_LEGAL_ADDRESS": "Москва, Примерная улица, 1",
     "PLATFORM_TAX_ID": "7700000000",
     "PLATFORM_REGISTRATION_NO": "1207700000000",
     "PLATFORM_BANK_NAME": "Тестовый банк",
+    "PLATFORM_BANK_ACCOUNT_TITLE": "ООО Консолидатор Партс",
     "PLATFORM_BANK_ACCOUNT": "40702810000000000001",
     "PLATFORM_BANK_SWIFT": "TESTBANK",
+    "PLATFORM_BANK_CURRENCY": "USD",
     "PLATFORM_SIGNATORY": "Иванов Иван Иванович",
     "PLATFORM_SIGNATORY_TITLE": "Генеральный директор",
 }
@@ -71,10 +75,12 @@ class PlatformDetailsCompatibilityTests(SimpleTestCase):
         PLATFORM_TAX_ID="",
         PLATFORM_REGISTRATION_NO="",
         PLATFORM_BANK_NAME="",
+        PLATFORM_BANK_ACCOUNT_TITLE="",
         PLATFORM_BANK_IBAN="",
         PLATFORM_BANK_ACCOUNT="",
         PLATFORM_BANK_SWIFT="",
         PLATFORM_BANK_BRANCH_CODE="",
+        PLATFORM_BANK_BRANCH="",
         PLATFORM_BANK_CURRENCY="",
         PLATFORM_SIGNATORY="Уполномоченный подписант",
         PLATFORM_PAYMENT_CONTACT_NAME="",
@@ -102,6 +108,7 @@ class PlatformDetailsCompatibilityTests(SimpleTestCase):
         self.assertEqual(company["registration_no"], "LICENSE-001")
         self.assertEqual(company["tax_id"], "TAX-001")
         self.assertEqual(company["bank_name"], "Legacy Bank")
+        self.assertEqual(company["bank_account_title"], "Legacy Parts LLC")
         self.assertEqual(company["bank_iban"], "LEGACY-IBAN")
         self.assertEqual(company["bank_account_number"], "LEGACY-ACCOUNT")
         self.assertEqual(company["bank_account"], "LEGACY-IBAN")
@@ -116,6 +123,7 @@ class PlatformDetailsCompatibilityTests(SimpleTestCase):
         details = _bank_wire_details(1000, "USD", "REF-001")
         self.assertEqual(details["iban"], "LEGACY-IBAN")
         self.assertEqual(details["account"], "LEGACY-ACCOUNT")
+        self.assertEqual(details["beneficiary"], "Legacy Parts LLC")
         self.assertEqual(details["reference_code"], "REF-001")
         self.assertIn(
             "bank_wire",
@@ -128,9 +136,11 @@ class PlatformDetailsCompatibilityTests(SimpleTestCase):
         PLATFORM_TAX_ID="TAX-NEW",
         PLATFORM_REGISTRATION_NO="REG-NEW",
         PLATFORM_BANK_NAME="Canonical Bank",
+        PLATFORM_BANK_ACCOUNT_TITLE="Canonical Account Title",
         PLATFORM_BANK_IBAN="CANONICAL-IBAN",
         PLATFORM_BANK_ACCOUNT="CANONICAL-ACCOUNT",
         PLATFORM_BANK_SWIFT="CANONICAL00",
+        PLATFORM_BANK_BRANCH="Canonical Branch",
         PLATFORM_BANK_BRANCH_CODE="BRANCH-NEW",
         PLATFORM_BANK_CURRENCY="EUR",
         PLATFORM_SIGNATORY="Canonical Director",
@@ -149,9 +159,20 @@ class PlatformDetailsCompatibilityTests(SimpleTestCase):
         self.assertEqual(company["legal_name"], "Canonical Parts LLC")
         self.assertEqual(company["bank_name"], "Canonical Bank")
         self.assertEqual(company["bank_account"], "CANONICAL-IBAN")
-        self.assertEqual(details["beneficiary"], "Canonical Parts LLC")
+        self.assertEqual(details["beneficiary"], "Canonical Account Title")
+        self.assertEqual(details["branch_name"], "Canonical Branch")
         self.assertEqual(details["iban"], "CANONICAL-IBAN")
         self.assertEqual(details["account"], "CANONICAL-ACCOUNT")
+
+    @override_settings(PAYMENT_CURRENCY="USD")
+    def test_payment_currency_must_match_bank_account_currency(self):
+        self.assertEqual(
+            settlement_currency_mismatch({"bank_currency": "AED"}),
+            ("USD", "AED"),
+        )
+        self.assertIsNone(
+            settlement_currency_mismatch({"bank_currency": "USD"})
+        )
 
 
 @override_settings(**SETTLEMENT_SETTINGS)
@@ -257,6 +278,7 @@ class SettlementFlowTests(TestCase):
 
         self.assertEqual(SettlementContract.objects.count(), 3)
         self.assertEqual(SettlementInvoice.objects.count(), 6)
+
         self.assertEqual(package["buyer_reserve_invoice"].amount, Decimal("300.00"))
         self.assertEqual(package["buyer_final_invoice"].amount, Decimal("2700.00"))
         seller_amounts = {
@@ -321,6 +343,17 @@ class SettlementFlowTests(TestCase):
         self.assertEqual(SettlementContract.objects.count(), 3)
         self.assertEqual(SettlementInvoice.objects.count(), 6)
         self.assertEqual(OrderDocument.objects.count(), 4)
+
+    @override_settings(PLATFORM_BANK_CURRENCY="AED")
+    def test_package_rejects_bank_account_currency_mismatch(self):
+        with self.assertRaisesRegex(
+            SettlementError,
+            "Валюта расчётов не совпадает с валютой банковского счёта: USD / AED",
+        ):
+            prepare_settlement_package(self.order, self.buyer)
+
+        self.assertFalse(SettlementContract.objects.exists())
+        self.assertFalse(SettlementInvoice.objects.exists())
 
     def test_incoming_confirmation_activates_seller_invoices_and_order(self):
         package = prepare_settlement_package(self.order, self.buyer)

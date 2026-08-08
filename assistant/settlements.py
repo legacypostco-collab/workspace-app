@@ -62,12 +62,13 @@ def _configured_detail(primary: str, *legacy: str, default: str = "") -> str:
 
 
 def platform_snapshot() -> dict:
+    legal_name = _configured_detail(
+        "PLATFORM_LEGAL_NAME",
+        "TOPUP_BANK_BENEFICIARY",
+        default="Consolidator Parts",
+    )
     return {
-        "legal_name": _configured_detail(
-            "PLATFORM_LEGAL_NAME",
-            "TOPUP_BANK_BENEFICIARY",
-            default="Consolidator Parts",
-        ),
+        "legal_name": legal_name,
         "address": _configured_detail(
             "PLATFORM_LEGAL_ADDRESS", "TOPUP_BANK_BENEFICIARY_ADDR"
         ),
@@ -76,6 +77,11 @@ def platform_snapshot() -> dict:
             "PLATFORM_REGISTRATION_NO", "TOPUP_BANK_TRADE_LICENSE"
         ),
         "bank_name": _configured_detail("PLATFORM_BANK_NAME", "TOPUP_BANK_NAME"),
+        "bank_account_title": _configured_detail(
+            "PLATFORM_BANK_ACCOUNT_TITLE",
+            "TOPUP_BANK_BENEFICIARY",
+            default=legal_name,
+        ),
         "bank_iban": _configured_detail("PLATFORM_BANK_IBAN", "TOPUP_BANK_IBAN"),
         "bank_account_number": _configured_detail(
             "PLATFORM_BANK_ACCOUNT", "TOPUP_BANK_ACCOUNT"
@@ -87,6 +93,7 @@ def platform_snapshot() -> dict:
             "TOPUP_BANK_ACCOUNT",
         ),
         "bank_swift": _configured_detail("PLATFORM_BANK_SWIFT", "TOPUP_BANK_SWIFT"),
+        "bank_branch": _configured_detail("PLATFORM_BANK_BRANCH"),
         "bank_branch_code": _configured_detail(
             "PLATFORM_BANK_BRANCH_CODE", "TOPUP_BANK_BRANCH_CODE"
         ),
@@ -142,7 +149,18 @@ def validate_party_snapshot(
     required = ["legal_name", "address", "tax_id"]
     if platform or require_bank:
         required.extend(["bank_name", "bank_account", "bank_swift", "signatory"])
+    if platform:
+        required.extend(["bank_account_title", "bank_currency"])
     return [field for field in required if not str(snapshot.get(field) or "").strip()]
+
+
+def settlement_currency_mismatch(snapshot: dict | None = None) -> tuple[str, str] | None:
+    platform = snapshot or platform_snapshot()
+    payment_currency = str(getattr(settings, "PAYMENT_CURRENCY", "USD") or "USD").upper()
+    bank_currency = str(platform.get("bank_currency") or "").upper()
+    if bank_currency and bank_currency != payment_currency:
+        return payment_currency, bank_currency
+    return None
 
 
 def _terms(order: Order) -> dict:
@@ -219,6 +237,13 @@ def _get_or_create_contract(
             raise SettlementError(
                 f"Не заполнены реквизиты {party}: "
                 + ", ".join(missing_counterparty)
+            )
+        currency_mismatch = settlement_currency_mismatch(platform)
+        if currency_mismatch:
+            payment_currency, bank_currency = currency_mismatch
+            raise SettlementError(
+                "Валюта расчётов не совпадает с валютой банковского счёта: "
+                f"{payment_currency} / {bank_currency}"
             )
     defaults = {
         "number": _contract_number(order, kind, getattr(seller, "id", None)),

@@ -741,6 +741,8 @@ def _build_topup_pdf(topup, details) -> io.BytesIO:
     y -= 2 * mm
     section("Банковские реквизиты")
     row("Банк", details["bank_name"])
+    if details.get("branch_name"):
+        row("Отделение", details["branch_name"])
     row("SWIFT / BIC", details["swift"])
     row("IBAN", details["iban"])
     row("Account No.", details["account"])
