@@ -2,126 +2,160 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>{% if page_key == 'terms' %}{% trans "Условия использования" %}{% elif page_key == 'privacy' %}{% trans "Политика конфиденциальности" %}{% else %}{% trans "Использование файлов cookie" %}{% endif %} — Consolidator Parts</title>
-  <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-white.svg' %}"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page_key == 'terms' %}{% trans "Условия использования" %}{% elif page_key == 'privacy' %}{% trans "Политика обработки персональных данных" %}{% elif page_key == 'consent' %}{% trans "Согласие на обработку персональных данных" %}{% else %}{% trans "Использование файлов cookie" %}{% endif %} — Consolidator Parts</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'brand/logo-icon-white.svg' %}">
+  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01">
+  <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01">
   <style nonce="{{ request.csp_nonce }}">
     *{box-sizing:border-box;margin:0;padding:0;}
-    html,body{min-height:100%;max-width:100%;overflow-x:hidden;background:#1A1A1A;color:#ECECEC;font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
-    a{color:#E84A21;text-decoration:none;}
-    a:hover{text-decoration:underline;}
-    .legal-header{padding:20px 32px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:16px;}
-    .legal-logo{display:flex;align-items:center;gap:10px;font-family:'Golos Text',sans-serif;font-weight:800;font-size:18px;color:#ECECEC;text-decoration:none;}
+    html,body{min-height:100%;max-width:100%;overflow-x:hidden;background:#1a1a1a;color:#ececec;font-family:'Inter',Arial,sans-serif;font-size:14px;line-height:1.65;letter-spacing:0;}
+    a{color:#ff6b3d;text-decoration:none;}a:hover{text-decoration:underline;}
+    .legal-header{padding:20px 32px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:16px;}
+    .legal-logo{display:flex;align-items:center;gap:10px;font-family:'Golos Text',Arial,sans-serif;font-weight:800;font-size:18px;color:#ececec;text-decoration:none;}
     .legal-logo img{width:28px;height:28px;display:block;}
-    .legal-back{min-height:38px;display:inline-flex;align-items:center;margin-left:auto;font-size:12px;color:#B5B5B5;text-decoration:none;padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);transition:all .15s;}
-    .legal-back:hover{color:#ECECEC;border-color:rgba(232,74,33,0.35);}
-    .legal-content{max-width:820px;margin:0 auto;padding:48px 32px 80px;}
-    h1{font-family:'Golos Text',sans-serif;font-size:34px;font-weight:800;color:#ECECEC;margin-bottom:8px;}
-    .legal-meta{font-size:12px;color:#919191;margin-bottom:32px;text-transform:none;letter-spacing:0;}
-    h2{font-family:'Golos Text',sans-serif;font-size:20px;font-weight:700;color:#ECECEC;margin:32px 0 12px;}
-    p{color:#B5B5B5;margin-bottom:14px;}
-    ul{padding-left:22px;margin-bottom:14px;color:#B5B5B5;}
-    li{margin-bottom:6px;}
-    .legal-tabs{display:flex;gap:6px;max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;margin-bottom:32px;border-bottom:1px solid rgba(255,255,255,0.06);scrollbar-width:thin;}
-    .legal-tab{flex:0 0 auto;white-space:nowrap;padding:10px 18px;font-size:13px;font-weight:500;color:#B5B5B5;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
-    .legal-tab:hover{color:#ECECEC;}
-    .legal-tab.active{color:#E84A21;border-bottom-color:#E84A21;font-weight:600;text-decoration:none;}
-    .legal-cookie-control{min-height:40px;padding:9px 14px;color:#ECECEC;background:#242424;border:1px solid rgba(255,255,255,.14);border-radius:8px;font:inherit;font-weight:600;cursor:pointer;}
+    .legal-back{min-height:38px;display:inline-flex;align-items:center;margin-left:auto;font-size:12px;color:#b5b5b5;padding:6px 14px;border:1px solid rgba(255,255,255,.14);border-radius:8px;}
+    .legal-content{max-width:900px;margin:0 auto;padding:48px 32px 80px;}
+    h1{font-family:'Golos Text',Arial,sans-serif;font-size:34px;line-height:1.18;font-weight:800;margin-bottom:8px;}
+    h2{font-family:'Golos Text',Arial,sans-serif;font-size:20px;line-height:1.3;font-weight:700;margin:34px 0 12px;}
+    h3{font-size:15px;margin:20px 0 8px;}
+    p{color:#bdbdb8;margin-bottom:14px;}ul,ol{padding-left:22px;margin-bottom:16px;color:#bdbdb8;}li{margin-bottom:7px;}
+    strong{color:#ececec;}.legal-meta{font-size:12px;color:#919191;margin-bottom:28px;}
+    .legal-tabs{display:flex;gap:4px;max-width:100%;overflow-x:auto;margin-bottom:32px;border-bottom:1px solid rgba(255,255,255,.08);scrollbar-width:thin;}
+    .legal-tab{flex:0 0 auto;white-space:nowrap;padding:10px 14px;color:#b5b5b5;border-bottom:2px solid transparent;margin-bottom:-1px;font-size:12px;font-weight:600;}
+    .legal-tab.active{color:#ff6b3d;border-bottom-color:#e84a21;text-decoration:none;}
+    .legal-notice{padding:16px 18px;margin:18px 0;color:#d5d5d0;background:#232323;border-left:3px solid #e84a21;border-radius:0 8px 8px 0;}
+    .legal-contact{display:grid;gap:6px;padding:18px;margin:18px 0;background:#222;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#bdbdb8;}
+    .legal-table-wrap{max-width:100%;overflow-x:auto;margin:16px 0 22px;border:1px solid rgba(255,255,255,.1);border-radius:8px;}
+    .legal-table{width:100%;min-width:700px;border-collapse:collapse;}
+    .legal-table th,.legal-table td{padding:12px 14px;text-align:left;vertical-align:top;border-bottom:1px solid rgba(255,255,255,.08);color:#bdbdb8;font-size:12px;}
+    .legal-table th{color:#ececec;background:#222;}.legal-table tr:last-child td{border-bottom:0;}
+    .legal-cookie-control{min-height:40px;padding:9px 14px;color:#ececec;background:#242424;border:1px solid rgba(255,255,255,.14);border-radius:8px;font:inherit;font-weight:600;cursor:pointer;}
     .legal-cookie-control:hover{border-color:rgba(232,74,33,.5);}
-    @media(max-width:640px){
-      .legal-header{padding:14px 16px;}
-      .legal-logo{font-size:15px;}
-      .legal-logo img{width:24px;height:24px;}
-      .legal-back{padding-inline:10px;}
-      .legal-content{padding:32px 16px 60px;}
-      .legal-tabs{margin-right:-16px;padding-right:16px;}
-      .legal-tab{padding:10px 12px;}
-      h1{font-size:28px;line-height:1.2;overflow-wrap:anywhere;}
-      h2{font-size:18px;}
-    }
+    @media(max-width:640px){.legal-header{padding:14px 16px}.legal-logo{font-size:15px}.legal-logo img{width:24px;height:24px}.legal-back{padding-inline:10px}.legal-content{padding:32px 16px 60px}.legal-tabs{margin-right:-16px;padding-right:16px}.legal-tab{padding:10px 11px}h1{font-size:28px;overflow-wrap:anywhere}h2{font-size:18px}}
   </style>
-  <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=20260715_01"/>
-  <link rel="stylesheet" href="{% static 'css/typography.css' %}?v=20260715_01"/>
 </head>
 <body>
 <header class="legal-header">
-  <a href="/" class="legal-logo">
-    <img src="{% static 'brand/logo-icon-white.svg' %}" alt="" width="28" height="28">
-    Consolidator Parts
-  </a>
+  <a href="/" class="legal-logo"><img src="{% static 'brand/logo-icon-white.svg' %}" alt="" width="28" height="28">Consolidator Parts</a>
   <a href="/" class="legal-back">← {% trans "На главную" %}</a>
 </header>
 <main class="legal-content">
-  <div class="legal-tabs">
-    <a href="/terms/" class="legal-tab {% if page_key == 'terms' %}active{% endif %}">{% trans "Условия" %}</a>
-    <a href="/privacy/" class="legal-tab {% if page_key == 'privacy' %}active{% endif %}">{% trans "Конфиденциальность" %}</a>
-    <a href="/cookies/" class="legal-tab {% if page_key == 'cookies' %}active{% endif %}">{% trans "Файлы cookie" %}</a>
-  </div>
+  <nav class="legal-tabs" aria-label="{% trans 'Правовые документы' %}">
+    <a href="{% url 'terms' %}" class="legal-tab{% if page_key == 'terms' %} active{% endif %}">{% trans "Условия" %}</a>
+    <a href="{% url 'privacy' %}" class="legal-tab{% if page_key == 'privacy' %} active{% endif %}">{% trans "Персональные данные" %}</a>
+    <a href="{% url 'personal_data_consent' %}" class="legal-tab{% if page_key == 'consent' %} active{% endif %}">{% trans "Согласие" %}</a>
+    <a href="{% url 'cookies' %}" class="legal-tab{% if page_key == 'cookies' %} active{% endif %}">{% trans "Файлы cookie" %}</a>
+  </nav>
 
   {% if page_key == 'terms' %}
     <h1>{% trans "Условия использования" %}</h1>
-    <div class="legal-meta">{% trans "Последнее обновление" %}: 28.04.2026</div>
-    <p>{% trans "Настоящие Условия регулируют использование корпоративной платформы Consolidator для оптовых поставок запчастей и промышленного оборудования." %}</p>
-
-    <h2>{% trans "1. Общие положения" %}</h2>
-    <p>{% trans "Регистрируясь на платформе, вы подтверждаете, что являетесь юридическим лицом или индивидуальным предпринимателем, имеете право заключать сделки от имени вашей компании и достигли возраста совершеннолетия." %}</p>
-
-    <h2>{% trans "2. Роли участников" %}</h2>
-    <ul>
-      <li>{% trans "Покупатель — оформляет заявки на расчёт, заключает договоры поставки, оплачивает счета." %}</li>
-      <li>{% trans "Поставщик — публикует каталог, отвечает на заявки и отгружает товары." %}</li>
-      <li>{% trans "Оператор — обеспечивает логистику, таможенное оформление и расчёты." %}</li>
-    </ul>
-
-    <h2>{% trans "3. Финансовые условия" %}</h2>
-    <p>{% trans "Платформа использует двухэтапную схему оплаты по договору: первый платёж 10% и окончательный платёж 90% перед отгрузкой. Оплата выполняется банковским переводом по выставленным счетам и считается подтверждённой после сверки поступления финансовым оператором." %}</p>
-    <p>{% trans "Покупатель заключает договор поставки с оператором платформы. Для закупки товаров оператор платформы заключает отдельный договор с каждым продавцом. Реквизиты и контактные данные покупателя и продавца не раскрываются друг другу." %}</p>
-
-    <h2>{% trans "4. Сроки и ответственность" %}</h2>
-    <p>{% trans "Поставщики обязуются соблюдать согласованные сроки ответа на заявки и сроки отгрузки. Нарушение сроков может повлечь штрафные санкции." %}</p>
-
-    <h2>{% trans "5. Разрешение споров" %}</h2>
-    <p>{% trans "Споры между покупателем и поставщиком разрешаются через службу поддержки оператора в течение 14 календарных дней." %}</p>
+    <div class="legal-meta">{% trans "Редакция от" %} {{ legal_updated_at }}</div>
+    <p>{% trans "Условия регулируют доступ к корпоративной платформе Consolidator Parts для подбора, закупки и поставки запасных частей и промышленного оборудования." %}</p>
+    <div class="legal-contact">
+      <strong>{{ operator.name }}</strong>
+      <span>{% trans "Регистрационный номер" %}: {{ operator.registration_no }} · {% trans "налоговый номер" %}: {{ operator.tax_id }}</span>
+      <span>{{ operator.address }}</span>
+      <a href="mailto:{{ operator.email }}">{{ operator.email }}</a>
+    </div>
+    <h2>{% trans "1. Участники и полномочия" %}</h2>
+    <p>{% trans "Покупатель создаёт заявки, сравнивает предложения, заключает договор и оплачивает счета. Поставщик размещает ассортимент, отвечает на заявки и исполняет подтверждённые заказы. Оператор платформы координирует расчёты, документы, логистику и обращения." %}</p>
+    <p>{% trans "Пользователь подтверждает, что действует от имени юридического лица или предпринимателя и имеет необходимые полномочия." %}</p>
+    <h2>{% trans "2. Заявки и предложения" %}</h2>
+    <p>{% trans "Заявка не является заказом до принятия предложения и формирования расчётных документов. Цена, количество, срок, базис поставки и состав документов фиксируются в выбранном предложении и договоре." %}</p>
+    <h2>{% trans "3. Расчёты" %}</h2>
+    <p>{% trans "Расчёты выполняются банковскими переводами по счетам. Если в документах не указано иное, покупатель перечисляет первый платёж 10%, затем окончательный платёж 90% до отгрузки. Платёж считается полученным после подтверждения финансовым оператором по банковской выписке." %}</p>
+    <p>{% trans "Оператор заключает отдельные договоры с покупателем и поставщиком. Контактные и банковские данные сторон не раскрываются друг другу, кроме объёма, необходимого по закону или для согласованного исполнения поставки." %}</p>
+    <h2>{% trans "4. Доставка, приёмка и обращения" %}</h2>
+    <p>{% trans "Статусы и сроки рассчитываются по событиям заказа. Участник обязан своевременно загрузить запрошенные документы и доказательства передачи. О расхождениях по количеству, состоянию или документам следует сообщить через поддержку до подтверждения приёмки." %}</p>
+    <h2>{% trans "5. Аккаунт и безопасность" %}</h2>
+    <p>{% trans "Пользователь отвечает за сохранность пароля и кодов двухфакторной защиты. Запрещены попытки получить чужие данные, обойти разграничение ролей, загрузить вредоносные файлы или нарушить работу сервиса." %}</p>
+    <h2>{% trans "6. Изменение условий" %}</h2>
+    <p>{% trans "Новая редакция публикуется на этой странице с датой обновления. Существенные изменения, влияющие на уже оформленные сделки, не применяются к ним задним числом." %}</p>
 
   {% elif page_key == 'privacy' %}
-    <h1>{% trans "Политика конфиденциальности" %}</h1>
-    <div class="legal-meta">{% trans "Последнее обновление" %}: 28.04.2026</div>
-    <p>{% trans "Мы серьёзно относимся к защите ваших данных и обрабатываем их в соответствии с применимым законодательством о персональных данных." %}</p>
-
-    <h2>{% trans "1. Какие данные мы собираем" %}</h2>
+    <h1>{% trans "Политика обработки персональных данных" %}</h1>
+    <div class="legal-meta">{% trans "Редакция от" %} {{ legal_updated_at }}</div>
+    <div class="legal-contact">
+      <strong>{% trans "Оператор персональных данных" %}: {{ operator.name }}</strong>
+      <span>{% trans "Регистрационный номер" %}: {{ operator.registration_no }} · {% trans "налоговый номер" %}: {{ operator.tax_id }}</span>
+      <span>{{ operator.address }}</span>
+      <span>{% trans "Запросы о данных и отзыв согласия" %}: <a href="mailto:{{ operator.email }}">{{ operator.email }}</a></span>
+    </div>
+    <h2>{% trans "1. Кого и какие данные касается политика" %}</h2>
     <ul>
-      <li>{% trans "Контактные данные: имя, адрес электронной почты, телефон, название компании, ИНН/КПП." %}</li>
-      <li>{% trans "Данные транзакций: история заказов, суммы, реквизиты для оплаты." %}</li>
-      <li>{% trans "Технические данные: сетевой адрес, тип браузера, посещённые страницы." %}</li>
+      <li>{% trans "Представители покупателей и поставщиков: имя, должность, рабочая почта, телефон, мессенджер, логин." %}</li>
+      <li>{% trans "Сведения о компании и полномочиях: страна, регистрационные и налоговые номера, адреса, реквизиты, данные подписанта и результаты проверки компании." %}</li>
+      <li>{% trans "Данные работы в сервисе: заявки, предложения, заказы, документы, обращения, сообщения, действия, подписи и история статусов." %}</li>
+      <li>{% trans "Технические и защитные данные: сетевой адрес, время запроса, браузер, сессия, журнал входов, события безопасности и идентификаторы загруженных файлов." %}</li>
+      <li>{% trans "Платёжные сведения: номера счетов и договоров, суммы, валюта, назначение, банковская ссылка и факт подтверждения платежа. Пароли интернет-банка и полные данные карт платформа не запрашивает." %}</li>
     </ul>
+    <h2>{% trans "2. Цели, основания и сроки" %}</h2>
+    <div class="legal-table-wrap"><table class="legal-table">
+      <thead><tr><th>{% trans "Цель" %}</th><th>{% trans "Основание" %}</th><th>{% trans "Срок" %}</th></tr></thead>
+      <tbody>
+        <tr><td>{% trans "Регистрация, проверка компании, вход, роли и защита аккаунта" %}</td><td>{% trans "Согласие, меры до заключения договора, законный интерес по защите сервиса" %}</td><td>{% trans "До удаления аккаунта; журналы безопасности — до 3 лет" %}</td></tr>
+        <tr><td>{% trans "Подбор, предложения, договоры, счета, доставка и поддержка" %}</td><td>{% trans "Заключение и исполнение договора" %}</td><td>{% trans "Срок сделки и далее срок обязательного бухгалтерского и претензионного хранения" %}</td></tr>
+        <tr><td>{% trans "Обязательный учёт, проверка платежей и защита прав сторон" %}</td><td>{% trans "Обязанности по применимому законодательству и установление требований" %}</td><td>{% trans "В пределах установленного законом срока; затем удаление или обезличивание" %}</td></tr>
+        <tr><td>{% trans "Необязательная аналитика посещаемости" %}</td><td>{% trans "Отдельное разрешение в настройках cookie" %}</td><td>{% trans "До отзыва разрешения, но не более срока конкретного аналитического идентификатора" %}</td></tr>
+      </tbody>
+    </table></div>
+    <h2>{% trans "3. Операции и автоматизация" %}</h2>
+    <p>{% trans "Оператор может собирать, записывать, систематизировать, хранить, уточнять, извлекать, использовать, передавать уполномоченным исполнителям, обезличивать, блокировать и удалять данные. Автоматические подсказки и сопоставление артикулов не принимают юридически значимое решение без предусмотренного подтверждения пользователя или оператора." %}</p>
+    <h2>{% trans "4. Кому данные могут быть переданы" %}</h2>
+    <p>{% trans "Доступ получают только сотрудники и исполнители, которым он нужен для конкретной задачи: поставщик инфраструктуры и резервного копирования, почтовый сервис, проверка компании, банк, бухгалтерия, логистический оператор, перевозчик, таможенный представитель и служба поддержки. Передаётся минимально необходимый состав данных; доступ ограничивается ролями и журналируется." %}</p>
+    <h2>{% trans "5. Локализация и трансграничная передача" %}</h2>
+    <p>{% trans "При сборе данных граждан Российской Федерации первичная запись, систематизация, накопление, хранение и обновление выполняются в базе данных на территории Российской Федерации. Последующая трансграничная передача допускается только при наличии применимого основания, предварительной оценки страны и получателя и выполнения обязательных уведомительных процедур." %}</p>
+    <h2>{% trans "6. Защита" %}</h2>
+    <p>{% trans "Применяются шифрование соединения, защищённые сессионные файлы, защита форм, разграничение ролей и организаций, двухфакторная защита, проверка файлов, журнал действий, резервное копирование, мониторинг ошибок и ограничение частоты запросов. Доступы пересматриваются и отзываются при изменении роли." %}</p>
+    <h2>{% trans "7. Права пользователя" %}</h2>
+    <p>{% trans "Пользователь может запросить подтверждение обработки, состав и источник данных, исправление, ограничение, выгрузку, отзыв согласия или удаление данных. В личном контуре доступна выгрузка; запрос также можно направить на адрес оператора. Ответ предоставляется после проверки личности и полномочий. Данные, которые оператор обязан хранить по закону или для защиты требований сторон, блокируются от иных целей и удаляются по окончании обязательного срока." %}</p>
+    <h2>{% trans "8. Изменения и обращения" %}</h2>
+    <p>{% trans "Актуальная редакция постоянно доступна по этому адресу. По вопросам обработки данных и инцидентам направьте письмо с темой «Персональные данные» на адрес оператора." %}</p>
 
-    <h2>{% trans "2. Как мы используем данные" %}</h2>
-    <p>{% trans "Данные используются для исполнения договоров, обеспечения работы платформы, аналитики и улучшения сервиса, рассылки уведомлений о статусе заказов." %}</p>
-
-    <h2>{% trans "3. Передача третьим лицам" %}</h2>
-    <p>{% trans "Мы не передаём персональные данные третьим лицам, кроме случаев, необходимых для выполнения договоров (логистические партнёры, банки, таможенные брокеры)." %}</p>
-
-    <h2>{% trans "4. Хранение и защита" %}</h2>
-    <p>{% trans "Данные хранятся на серверах в защищённой инфраструктуре. При передаче и хранении применяется шифрование." %}</p>
-
-    <h2>{% trans "5. Ваши права" %}</h2>
-    <p>{% trans "Вы можете в любой момент запросить выгрузку, изменение или удаление ваших данных через службу поддержки." %}</p>
+  {% elif page_key == 'consent' %}
+    <h1>{% trans "Согласие на обработку персональных данных" %}</h1>
+    <div class="legal-meta">{% trans "Версия" %} {{ personal_consent_version }} · {% trans "действует с" %} {{ legal_updated_at }}</div>
+    <div class="legal-notice">{% trans "Это самостоятельное согласие. Оно не объединено с принятием условий использования, рекламной рассылкой или разрешением аналитических cookie." %}</div>
+    <p>{% blocktrans with operator_name=operator.name %}Создавая аккаунт и отмечая отдельное поле согласия, я свободно, своей волей и в своём интересе разрешаю {{ operator_name }} обрабатывать указанные ниже персональные данные.{% endblocktrans %}</p>
+    <h2>{% trans "1. Данные" %}</h2>
+    <p>{% trans "Фамилия, имя и отчество; должность; рабочая электронная почта; телефон; мессенджер; логин; страна; сведения о компании и регистрационный номер; сведения о парке техники; сетевой адрес, браузер, дата, время и результат принятия согласия." %}</p>
+    <h2>{% trans "2. Цели" %}</h2>
+    <ul>
+      <li>{% trans "создание и защита аккаунта, подтверждение почты и восстановление доступа;" %}</li>
+      <li>{% trans "проверка компании и полномочий представителя;" %}</li>
+      <li>{% trans "подготовка заявок, предложений, договоров, счетов, доставки и поддержки;" %}</li>
+      <li>{% trans "обязательные уведомления о безопасности, документах и состоянии сделки;" %}</li>
+      <li>{% trans "предотвращение злоупотреблений и разбор инцидентов." %}</li>
+    </ul>
+    <h2>{% trans "3. Действия с данными" %}</h2>
+    <p>{% trans "Сбор, запись, систематизация, накопление, хранение, уточнение, извлечение, использование, передача уполномоченным исполнителям в необходимом объёме, обезличивание, блокирование, удаление и уничтожение с использованием автоматизированных средств и без них." %}</p>
+    <h2>{% trans "4. Срок и отзыв" %}</h2>
+    <p>{% trans "Согласие действует до удаления аккаунта или его отзыва. Отзыв направляется на электронный адрес оператора с адреса, привязанного к аккаунту, либо через поддержку после проверки личности. Отзыв не прекращает обработку, которая необходима для исполнения уже заключённого договора, выполнения закона или защиты требований сторон." %}</p>
+    <h2>{% trans "5. Оператор" %}</h2>
+    <div class="legal-contact"><strong>{{ operator.name }}</strong><span>{{ operator.address }}</span><span>{% trans "Регистрационный номер" %}: {{ operator.registration_no }}</span><a href="mailto:{{ operator.email }}">{{ operator.email }}</a></div>
 
   {% else %}
     <h1>{% trans "Использование файлов cookie" %}</h1>
-    <div class="legal-meta">{% trans "Последнее обновление" %}: 28.04.2026</div>
-    <p>{% trans "Платформа использует файлы cookie для базовой работы, аналитики и сохранения настроек." %}</p>
-
-    <h2>{% trans "Категории файлов cookie" %}</h2>
-    <ul>
-      <li><strong>{% trans "Необходимые" %}:</strong> {% trans "сессия, авторизация, CSRF-токен. Не могут быть отключены." %}</li>
-      <li><strong>{% trans "Аналитические" %}:</strong> {% trans "помогают понять, как посетители используют платформу." %}</li>
-      <li><strong>{% trans "Функциональные" %}:</strong> {% trans "запоминают предпочтения (язык, тема)." %}</li>
-    </ul>
-
-    <h2>{% trans "Управление файлами cookie" %}</h2>
-    <p>{% trans "Вы можете управлять файлами cookie в настройках браузера. Отключение необходимых файлов нарушит работу авторизации." %}</p>
+    <div class="legal-meta">{% trans "Редакция от" %} {{ legal_updated_at }}</div>
+    <p>{% trans "До выбора пользователя платформа использует только технически необходимые файлы. Необязательные средства аналитики могут запускаться только после отдельного разрешения." %}</p>
+    <h2>{% trans "Фактический состав" %}</h2>
+    <div class="legal-table-wrap"><table class="legal-table">
+      <thead><tr><th>{% trans "Имя" %}</th><th>{% trans "Назначение" %}</th><th>{% trans "Срок" %}</th><th>{% trans "Категория" %}</th></tr></thead>
+      <tbody>
+        <tr><td><code>sessionid</code></td><td>{% trans "Авторизованная сессия и связь действий с аккаунтом" %}</td><td>{% trans "до 14 дней или до выхода" %}</td><td>{% trans "Необходимый" %}</td></tr>
+        <tr><td><code>csrftoken</code></td><td>{% trans "Защита форм и запросов от подделки" %}</td><td>{% trans "до 1 года" %}</td><td>{% trans "Необходимый" %}</td></tr>
+        <tr><td><code>django_language</code></td><td>{% trans "Выбранный язык интерфейса" %}</td><td>{% trans "до 1 года" %}</td><td>{% trans "Функциональный" %}</td></tr>
+        <tr><td><code>cookie_consent</code></td><td>{% trans "Версия и категории сделанного выбора" %}</td><td>{% trans "до 1 года" %}</td><td>{% trans "Необходимый" %}</td></tr>
+      </tbody>
+    </table></div>
+    <h2>{% trans "Локальное хранилище браузера" %}</h2>
+    <p>{% trans "В локальном хранилище могут сохраняться тема, язык, звук уведомлений, размер боковой панели, активный диалог и версия выбора cookie. Эти значения остаются в браузере пользователя и могут быть удалены через его настройки." %}</p>
+    <h2>{% trans "Аналитика" %}</h2>
+    <p>{% trans "На дату этой редакции внешние аналитические счётчики на публичных страницах не подключены. Если они будут подключены, код загрузки должен проверить сохранённое разрешение, а здесь будут заранее указаны поставщик, имена идентификаторов, цели и сроки." %}</p>
+    <h2>{% trans "Изменение выбора" %}</h2>
+    <p>{% trans "Вы можете в любой момент отключить аналитику. Новый выбор заменяет предыдущий и применяется к последующим загрузкам страниц. Удаление необходимых файлов в браузере завершит сессию или нарушит отправку защищённых форм." %}</p>
     <button type="button" class="legal-cookie-control" data-cookie-manage>{% trans "Открыть настройки cookie" %}</button>
   {% endif %}
 </main>

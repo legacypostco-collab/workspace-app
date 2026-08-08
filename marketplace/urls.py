@@ -155,6 +155,11 @@ urlpatterns = [
     path("terms/", views.terms_view, name="terms"),
     path("privacy/", views.privacy_view, name="privacy"),
     path("cookies/", views.cookies_view, name="cookies"),
+    path(
+        "personal-data-consent/",
+        views.personal_data_consent_view,
+        name="personal_data_consent",
+    ),
     path("help/", views.help_view, name="help"),
     path("faq/", views.help_view),
     path("chat/", views.chat_first_view, name="chat"),

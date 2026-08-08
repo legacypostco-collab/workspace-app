@@ -554,16 +554,45 @@ def landing_view(request: HttpRequest) -> HttpResponse:
     return render(request, "landing.html", _landing_context())
 
 
+def _legal_context(page_key: str) -> dict:
+    from django.conf import settings
+
+    return {
+        "page_key": page_key,
+        "legal_updated_at": "08.08.2026",
+        "personal_consent_version": "PD-2026-08-08",
+        "operator": {
+            "name": getattr(settings, "PLATFORM_LEGAL_NAME", "")
+            or "Innovation Idea FZ-LLC",
+            "address": getattr(settings, "PLATFORM_LEGAL_ADDRESS", "")
+            or (
+                "Compass Building, Al Shohada Road, AL Hamra Industrial "
+                "Zone-FZ, Ras Al Khaimah, 10055, United Arab Emirates"
+            ),
+            "tax_id": getattr(settings, "PLATFORM_TAX_ID", "") or "104683265300001",
+            "registration_no": getattr(settings, "PLATFORM_REGISTRATION_NO", "")
+            or "5022051",
+            "email": getattr(settings, "PLATFORM_PAYMENT_CONTACT_EMAIL", "")
+            or getattr(settings, "DEFAULT_FROM_EMAIL", "")
+            or "contact@innovationidea.ae",
+        },
+    }
+
+
 def terms_view(request: HttpRequest) -> HttpResponse:
-    return render(request, "marketplace/legal.html", {"page_key": "terms"})
+    return render(request, "marketplace/legal.html", _legal_context("terms"))
 
 
 def privacy_view(request: HttpRequest) -> HttpResponse:
-    return render(request, "marketplace/legal.html", {"page_key": "privacy"})
+    return render(request, "marketplace/legal.html", _legal_context("privacy"))
 
 
 def cookies_view(request: HttpRequest) -> HttpResponse:
-    return render(request, "marketplace/legal.html", {"page_key": "cookies"})
+    return render(request, "marketplace/legal.html", _legal_context("cookies"))
+
+
+def personal_data_consent_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "marketplace/legal.html", _legal_context("consent"))
 
 
 def help_center_view(request: HttpRequest) -> HttpResponse:

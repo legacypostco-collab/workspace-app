@@ -33,12 +33,28 @@ def authed_client(client, user):
     "/terms/",
     "/privacy/",
     "/cookies/",
+    "/personal-data-consent/",
     "/password-reset/",
 ])
 def test_public_urls_render(client, url):
     """All public URLs return 200."""
     resp = client.get(url)
     assert resp.status_code in (200, 301, 302), f"{url} returned {resp.status_code}"
+
+
+@pytest.mark.django_db
+def test_legal_pages_publish_operator_and_consent_version(client, settings):
+    settings.PLATFORM_LEGAL_NAME = "Test Legal Operator"
+    settings.PLATFORM_PAYMENT_CONTACT_EMAIL = "privacy@example.test"
+
+    privacy = client.get("/privacy/")
+    consent = client.get("/personal-data-consent/")
+
+    assert privacy.status_code == consent.status_code == 200
+    assert b"Test Legal Operator" in privacy.content
+    assert b"privacy@example.test" in privacy.content
+    assert b"PD-2026-08-08" in consent.content
+    assert b"Test Legal Operator" in consent.content
 
 
 @pytest.mark.django_db
