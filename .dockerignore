@@ -28,7 +28,12 @@ worktrees
 
 # Tests / E2E / docs (не нужны в runtime образа)
 tests
+e2e
 docs
+reports
+Отчеты
+Тестовые данные
+Test data
 *.md
 DEPLOY.md
 TZ_*.md
