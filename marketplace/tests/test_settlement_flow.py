@@ -28,6 +28,7 @@ from assistant.settlements import (
     settlement_currency_mismatch,
     validate_party_snapshot,
 )
+from marketplace.fx import from_usd
 from marketplace.models import (
     Category,
     CompanyVerification,
@@ -69,6 +70,9 @@ SETTLEMENT_SETTINGS = {
 
 
 class PlatformDetailsCompatibilityTests(SimpleTestCase):
+    def test_aed_conversion_uses_fixed_official_peg(self):
+        self.assertEqual(from_usd(Decimal("100.00"), "AED"), Decimal("367.25"))
+
     @override_settings(
         PLATFORM_LEGAL_NAME="",
         PLATFORM_LEGAL_ADDRESS="",
@@ -354,6 +358,31 @@ class SettlementFlowTests(TestCase):
 
         self.assertFalse(SettlementContract.objects.exists())
         self.assertFalse(SettlementInvoice.objects.exists())
+
+    @override_settings(PAYMENT_CURRENCY="AED", PLATFORM_BANK_CURRENCY="AED")
+    def test_aed_package_converts_contract_invoice_and_document_rows(self):
+        from pypdf import PdfReader
+
+        package = prepare_settlement_package(self.order, self.buyer)
+
+        self.assertEqual(package["buyer_contract"].currency, "AED")
+        self.assertEqual(package["buyer_contract"].amount, Decimal("11017.50"))
+        self.assertEqual(package["buyer_reserve_invoice"].amount, Decimal("1101.75"))
+        self.assertEqual(package["buyer_final_invoice"].amount, Decimal("9915.75"))
+
+        document = package["buyer_reserve_invoice"].document
+        document.file_obj.open("rb")
+        try:
+            text = "\n".join(
+                page.extract_text() or ""
+                for page in PdfReader(document.file_obj).pages
+            )
+        finally:
+            document.file_obj.close()
+
+        self.assertIn("367.25 AED", text)
+        self.assertIn("11,017.50 AED", text)
+        self.assertIn("1,101.75 AED", text)
 
     def test_incoming_confirmation_activates_seller_invoices_and_order(self):
         package = prepare_settlement_package(self.order, self.buyer)

@@ -9,8 +9,8 @@
 без ключа). Если API недоступен (напр. фильтрация/сеть) — мягкий фолбэк на
 константы, так что конвертация работает всегда. Это НЕ AI — чистый код.
 """
-from decimal import Decimal, ROUND_HALF_UP
 import logging
+from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
 
@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # никогда не падала и не показывала бессмыслицу.
 _FALLBACK_USD_PER = {
     "USD": Decimal("1"),
+    "AED": Decimal("0.272294"),
     "EUR": Decimal("1.08"),
     "RUB": Decimal("0.0108"),
     "CNY": Decimal("0.139"),
@@ -39,6 +40,7 @@ def _fetch_rates():
     try:
         import json
         import urllib.request
+
         from assistant.security import safe_outbound_url, urlopen_no_redirect
         # rates[X] = сколько X за 1 USD → инвертируем в "USD за 1 X".
         url = "https://open.er-api.com/v6/latest/USD"
@@ -112,6 +114,10 @@ def get_rates() -> dict:
 def rate_to_usd(currency) -> Decimal:
     """Сколько USD стоит 1 единица `currency`."""
     cur = _normalize(currency)
+    # Дирхам ОАЭ привязан к доллару по официальному паритету 3.6725 AED/USD.
+    # Фиксированный курс исключает изменение уже выпущенных счетов из-за API.
+    if cur == "AED":
+        return (Decimal("1") / Decimal("3.6725")).quantize(Decimal("0.000001"))
     rates = get_rates()
     if cur not in rates:
         raise ValueError(f"Unsupported currency: {cur}")
@@ -136,3 +142,28 @@ def to_usd_float(amount, currency):
     """То же, но float (для JSON-карточек). None → None."""
     v = to_usd(amount, currency)
     return float(v) if v is not None else None
+
+
+def units_per_usd(currency) -> Decimal:
+    """Сколько единиц целевой валюты приходится на 1 USD."""
+    cur = _normalize(currency)
+    if cur == "USD":
+        return Decimal("1.0000")
+    rate = rate_to_usd(cur)
+    if rate <= 0:
+        raise ValueError(f"Invalid exchange rate for currency: {cur}")
+    return (Decimal("1") / rate).quantize(Decimal("0.0001"), ROUND_HALF_UP)
+
+
+def from_usd(amount, currency):
+    """`amount` в USD -> Decimal в целевой валюте (2 знака)."""
+    if amount is None or amount == "":
+        return None
+    cur = _normalize(currency)
+    try:
+        dec = Decimal(str(amount))
+    except Exception:
+        return None
+    if cur == "USD":
+        return dec.quantize(_CENT, ROUND_HALF_UP)
+    return (dec * units_per_usd(cur)).quantize(_CENT, ROUND_HALF_UP)

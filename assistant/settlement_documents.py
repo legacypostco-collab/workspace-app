@@ -79,6 +79,16 @@ def _money(value, currency: str) -> str:
     return f"{Decimal(value):,.2f} {currency}"
 
 
+def _order_money(value, settlement_currency: str) -> Decimal:
+    """Позиции заказа хранятся в USD, документы печатаются в валюте счета."""
+    from marketplace.fx import from_usd
+
+    converted = from_usd(value, settlement_currency)
+    if converted is None:
+        raise ValueError("Не удалось пересчитать сумму позиции")
+    return converted
+
+
 def _party_lines(party: dict) -> list[str]:
     lines = [_safe(party.get("legal_name") or party.get("name"))]
     identifiers = []
@@ -265,6 +275,8 @@ def build_contract_pdf(contract) -> io.BytesIO:
         Paragraph(
             f"Цена договора: {_money(contract.amount, contract.currency)}. "
             f"Первый платёж составляет {terms.get('reserve_percent', '10')}% по отдельному счёту. "
+            f"Расчёт выполнен по курсу 1 USD = {terms.get('settlement_units_per_usd', '1.00')} "
+            f"{contract.currency}. "
             "Оставшаяся сумма оплачивается по окончательному счёту до отгрузки. "
             "Платёж считается совершённым после подтверждения поступления финансовым оператором.",
             styles["body"],
@@ -362,16 +374,19 @@ def build_invoice_pdf(invoice) -> io.BytesIO:
     for item in items:
         description = _safe(item.part.title if item.part else "Запасная часть")
         oem = _safe(item.part.oem_number if item.part else "")
+        unit_price = _order_money(item.unit_price, invoice.currency)
+        line_total = _order_money(item.unit_price * item.quantity, invoice.currency)
         item_rows.append([
             f"{description}<br/><font size='7'>{oem}</font>",
             str(item.quantity),
-            _money(item.unit_price, invoice.currency),
-            _money(item.unit_price * item.quantity, invoice.currency),
+            _money(unit_price, invoice.currency),
+            _money(line_total, invoice.currency),
         ])
-    order_items_total = sum(
+    order_items_total_usd = sum(
         (item.unit_price * item.quantity for item in items),
         Decimal("0.00"),
     )
+    order_items_total = _order_money(order_items_total_usd, invoice.currency)
 
     story = [
         Paragraph("СЧЁТ НА ОПЛАТУ", styles["title"]),

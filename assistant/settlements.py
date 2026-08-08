@@ -35,6 +35,22 @@ def money(value) -> Decimal:
     return result
 
 
+def settlement_money(value) -> Decimal:
+    """Переводит каноническую сумму заказа в USD в валюту расчетов."""
+    from marketplace.fx import from_usd
+
+    currency = str(getattr(settings, "PAYMENT_CURRENCY", "USD") or "USD").upper()
+    try:
+        converted = from_usd(money(value), currency)
+    except (RuntimeError, ValueError) as exc:
+        raise SettlementError(
+            f"Не удалось пересчитать сумму из USD в {currency}"
+        ) from exc
+    if converted is None:
+        raise SettlementError("Некорректная сумма")
+    return money(converted)
+
+
 def settlement_enabled() -> bool:
     return getattr(settings, "SETTLEMENT_MODE", "invoice_contract") == "invoice_contract"
 
@@ -164,12 +180,18 @@ def settlement_currency_mismatch(snapshot: dict | None = None) -> tuple[str, str
 
 
 def _terms(order: Order) -> dict:
+    from marketplace.fx import units_per_usd
+
+    currency = str(getattr(settings, "PAYMENT_CURRENCY", "USD") or "USD").upper()
     return {
         "reserve_percent": str(order.reserve_percent or Decimal("10.00")),
         "incoterm": order.incoterm,
         "shipping_mode": order.shipping_mode,
         "delivery_address": order.delivery_address,
         "order_id": order.id,
+        "source_currency": "USD",
+        "settlement_currency": currency,
+        "settlement_units_per_usd": str(units_per_usd(currency)),
     }
 
 
@@ -248,7 +270,7 @@ def _get_or_create_contract(
     defaults = {
         "number": _contract_number(order, kind, getattr(seller, "id", None)),
         "status": status,
-        "amount": money(amount),
+        "amount": settlement_money(amount),
         "currency": getattr(settings, "PAYMENT_CURRENCY", "USD"),
         "platform_snapshot": platform,
         "counterparty_snapshot": counterparty,
@@ -287,6 +309,7 @@ def _get_or_create_invoice(
         order, direction, stage, getattr(seller, "id", None)
     )
     now = timezone.now()
+    expected = settlement_money(amount)
     invoice, created = SettlementInvoice.objects.get_or_create(
         order=order,
         direction=direction,
@@ -297,7 +320,7 @@ def _get_or_create_invoice(
             "number": number,
             "reference_code": reference,
             "status": status,
-            "amount": money(amount),
+            "amount": expected,
             "currency": contract.currency,
             "due_date": _invoice_due_date(),
             "created_by": actor,
@@ -306,7 +329,6 @@ def _get_or_create_invoice(
     )
     if not created and invoice.status == "draft":
         changed = []
-        expected = money(amount)
         if invoice.amount != expected:
             invoice.amount = expected
             changed.append("amount")
