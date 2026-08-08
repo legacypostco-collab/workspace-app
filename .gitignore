@@ -42,6 +42,7 @@ test-results/
 
 # Local audit/test artifacts
 reports/
+Отчеты/
 tests/e2e/axe-results/
 tests/e2e/screenshots/
 Тестовые данные/
