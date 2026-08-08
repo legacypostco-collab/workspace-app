@@ -1,36 +1,60 @@
 #!/usr/bin/env bash
-# Ежедневный бэкап PostgreSQL для Consolidator Parts.
-# Хранит последние $KEEP дампов, старые удаляет. Идемпотентен.
-#
-# Ручной запуск:   bash deploy/backup.sh
-# Cron (ставится deploy.sh): 03:30 ежедневно → /var/log/consolidator-backup.log
+# Ежедневная резервная копия PostgreSQL для Docker-развертывания.
 set -euo pipefail
 
-APP_DIR="/var/www/workspace-app"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="${APP_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/consolidator}"
-KEEP="${KEEP:-7}"
+KEEP="${KEEP:-14}"
 
 cd "$APP_DIR"
-# Значения из .env (DB_NAME / DATABASE_URL)
-set -a; . ./.env 2>/dev/null || true; set +a
-
-DBN="${DB_NAME:-}"
-if [[ -z "$DBN" && -n "${DATABASE_URL:-}" ]]; then
-    DBN=$(echo "$DATABASE_URL" | sed -E 's#.*/([^/?]+).*#\1#')
-fi
-[[ -n "$DBN" ]] || { echo "$(date '+%F %T') ✗ не удалось определить имя БД"; exit 1; }
-
-mkdir -p "$BACKUP_DIR"
-STAMP=$(date +%Y%m%d_%H%M%S)
-OUT="$BACKUP_DIR/${DBN}_${STAMP}.dump"
-
-# -Fc = custom формат (сжатый, для pg_restore). Дамп под ролью postgres.
-if sudo -u postgres pg_dump -Fc "$DBN" > "$OUT" 2>/tmp/backup.err; then
-    echo "$(date '+%F %T') ✓ бэкап: $OUT ($(du -h "$OUT" | cut -f1))"
-else
-    echo "$(date '+%F %T') ✗ pg_dump упал:"; cat /tmp/backup.err; rm -f "$OUT"; exit 1
+DB_NAME="${DB_NAME:-consolidator}"
+DB_USER="${DB_USER:-consolidator}"
+COMPOSE_ARGS=(-f "$APP_DIR/docker-compose.yml")
+if [[ -f "$APP_DIR/docker-compose.prod.yml" ]]; then
+    COMPOSE_ARGS+=(-f "$APP_DIR/docker-compose.prod.yml")
 fi
 
-# Ротация: оставить последние $KEEP, остальные удалить.
-ls -1t "$BACKUP_DIR"/*.dump 2>/dev/null | tail -n +"$((KEEP + 1))" | xargs -r rm -f
-echo "$(date '+%F %T') хранится дампов: $(ls -1 "$BACKUP_DIR"/*.dump 2>/dev/null | wc -l) (лимит $KEEP)"
+compose() {
+    docker compose "${COMPOSE_ARGS[@]}" "$@"
+}
+
+[[ "$KEEP" =~ ^[1-9][0-9]*$ ]] || {
+    echo "$(date '+%F %T') неверное значение KEEP: $KEEP" >&2
+    exit 1
+}
+
+umask 0077
+install -d -m 0700 "$BACKUP_DIR"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+OUT="$BACKUP_DIR/${DB_NAME}_${STAMP}.dump"
+TMP="$OUT.tmp"
+ERROR_LOG="$BACKUP_DIR/.backup-error.log"
+cleanup() { rm -f "$TMP"; }
+trap cleanup EXIT
+
+if ! compose exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc >"$TMP" 2>"$ERROR_LOG"; then
+    echo "$(date '+%F %T') резервное копирование PostgreSQL завершилось ошибкой" >&2
+    cat "$ERROR_LOG" >&2
+    exit 1
+fi
+
+if ! compose exec -T db pg_restore --list <"$TMP" >/dev/null 2>"$ERROR_LOG"; then
+    echo "$(date '+%F %T') созданный дамп не прошел проверку формата" >&2
+    cat "$ERROR_LOG" >&2
+    exit 1
+fi
+
+mv "$TMP" "$OUT"
+rm -f "$ERROR_LOG"
+
+index=0
+while IFS= read -r dump; do
+    index=$((index + 1))
+    if ((index > KEEP)); then
+        rm -f -- "$dump"
+    fi
+done < <(ls -1t "$BACKUP_DIR"/*.dump 2>/dev/null || true)
+
+stored="$(find "$BACKUP_DIR" -maxdepth 1 -type f -name '*.dump' | wc -l | tr -d ' ')"
+echo "$(date '+%F %T') резервная копия готова: $OUT ($(du -h "$OUT" | cut -f1)); хранится $stored, лимит $KEEP"

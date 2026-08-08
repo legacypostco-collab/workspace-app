@@ -1,32 +1,62 @@
 #!/usr/bin/env bash
-# Restores the latest custom-format dump into an isolated temporary database.
+# Проверяет последнюю копию восстановлением в отдельную временную базу.
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/var/www/workspace-app}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="${APP_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/consolidator}"
+
 cd "$APP_DIR"
-set -a; . ./.env 2>/dev/null || true; set +a
+DB_USER="${DB_USER:-consolidator}"
+COMPOSE_ARGS=(-f "$APP_DIR/docker-compose.yml")
+if [[ -f "$APP_DIR/docker-compose.prod.yml" ]]; then
+    COMPOSE_ARGS+=(-f "$APP_DIR/docker-compose.prod.yml")
+fi
+
+compose() {
+    docker compose "${COMPOSE_ARGS[@]}" "$@"
+}
 
 DUMP="${1:-}"
 if [[ -z "$DUMP" ]]; then
-    DUMP=$(find "$BACKUP_DIR" -maxdepth 1 -type f -name '*.dump' -print0 \
-        | xargs -0 -r ls -1t 2>/dev/null | head -1 || true)
+    DUMP="$(ls -1t "$BACKUP_DIR"/*.dump 2>/dev/null | head -1 || true)"
 fi
-[[ -n "$DUMP" && -f "$DUMP" ]] || { echo "No database dump found"; exit 1; }
+[[ -n "$DUMP" && -f "$DUMP" ]] || {
+    echo "Резервная копия для проверки не найдена" >&2
+    exit 1
+}
 
 TEMP_DB="consolidator_restore_check_$(date +%s)_$$"
-cleanup() { sudo -u postgres dropdb --if-exists "$TEMP_DB" >/dev/null 2>&1 || true; }
+cleanup() {
+    compose exec -T db dropdb -U "$DB_USER" --if-exists --force "$TEMP_DB" >/dev/null 2>&1 || true
+}
 trap cleanup EXIT
 
-pg_restore --list "$DUMP" >/dev/null
-sudo -u postgres createdb "$TEMP_DB"
-sudo -u postgres pg_restore \
-    --exit-on-error --no-owner --no-privileges --dbname "$TEMP_DB" "$DUMP"
+compose exec -T db pg_restore --list <"$DUMP" >/dev/null
+compose exec -T db createdb -U "$DB_USER" "$TEMP_DB"
+compose exec -T db pg_restore \
+    -U "$DB_USER" \
+    --exit-on-error \
+    --no-owner \
+    --no-privileges \
+    --dbname "$TEMP_DB" <"$DUMP"
 
-TABLE_COUNT=$(sudo -u postgres psql -Atqc \
-    "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname='public'" "$TEMP_DB")
-[[ "${TABLE_COUNT:-0}" -gt 0 ]] || { echo "Restored database contains no tables"; exit 1; }
-sudo -u postgres psql -Atqc \
-    "SELECT 1 FROM django_migrations LIMIT 1" "$TEMP_DB" | grep -q '^1$'
+TABLE_COUNT="$(
+    compose exec -T db psql -U "$DB_USER" -d "$TEMP_DB" -Atqc \
+        "SELECT count(*) FROM pg_catalog.pg_tables WHERE schemaname='public'"
+)"
+[[ "${TABLE_COUNT:-0}" -gt 0 ]] || {
+    echo "В восстановленной базе нет таблиц" >&2
+    exit 1
+}
 
-echo "Restore check OK: $(basename "$DUMP"), tables=$TABLE_COUNT"
+MIGRATION_OK="$(
+    compose exec -T db psql -U "$DB_USER" -d "$TEMP_DB" -Atqc \
+        "SELECT 1 FROM django_migrations LIMIT 1"
+)"
+[[ "$MIGRATION_OK" == "1" ]] || {
+    echo "В восстановленной базе не найдена история миграций" >&2
+    exit 1
+}
+
+echo "Проверка восстановления успешна: $(basename "$DUMP"), таблиц: $TABLE_COUNT"
