@@ -26,6 +26,15 @@ logger = logging.getLogger(__name__)
 
 # Cap для сканирования — иначе один большой файл блокирует daemon.
 MAX_SCAN_BYTES = int(os.environ.get("CLAMD_MAX_SCAN_BYTES", str(50 * 1024 * 1024)))  # 50MB
+DEFAULT_CLAMD_TIMEOUT_SECONDS = 30
+
+
+def _clamd_timeout_seconds() -> int:
+    try:
+        timeout = int(os.environ.get("CLAMD_TIMEOUT_SECONDS", DEFAULT_CLAMD_TIMEOUT_SECONDS))
+    except (TypeError, ValueError):
+        timeout = DEFAULT_CLAMD_TIMEOUT_SECONDS
+    return max(5, min(timeout, 120))
 
 
 def _get_client():
@@ -37,7 +46,11 @@ def _get_client():
     host = os.environ.get("CLAMD_HOST", "127.0.0.1")
     port = int(os.environ.get("CLAMD_PORT", "3310"))
     try:
-        client = clamd.ClamdNetworkSocket(host=host, port=port, timeout=5)
+        client = clamd.ClamdNetworkSocket(
+            host=host,
+            port=port,
+            timeout=_clamd_timeout_seconds(),
+        )
         client.ping()
         return client
     except Exception as e:

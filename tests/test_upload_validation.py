@@ -1,5 +1,7 @@
 """Unit tests for marketplace.upload_validation — size/ext/magic/MIME."""
 import io
+import sys
+import types
 import zipfile
 
 import pytest
@@ -7,11 +9,39 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 
+from marketplace.upload_security import UploadSecurityError, validate_uploaded_file
 from marketplace.upload_validation import (
-    IMAGE_RULES, KYB_DOC_RULES, PDF_DOC_RULES, PRICELIST_RULES,
+    IMAGE_RULES,
+    KYB_DOC_RULES,
+    PDF_DOC_RULES,
+    PRICELIST_RULES,
     validate_upload,
 )
-from marketplace.upload_security import UploadSecurityError, validate_uploaded_file
+
+
+def test_clamd_client_uses_bounded_configurable_timeout(monkeypatch):
+    from marketplace.file_scan import _get_client
+
+    captured = {}
+
+    class FakeClient:
+        def __init__(self, *, host, port, timeout):
+            captured.update(host=host, port=port, timeout=timeout)
+
+        def ping(self):
+            return "PONG"
+
+    monkeypatch.setitem(
+        sys.modules,
+        "clamd",
+        types.SimpleNamespace(ClamdNetworkSocket=FakeClient),
+    )
+    monkeypatch.setenv("CLAMD_HOST", "clamav")
+    monkeypatch.setenv("CLAMD_PORT", "3310")
+    monkeypatch.setenv("CLAMD_TIMEOUT_SECONDS", "300")
+
+    assert _get_client() is not None
+    assert captured == {"host": "clamav", "port": 3310, "timeout": 120}
 
 
 def _pdf_bytes(size=1000):
