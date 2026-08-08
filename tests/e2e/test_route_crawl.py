@@ -19,6 +19,7 @@ PUBLIC_PAGES = (
 )
 
 REDIRECTS = {
+    "/favicon.ico": "/static/brand/logo-icon-orange.svg",
     "/demo-center/": "/chat/?workspace=1",
     "/demo/": "/chat/?workspace=1",
     "/register/": "/chat/?action=start_registration",

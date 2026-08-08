@@ -2,6 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import HttpResponse, HttpResponseNotFound
+from django.shortcuts import redirect
 from django.urls import include, path, re_path
 from django.utils import timezone
 from django.views.decorators.cache import cache_control
@@ -62,6 +63,11 @@ def private_media_not_found(_request, _path=""):
     return HttpResponseNotFound()
 
 
+@cache_control(public=True, max_age=86400)
+def favicon(_request):
+    return redirect(f"{settings.STATIC_URL}brand/logo-icon-orange.svg", permanent=True)
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("control/", include("control.urls")),
@@ -69,6 +75,7 @@ urlpatterns = [
     path("jsi18n/", JavaScriptCatalog.as_view(domain="django"), name="javascript-catalog"),
     path("robots.txt", robots_txt, name="robots-txt"),
     path("sitemap.xml", sitemap_xml, name="sitemap-xml"),
+    path("favicon.ico", favicon, name="favicon"),
     path("api/v1/", include("marketplace.api_urls")),
     path("api/assistant/", include("assistant.urls")),
     # API documentation — staff only (IDOR/info-leak fix from QA report)

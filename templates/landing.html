@@ -657,7 +657,7 @@
   #main-content > .grad:first-child::before{
     content: '';
     position: absolute; inset: 0;
-    background-image: url('{% static 'marketplace/landing/hero-generic-day.jpg' %}');
+    background-image: url('{% static 'marketplace/landing/hero-generic-day.webp' %}');
     background-size: cover;
     background-position: center 68%;
     z-index: 0;
@@ -665,7 +665,7 @@
     pointer-events: none;
   }
   body.dark-mode #main-content > .grad:first-child::before{
-    background-image: url('{% static 'marketplace/landing/hero-generic-night.jpg' %}');
+    background-image: url('{% static 'marketplace/landing/hero-generic-night.webp' %}');
   }
   #main-content > .grad:first-child::after{
     content: '';
@@ -4203,7 +4203,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−15%</span><span class="badge oem">OEM</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card-720.webp' %}" alt="" loading="lazy" decoding="async" width="720" height="480">
         </div>
         <div class="body">
           <div class="sku">14Y-22-37470</div>
@@ -4218,7 +4218,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−11%</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card-720.webp' %}" alt="" loading="lazy" decoding="async" width="720" height="480">
         </div>
         <div class="body">
           <div class="sku">CA0107091</div>
@@ -4233,7 +4233,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−16%</span><span class="badge oem">OEM</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card-720.webp' %}" alt="" loading="lazy" decoding="async" width="720" height="480">
         </div>
         <div class="body">
           <div class="sku">707-99-47130</div>
@@ -4248,7 +4248,7 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
         <div class="img">
           <div class="badges"><span class="badge sale">−15%</span></div>
           <button class="fav" type="button" aria-label="{% trans 'В избранное' %}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></button>
-          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card.jpg' %}" alt="" loading="eager" decoding="async">
+          <img class="placeholder-img" src="{% static 'marketplace/landing/product-placeholder-card-720.webp' %}" alt="" loading="lazy" decoding="async" width="720" height="480">
         </div>
         <div class="body">
           <div class="sku">YM129953-77803</div>
@@ -4275,13 +4275,13 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
   </div>
   <div class="wh-grid">
     <div class="wh-cell">
-      <img loading="eager" decoding="async" fetchpriority="high" class="bg-photo" src="{% static 'marketplace/landing/warehouse-transit-generic.jpg' %}" alt="" role="presentation">
+      <img loading="lazy" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/warehouse-transit-generic-800.webp' %}" alt="" role="presentation" width="800" height="533">
       <div class="label">{% trans "Транзитный склад" %}</div>
       <div class="num">{% trans "Хабы" %}<small>{% trans "и маршруты" %}</small></div>
       <div class="desc">{% trans "Консолидация грузов, маршрутные документы и отслеживание этапов доставки." %}</div>
     </div>
     <div class="wh-cell">
-      <img loading="eager" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/warehouse-inventory-generic.jpg' %}" alt="" role="presentation">
+      <img loading="lazy" decoding="async" fetchpriority="low" class="bg-photo" src="{% static 'marketplace/landing/warehouse-inventory-generic-800.webp' %}" alt="" role="presentation" width="800" height="533">
       <div class="label">{% trans "Проверенные позиции" %}</div>
       <div class="num">{% trans "Каталог" %}<small>{% trans "поставщиков" %}</small></div>
       <div class="desc">{% trans "Позиции из каталогов поставщиков с ценами, сроками и доступными аналогами." %}</div>
