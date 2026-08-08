@@ -7,7 +7,9 @@ there is no privileged test-only login route.
 """
 from __future__ import annotations
 
+import json
 import os
+from urllib.parse import quote
 
 import pytest
 
@@ -64,6 +66,19 @@ def context(browser: Browser) -> BrowserContext:
         viewport={"width": 1280, "height": 800},
         ignore_https_errors=True,
     )
+    consent = quote(json.dumps({
+        "version": "2026-08-08",
+        "necessary": True,
+        "analytics": False,
+        "decided_at": "e2e-fixture",
+    }, separators=(",", ":")))
+    ctx.add_cookies([{
+        "name": "cookie_consent",
+        "value": consent,
+        "url": BASE_URL,
+        "secure": BASE_URL.startswith("https://"),
+        "sameSite": "Lax",
+    }])
     yield ctx
     ctx.close()
 
@@ -95,6 +110,9 @@ def login_role(page: Page, role: str, base_url: str) -> None:
     username, password = _role_credentials(role)
     page.context.clear_cookies()
     page.goto(f"{base_url}/chat/", wait_until="domcontentloaded")
+    cookie_banner = page.locator("#cookie-banner")
+    if cookie_banner.is_visible():
+        page.locator("[data-cookie-action='necessary']").click()
     result = page.evaluate(
         """async ({username, password, role}) => {
           const match = document.cookie.match(/(?:^|;\\s*)csrftoken=([^;]+)/);
