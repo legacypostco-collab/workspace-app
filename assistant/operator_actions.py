@@ -2587,8 +2587,6 @@ def op_logistics_stats(params, user, role):
 
     from marketplace.models import Order, OrderEvent
 
-    from marketplace.models import Order, OrderEvent
-
     completed = Order.objects.filter(status="completed").count()
     delivered = Order.objects.filter(status="delivered").count()
     in_transit = Order.objects.filter(status__in=("transit_abroad", "transit_rf", "issuing")).count()
