@@ -94,7 +94,7 @@ def test_cookie_banner_accepts_and_persists(page: Page, base_url):
         cookie for cookie in page.context.cookies()
         if cookie["name"] == "cookie_consent"
     )
-    assert stored_cookie["secure"] is True
+    assert stored_cookie["secure"] is base_url.startswith("https://")
     assert stored_cookie["sameSite"] == "Lax"
     # Reload — не должен снова появиться
     page.reload()

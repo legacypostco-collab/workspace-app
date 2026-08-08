@@ -112,7 +112,7 @@ def login_role(page: Page, role: str, base_url: str) -> None:
     page.goto(f"{base_url}/chat/", wait_until="domcontentloaded")
     cookie_banner = page.locator("#cookie-banner")
     if cookie_banner.is_visible():
-        page.locator("[data-cookie-action='necessary']").click()
+        cookie_banner.locator("[data-cookie-action='necessary']").click()
     result = page.evaluate(
         """async ({username, password, role}) => {
           const match = document.cookie.match(/(?:^|;\\s*)csrftoken=([^;]+)/);

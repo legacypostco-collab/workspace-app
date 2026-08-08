@@ -15,7 +15,7 @@ def test_buyer_registration_requires_two_separate_consents(
     page.goto(f"{base_url}/chat/?workspace=1", wait_until="networkidle")
     banner = page.locator("#cookie-banner")
     if banner.is_visible():
-        page.locator("[data-cookie-action='necessary']").click()
+        banner.locator("[data-cookie-action='necessary']").click()
 
     page.wait_for_function(
         "() => window.authModal && typeof window.authModal.open === 'function'"
