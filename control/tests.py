@@ -5,11 +5,16 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
+from assistant.models import Conversation, ConversationParticipant, Message
 from marketplace.models import (
+    RFQ,
     Category,
+    CompanyVerification,
+    Notification,
     Order,
     OrderItem,
     Part,
+    RFQItem,
     SettlementContract,
     SettlementInvoice,
     SettlementPayment,
@@ -58,6 +63,7 @@ class ControlAccessTests(TestCase):
         for url in (
             "/control/",
             "/control/search/",
+            "/control/notifications/",
             "/control/finance/",
             "/control/orders/",
             "/control/users/",
@@ -261,3 +267,172 @@ class ControlActionTests(TestCase):
         )
         self.part.refresh_from_db()
         self.assertFalse(self.part.is_active)
+
+
+class ControlInternalNavigationTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.admin = User.objects.create_superuser(
+            username="navigation_admin",
+            email="navigation-admin@example.com",
+            password="test-password-123",
+        )
+        cls.buyer = User.objects.create_user(
+            username="navigation_buyer",
+            email="navigation-buyer@example.com",
+            password="test-password-123",
+        )
+        UserProfile.objects.update_or_create(
+            user=cls.buyer,
+            defaults={"role": "buyer", "company_name": "Навигация Покупатель"},
+        )
+        cls.seller = User.objects.create_user(
+            username="navigation_seller",
+            email="navigation-seller@example.com",
+            password="test-password-123",
+        )
+        UserProfile.objects.update_or_create(
+            user=cls.seller,
+            defaults={"role": "seller", "company_name": "Навигация Поставщик"},
+        )
+        category = Category.objects.create(name="Navigation", slug="navigation")
+        part = Part.objects.create(
+            title="Navigation part",
+            slug="navigation-part",
+            oem_number="NAV-001",
+            price=Decimal("150.00"),
+            seller=cls.seller,
+            category=category,
+        )
+        cls.rfq = RFQ.objects.create(
+            created_by=cls.buyer,
+            customer_name="Навигация Покупатель",
+            customer_email=cls.buyer.email,
+            company_name="Навигация Покупатель",
+        )
+        RFQItem.objects.create(
+            rfq=cls.rfq,
+            query="NAV-001",
+            quantity=2,
+            matched_part=part,
+            state="auto_matched",
+        )
+        cls.verification = CompanyVerification.objects.create(
+            user=cls.seller,
+            status="pending",
+            legal_name="Навигация Поставщик",
+            inn="7700000000",
+            country="RU",
+            submitted_at=timezone.now(),
+        )
+        cls.conversation = Conversation.objects.create(
+            user=cls.buyer,
+            role="buyer",
+            category="support",
+            title="Проверка внутренней навигации",
+            support_status="waiting_operator",
+            support_kind="request",
+        )
+        ConversationParticipant.objects.create(
+            conversation=cls.conversation,
+            user=cls.buyer,
+            role="buyer",
+        )
+        Message.objects.create(
+            conversation=cls.conversation,
+            sender=cls.buyer,
+            role=Message.Role.USER,
+            content="Нужна помощь с заказом.",
+        )
+
+    def setUp(self):
+        self.client.force_login(self.admin)
+
+    def test_entity_lists_link_to_control_pages(self):
+        response = self.client.get("/control/search/", {"q": "Навигация"})
+        self.assertContains(response, f"/control/requests/{self.rfq.id}/")
+        self.assertNotContains(response, "run=get_rfq_status")
+
+        response = self.client.get("/control/moderation/")
+        self.assertContains(
+            response,
+            f"/control/moderation/companies/{self.seller.id}/",
+        )
+        self.assertNotContains(response, "run=op_kyb")
+
+        response = self.client.get("/control/support/")
+        self.assertContains(response, f"/control/support/{self.conversation.id}/")
+        self.assertNotContains(response, f"/chat/?conversation={self.conversation.id}")
+
+    def test_internal_detail_pages_render(self):
+        for url, expected in (
+            (f"/control/requests/{self.rfq.id}/", "Позиции заявки"),
+            (
+                f"/control/moderation/companies/{self.seller.id}/",
+                "Лист проверки",
+            ),
+            (f"/control/support/{self.conversation.id}/", "История обращения"),
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, expected)
+
+    def test_legacy_notification_opens_internal_entity(self):
+        notification = Notification.objects.create(
+            user=self.admin,
+            kind="rfq",
+            title="Новая заявка",
+            url=f"/chat/?new=1&run=get_rfq_status&rfq_id={self.rfq.id}",
+        )
+
+        response = self.client.get(f"/control/notifications/{notification.id}/open/")
+
+        self.assertRedirects(
+            response,
+            f"/control/requests/{self.rfq.id}/",
+            fetch_redirect_response=False,
+        )
+        notification.refresh_from_db()
+        self.assertTrue(notification.is_read)
+
+    def test_operator_can_reply_from_support_page(self):
+        response = self.client.post(
+            f"/control/support/{self.conversation.id}/",
+            {"action": "reply", "content": "Проверили данные, возвращаемся с ответом."},
+        )
+
+        self.assertRedirects(
+            response,
+            f"/control/support/{self.conversation.id}/",
+            fetch_redirect_response=False,
+        )
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.assigned_operator, self.admin)
+        self.assertEqual(self.conversation.support_status, "waiting_user")
+        self.assertTrue(
+            self.conversation.messages.filter(
+                sender=self.admin,
+                content="Проверили данные, возвращаемся с ответом.",
+            ).exists()
+        )
+
+    def test_company_can_be_approved_from_control_after_checklist(self):
+        checklist = (
+            "streetview_ok",
+            "reviews_ok",
+            "site_ok",
+            "bank_ok",
+            "certs_ok",
+            "messenger_test_ok",
+        )
+        url = f"/control/moderation/companies/{self.seller.id}/"
+        for item in checklist:
+            self.client.post(url, {"action": "toggle_check", "item": item})
+
+        response = self.client.post(url, {"action": "approve"})
+
+        self.assertRedirects(response, url, fetch_redirect_response=False)
+        self.verification.refresh_from_db()
+        self.assertEqual(self.verification.status, "verified")
+        self.assertEqual(self.verification.reviewed_by, self.admin)

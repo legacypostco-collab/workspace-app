@@ -21,7 +21,7 @@
         </dl>
         <div class="document-actions">
           {% if invoice.document %}<a class="button button--secondary" href="/api/assistant/orders/{{ invoice.order_id }}/documents/{{ invoice.document_id }}/file/"><svg><use href="#i-file"/></svg>Скачать счёт</a>{% endif %}
-          <a class="button button--secondary" href="/chat/?new=1&run=list_order_documents&order_id={{ invoice.order_id }}"><svg><use href="#i-message"/></svg>Документы сделки</a>
+          <a class="button button--secondary" href="{% url 'control:order_detail' invoice.order_id %}#documents"><svg><use href="#i-file"/></svg>Документы сделки</a>
         </div>
       </section>
 

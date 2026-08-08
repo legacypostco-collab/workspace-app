@@ -9,7 +9,7 @@
   <nav class="anchor-nav" aria-label="Разделы заказа"><a href="#summary">Сводка</a><a href="#items">Позиции</a><a href="#settlements">Расчёты</a><a href="#documents">Документы</a><a href="#events">История</a></nav>
 
   <section class="detail-band" id="summary">
-    <header class="panel-head"><div><span class="control-eyebrow">Сводка</span><h2>Участники и исполнение</h2></div><a href="/chat/?new=1&run=get_order_detail&order_id={{ order.id }}">Открыть в чате <span>→</span></a></header>
+    <header class="panel-head"><div><span class="control-eyebrow">Сводка</span><h2>Участники и исполнение</h2></div></header>
     <dl class="data-grid data-grid--four">
       <div><dt>Заказчик</dt><dd>{{ order.customer_name }}<small>{{ order.customer_email }} · {{ order.customer_phone }}</small></dd></div>
       <div><dt>Оператор</dt><dd>{% if order.assigned_operator %}{{ order.assigned_operator.get_full_name|default:order.assigned_operator.username }}{% else %}Не назначен{% endif %}<small>{{ order.get_kam_handoff_display }}</small></dd></div>

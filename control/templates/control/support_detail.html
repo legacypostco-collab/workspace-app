@@ -1,0 +1,23 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <a class="back-link" href="{% url 'control:support' %}">← Вернуться к обращениям</a>
+  <header class="detail-hero support-hero">
+    <div><span class="control-eyebrow">{{ conversation.get_support_kind_display }}</span><h1>{{ conversation.title|default:"Обращение в поддержку" }}</h1><p>{{ conversation.user.get_full_name|default:conversation.user.username }} · создано {{ conversation.created_at|date:"d.m.Y H:i" }}</p></div>
+    <div class="detail-state"><span class="status status--{{ conversation.support_status|status_tone }}">{{ conversation.get_support_status_display }}</span><strong>{% if conversation.assigned_operator %}{{ conversation.assigned_operator.get_full_name|default:conversation.assigned_operator.username }}{% else %}Не назначен{% endif %}</strong><small>Ответственный сотрудник</small></div>
+  </header>
+
+  <div class="support-detail-layout">
+    <section class="control-panel support-thread">
+      <header class="panel-head"><div><span class="control-eyebrow">Переписка</span><h2>История обращения</h2></div><span class="quiet-note">{{ thread|length }} сообщений</span></header>
+      <div class="support-messages">{% for message in thread %}<article class="support-message{% if message.role == 'system' %} support-message--system{% elif message.sender_id == request.user.id %} support-message--staff{% endif %}"><div class="support-message-meta"><strong>{% if message.sender %}{{ message.sender.get_full_name|default:message.sender.username }}{% elif message.role == 'system' %}Система{% else %}Помощник{% endif %}</strong><time>{{ message.created_at|date:"d.m.Y H:i" }}</time></div><p>{{ message.content|linebreaksbr }}</p></article>{% empty %}<p class="quiet-note">В обращении пока нет сообщений.</p>{% endfor %}</div>
+      {% if conversation.support_status != 'closed' %}<form class="support-reply" method="post">{% csrf_token %}<input type="hidden" name="action" value="reply"><label for="supportReply">Ответ пользователю</label><textarea id="supportReply" name="content" rows="4" required placeholder="Введите ответ по существу обращения"></textarea><div><span>Сообщение будет отправлено от вашего имени без запуска языковой модели.</span><button class="button button--primary" type="submit">Отправить ответ</button></div></form>{% endif %}
+    </section>
+
+    <aside class="detail-aside">
+      <section class="action-card"><span class="control-eyebrow">Ответственный</span><h2>{% if conversation.assigned_operator %}{{ conversation.assigned_operator.get_full_name|default:conversation.assigned_operator.username }}{% else %}Не назначен{% endif %}</h2>{% if conversation.assigned_operator_id != request.user.id %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="assign_me"><button class="button button--primary button--wide" type="submit">Назначить на себя</button></form>{% endif %}</section>
+      <section class="action-card"><span class="control-eyebrow">Состояние</span><h2>Изменить очередь</h2><form method="post">{% csrf_token %}<input type="hidden" name="action" value="set_status"><label><span>Текущее состояние</span><select class="surface-input" name="status"><option value="open"{% if conversation.support_status == 'open' %} selected{% endif %}>Открыто</option><option value="waiting_operator"{% if conversation.support_status == 'waiting_operator' %} selected{% endif %}>Ожидает сотрудника</option><option value="waiting_user"{% if conversation.support_status == 'waiting_user' %} selected{% endif %}>Ожидает пользователя</option><option value="closed"{% if conversation.support_status == 'closed' %} selected{% endif %}>Закрыто</option></select></label><button class="button button--secondary button--wide" type="submit">Сохранить состояние</button></form></section>
+      <section class="action-card"><span class="control-eyebrow">Участники</span><div class="participant-list">{% for link in participants %}<div><span class="support-avatar">{{ link.user|initials }}</span><p><strong>{{ link.user.get_full_name|default:link.user.username }}</strong><small>{{ link.role|role_label }}</small></p></div>{% empty %}<p class="quiet-note">Участники не определены.</p>{% endfor %}</div></section>
+    </aside>
+  </div>
+{% endblock %}

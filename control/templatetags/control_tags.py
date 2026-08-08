@@ -21,6 +21,38 @@ RFQ_STATUS_LABELS = {
     "needs_review": "Требует проверки",
     "cancelled": "Отменена",
 }
+RFQ_MODE_LABELS = {
+    "auto": "Автоматическая обработка",
+    "semi": "С проверкой сотрудника",
+    "manual": "Ручная обработка",
+    "manual_oem": "Ручная обработка",
+}
+RFQ_URGENCY_LABELS = {
+    "standard": "Обычный приоритет",
+    "urgent": "Срочная заявка",
+    "critical": "Критический приоритет",
+}
+RFQ_ITEM_STATE_LABELS = {
+    "new": "Ожидает подбора",
+    "auto_matched": "Подобрана автоматически",
+    "needs_review": "Требует проверки",
+    "oem_manual": "Ручной подбор",
+}
+RISK_LABELS = {
+    "green": "Низкий риск",
+    "yellow": "Средний риск",
+    "red": "Высокий риск",
+    "unknown": "Риск не определён",
+}
+API_SOURCE_LABELS = {
+    "aggregator": "Российские реестры",
+    "opencorporates": "Международный реестр компаний",
+    "vies": "Европейский реестр налоговых номеров",
+    "sanctions": "Санкционные списки",
+    "maps": "Карты и адрес",
+    "site": "Сайт компании",
+    "messenger": "Контактные каналы",
+}
 AVAILABILITY_LABELS = {
     "active": "Доступна",
     "limited": "Ограниченный остаток",
@@ -121,6 +153,36 @@ def role_label(value):
 def rfq_status_label(value):
     value = str(value or "")
     return RFQ_STATUS_LABELS.get(value, value.replace("_", " ").capitalize())
+
+
+@register.filter
+def rfq_mode_label(value):
+    value = str(value or "")
+    return RFQ_MODE_LABELS.get(value, "Режим не указан")
+
+
+@register.filter
+def rfq_urgency_label(value):
+    value = str(value or "")
+    return RFQ_URGENCY_LABELS.get(value, "Приоритет не указан")
+
+
+@register.filter
+def rfq_item_state_label(value):
+    value = str(value or "")
+    return RFQ_ITEM_STATE_LABELS.get(value, "Состояние не указано")
+
+
+@register.filter
+def risk_label(value):
+    value = str(value or "unknown")
+    return RISK_LABELS.get(value, RISK_LABELS["unknown"])
+
+
+@register.filter
+def api_source_label(value):
+    value = str(value or "")
+    return API_SOURCE_LABELS.get(value, "Внешний источник")
 
 
 @register.filter

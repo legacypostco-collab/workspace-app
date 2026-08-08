@@ -72,7 +72,7 @@
         </form>
         <div class="control-top-actions">
           <a class="icon-button" href="/chat/?new=1" title="Открыть чат" aria-label="Открыть чат"><svg><use href="#i-message"/></svg></a>
-          <a class="icon-button control-bell" href="/chat/?new=1&run=notifications" title="Уведомления" aria-label="Уведомления"><svg><use href="#i-bell"/></svg>{% if unread_notifications %}<span>{{ unread_notifications }}</span>{% endif %}</a>
+          <a class="icon-button control-bell{% if active_key == 'notifications' %} is-active{% endif %}" href="{% url 'control:notifications' %}" title="Уведомления" aria-label="Уведомления"><svg><use href="#i-bell"/></svg>{% if unread_notifications %}<span>{{ unread_notifications }}</span>{% endif %}</a>
           <button class="icon-button" type="button" data-theme-toggle title="Сменить тему" aria-label="Сменить тему"><svg class="theme-light-icon"><use href="#i-moon"/></svg><svg class="theme-dark-icon"><use href="#i-sun"/></svg></button>
           <a class="control-site-link" href="/" target="_blank" rel="noopener">Открыть сайт <svg><use href="#i-external"/></svg></a>
         </div>

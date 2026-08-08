@@ -438,9 +438,11 @@ def prepare_settlement_package(order: Order, actor=None) -> dict:
 
 @transaction.atomic
 def issue_invoice(invoice: SettlementInvoice, actor=None) -> SettlementInvoice:
-    invoice = SettlementInvoice.objects.select_for_update().select_related(
-        "order", "contract", "seller"
-    ).get(pk=invoice.pk)
+    invoice = (
+        SettlementInvoice.objects.select_for_update(of=("self",))
+        .select_related("order", "contract", "seller")
+        .get(pk=invoice.pk)
+    )
     if invoice.status in {"paid", "partially_paid", "cancelled"}:
         raise SettlementError("Счёт нельзя повторно выставить в текущем статусе")
     if invoice.direction == "receivable" and invoice.stage == "final":
@@ -642,9 +644,11 @@ def confirm_bank_payment(
         raise SettlementError(
             "Подтверждать банковские операции может только финансовый оператор"
         )
-    invoice = SettlementInvoice.objects.select_for_update().select_related(
-        "order", "contract", "seller"
-    ).get(pk=invoice.pk)
+    invoice = (
+        SettlementInvoice.objects.select_for_update(of=("self",))
+        .select_related("order", "contract", "seller")
+        .get(pk=invoice.pk)
+    )
     if invoice.status == "cancelled":
         raise SettlementError("Отменённый счёт нельзя оплатить")
     if invoice.status not in {

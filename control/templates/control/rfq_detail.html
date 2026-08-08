@@ -1,0 +1,40 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <a class="back-link" href="{% url 'control:orders' %}">← Вернуться к заказам</a>
+  <header class="detail-hero">
+    <div><span class="control-eyebrow">Заявка №{{ rfq.id }}</span><h1>{{ rfq.company_name|default:rfq.customer_name }}</h1><p>Создана {{ rfq.created_at|date:"d.m.Y H:i" }} · {{ rfq.items.count }} позиций</p></div>
+    <div class="detail-state"><span class="status status--{{ rfq.status|status_tone }}">{{ rfq.status|rfq_status_label }}</span><strong>{{ rfq.mode|rfq_mode_label }}</strong><small>{{ rfq.urgency|rfq_urgency_label }}</small></div>
+  </header>
+  <nav class="anchor-nav" aria-label="Разделы заявки"><a href="#summary">Сводка</a><a href="#items">Позиции</a><a href="#quotes">Предложения</a><a href="#events">История</a></nav>
+
+  <section class="detail-band" id="summary">
+    <header class="panel-head"><div><span class="control-eyebrow">Исходные данные</span><h2>Заказчик и обработка</h2></div></header>
+    <dl class="data-grid data-grid--four">
+      <div><dt>Заказчик</dt><dd>{{ rfq.customer_name }}<small>{{ rfq.company_name|default:"Компания не указана" }}</small></dd></div>
+      <div><dt>Контакты</dt><dd>{{ rfq.customer_email }}<small>{% if rfq.created_by %}Учётная запись: {{ rfq.created_by.username }}{% else %}Гостевая заявка{% endif %}</small></dd></div>
+      <div><dt>Обработка</dt><dd>{{ rfq.mode|rfq_mode_label }}<small>{{ rfq.urgency|rfq_urgency_label }}</small></dd></div>
+      <div><dt>Скидка</dt><dd>{{ rfq.discount_percent|floatformat:2 }}%<small>{{ rfq.discount_note|default:"Без комментария" }}</small></dd></div>
+    </dl>
+    {% if rfq.notes %}<div class="entity-note"><strong>Комментарий</strong><p>{{ rfq.notes }}</p></div>{% endif %}
+  </section>
+
+  <section class="control-panel detail-section" id="items">
+    <header class="panel-head"><div><span class="control-eyebrow">Спецификация</span><h2>Позиции заявки</h2></div></header>
+    <div class="table-wrap"><table class="control-table"><thead><tr><th>Запрос</th><th>Количество</th><th>Подбор</th><th>Партнёр</th><th>Цена каталога</th><th>Состояние</th></tr></thead><tbody>
+      {% for item in rfq_items %}<tr><td><strong>{{ item.query }}</strong><small>{{ item.decision_reason|default:"Без пояснения" }}</small></td><td>{{ item.quantity }}</td><td>{% if item.matched_part %}{{ item.matched_part.title_ru|default:item.matched_part.title }}<small>{{ item.matched_part.oem_number }}</small>{% else %}Не подобрано{% endif %}</td><td>{% if item.matched_part %}Партнёр №{{ item.matched_part.seller.profile.partner_public_code|default:item.matched_part.seller_id }}{% else %}—{% endif %}</td><td class="money">{% if item.matched_part %}{{ item.matched_part.price|floatformat:2 }} {{ item.matched_part.currency }}{% else %}—{% endif %}</td><td><span class="status status--{{ item.state|status_tone }}">{{ item.state|rfq_item_state_label }}</span></td></tr>{% empty %}<tr><td colspan="6">Позиции не добавлены</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="detail-band" id="quotes">
+    <header class="panel-head"><div><span class="control-eyebrow">Ответы поставщиков</span><h2>Ценовые предложения</h2></div></header>
+    <div class="quote-grid">
+      {% for quote in quotes %}<article><span class="document-icon"><svg><use href="#i-file"/></svg></span><div><strong>Предложение №{{ quote.id }}</strong><small>Партнёр №{{ quote.seller.profile.partner_public_code|default:quote.seller_id }} · раунд {{ quote.round_number }}</small></div><b>{{ quote.total_amount|floatformat:2 }} {{ quote.currency }}</b><span class="status status--{{ quote.status|status_tone }}">{{ quote.get_status_display }}</span><small>{{ quote.delivery_days }} дн.</small></article>{% empty %}<p class="quiet-note">Поставщики ещё не направили предложения.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="activity-strip" id="events">
+    <header class="panel-head"><div><span class="control-eyebrow">Журнал</span><h2>История заявки</h2></div></header>
+    <div class="timeline">{% for event in rfq_events %}<article><i></i><time>{{ event.created_at|date:"d.m.Y H:i" }}</time><div><strong>{{ event.title|default:"Изменение заявки" }}</strong><p>{% if event.actor %}{{ event.actor.get_full_name|default:event.actor.username }}{% else %}Система{% endif %}</p></div></article>{% empty %}<p class="quiet-note">Отдельных событий по заявке пока нет.</p>{% endfor %}</div>
+  </section>
+{% endblock %}

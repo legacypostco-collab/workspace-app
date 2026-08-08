@@ -1,0 +1,22 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <header class="control-page-head">
+    <div><span class="control-eyebrow">События вашей учётной записи</span><h1>Уведомления</h1><p>Системные сообщения открывают соответствующий раздел операционного центра, а не запускают новый диалог.</p></div>
+    {% if unread_notifications %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="mark_all_read"><button class="button button--secondary" type="submit"><svg><use href="#i-check"/></svg>Прочитать все</button></form>{% endif %}
+  </header>
+  <section class="control-panel notification-list">
+    {% for item in notifications %}
+      <a class="notification-row{% if not item.is_read %} is-unread{% endif %}" href="{{ item.control_url }}">
+        <span class="notification-icon"><svg><use href="{% if item.kind == 'payment' %}#i-wallet{% elif item.kind == 'order' %}#i-package{% elif item.kind == 'claim' or item.kind == 'sla' %}#i-alert{% else %}#i-bell{% endif %}"/></svg></span>
+        <div><strong>{{ item.title }}</strong><p>{{ item.body|default:"Без дополнительного описания" }}</p></div>
+        <span class="status status--{% if item.is_read %}neutral{% else %}warning{% endif %}">{% if item.is_read %}Прочитано{% else %}Новое{% endif %}</span>
+        <time>{{ item.created_at|date:"d.m.Y H:i" }}</time>
+        <svg class="notification-arrow"><use href="#i-arrow"/></svg>
+      </a>
+    {% empty %}
+      {% include "control/partials/empty.html" with icon="bell" title="Уведомлений нет" text="Здесь появятся сообщения о заказах, оплатах, заявках и системных событиях." %}
+    {% endfor %}
+    {% include "control/partials/pagination.html" with page=notifications %}
+  </section>
+{% endblock %}

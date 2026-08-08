@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from decimal import Decimal
+from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
 from django.http import HttpResponseNotAllowed
@@ -14,7 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from assistant.models import Conversation
+from assistant.models import Conversation, ConversationParticipant
 from assistant.permissions import user_allowed_roles
 from assistant.settlements import (
     SettlementError,
@@ -26,6 +28,7 @@ from marketplace.models import (
     RFQ,
     ActivityEvent,
     CompanyVerification,
+    Notification,
     Order,
     OrderClaim,
     OrderEvent,
@@ -35,6 +38,15 @@ from marketplace.models import (
 )
 
 from .access import can_access, control_required, control_role, role_label
+
+KYB_CHECKLIST = (
+    ("streetview_ok", "Склад существует и соответствует заявленному адресу"),
+    ("reviews_ok", "Отзывы и упоминания компании проверены"),
+    ("site_ok", "Сайт и сведения о деятельности проверены"),
+    ("bank_ok", "Банковские реквизиты и страна счёта сверены"),
+    ("certs_ok", "Сертификаты и дилерские полномочия проверены"),
+    ("messenger_test_ok", "Контакт в мессенджере подтверждён"),
+)
 
 NAVIGATION = (
     ("dashboard", "Обзор", "dashboard", "grid"),
@@ -122,6 +134,45 @@ def _record(request, action: str, title: str, **meta):
     )
 
 
+def _query_value(params, *names):
+    for name in names:
+        value = (params.get(name) or [""])[0]
+        if value:
+            return value
+    return ""
+
+
+def _notification_target(user, notification):
+    """Translate legacy chat notification targets to internal control pages."""
+    parsed = urlparse(notification.url or "")
+    params = parse_qs(parsed.query)
+
+    order_id = _query_value(params, "order_id")
+    if order_id.isdigit() and Order.objects.filter(pk=order_id).exists():
+        return reverse("control:order_detail", args=[order_id])
+
+    rfq_id = _query_value(params, "rfq_id")
+    if rfq_id.isdigit() and RFQ.objects.filter(pk=rfq_id).exists():
+        return reverse("control:rfq_detail", args=[rfq_id])
+
+    conversation_id = _query_value(params, "conversation", "conversation_id", "conv")
+    if conversation_id and can_access(user, "support"):
+        try:
+            conversation = (
+                Conversation.objects.filter(
+                    pk=conversation_id,
+                )
+                .exclude(support_status="")
+                .first()
+            )
+        except (TypeError, ValueError, ValidationError):
+            conversation = None
+        if conversation:
+            return reverse("control:support_detail", args=[conversation.id])
+
+    return reverse("control:notifications")
+
+
 @control_required("dashboard")
 def dashboard(request):
     open_orders = Order.objects.exclude(status__in={"completed", "cancelled"})
@@ -171,7 +222,9 @@ def dashboard(request):
             "label": "Открытые обращения",
             "value": support_open.count(),
             "hint": "ожидают ответа команды",
-            "url": reverse("control:support") if can_access(request.user, "support") else "/chat/",
+            "url": reverse("control:support")
+            if can_access(request.user, "support")
+            else reverse("control:orders"),
             "tone": "light",
             "icon": "message",
         },
@@ -195,6 +248,34 @@ def dashboard(request):
         outgoing_totals=_outstanding_totals_by_currency(open_payables),
     )
     return render(request, "control/dashboard.html", context)
+
+
+@control_required("dashboard")
+@require_http_methods(["GET", "POST"])
+def notifications(request):
+    if request.method == "POST":
+        if request.POST.get("action") == "mark_all_read":
+            updated = request.user.notifications.filter(is_read=False).update(is_read=True)
+            messages.success(request, f"Отмечено прочитанными: {updated}.")
+        return redirect("control:notifications")
+
+    page = _paginate(request, request.user.notifications.all(), per_page=40)
+    for item in page.object_list:
+        item.control_url = reverse("control:notification_open", args=[item.id])
+    return render(
+        request,
+        "control/notifications.html",
+        _page(request, "notifications", "Уведомления", notifications=page),
+    )
+
+
+@control_required("dashboard")
+def notification_open(request, notification_id):
+    notification = get_object_or_404(Notification, pk=notification_id, user=request.user)
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+    return redirect(_notification_target(request.user, notification))
 
 
 @control_required("search")
@@ -235,6 +316,26 @@ def search(request):
         request,
         "control/search.html",
         _page(request, "search", "Поиск", query=query, results=result),
+    )
+
+
+@control_required("orders")
+def rfq_detail(request, rfq_id):
+    rfq = get_object_or_404(RFQ.objects.select_related("created_by__profile"), pk=rfq_id)
+    return render(
+        request,
+        "control/rfq_detail.html",
+        _page(
+            request,
+            "orders",
+            f"Заявка №{rfq.id}",
+            rfq=rfq,
+            rfq_items=rfq.items.select_related(
+                "matched_part__brand", "matched_part__seller__profile"
+            ),
+            quotes=rfq.quotes.select_related("seller__profile").prefetch_related("items"),
+            rfq_events=ActivityEvent.objects.filter(kind="rfq", meta__rfq_id=rfq.id)[:20],
+        ),
     )
 
 
@@ -537,6 +638,122 @@ def moderation(request):
     )
 
 
+@control_required("moderation")
+@require_http_methods(["GET", "POST"])
+def verification_detail(request, user_id):
+    verification = get_object_or_404(
+        CompanyVerification.objects.select_related("user__profile", "reviewed_by"),
+        user_id=user_id,
+    )
+    if request.method == "POST":
+        from assistant.onboarding import (
+            op_kyb_approve,
+            op_kyb_check,
+            op_kyb_clarify,
+            op_kyb_reject,
+        )
+
+        action = request.POST.get("action")
+        role = control_role(request.user)
+        if action == "toggle_check":
+            item = (request.POST.get("item") or "").strip()
+            if item not in dict(KYB_CHECKLIST):
+                messages.error(request, "Неизвестный пункт проверки.")
+            else:
+                op_kyb_check({"user_id": user_id, "item": item}, request.user, role)
+        elif action == "approve":
+            missing = [
+                label
+                for key, label in KYB_CHECKLIST
+                if not (verification.operator_checklist or {}).get(key)
+            ]
+            if missing:
+                messages.error(request, "Перед одобрением завершите весь лист проверки.")
+            else:
+                result = op_kyb_approve({"user_id": user_id}, request.user, role)
+                verification.refresh_from_db()
+                if verification.status == "verified":
+                    _record(
+                        request,
+                        "company_verified",
+                        f"Одобрена компания {verification.legal_name or verification.user.username}",
+                        user_id=user_id,
+                    )
+                    messages.success(
+                        request, "Компания одобрена. Заявителю отправлено уведомление."
+                    )
+                else:
+                    messages.error(request, result.text)
+        elif action == "reject":
+            reason = (request.POST.get("reason") or "").strip()
+            if not reason:
+                messages.error(request, "Укажите причину отклонения.")
+            else:
+                result = op_kyb_reject(
+                    {"user_id": user_id, "reason": reason, "confirmed": True},
+                    request.user,
+                    role,
+                )
+                verification.refresh_from_db()
+                if verification.status == "rejected":
+                    _record(
+                        request,
+                        "company_rejected",
+                        f"Отклонена компания {verification.legal_name or verification.user.username}",
+                        user_id=user_id,
+                    )
+                    messages.warning(request, "Проверка отклонена. Причина передана заявителю.")
+                else:
+                    messages.error(request, result.text)
+        elif action == "clarify":
+            note = (request.POST.get("note") or "").strip()
+            if not note:
+                messages.error(request, "Укажите, какие сведения необходимо уточнить.")
+            else:
+                op_kyb_clarify(
+                    {"user_id": user_id, "note": note, "confirmed": True},
+                    request.user,
+                    role,
+                )
+                messages.success(request, "Запрос на уточнение отправлен заявителю.")
+        return redirect("control:verification_detail", user_id=user_id)
+
+    checklist_state = verification.operator_checklist or {}
+    checklist = [
+        {"key": key, "label": label, "checked": bool(checklist_state.get(key))}
+        for key, label in KYB_CHECKLIST
+    ]
+    documents = [
+        {"kind": "charter", "label": "Устав", "present": bool(verification.doc_charter)},
+        {"kind": "egrul", "label": "Выписка из реестра", "present": bool(verification.doc_egrul)},
+        {
+            "kind": "passport",
+            "label": "Документ руководителя",
+            "present": bool(verification.doc_passport),
+        },
+        {
+            "kind": "dealership",
+            "label": "Дилерские полномочия",
+            "present": bool(verification.doc_dealership),
+        },
+        {"kind": "bank", "label": "Банковские реквизиты", "present": bool(verification.doc_bank)},
+    ]
+    return render(
+        request,
+        "control/verification_detail.html",
+        _page(
+            request,
+            "moderation",
+            verification.legal_name or verification.user.username,
+            verification=verification,
+            checklist=checklist,
+            checklist_complete=all(item["checked"] for item in checklist),
+            documents=documents,
+            api_checks=(verification.api_results or {}).items(),
+        ),
+    )
+
+
 @control_required("catalog")
 @require_http_methods(["GET", "POST"])
 def catalog(request):
@@ -611,6 +828,94 @@ def support(request):
             "Поддержка",
             conversations=_paginate(request, conversations.order_by("-updated_at")),
             status_filter=status,
+        ),
+    )
+
+
+@control_required("support")
+@require_http_methods(["GET", "POST"])
+def support_detail(request, conversation_id):
+    conversation = get_object_or_404(
+        Conversation.objects.select_related("user__profile", "assigned_operator"),
+        pk=conversation_id,
+    )
+    if not conversation.support_status:
+        messages.error(request, "Этот диалог не является обращением в поддержку.")
+        return redirect("control:support")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "assign_me":
+            ConversationParticipant.objects.get_or_create(
+                conversation=conversation,
+                user=request.user,
+                role=control_role(request.user),
+            )
+            conversation.assigned_operator = request.user
+            conversation.save(update_fields=["assigned_operator", "updated_at"])
+            _record(
+                request,
+                "support_assigned",
+                f"Назначен ответственный по обращению {conversation.id}",
+                conversation_id=str(conversation.id),
+            )
+            messages.success(request, "Обращение назначено вам.")
+        elif action == "reply":
+            content = (request.POST.get("content") or "").strip()
+            if not content:
+                messages.error(request, "Введите ответ.")
+            elif conversation.support_status == "closed":
+                messages.error(request, "Закрытое обращение нельзя дополнять.")
+            else:
+                from assistant.support_threads import post_support_message
+
+                ConversationParticipant.objects.get_or_create(
+                    conversation=conversation,
+                    user=request.user,
+                    role=control_role(request.user),
+                )
+                if not conversation.assigned_operator_id:
+                    conversation.assigned_operator = request.user
+                    conversation.save(update_fields=["assigned_operator", "updated_at"])
+                post_support_message(
+                    conversation,
+                    request.user,
+                    control_role(request.user),
+                    content[:10000],
+                )
+                messages.success(request, "Ответ отправлен пользователю.")
+        elif action == "set_status":
+            status = (request.POST.get("status") or "").strip()
+            allowed = {
+                value for value, _label in Conversation._meta.get_field("support_status").choices
+            }
+            if status not in allowed or not status:
+                messages.error(request, "Недопустимое состояние обращения.")
+            else:
+                conversation.support_status = status
+                conversation.save(update_fields=["support_status", "updated_at"])
+                _record(
+                    request,
+                    "support_status_changed",
+                    f"Изменено состояние обращения {conversation.id}",
+                    conversation_id=str(conversation.id),
+                    status=status,
+                )
+                messages.success(request, "Состояние обращения обновлено.")
+        return redirect("control:support_detail", conversation_id=conversation.id)
+
+    thread = list(conversation.messages.select_related("sender").order_by("-created_at")[:100])
+    thread.reverse()
+    return render(
+        request,
+        "control/support_detail.html",
+        _page(
+            request,
+            "support",
+            conversation.title or "Обращение",
+            conversation=conversation,
+            thread=thread,
+            participants=conversation.participant_links.select_related("user"),
         ),
     )
 

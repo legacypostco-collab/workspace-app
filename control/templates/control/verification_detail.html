@@ -1,0 +1,56 @@
+{% extends "control/base.html" %}
+{% load control_tags %}
+{% block content %}
+  <a class="back-link" href="{% url 'control:moderation' %}">← Вернуться к модерации</a>
+  <header class="detail-hero">
+    <div><span class="control-eyebrow">Проверка компании</span><h1>{{ verification.legal_name|default:verification.user.profile.company_name|default:verification.user.username }}</h1><p>{{ verification.country|default:"Страна не указана" }} · {{ verification.inn|default:verification.vat_number|default:"Регистрационный номер не указан" }}</p></div>
+    <div class="detail-state"><span class="status status--{{ verification.status|status_tone }}">{{ verification.get_status_display }}</span><strong>{{ verification.risk_indicator|risk_label }}</strong><small>{% if verification.submitted_at %}Подана {{ verification.submitted_at|date:"d.m.Y H:i" }}{% else %}Дата подачи не указана{% endif %}</small></div>
+  </header>
+
+  <div class="detail-layout">
+    <div class="detail-main">
+      <section class="control-panel detail-section">
+        <header class="panel-head"><div><span class="control-eyebrow">Анкета</span><h2>Юридические и контактные сведения</h2></div></header>
+        <dl class="data-grid data-grid--four verification-data">
+          <div><dt>Полное наименование</dt><dd>{{ verification.legal_name|default:"Не указано" }}</dd></div>
+          <div><dt>ИНН / налоговый номер</dt><dd>{{ verification.inn|default:verification.vat_number|default:"Не указан" }}</dd></div>
+          <div><dt>ОГРН</dt><dd>{{ verification.ogrn|default:"Не указан" }}</dd></div>
+          <div><dt>Руководитель</dt><dd>{{ verification.director_name|default:"Не указан" }}</dd></div>
+          <div><dt>Юридический адрес</dt><dd>{{ verification.legal_address|default:"Не указан" }}</dd></div>
+          <div><dt>Склад</dt><dd>{{ verification.warehouse_address|default:"Не указан" }}</dd></div>
+          <div><dt>Банк</dt><dd>{{ verification.bank_name|default:"Не указан" }}<small>{{ verification.bik|default:"БИК не указан" }}</small></dd></div>
+          <div><dt>Банковский счёт</dt><dd class="mono">{{ verification.bank_account|default:"Не указан" }}</dd></div>
+          <div><dt>Сайт</dt><dd>{{ verification.website|default:"Не указан" }}</dd></div>
+          <div><dt>Электронная почта</dt><dd>{{ verification.contact_email|default:verification.user.email|default:"Не указана" }}</dd></div>
+          <div><dt>Телефон</dt><dd>{{ verification.phone|default:"Не указан" }}</dd></div>
+          <div><dt>Мессенджеры</dt><dd>{{ verification.telegram|default:verification.whatsapp|default:"Не указаны" }}</dd></div>
+        </dl>
+      </section>
+
+      <section class="control-panel detail-section">
+        <header class="panel-head"><div><span class="control-eyebrow">Приложения</span><h2>Документы компании</h2></div></header>
+        <div class="document-grid verification-documents">{% for document in documents %}{% if document.present %}<a href="/api/assistant/kyb/{{ verification.user_id }}/doc/{{ document.kind }}/file/"><span class="document-icon"><svg><use href="#i-file"/></svg></span><div><strong>{{ document.label }}</strong><small>Защищённая загрузка</small></div><span>Скачать →</span></a>{% else %}<div class="missing-document"><span class="document-icon"><svg><use href="#i-alert"/></svg></span><div><strong>{{ document.label }}</strong><small>Не приложен</small></div></div>{% endif %}{% endfor %}</div>
+      </section>
+
+      <section class="control-panel detail-section">
+        <header class="panel-head"><div><span class="control-eyebrow">Внешние источники</span><h2>Результаты автоматических проверок</h2></div></header>
+        <div class="api-check-list">{% for key, snapshot in api_checks %}<article><span class="check-state check-state--{% if snapshot.ok %}ok{% else %}off{% endif %}"><svg><use href="{% if snapshot.ok %}#i-check{% else %}#i-alert{% endif %}"/></svg></span><div><strong>{{ key|api_source_label }}</strong><small>{% if snapshot.checked_at %}Проверено {{ snapshot.checked_at }}{% elif snapshot.error %}{{ snapshot.error }}{% else %}Сведения получены{% endif %}</small></div><b>{% if snapshot.ok %}Без блокирующих ошибок{% else %}Требует ручной проверки{% endif %}</b></article>{% empty %}<p class="quiet-note">Автоматические проверки ещё не выполнялись.</p>{% endfor %}</div>
+      </section>
+    </div>
+
+    <aside class="detail-aside">
+      <section class="action-card">
+        <span class="control-eyebrow">Лист проверки</span><h2>Решение сотрудника</h2><p>Все пункты должны быть подтверждены до одобрения компании.</p>
+        <div class="checklist">{% for item in checklist %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="toggle_check"><input type="hidden" name="item" value="{{ item.key }}"><button type="submit" class="checklist-row{% if item.checked %} is-checked{% endif %}"><span><svg><use href="{% if item.checked %}#i-check{% else %}#i-clock{% endif %}"/></svg></span><b>{{ item.label }}</b></button></form>{% endfor %}</div>
+        {% if verification.status == 'pending' %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="approve"><button class="button button--primary button--wide" type="submit"{% if not checklist_complete %} disabled{% endif %}><svg><use href="#i-check"/></svg>Одобрить компанию</button></form>{% endif %}
+      </section>
+
+      {% if verification.status == 'pending' %}
+        <section class="action-card action-card--accent"><span class="control-eyebrow">Уточнение</span><h2>Запросить сведения</h2><form method="post">{% csrf_token %}<input type="hidden" name="action" value="clarify"><label><span>Что должен предоставить заявитель</span><textarea name="note" rows="4" required placeholder="Опишите недостающие сведения или документы"></textarea></label><button class="button button--inverse button--wide" type="submit">Отправить запрос</button></form></section>
+        <section class="action-card"><span class="control-eyebrow">Отказ</span><h2>Отклонить проверку</h2><form method="post">{% csrf_token %}<input type="hidden" name="action" value="reject"><label><span>Причина для заявителя</span><textarea class="surface-input" name="reason" rows="4" required placeholder="Укажите конкретную и проверяемую причину"></textarea></label><button class="button button--danger button--wide" type="submit">Отклонить</button></form></section>
+      {% else %}
+        <section class="action-card"><span class="control-eyebrow">Решение принято</span><h2>{{ verification.get_status_display }}</h2><p>{% if verification.reviewed_by %}{{ verification.reviewed_by.get_full_name|default:verification.reviewed_by.username }} · {{ verification.reviewed_at|date:"d.m.Y H:i" }}{% else %}Сведения о сотруднике отсутствуют{% endif %}</p>{% if verification.rejection_reason %}<div class="entity-note"><strong>Причина</strong><p>{{ verification.rejection_reason }}</p></div>{% endif %}</section>
+      {% endif %}
+    </aside>
+  </div>
+{% endblock %}
