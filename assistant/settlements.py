@@ -52,17 +52,60 @@ def _is_finance_actor(actor) -> bool:
     )
 
 
+def _configured_detail(primary: str, *legacy: str, default: str = "") -> str:
+    """Resolve canonical company details with legacy deployment fallbacks."""
+    for name in (primary, *legacy):
+        value = str(getattr(settings, name, "") or "").strip()
+        if value and value.upper() != "__CHANGE_ME__":
+            return value
+    return default
+
+
 def platform_snapshot() -> dict:
     return {
-        "legal_name": getattr(settings, "PLATFORM_LEGAL_NAME", "Consolidator Parts"),
-        "address": getattr(settings, "PLATFORM_LEGAL_ADDRESS", ""),
-        "tax_id": getattr(settings, "PLATFORM_TAX_ID", ""),
-        "registration_no": getattr(settings, "PLATFORM_REGISTRATION_NO", ""),
-        "bank_name": getattr(settings, "PLATFORM_BANK_NAME", ""),
-        "bank_account": getattr(settings, "PLATFORM_BANK_ACCOUNT", ""),
-        "bank_swift": getattr(settings, "PLATFORM_BANK_SWIFT", ""),
-        "signatory": getattr(settings, "PLATFORM_SIGNATORY", ""),
-        "signatory_title": getattr(settings, "PLATFORM_SIGNATORY_TITLE", "Director"),
+        "legal_name": _configured_detail(
+            "PLATFORM_LEGAL_NAME",
+            "TOPUP_BANK_BENEFICIARY",
+            default="Consolidator Parts",
+        ),
+        "address": _configured_detail(
+            "PLATFORM_LEGAL_ADDRESS", "TOPUP_BANK_BENEFICIARY_ADDR"
+        ),
+        "tax_id": _configured_detail("PLATFORM_TAX_ID", "TOPUP_BANK_TAX_NO"),
+        "registration_no": _configured_detail(
+            "PLATFORM_REGISTRATION_NO", "TOPUP_BANK_TRADE_LICENSE"
+        ),
+        "bank_name": _configured_detail("PLATFORM_BANK_NAME", "TOPUP_BANK_NAME"),
+        "bank_iban": _configured_detail("PLATFORM_BANK_IBAN", "TOPUP_BANK_IBAN"),
+        "bank_account_number": _configured_detail(
+            "PLATFORM_BANK_ACCOUNT", "TOPUP_BANK_ACCOUNT"
+        ),
+        "bank_account": _configured_detail(
+            "PLATFORM_BANK_IBAN",
+            "PLATFORM_BANK_ACCOUNT",
+            "TOPUP_BANK_IBAN",
+            "TOPUP_BANK_ACCOUNT",
+        ),
+        "bank_swift": _configured_detail("PLATFORM_BANK_SWIFT", "TOPUP_BANK_SWIFT"),
+        "bank_branch_code": _configured_detail(
+            "PLATFORM_BANK_BRANCH_CODE", "TOPUP_BANK_BRANCH_CODE"
+        ),
+        "bank_currency": _configured_detail(
+            "PLATFORM_BANK_CURRENCY", "TOPUP_BANK_CURRENCY"
+        ),
+        "signatory": _configured_detail("PLATFORM_SIGNATORY"),
+        "signatory_title": _configured_detail(
+            "PLATFORM_SIGNATORY_TITLE", default="Director"
+        ),
+        "contact": _configured_detail(
+            "PLATFORM_PAYMENT_CONTACT_NAME", "TOPUP_BANK_CONTACT_NAME"
+        ),
+        "phone": _configured_detail(
+            "PLATFORM_PAYMENT_CONTACT_PHONE", "TOPUP_BANK_CONTACT_PHONE"
+        ),
+        "email": _configured_detail(
+            "PLATFORM_PAYMENT_CONTACT_EMAIL", "TOPUP_BANK_CONTACT_EMAIL"
+        ),
     }
 
 

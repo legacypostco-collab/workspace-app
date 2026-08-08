@@ -42,6 +42,39 @@ class DeployReadinessSecurityTests(SimpleTestCase):
         self.assertIn("Settlement legal and bank details are incomplete", report)
 
     @override_settings(
+        SETTLEMENT_MODE="invoice_contract",
+        SETTLEMENT_REQUIRED=True,
+        LEGACY_WALLET_UI_ENABLED=False,
+        PLATFORM_LEGAL_NAME="",
+        PLATFORM_LEGAL_ADDRESS="",
+        PLATFORM_TAX_ID="",
+        PLATFORM_REGISTRATION_NO="",
+        PLATFORM_BANK_NAME="",
+        PLATFORM_BANK_IBAN="",
+        PLATFORM_BANK_ACCOUNT="",
+        PLATFORM_BANK_SWIFT="",
+        PLATFORM_SIGNATORY="Authorized Director",
+        TOPUP_BANK_BENEFICIARY="Legacy Parts LLC",
+        TOPUP_BANK_BENEFICIARY_ADDR="Legacy address",
+        TOPUP_BANK_TAX_NO="TAX-001",
+        TOPUP_BANK_TRADE_LICENSE="REG-001",
+        TOPUP_BANK_NAME="Legacy Bank",
+        TOPUP_BANK_IBAN="LEGACY-IBAN",
+        TOPUP_BANK_ACCOUNT="LEGACY-ACCOUNT",
+        TOPUP_BANK_SWIFT="LEGACY00",
+    )
+    def test_legacy_bank_details_satisfy_settlement_readiness(self):
+        output = StringIO()
+
+        with self.assertRaises(SystemExit):
+            call_command("check_deploy_readiness", stdout=output)
+
+        self.assertNotIn(
+            "Settlement legal and bank details are incomplete",
+            output.getvalue(),
+        )
+
+    @override_settings(
         LLM_REQUIRED=True,
         ANTHROPIC_API_KEY="",
         KYB_EXTERNAL_REQUIRED=True,

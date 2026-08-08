@@ -14184,22 +14184,24 @@ def _topup_wallet_demo(params, user, role):
 # ───────────────────────────────────────────────────────────────
 
 def _bank_wire_details(amount, currency, ref_code):
-    """Build bank transfer details from deployment secrets only."""
-    from django.conf import settings
+    """Build bank transfer details from the canonical company snapshot."""
+    from .settlements import platform_snapshot
+
+    company = platform_snapshot()
     return {
-        "beneficiary":    settings.TOPUP_BANK_BENEFICIARY,
-        "beneficiary_address": settings.TOPUP_BANK_BENEFICIARY_ADDR,
-        "trade_license":  settings.TOPUP_BANK_TRADE_LICENSE,
-        "tax_no":         settings.TOPUP_BANK_TAX_NO,
-        "bank_name":      settings.TOPUP_BANK_NAME,
-        "branch_code":    settings.TOPUP_BANK_BRANCH_CODE,
-        "swift":          settings.TOPUP_BANK_SWIFT,
-        "iban":           settings.TOPUP_BANK_IBAN,
-        "account":        settings.TOPUP_BANK_ACCOUNT,
-        "account_currency": settings.TOPUP_BANK_CURRENCY,
-        "contact_name":   settings.TOPUP_BANK_CONTACT_NAME,
-        "contact_phone":  settings.TOPUP_BANK_CONTACT_PHONE,
-        "contact_email":  settings.TOPUP_BANK_CONTACT_EMAIL,
+        "beneficiary": company["legal_name"],
+        "beneficiary_address": company["address"],
+        "trade_license": company["registration_no"],
+        "tax_no": company["tax_id"],
+        "bank_name": company["bank_name"],
+        "branch_code": company["bank_branch_code"],
+        "swift": company["bank_swift"],
+        "iban": company["bank_iban"],
+        "account": company["bank_account_number"],
+        "account_currency": company["bank_currency"],
+        "contact_name": company["contact"],
+        "contact_phone": company["phone"],
+        "contact_email": company["email"],
         "reference_code": ref_code,
         "amount":         f"{amount:,.2f} {currency}",
         "purpose":        f"Deposit top-up {ref_code} for platform Consolidator Parts",
@@ -14208,12 +14210,14 @@ def _bank_wire_details(amount, currency, ref_code):
 
 def _available_topup_methods() -> list[dict]:
     from django.conf import settings
+    from .settlements import platform_snapshot
 
+    company = platform_snapshot()
     bank_required = (
-        settings.TOPUP_BANK_BENEFICIARY,
-        settings.TOPUP_BANK_NAME,
-        settings.TOPUP_BANK_SWIFT,
-        settings.TOPUP_BANK_IBAN or settings.TOPUP_BANK_ACCOUNT,
+        company["legal_name"],
+        company["bank_name"],
+        company["bank_swift"],
+        company["bank_account"],
     )
     methods = []
     if all(value and str(value).strip() for value in bank_required):

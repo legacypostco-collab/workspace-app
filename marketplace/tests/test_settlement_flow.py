@@ -4,20 +4,28 @@ from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from assistant.actions import can_execute, cancel_order, confirm_delivery
+from assistant.actions import (
+    _available_topup_methods,
+    _bank_wire_details,
+    can_execute,
+    cancel_order,
+    confirm_delivery,
+)
 from assistant.documents import sign_document
 from assistant.settlement_actions import settlement_finance_queue
 from assistant.settlements import (
     SettlementError,
     confirm_bank_payment,
     issue_invoice,
+    platform_snapshot,
     prepare_settlement_package,
     report_invoice_paid,
     reverse_bank_payment,
+    validate_party_snapshot,
 )
 from marketplace.models import (
     Category,
@@ -54,6 +62,96 @@ SETTLEMENT_SETTINGS = {
     "PLATFORM_SIGNATORY": "Иванов Иван Иванович",
     "PLATFORM_SIGNATORY_TITLE": "Генеральный директор",
 }
+
+
+class PlatformDetailsCompatibilityTests(SimpleTestCase):
+    @override_settings(
+        PLATFORM_LEGAL_NAME="",
+        PLATFORM_LEGAL_ADDRESS="",
+        PLATFORM_TAX_ID="",
+        PLATFORM_REGISTRATION_NO="",
+        PLATFORM_BANK_NAME="",
+        PLATFORM_BANK_IBAN="",
+        PLATFORM_BANK_ACCOUNT="",
+        PLATFORM_BANK_SWIFT="",
+        PLATFORM_BANK_BRANCH_CODE="",
+        PLATFORM_BANK_CURRENCY="",
+        PLATFORM_SIGNATORY="Уполномоченный подписант",
+        PLATFORM_PAYMENT_CONTACT_NAME="",
+        PLATFORM_PAYMENT_CONTACT_PHONE="",
+        PLATFORM_PAYMENT_CONTACT_EMAIL="",
+        TOPUP_BANK_BENEFICIARY="Legacy Parts LLC",
+        TOPUP_BANK_BENEFICIARY_ADDR="Legacy address",
+        TOPUP_BANK_TRADE_LICENSE="LICENSE-001",
+        TOPUP_BANK_TAX_NO="TAX-001",
+        TOPUP_BANK_NAME="Legacy Bank",
+        TOPUP_BANK_BRANCH_CODE="BRANCH-001",
+        TOPUP_BANK_SWIFT="LEGACY00",
+        TOPUP_BANK_IBAN="LEGACY-IBAN",
+        TOPUP_BANK_ACCOUNT="LEGACY-ACCOUNT",
+        TOPUP_BANK_CURRENCY="USD",
+        TOPUP_BANK_CONTACT_NAME="Payment Contact",
+        TOPUP_BANK_CONTACT_PHONE="+10000000000",
+        TOPUP_BANK_CONTACT_EMAIL="payments@example.test",
+    )
+    def test_legacy_bank_details_feed_new_settlement_documents(self):
+        company = platform_snapshot()
+
+        self.assertEqual(company["legal_name"], "Legacy Parts LLC")
+        self.assertEqual(company["address"], "Legacy address")
+        self.assertEqual(company["registration_no"], "LICENSE-001")
+        self.assertEqual(company["tax_id"], "TAX-001")
+        self.assertEqual(company["bank_name"], "Legacy Bank")
+        self.assertEqual(company["bank_iban"], "LEGACY-IBAN")
+        self.assertEqual(company["bank_account_number"], "LEGACY-ACCOUNT")
+        self.assertEqual(company["bank_account"], "LEGACY-IBAN")
+        self.assertEqual(company["bank_swift"], "LEGACY00")
+        self.assertEqual(company["bank_branch_code"], "BRANCH-001")
+        self.assertEqual(company["bank_currency"], "USD")
+        self.assertEqual(company["contact"], "Payment Contact")
+        self.assertEqual(company["phone"], "+10000000000")
+        self.assertEqual(company["email"], "payments@example.test")
+        self.assertEqual(validate_party_snapshot(company, platform=True), [])
+
+        details = _bank_wire_details(1000, "USD", "REF-001")
+        self.assertEqual(details["iban"], "LEGACY-IBAN")
+        self.assertEqual(details["account"], "LEGACY-ACCOUNT")
+        self.assertEqual(details["reference_code"], "REF-001")
+        self.assertIn(
+            "bank_wire",
+            {method["value"] for method in _available_topup_methods()},
+        )
+
+    @override_settings(
+        PLATFORM_LEGAL_NAME="Canonical Parts LLC",
+        PLATFORM_LEGAL_ADDRESS="Canonical address",
+        PLATFORM_TAX_ID="TAX-NEW",
+        PLATFORM_REGISTRATION_NO="REG-NEW",
+        PLATFORM_BANK_NAME="Canonical Bank",
+        PLATFORM_BANK_IBAN="CANONICAL-IBAN",
+        PLATFORM_BANK_ACCOUNT="CANONICAL-ACCOUNT",
+        PLATFORM_BANK_SWIFT="CANONICAL00",
+        PLATFORM_BANK_BRANCH_CODE="BRANCH-NEW",
+        PLATFORM_BANK_CURRENCY="EUR",
+        PLATFORM_SIGNATORY="Canonical Director",
+        PLATFORM_PAYMENT_CONTACT_NAME="Canonical Contact",
+        PLATFORM_PAYMENT_CONTACT_PHONE="+20000000000",
+        PLATFORM_PAYMENT_CONTACT_EMAIL="canonical@example.test",
+        TOPUP_BANK_BENEFICIARY="Legacy Parts LLC",
+        TOPUP_BANK_NAME="Legacy Bank",
+        TOPUP_BANK_SWIFT="LEGACY00",
+        TOPUP_BANK_IBAN="LEGACY-IBAN",
+    )
+    def test_canonical_details_take_precedence_and_support_legacy_invoice(self):
+        company = platform_snapshot()
+        details = _bank_wire_details(500, "EUR", "REF-NEW")
+
+        self.assertEqual(company["legal_name"], "Canonical Parts LLC")
+        self.assertEqual(company["bank_name"], "Canonical Bank")
+        self.assertEqual(company["bank_account"], "CANONICAL-IBAN")
+        self.assertEqual(details["beneficiary"], "Canonical Parts LLC")
+        self.assertEqual(details["iban"], "CANONICAL-IBAN")
+        self.assertEqual(details["account"], "CANONICAL-ACCOUNT")
 
 
 @override_settings(**SETTLEMENT_SETTINGS)
@@ -153,6 +251,8 @@ class SettlementFlowTests(TestCase):
         )
 
     def test_package_is_idempotent_and_documents_are_party_scoped(self):
+        from pypdf import PdfReader
+
         package = prepare_settlement_package(self.order, self.buyer)
 
         self.assertEqual(SettlementContract.objects.count(), 3)
@@ -197,6 +297,25 @@ class SettlementFlowTests(TestCase):
         for document in OrderDocument.objects.exclude(file_obj=""):
             with document.file_obj.open("rb") as pdf:
                 self.assertEqual(pdf.read(4), b"%PDF")
+
+        def pdf_text(document):
+            document.file_obj.open("rb")
+            try:
+                return "\n".join(
+                    page.extract_text() or ""
+                    for page in PdfReader(document.file_obj).pages
+                )
+            finally:
+                document.file_obj.close()
+
+        buyer_contract_text = pdf_text(package["buyer_contract"].document)
+        buyer_invoice_text = pdf_text(package["buyer_reserve_invoice"].document)
+        self.assertIn("ДОГОВОР ПОСТАВКИ", buyer_contract_text)
+        self.assertIn("ООО Покупатель", buyer_contract_text)
+        self.assertNotIn("■", buyer_contract_text)
+        self.assertIn("СЧЁТ НА ОПЛАТУ", buyer_invoice_text)
+        self.assertIn("Тестовый банк", buyer_invoice_text)
+        self.assertIn("К ОПЛАТЕ: 300.00 USD", buyer_invoice_text)
 
         prepare_settlement_package(self.order, self.buyer)
         self.assertEqual(SettlementContract.objects.count(), 3)

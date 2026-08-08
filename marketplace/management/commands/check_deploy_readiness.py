@@ -231,15 +231,18 @@ class Command(BaseCommand):
         if not settlement_required:
             errors.append("SETTLEMENT_REQUIRED must be enabled in production.")
         else:
+            from assistant.settlements import platform_snapshot
+
+            platform = platform_snapshot()
             required_settlement_values = {
-                "PLATFORM_LEGAL_NAME": getattr(settings, "PLATFORM_LEGAL_NAME", ""),
-                "PLATFORM_LEGAL_ADDRESS": getattr(settings, "PLATFORM_LEGAL_ADDRESS", ""),
-                "PLATFORM_TAX_ID": getattr(settings, "PLATFORM_TAX_ID", ""),
-                "PLATFORM_REGISTRATION_NO": getattr(settings, "PLATFORM_REGISTRATION_NO", ""),
-                "PLATFORM_BANK_NAME": getattr(settings, "PLATFORM_BANK_NAME", ""),
-                "PLATFORM_BANK_ACCOUNT": getattr(settings, "PLATFORM_BANK_ACCOUNT", ""),
-                "PLATFORM_BANK_SWIFT": getattr(settings, "PLATFORM_BANK_SWIFT", ""),
-                "PLATFORM_SIGNATORY": getattr(settings, "PLATFORM_SIGNATORY", ""),
+                "PLATFORM_LEGAL_NAME": platform["legal_name"],
+                "PLATFORM_LEGAL_ADDRESS": platform["address"],
+                "PLATFORM_TAX_ID": platform["tax_id"],
+                "PLATFORM_REGISTRATION_NO": platform["registration_no"],
+                "PLATFORM_BANK_NAME": platform["bank_name"],
+                "PLATFORM_BANK_ACCOUNT": platform["bank_account"],
+                "PLATFORM_BANK_SWIFT": platform["bank_swift"],
+                "PLATFORM_SIGNATORY": platform["signatory"],
             }
             missing = [
                 name for name, value in required_settlement_values.items()

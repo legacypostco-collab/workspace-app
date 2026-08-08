@@ -16,15 +16,17 @@ def _styles():
     from reportlab.lib.enums import TA_CENTER, TA_RIGHT
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 
-    from .documents import FONT_BOLD, FONT_REGULAR, _ensure_fonts
+    from . import documents as document_pdf
 
-    _ensure_fonts()
+    document_pdf._ensure_fonts()
+    font_bold = document_pdf.FONT_BOLD
+    font_regular = document_pdf.FONT_REGULAR
     sheet = getSampleStyleSheet()
     return {
         "title": ParagraphStyle(
             "SettlementTitle",
             parent=sheet["Title"],
-            fontName=FONT_BOLD,
+            fontName=font_bold,
             fontSize=16,
             leading=20,
             textColor=colors.HexColor("#15121a"),
@@ -34,7 +36,7 @@ def _styles():
         "h2": ParagraphStyle(
             "SettlementH2",
             parent=sheet["Heading2"],
-            fontName=FONT_BOLD,
+            fontName=font_bold,
             fontSize=11,
             leading=14,
             textColor=colors.HexColor("#d8482f"),
@@ -44,7 +46,7 @@ def _styles():
         "body": ParagraphStyle(
             "SettlementBody",
             parent=sheet["BodyText"],
-            fontName=FONT_REGULAR,
+            fontName=font_regular,
             fontSize=9,
             leading=13,
             textColor=colors.HexColor("#27232d"),
@@ -53,7 +55,7 @@ def _styles():
         "small": ParagraphStyle(
             "SettlementSmall",
             parent=sheet["BodyText"],
-            fontName=FONT_REGULAR,
+            fontName=font_regular,
             fontSize=7.5,
             leading=10,
             textColor=colors.HexColor("#625d69"),
@@ -61,7 +63,7 @@ def _styles():
         "right": ParagraphStyle(
             "SettlementRight",
             parent=sheet["BodyText"],
-            fontName=FONT_BOLD,
+            fontName=font_bold,
             fontSize=10,
             alignment=TA_RIGHT,
         ),
@@ -94,8 +96,17 @@ def _party_lines(party: dict) -> list[str]:
         lines.append(f"Счёт / IBAN: {party['bank_account']}")
     if party.get("bank_swift"):
         lines.append(f"SWIFT / БИК: {party['bank_swift']}")
+    if party.get("bank_branch_code"):
+        lines.append(f"Код отделения: {party['bank_branch_code']}")
+    if party.get("bank_currency"):
+        lines.append(f"Валюта счёта: {party['bank_currency']}")
     if party.get("contact"):
         lines.append(f"Контакт: {party['contact']}")
+    contact_details = " · ".join(
+        value for value in (party.get("phone"), party.get("email")) if value
+    )
+    if contact_details:
+        lines.append(contact_details)
     return lines
 
 
@@ -124,18 +135,18 @@ def _page(canvas, document):
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
 
-    from .documents import FONT_BOLD, FONT_REGULAR, _ensure_fonts
+    from . import documents as document_pdf
 
-    _ensure_fonts()
+    document_pdf._ensure_fonts()
     width, height = A4
     canvas.saveState()
     canvas.setFillColor(colors.HexColor("#15121a"))
     canvas.rect(0, height - 13 * mm, width, 13 * mm, fill=1, stroke=0)
     canvas.setFillColor(colors.white)
-    canvas.setFont(FONT_BOLD, 11)
+    canvas.setFont(document_pdf.FONT_BOLD, 11)
     canvas.drawString(18 * mm, height - 8.5 * mm, "CONSOLIDATOR PARTS")
     canvas.setFillColor(colors.HexColor("#746f79"))
-    canvas.setFont(FONT_REGULAR, 7)
+    canvas.setFont(document_pdf.FONT_REGULAR, 7)
     canvas.drawString(18 * mm, 9 * mm, "Документ сформирован системой Consolidator Parts")
     canvas.drawRightString(width - 18 * mm, 9 * mm, f"Страница {document.page}")
     canvas.restoreState()
@@ -210,7 +221,7 @@ def _signature_history(document, styles):
 def build_contract_pdf(contract) -> io.BytesIO:
     from reportlab.lib import colors
     from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+    from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 
     styles = _styles()
     document = _document(_page, title=contract.number)
@@ -278,18 +289,33 @@ def build_contract_pdf(contract) -> io.BytesIO:
             "в системе и доступна только сторонам соответствующего договора.",
             styles["body"],
         ),
-        Spacer(1, 6 * mm),
+        Spacer(1, 3 * mm),
     ]
     signatures = Table(
         [
-            ["Consolidator Parts", counterparty_title],
             [
-                f"{_safe(platform.get('signatory'))}\n{_safe(platform.get('signatory_title'))}",
-                f"{_safe(counterparty.get('signatory'))}\n{_safe(counterparty.get('signatory_title'))}",
+                Paragraph("Consolidator Parts", styles["h2"]),
+                Paragraph(counterparty_title, styles["h2"]),
             ],
-            ["Подпись: __________________", "Подпись: __________________"],
+            [
+                Paragraph(
+                    f"{_safe(platform.get('signatory'))}<br/>"
+                    f"{_safe(platform.get('signatory_title'))}",
+                    styles["body"],
+                ),
+                Paragraph(
+                    f"{_safe(counterparty.get('signatory'))}<br/>"
+                    f"{_safe(counterparty.get('signatory_title'))}",
+                    styles["body"],
+                ),
+            ],
+            [
+                Paragraph("Подпись: __________________", styles["body"]),
+                Paragraph("Подпись: __________________", styles["body"]),
+            ],
         ],
         colWidths=[84 * mm, 84 * mm],
+        splitByRow=0,
     )
     signatures.setStyle(TableStyle([
         ("FONTNAME", (0, 0), (-1, 0), styles["h2"].fontName),
@@ -298,10 +324,10 @@ def build_contract_pdf(contract) -> io.BytesIO:
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cbc5c2")),
         ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#ded9d6")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 7),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
-    story.append(signatures)
+    story.append(KeepTogether([signatures]))
     story.extend(_signature_history(contract.document, styles))
     document.build(story, onFirstPage=_page, onLaterPages=_page)
     document._settlement_buffer.seek(0)
