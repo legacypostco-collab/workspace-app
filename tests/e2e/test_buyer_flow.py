@@ -24,7 +24,8 @@ def test_deals_pill_lists_requests_orders_or_empty(buyer_page: Page):
     body_text = page.locator("#streamInner").inner_text(timeout=2000).lower()
     # Тестовый покупатель может иметь заказы; иначе ожидается корректное empty-state.
     assert "сделк" in body_text and any(
-        marker in body_text for marker in ("rfq", "заказ", "нет активных")
+        marker in body_text
+        for marker in ("rfq", "заявк", "заказ", "нет активных")
     ), \
         f"expected orders info, got: {body_text[:200]}"
 
