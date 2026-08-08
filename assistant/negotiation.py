@@ -1586,6 +1586,11 @@ def accept_quote(params, user, role):
             ) % {"qid": q.id, "oid": order.id},
             cards=[_invoice_card(invoice)],
             actions=[
+                {
+                    "action": "get_order_detail",
+                    "label": _("Открыть заказ"),
+                    "params": {"order_id": order.id},
+                },
                 {"action": "open_url", "label": _("Открыть договор"), "params": {"_url": _doc_url(package["buyer_contract"].document)}},
                 {"action": "open_url", "label": _("Открыть счёт"), "params": {"_url": _doc_url(invoice.document)}},
                 {"action": "settlement_report_paid", "label": _("Сообщить об оплате"), "params": {"invoice_id": invoice.id}},

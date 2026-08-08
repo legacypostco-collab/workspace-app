@@ -4,15 +4,16 @@ from __future__ import annotations
 from playwright.sync_api import Page
 
 
-def test_balance_pill_returns_kpi_card(buyer_page: Page):
-    """Клик по действию депозита возвращает карточку с балансом."""
+def test_settlements_pill_returns_documents_or_empty_state(buyer_page: Page):
+    """Раздел расчётов показывает счета и договоры либо пустое состояние."""
     page = buyer_page
-    page.locator(".pill[data-pid^='get_balance#']").click()
-    # Дождаться сообщения assistant — может быть как сообщение или KPI-grid
-    page.wait_for_selector(".msg-assistant, .kpi-grid", timeout=15000)
-    # Проверим что в ответе упомянут депозит
+    page.locator(".pill[data-pid^='settlement_my_documents#']").click()
+    page.wait_for_selector(".msg-assistant", timeout=15000)
     body_text = page.locator("#streamInner").inner_text(timeout=2000).lower()
-    assert "депозит" in body_text or "$" in body_text, f"expected balance info, got: {body_text[:200]}"
+    assert any(
+        marker in body_text
+        for marker in ("счёт", "счет", "договор", "расчёт", "расчет")
+    ), f"expected settlement info, got: {body_text[:200]}"
 
 
 def test_deals_pill_lists_requests_orders_or_empty(buyer_page: Page):

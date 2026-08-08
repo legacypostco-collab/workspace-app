@@ -8,6 +8,7 @@ from django.utils import timezone
 from assistant.models import Conversation, ConversationParticipant, Message
 from marketplace.models import (
     RFQ,
+    ActivityEvent,
     Category,
     CompanyVerification,
     Notification,
@@ -77,6 +78,22 @@ class ControlAccessTests(TestCase):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, "операционный центр")
+
+    def test_audit_renders_system_event_without_actor(self):
+        ActivityEvent.objects.create(
+            kind="order",
+            actor=None,
+            actor_role="system",
+            title="Автоматическая проверка",
+            meta={"action": "system_check"},
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.get("/control/audit/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Автоматическая проверка")
+        self.assertContains(response, "Система")
 
     def test_finance_section_is_limited_to_finance_and_admin(self):
         self.client.force_login(self.operator)

@@ -3,12 +3,13 @@
 These tests intentionally use dedicated disposable accounts and real staging
 data. They are opt-in because they create catalog rows, RFQs, quotes and orders.
 """
+
 from __future__ import annotations
 
-import os
 import base64
 import hashlib
 import hmac
+import os
 import struct
 import time
 from collections import deque
@@ -17,7 +18,6 @@ from urllib.parse import urlsplit
 
 import pytest
 from playwright.sync_api import Browser, Page
-
 
 pytestmark = pytest.mark.skipif(
     os.getenv("E2E_USER_STORY") != "1",
@@ -31,6 +31,7 @@ SELLER_A = os.getenv("E2E_STORY_SELLER_A", "itu_us_seller_a")
 SELLER_B = os.getenv("E2E_STORY_SELLER_B", "itu_us_seller_b")
 MULTI = os.getenv("E2E_STORY_MULTI", "itu_us_multi")
 OPERATOR = os.getenv("E2E_STORY_OPERATOR", "itu_us_operator")
+LOGIST = os.getenv("E2E_STORY_LOGIST", "itu_us_logist")
 STORY_OEM = os.getenv("E2E_STORY_OEM", "7760-23-9880")
 BUYER_OTP_SECRET = os.getenv("E2E_BUYER_OTP_SECRET", "")
 BUYER_BACKUP_CODES = deque(
@@ -165,6 +166,70 @@ def _action(
     assert result["status"] == 200, result
     assert "error" not in result, result
     return result
+
+
+def _card_rows(result: dict) -> list[dict]:
+    rows = []
+    for card in result.get("cards") or []:
+        rows.extend((card.get("data") or {}).get("rows") or [])
+    return rows
+
+
+def _find_action_row(
+    result: dict,
+    action: str,
+    *text_fragments: str,
+) -> dict:
+    for row in _card_rows(result):
+        text = f"{row.get('title', '')} {row.get('subtitle', '')}".lower()
+        if row.get("action") == action and all(
+            fragment.lower() in text for fragment in text_fragments
+        ):
+            return row
+    raise AssertionError(
+        f"row action={action!r} fragments={text_fragments!r} not found: {result}"
+    )
+
+
+def _confirm_invoice_payment(
+    page: Page,
+    invoice_id: int,
+    bank_reference: str,
+) -> dict:
+    preview = _action(
+        page,
+        "settlement_confirm_payment",
+        {"invoice_id": invoice_id},
+    )
+    form = next(
+        card for card in preview.get("cards") or []
+        if card.get("type") == "form"
+    )
+    fields = (form.get("data") or {}).get("fields") or []
+    amount = next(
+        field.get("value")
+        for field in fields
+        if field.get("name") == "amount"
+    )
+    confirmed = _action(
+        page,
+        "settlement_confirm_payment",
+        {
+            "invoice_id": invoice_id,
+            "amount": amount,
+            "bank_reference": bank_reference,
+            "confirmed": True,
+        },
+    )
+    assert confirmed.get("action_succeeded") is True, confirmed
+    return confirmed
+
+
+def _assert_pdf_available(page: Page, url: str) -> None:
+    origin = f"{urlsplit(page.url).scheme}://{urlsplit(page.url).netloc}"
+    response = page.context.request.get(f"{origin}{url}")
+    assert response.status == 200, (url, response.status)
+    assert response.body().startswith(b"%PDF"), url
 
 
 def _totp(secret: str, counter_offset: int = 0) -> str:
@@ -406,14 +471,44 @@ def test_03_buyer_search_to_competing_quotes_and_order(
     assert order_ids, accepted
     order_id = order_ids[0]
 
-    reserve_preview = _action(buyer, "pay_reserve", {"order_id": order_id})
-    assert reserve_preview.get("cards"), reserve_preview
-    reserve = _action(
-        buyer,
-        "pay_reserve",
-        {"order_id": order_id, "confirmed": True},
+    invoice_card = next(
+        card for card in accepted.get("cards") or []
+        if card.get("type") == "invoice"
     )
-    assert "списано" in (reserve.get("text") or "").lower(), reserve
+    invoice_url = (invoice_card.get("data") or {}).get("pdf_url")
+    contract_url = next(
+        action["params"]["_url"]
+        for action in accepted.get("actions") or []
+        if action.get("action") == "open_url"
+        and "договор" in (action.get("label") or "").lower()
+    )
+    assert invoice_url and contract_url, accepted
+    _assert_pdf_available(buyer, contract_url)
+    _assert_pdf_available(buyer, invoice_url)
+
+    documents = _action(
+        buyer,
+        "settlement_my_documents",
+        {"order_id": order_id},
+    )
+    buyer_signature = next(
+        action for action in documents.get("actions") or []
+        if action.get("action") == "sign_document"
+    )
+    signed = _action(buyer, "sign_document", buyer_signature["params"])
+    assert "подпис" in (signed.get("text") or "").lower(), signed
+
+    payment_notice = next(
+        action for action in accepted.get("actions") or []
+        if action.get("action") == "settlement_report_paid"
+    )
+    reported = _action(
+        buyer,
+        "settlement_report_paid",
+        payment_notice["params"],
+    )
+    assert reported.get("action_succeeded") is True, reported
+    assert "сверк" in (reported.get("text") or "").lower(), reported
     buyer.close()
 
 
@@ -434,16 +529,10 @@ def test_04_second_buyer_cannot_read_first_buyers_data(
     second.close()
 
 
-def test_05_paid_order_completes_logistics_and_escrow_cycle(
+def test_05_paid_order_completes_logistics_and_invoice_cycle(
     browser: Browser,
     base_url: str,
 ):
-    if not BUYER_BACKUP_CODES and not BUYER_OTP_SECRET:
-        raise AssertionError(
-            "E2E_BUYER_BACKUP_CODES or E2E_BUYER_OTP_SECRET is required "
-            "for a large payment"
-        )
-
     buyer = _login(browser, base_url, BUYER_A, "buyer")
     orders = _action(buyer, "get_orders", {})
     order_ids = [
@@ -472,44 +561,121 @@ def test_05_paid_order_completes_logistics_and_escrow_cycle(
     denied = _action(non_owner, "advance_order", {"order_id": order_id})
     assert "не содержит ваших товаров" in (denied.get("text") or "").lower(), denied
 
-    advanced = _action(owner, "advance_order", {"order_id": order_id})
-    assert "подтвержд" in (advanced.get("text") or "").lower(), advanced
+    payment_gate = _action(owner, "advance_order", {"order_id": order_id})
+    assert any(
+        marker in (payment_gate.get("text") or "").lower()
+        for marker in ("первого банковского платежа", "подтверждения оплаты")
+    ), payment_gate
     for page in seller_pages:
         if page is not owner:
             page.close()
 
+    seller_documents = _action(
+        owner,
+        "settlement_seller_documents",
+        {"order_id": order_id},
+    )
+    seller_signature = next(
+        action for action in seller_documents.get("actions") or []
+        if action.get("action") == "sign_document"
+    )
+    signed_by_seller = _action(owner, "sign_document", seller_signature["params"])
+    assert "подпис" in (signed_by_seller.get("text") or "").lower(), signed_by_seller
+
+    operator = _login(browser, base_url, OPERATOR, "operator_payment")
+    finance_queue = _action(
+        operator,
+        "settlement_finance_queue",
+        {"order_id": order_id},
+    )
+    platform_signatures = [
+        row for row in _card_rows(finance_queue)
+        if row.get("action") == "sign_document"
+    ]
+    assert len(platform_signatures) >= 2, finance_queue
+    for row in platform_signatures:
+        signed_by_platform = _action(operator, "sign_document", row["params"])
+        assert "подпис" in (signed_by_platform.get("text") or "").lower(), signed_by_platform
+
+    finance_queue = _action(
+        operator,
+        "settlement_finance_queue",
+        {"order_id": order_id},
+    )
+    reserve_receivable = _find_action_row(
+        finance_queue,
+        "settlement_confirm_payment",
+        "покупатель должен платформе",
+        "первый платёж",
+    )
+    _confirm_invoice_payment(
+        operator,
+        int(reserve_receivable["params"]["invoice_id"]),
+        f"ITU-IN-RESERVE-{order_id}",
+    )
+
+    advanced = _action(owner, "advance_order", {"order_id": order_id})
+    assert "подтвержд" in (advanced.get("text") or "").lower(), advanced
     production = _action(owner, "advance_order", {"order_id": order_id})
     assert "производств" in (production.get("text") or "").lower(), production
     ready = _action(owner, "advance_order", {"order_id": order_id})
     assert "готов" in (ready.get("text") or "").lower(), ready
 
     buyer = _login(browser, base_url, BUYER_A, "buyer")
-    final_preview = _action(buyer, "pay_final", {"order_id": order_id})
-    assert any(
-        (card.get("data") or {}).get("confirm_action") == "pay_final"
-        for card in final_preview.get("cards") or []
-    ), final_preview
-    otp_gate = _action(
+    buyer_documents = _action(
         buyer,
-        "pay_final",
-        {"order_id": order_id, "confirmed": True},
+        "settlement_my_documents",
+        {"order_id": order_id},
     )
-    assert "одноразов" in (otp_gate.get("text") or "").lower(), otp_gate
-    paid = _action(
+    final_notice = next(
+        action for action in buyer_documents.get("actions") or []
+        if action.get("action") == "settlement_report_paid"
+    )
+    final_reported = _action(
         buyer,
-        "pay_final",
-        {
-            "order_id": order_id,
-            "confirmed": True,
-            "otp": (
-                BUYER_BACKUP_CODES.popleft()
-                if BUYER_BACKUP_CODES
-                else _totp(BUYER_OTP_SECRET, counter_offset=1)
-            ),
-        },
+        "settlement_report_paid",
+        final_notice["params"],
     )
-    assert "остаток" in (paid.get("text") or "").lower(), paid
+    assert final_reported.get("action_succeeded") is True, final_reported
     buyer.close()
+
+    finance_queue = _action(
+        operator,
+        "settlement_finance_queue",
+        {"order_id": order_id},
+    )
+    final_receivable = _find_action_row(
+        finance_queue,
+        "settlement_confirm_payment",
+        "покупатель должен платформе",
+        "окончательный платёж",
+    )
+    _confirm_invoice_payment(
+        operator,
+        int(final_receivable["params"]["invoice_id"]),
+        f"ITU-IN-FINAL-{order_id}",
+    )
+
+    finance_queue = _action(
+        operator,
+        "settlement_finance_queue",
+        {"order_id": order_id},
+    )
+    seller_invoices = [
+        row for row in _card_rows(finance_queue)
+        if row.get("action") == "settlement_confirm_payment"
+        and "платформа должна продавцу" in (
+            f"{row.get('title', '')} {row.get('subtitle', '')}".lower()
+        )
+    ]
+    assert len(seller_invoices) == 2, finance_queue
+    for index, row in enumerate(seller_invoices, start=1):
+        _confirm_invoice_payment(
+            operator,
+            int(row["params"]["invoice_id"]),
+            f"ITU-OUT-{order_id}-{index}",
+        )
+    operator.close()
 
     shipping = {
         "order_id": order_id,
@@ -534,37 +700,37 @@ def test_05_paid_order_completes_logistics_and_escrow_cycle(
     assert "отгружен" in (shipped.get("text") or "").lower(), shipped
     owner.close()
 
-    operator = _login(browser, base_url, OPERATOR, "operator")
-    customs = _action(operator, "advance_order", {"order_id": order_id})
+    logist = _login(browser, base_url, LOGIST, "operator_logist")
+    customs = _action(logist, "advance_order", {"order_id": order_id})
     assert "тамож" in (customs.get("text") or "").lower(), customs
 
-    customs_blocked = _action(operator, "advance_order", {"order_id": order_id})
+    customs_blocked = _action(logist, "advance_order", {"order_id": order_id})
     assert "декларац" in (customs_blocked.get("text") or "").lower(), customs_blocked
     declaration = _upload_order_evidence(
-        operator,
+        logist,
         order_id,
         "customs",
         "declaration",
     )
     assert declaration.get("trigger_id") == "declaration", declaration
-    transit_rf = _action(operator, "advance_order", {"order_id": order_id})
+    transit_rf = _action(logist, "advance_order", {"order_id": order_id})
     assert "транзит" in (transit_rf.get("text") or "").lower(), transit_rf
 
-    rf_scan = _scan_order_qr(operator, order_id, payload=package_qr_payload)
+    rf_scan = _scan_order_qr(logist, order_id, payload=package_qr_payload)
     assert rf_scan.get("trigger_id") == "qr_rf", rf_scan
-    _upload_order_evidence(operator, order_id, "transit_rf", "ttn_rf")
-    issuing = _action(operator, "advance_order", {"order_id": order_id})
+    _upload_order_evidence(logist, order_id, "transit_rf", "ttn_rf")
+    issuing = _action(logist, "advance_order", {"order_id": order_id})
     assert "выдач" in (issuing.get("text") or "").lower(), issuing
 
     issuing_trigger = _scan_order_qr(
-        operator,
+        logist,
         order_id,
         payload=package_qr_payload,
     )
     assert issuing_trigger.get("trigger_id") == "qr_issuing", issuing_trigger
-    delivered = _action(operator, "advance_order", {"order_id": order_id})
+    delivered = _action(logist, "advance_order", {"order_id": order_id})
     assert "доставлен" in (delivered.get("text") or "").lower(), delivered
-    operator.close()
+    logist.close()
 
     buyer = _login(browser, base_url, BUYER_A, "buyer")
     denied_buyer_qr = _action(buyer, "generate_qr", {"order_id": order_id})
@@ -588,7 +754,7 @@ def test_05_paid_order_completes_logistics_and_escrow_cycle(
         "confirm_delivery",
         {"order_id": order_id, "confirmed": True},
     )
-    assert "эскроу" in (settled.get("text") or "").lower(), settled
+    assert "закрыт" in (settled.get("text") or "").lower(), settled
     detail = _action(buyer, "get_orders", {})
     completed_cards = [
         card

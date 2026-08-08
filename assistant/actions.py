@@ -12364,6 +12364,25 @@ def advance_order(params, user, role):
     except Order.DoesNotExist:
         return ActionResult(text=_('Заказ #%(order_id)s не найден.') % {'order_id': order_id})
     invoice_mode = _invoice_contract_mode()
+    if (
+        role == "seller"
+        and order.status == "pending"
+        and order.payment_status == "awaiting_reserve"
+    ):
+        return ActionResult(
+            text=(
+                _(
+                    "Заказ #%(id)s создан. Начать исполнение можно после "
+                    "подтверждения первого банковского платежа финансовым оператором."
+                )
+                % {"id": order.id}
+                if invoice_mode
+                else _(
+                    "Заказ #%(id)s создан. Начать исполнение можно после оплаты резерва покупателем."
+                )
+                % {"id": order.id}
+            ),
+        )
     if role == "seller" and order.status not in {
         "reserve_paid", "confirmed", "in_production",
     }:

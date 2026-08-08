@@ -325,7 +325,7 @@ def prepare_settlement_package(order: Order, actor=None) -> dict:
     if not settlement_enabled():
         raise SettlementError("Документарные взаиморасчёты отключены")
     order = (
-        Order.objects.select_for_update()
+        Order.objects.select_for_update(of=("self",))
         .select_related("buyer")
         .prefetch_related("items__part__seller")
         .get(pk=order.pk)

@@ -205,6 +205,7 @@ def cleanup_expired_tokens():
 def mark_overdue_settlement_invoices():
     """Mark due invoices overdue once and notify the responsible party."""
     from assistant.actions import _notify
+
     from .models import SettlementInvoice, UserProfile
 
     today = timezone.localdate()
@@ -217,9 +218,11 @@ def mark_overdue_settlement_invoices():
     changed = 0
     for invoice_id in invoice_ids:
         with transaction.atomic():
-            invoice = SettlementInvoice.objects.select_for_update().select_related(
-                "order__buyer", "seller"
-            ).get(id=invoice_id)
+            invoice = (
+                SettlementInvoice.objects.select_for_update(of=("self",))
+                .select_related("order__buyer", "seller")
+                .get(id=invoice_id)
+            )
             if invoice.status not in {"issued", "awaiting_confirmation", "partially_paid"}:
                 continue
             invoice.status = "overdue"

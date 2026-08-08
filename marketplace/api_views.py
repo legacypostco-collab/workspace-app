@@ -739,7 +739,7 @@ def api_seller_claim_respond(request, claim_id: int):
         )
     with transaction.atomic():
         claim = (
-            OrderClaim.objects.select_for_update()
+            OrderClaim.objects.select_for_update(of=("self",))
             .select_related("order__buyer__profile")
             .get(id=claim.id)
         )

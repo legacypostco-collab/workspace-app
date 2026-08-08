@@ -1,4 +1,5 @@
 """Create disposable local accounts for the stateful browser user story."""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -6,6 +7,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from assistant.management._seed_guard import (
@@ -13,7 +15,6 @@ from assistant.management._seed_guard import (
     ensure_dev_only,
     require_seed_password,
 )
-
 
 User = get_user_model()
 ACCOUNT_ROLES = {
@@ -23,6 +24,9 @@ ACCOUNT_ROLES = {
     "itu_us_seller_b": "seller",
     "itu_us_multi": "buyer",
     "itu_us_operator": "operator",
+    "itu_us_logist": "operator",
+    "itu_us_general_operator": "operator",
+    "itu_us_admin": "admin",
 }
 BUYER_TOTP_SECRET = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP"
 BUYER_BACKUP_CODES = [f"ITU-STORY-{index:02d}-2026" for index in range(1, 13)]
@@ -54,6 +58,24 @@ class Command(BaseCommand):
         )
 
         if options["reset"]:
+            from marketplace.models import (
+                Order,
+                SettlementContract,
+                SettlementInvoice,
+                SettlementPayment,
+            )
+
+            story_users = User.objects.filter(username__in=ACCOUNT_ROLES)
+            story_orders = Order.objects.filter(
+                Q(buyer__in=story_users)
+                | Q(items__part__seller__in=story_users)
+            ).distinct()
+            SettlementPayment.objects.filter(
+                invoice__order__in=story_orders
+            ).delete()
+            SettlementInvoice.objects.filter(order__in=story_orders).delete()
+            SettlementContract.objects.filter(order__in=story_orders).delete()
+            story_orders.delete()
             User.objects.filter(username__in=ACCOUNT_ROLES).delete()
 
         users = {}
@@ -64,15 +86,26 @@ class Command(BaseCommand):
             )
             user.email = f"{username}@example.test"
             user.is_active = True
-            user.is_staff = role == "operator"
+            user.is_staff = role in {"operator", "admin"}
+            user.is_superuser = role == "admin"
             user.set_password(password)
             user.save()
 
             profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.role = role
-            profile.operator_role = ""
+            if username == "itu_us_operator":
+                profile.operator_role = "payment"
+            elif username == "itu_us_logist":
+                profile.operator_role = "logist"
+            else:
+                profile.operator_role = ""
             profile.company_name = f"ITU User Story {username}"
             profile.language = "ru"
+            profile.country = "AE"
+            profile.tax_id = f"{user.id:010d}"
+            profile.contact_name = username
+            profile.position = "Director"
+            profile.phone_e164 = f"+97150{user.id:07d}"[-13:]
             profile.notif_email_enabled = False
             if role == "seller":
                 profile.external_score = Decimal("90.00")
@@ -98,6 +131,14 @@ class Command(BaseCommand):
                     "status": "verified",
                     "legal_name": f"ITU User Story {username}",
                     "country": "AE",
+                    "inn": f"{user.id:010d}",
+                    "legal_address": "Dubai, UAE, Test Business Centre",
+                    "bank_name": "ITU Acceptance Bank",
+                    "bank_account": f"AE{user.id:021d}",
+                    "bik": "ITUAEAD",
+                    "director_name": username,
+                    "warehouse_address": "JAFZA Test Warehouse, Dubai, UAE",
+                    "contact_email": user.email,
                     "risk_indicator": "green",
                     "auto_decision": "sandbox_candidate",
                     "reviewed_at": timezone.now(),

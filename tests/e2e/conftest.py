@@ -33,6 +33,7 @@ ROLE_ENV_PREFIX = {
     "buyer": "E2E_BUYER",
     "seller": "E2E_SELLER",
     "operator": "E2E_OPERATOR",
+    "admin": "E2E_ADMIN",
 }
 
 
@@ -174,3 +175,9 @@ def seller_page(page: Page, base_url: str) -> Page:
 def operator_page(page: Page, base_url: str) -> Page:
     login_role(page, "operator", base_url)
     return _enter_fresh_chat(page, base_url)
+
+
+@pytest.fixture
+def admin_page(page: Page, base_url: str) -> Page:
+    login_role(page, "admin", base_url)
+    return page

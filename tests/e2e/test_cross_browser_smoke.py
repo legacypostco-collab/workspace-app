@@ -69,6 +69,9 @@ def xb_page(playwright_instance, xb_browser_name):
 
 def _shot(page, browser_name: str, slug: str) -> None:
     """Сохранить скриншот в tests/e2e/screenshots/{browser}_{slug}.png."""
+    # Боковая панель и тема меняются с короткой анимацией. Снимок делаем
+    # после её завершения, чтобы не проверять промежуточное состояние.
+    page.wait_for_timeout(350)
     path = SCREENSHOT_DIR / f"{browser_name}_{slug}.png"
     page.screenshot(path=str(path), full_page=True)
 

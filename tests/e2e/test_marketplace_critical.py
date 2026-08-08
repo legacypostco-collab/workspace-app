@@ -12,8 +12,8 @@
 Запуск:
     ./tests/e2e/run.sh tests/e2e/test_marketplace_critical.py -v
 """
-from playwright.sync_api import Page, expect
 
+from playwright.sync_api import Page, expect
 
 # ── Сценарий 1: Поиск → RFQ ──────────────────────────────────────
 
@@ -59,8 +59,9 @@ def test_operator_logistics_active_routes(operator_page: Page):
     page.locator(".pill[data-pid^='op_logistics_stats#']:visible").last.click()
     page.wait_for_selector("text=Логистика — что под контролем сейчас", timeout=10000)
     body_text = page.locator("#streamInner").inner_text()
-    assert "По маршрутам" in body_text
-    assert any(marker in body_text for marker in ("→", "нет ни активных отгрузок"))
+    assert "По модам доставки" in body_text
+    assert "По этапам" in body_text
+    assert "По перевозчикам" in body_text
 
 
 # ── Сценарий 4: Cookie banner persistence ──────────────────────
