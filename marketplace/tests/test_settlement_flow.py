@@ -103,6 +103,7 @@ class PlatformDetailsCompatibilityTests(SimpleTestCase):
         TOPUP_BANK_CONTACT_NAME="Payment Contact",
         TOPUP_BANK_CONTACT_PHONE="+10000000000",
         TOPUP_BANK_CONTACT_EMAIL="payments@example.test",
+        PAYMENT_CURRENCY="USD",
     )
     def test_legacy_bank_details_feed_new_settlement_documents(self):
         company = platform_snapshot()

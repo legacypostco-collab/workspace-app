@@ -738,11 +738,28 @@ class PaymentAndViewAsTests(TestCase):
 
     @override_settings(
         DEBUG=False,
+        PLATFORM_LEGAL_NAME="",
+        PLATFORM_LEGAL_ADDRESS="",
+        PLATFORM_TAX_ID="",
+        PLATFORM_REGISTRATION_NO="",
+        PLATFORM_BANK_NAME="",
+        PLATFORM_BANK_ACCOUNT_TITLE="",
+        PLATFORM_BANK_IBAN="",
+        PLATFORM_BANK_ACCOUNT="",
+        PLATFORM_BANK_SWIFT="",
+        PLATFORM_BANK_BRANCH="",
+        PLATFORM_BANK_BRANCH_CODE="",
+        PLATFORM_BANK_CURRENCY="",
         TOPUP_BANK_BENEFICIARY="",
+        TOPUP_BANK_BENEFICIARY_ADDR="",
+        TOPUP_BANK_TRADE_LICENSE="",
+        TOPUP_BANK_TAX_NO="",
         TOPUP_BANK_NAME="",
+        TOPUP_BANK_BRANCH_CODE="",
         TOPUP_BANK_SWIFT="",
         TOPUP_BANK_IBAN="",
         TOPUP_BANK_ACCOUNT="",
+        TOPUP_BANK_CURRENCY="",
         TOPUP_USDT_ADDRESS="",
     )
     @patch.dict("os.environ", {"WALLET_DEMO_MODE": "1"})
