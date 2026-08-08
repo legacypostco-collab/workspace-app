@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from time import monotonic
 
@@ -10,6 +11,25 @@ logger = logging.getLogger("marketplace")
 
 HTTP_BUCKET_TTL_SECONDS = 15 * 60
 HTTP_SLOW_REQUEST_MS = 3_000
+METRICS_WARNING_INTERVAL_SECONDS = 60
+
+_warning_lock = threading.Lock()
+_last_warning_at = 0.0
+
+
+def _warn_cache_unavailable(operation: str) -> None:
+    """Log at most once a minute: telemetry must not flood application logs."""
+    global _last_warning_at
+    now = monotonic()
+    with _warning_lock:
+        if now - _last_warning_at < METRICS_WARNING_INTERVAL_SECONDS:
+            return
+        _last_warning_at = now
+    logger.warning(
+        "observability_cache_unavailable",
+        extra={"operation": operation},
+        exc_info=True,
+    )
 
 
 def metric_inc(name: str, value: int = 1) -> int:
@@ -18,13 +38,21 @@ def metric_inc(name: str, value: int = 1) -> int:
         cache.add(key, 0, timeout=None)
         return cache.incr(key, value)
     except Exception:
-        current = int(cache.get(key, 0) or 0) + value
-        cache.set(key, current, timeout=None)
-        return current
+        try:
+            current = int(cache.get(key, 0) or 0) + value
+            cache.set(key, current, timeout=None)
+            return current
+        except Exception:
+            _warn_cache_unavailable("increment")
+            return value
 
 
 def metric_get(name: str) -> int:
-    return int(cache.get(f"metric:{name}", 0) or 0)
+    try:
+        return int(cache.get(f"metric:{name}", 0) or 0)
+    except Exception:
+        _warn_cache_unavailable("read")
+        return 0
 
 
 def _http_bucket(minute: int | None = None) -> int:
@@ -38,8 +66,11 @@ def _bucket_inc(bucket: int, name: str, value: int = 1) -> None:
         cache.incr(key, value)
         cache.touch(key, HTTP_BUCKET_TTL_SECONDS)
     except Exception:
-        current = int(cache.get(key, 0) or 0) + value
-        cache.set(key, current, timeout=HTTP_BUCKET_TTL_SECONDS)
+        try:
+            current = int(cache.get(key, 0) or 0) + value
+            cache.set(key, current, timeout=HTTP_BUCKET_TTL_SECONDS)
+        except Exception:
+            _warn_cache_unavailable("bucket_increment")
 
 
 def record_http_request(status: int, elapsed_ms: int) -> None:
@@ -60,11 +91,15 @@ def http_window(minutes: int = 5, *, now_minute: int | None = None) -> dict[str,
     window = max(1, min(int(minutes), 15))
     current = _http_bucket(now_minute)
     totals = {"total": 0, "status_4xx": 0, "status_5xx": 0, "slow": 0}
-    for bucket in range(current - window + 1, current + 1):
-        for name in totals:
-            totals[name] += int(
-                cache.get(f"operations:http:{bucket}:{name}", 0) or 0
-            )
+    try:
+        for bucket in range(current - window + 1, current + 1):
+            for name in totals:
+                totals[name] += int(
+                    cache.get(f"operations:http:{bucket}:{name}", 0) or 0
+                )
+    except Exception:
+        _warn_cache_unavailable("window_read")
+        totals = {"total": 0, "status_4xx": 0, "status_5xx": 0, "slow": 0}
     total = totals["total"]
     totals["error_rate"] = totals["status_5xx"] / total if total else 0.0
     totals["slow_rate"] = totals["slow"] / total if total else 0.0
@@ -84,7 +119,10 @@ class OperationsMetricsMiddleware:
         response = self.get_response(request)
         if request.path not in self._EXCLUDED_PATHS:
             elapsed_ms = int((monotonic() - started_at) * 1_000)
-            record_http_request(getattr(response, "status_code", 500), elapsed_ms)
+            try:
+                record_http_request(getattr(response, "status_code", 500), elapsed_ms)
+            except Exception:
+                _warn_cache_unavailable("middleware")
         return response
 
 

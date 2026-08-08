@@ -1,7 +1,16 @@
-from django.core.cache import cache
-from django.test import TestCase, override_settings
+from unittest.mock import patch
 
-from marketplace.services.observability import http_window, record_http_request
+from django.core.cache import cache
+from django.http import HttpResponse
+from django.test import RequestFactory, TestCase, override_settings
+
+from marketplace.services.observability import (
+    OperationsMetricsMiddleware,
+    http_window,
+    metric_get,
+    metric_inc,
+    record_http_request,
+)
 from marketplace.tasks import monitoring_heartbeat
 
 
@@ -20,6 +29,41 @@ class OperationsMetricsTests(TestCase):
         self.assertEqual(window["status_4xx"], 1)
         self.assertEqual(window["status_5xx"], 1)
         self.assertEqual(window["slow"], 1)
+
+    @patch("marketplace.services.observability._warn_cache_unavailable")
+    @patch("marketplace.services.observability.cache")
+    def test_metrics_do_not_raise_when_cache_is_unavailable(self, cache, warning):
+        cache.add.side_effect = ConnectionError("redis unavailable")
+        cache.get.side_effect = ConnectionError("redis unavailable")
+
+        self.assertEqual(metric_inc("test"), 1)
+        self.assertEqual(metric_get("test"), 0)
+        self.assertEqual(
+            http_window(),
+            {
+                "total": 0,
+                "status_4xx": 0,
+                "status_5xx": 0,
+                "slow": 0,
+                "error_rate": 0.0,
+                "slow_rate": 0.0,
+            },
+        )
+        self.assertTrue(warning.called)
+
+    @patch("marketplace.services.observability._warn_cache_unavailable")
+    @patch("marketplace.services.observability.record_http_request")
+    def test_metrics_middleware_preserves_response_on_telemetry_error(
+        self, record, warning
+    ):
+        record.side_effect = ConnectionError("redis unavailable")
+        middleware = OperationsMetricsMiddleware(lambda request: HttpResponse("ok"))
+
+        response = middleware(RequestFactory().get("/"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"ok")
+        warning.assert_called_once_with("middleware")
 
     def test_heartbeat_updates_shared_cache(self):
         timestamp = monitoring_heartbeat()
