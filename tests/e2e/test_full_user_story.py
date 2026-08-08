@@ -32,6 +32,7 @@ SELLER_B = os.getenv("E2E_STORY_SELLER_B", "itu_us_seller_b")
 MULTI = os.getenv("E2E_STORY_MULTI", "itu_us_multi")
 OPERATOR = os.getenv("E2E_STORY_OPERATOR", "itu_us_operator")
 LOGIST = os.getenv("E2E_STORY_LOGIST", "itu_us_logist")
+ADMIN = os.getenv("E2E_STORY_ADMIN", "itu_us_admin")
 STORY_OEM = os.getenv("E2E_STORY_OEM", "7760-23-9880")
 BUYER_OTP_SECRET = os.getenv("E2E_BUYER_OTP_SECRET", "")
 BUYER_BACKUP_CODES = deque(
@@ -676,6 +677,46 @@ def test_05_paid_order_completes_logistics_and_invoice_cycle(
             f"ITU-OUT-{order_id}-{index}",
         )
     operator.close()
+
+    admin = _login(browser, base_url, ADMIN, "admin")
+    finance_response = admin.goto(
+        f"{base_url}/control/finance/?status=paid",
+        wait_until="networkidle",
+    )
+    assert finance_response and finance_response.status == 200
+    invoice_row = admin.locator(
+        f".control-table tr:has(a[href='/control/orders/{order_id}/'])"
+    ).first
+    assert invoice_row.count() == 1, f"paid invoice for order {order_id} is absent"
+    invoice_href = invoice_row.locator(
+        ".table-primary[href^='/control/finance/']"
+    ).get_attribute("href")
+    assert invoice_href
+    invoice_response = admin.goto(
+        f"{base_url}{invoice_href}",
+        wait_until="networkidle",
+    )
+    assert invoice_response and invoice_response.status == 200
+    assert admin.locator("h2", has_text="Счёт и договор").is_visible()
+    assert admin.locator("h2", has_text="Проводки").is_visible()
+    invoice_file = admin.locator(
+        "a[href^='/api/assistant/orders/'][href$='/file/']",
+        has_text="Скачать счёт",
+    ).first
+    assert invoice_file.is_visible()
+    _assert_pdf_available(admin, invoice_file.get_attribute("href"))
+
+    order_response = admin.goto(
+        f"{base_url}/control/orders/{order_id}/",
+        wait_until="networkidle",
+    )
+    assert order_response and order_response.status == 200
+    for section in ("items", "settlements", "documents", "events"):
+        assert admin.locator(f"#{section}").is_visible(), section
+    assert admin.locator(
+        "#settlements a[href^='/control/finance/']"
+    ).count() >= 1
+    admin.close()
 
     shipping = {
         "order_id": order_id,

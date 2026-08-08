@@ -45,7 +45,7 @@ def test_admin_control_sections_render_without_browser_errors(
     assert not failed_assets, failed_assets
 
 
-def test_paid_invoice_pdf_and_order_are_available_from_control(
+def test_finance_workspace_handles_paid_records_or_empty_state(
     admin_page: Page,
     base_url: str,
 ):
@@ -58,6 +58,12 @@ def test_paid_invoice_pdf_and_order_are_available_from_control(
     invoice_link = admin_page.locator(
         ".control-table .table-primary[href^='/control/finance/']"
     ).first
+    if invoice_link.count() == 0:
+        expect(
+            admin_page.locator(".control-empty", has_text="Счета не найдены")
+        ).to_be_visible()
+        return
+
     expect(invoice_link).to_be_visible()
     invoice_link.click()
     admin_page.wait_for_url(re.compile(r".*/control/finance/\d+/$"))
