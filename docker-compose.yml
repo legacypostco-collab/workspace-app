@@ -1,7 +1,7 @@
 services:
 
   db:
-    image: pgvector/pgvector:pg16
+    image: ${POSTGRES_IMAGE:-pgvector/pgvector:pg16}
     restart: unless-stopped
     stop_grace_period: 60s
     logging:
@@ -22,7 +22,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: ${REDIS_IMAGE:-redis:7-alpine}
     restart: unless-stopped
     stop_grace_period: 30s
     logging:
