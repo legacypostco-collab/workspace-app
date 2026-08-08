@@ -27,6 +27,8 @@
     .legal-tab{flex:0 0 auto;white-space:nowrap;padding:10px 18px;font-size:13px;font-weight:500;color:#B5B5B5;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
     .legal-tab:hover{color:#ECECEC;}
     .legal-tab.active{color:#E84A21;border-bottom-color:#E84A21;font-weight:600;text-decoration:none;}
+    .legal-cookie-control{min-height:40px;padding:9px 14px;color:#ECECEC;background:#242424;border:1px solid rgba(255,255,255,.14);border-radius:8px;font:inherit;font-weight:600;cursor:pointer;}
+    .legal-cookie-control:hover{border-color:rgba(232,74,33,.5);}
     @media(max-width:640px){
       .legal-header{padding:14px 16px;}
       .legal-logo{font-size:15px;}
@@ -120,7 +122,9 @@
 
     <h2>{% trans "Управление файлами cookie" %}</h2>
     <p>{% trans "Вы можете управлять файлами cookie в настройках браузера. Отключение необходимых файлов нарушит работу авторизации." %}</p>
+    <button type="button" class="legal-cookie-control" data-cookie-manage>{% trans "Открыть настройки cookie" %}</button>
   {% endif %}
 </main>
+{% include "components/_cookie_banner.html" %}
 </body>
 </html>

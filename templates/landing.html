@@ -2555,8 +2555,20 @@
     flex-wrap: wrap;
     gap: 14px;
   }
-  .footer .bottom-links a{ color: rgba(255,255,255,0.5); }
-  .footer .bottom-links a:hover{ color: #fff; }
+  .footer .bottom-links a,
+  .footer-cookie-settings{
+    color: rgba(255,255,255,0.5);
+  }
+  .footer-cookie-settings{
+    padding: 0;
+    background: none;
+    border: 0;
+    font: inherit;
+    letter-spacing: 0;
+    cursor: pointer;
+  }
+  .footer .bottom-links a:hover,
+  .footer-cookie-settings:hover{ color: #fff; }
 
 
 
@@ -4302,83 +4314,14 @@ html[dir="rtl"] .lang-menu button{text-align:right;}
     <div class="bottom-links">
       <a href="{% url 'privacy' %}">{% trans "Политика конфиденциальности" %}</a>
       <a href="{% url 'cookies' %}">{% trans "Файлы cookie" %}</a>
+      <button type="button" class="footer-cookie-settings" data-cookie-manage>
+        {% trans "Настроить cookie" %}
+      </button>
     </div>
   </div>
 </footer>
 
-{# ──── Cookie consent banner (152-ФЗ / GDPR): Accept + Reject (B-02) ──── #}
-<style nonce="{{ request.csp_nonce }}">
-  .cookie-banner{position:fixed;bottom:0;left:0;right:0;z-index:9990;background:#111;color:#fff;padding:14px 22px;box-shadow:0 -4px 20px rgba(0,0,0,.25);font-size:13px;line-height:1.5;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
-  .cookie-banner:not([hidden]){display:flex;}
-  .cookie-banner__text{flex:1;min-width:280px;margin:0;}
-  .cookie-banner__text a{color:#fcd34d;text-decoration:underline;}
-  .cookie-banner__actions{display:flex;gap:12px;align-items:center;}
-  .cookie-banner__actions .btn{padding:9px 18px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px;}
-  .cookie-banner__actions .btn--ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);}
-  .cookie-banner__actions .btn--primary{background:#fff;color:#181818;border:0;}
-</style>
-<div id="cookie-banner"
-     class="cookie-banner"
-     role="region"
-     aria-label="{% trans 'Согласие на использование файлов cookie' %}"
-     data-testid="cookie-banner"
-     hidden>
-  <p class="cookie-banner__text">
-    {% blocktrans %}Мы используем файлы cookie для авторизации и работы платформы. Продолжая, вы соглашаетесь с{% endblocktrans %}
-    <a href="{% url 'privacy' %}">{% trans "политикой конфиденциальности" %}</a>
-    {% trans "и" %}
-    <a href="{% url 'cookies' %}">{% trans "использованием файлов cookie" %}</a>.
-  </p>
-  <div class="cookie-banner__actions">
-    <button type="button"
-            class="btn btn--ghost"
-            data-cookie-action="reject"
-            data-testid="cookie-reject">
-      {% trans "Отклонить" %}
-    </button>
-    <button type="button"
-            class="btn btn--primary"
-            data-cookie-action="accept"
-            data-testid="cookie-accept">
-      {% trans "Принять все" %}
-    </button>
-  </div>
-</div>
-<script nonce="{{ request.csp_nonce }}">
-(function () {
-  var KEY = 'cookie_consent';
-  var banner = document.getElementById('cookie-banner');
-  if (!banner) return;
-  function save(decision) {
-    try {
-      localStorage.setItem(KEY, JSON.stringify({
-        necessary: true,
-        analytics: decision === 'accept',
-        ts: Date.now()
-      }));
-    } catch (e) {}
-    // Дублируем в cookie на 1 год для server-side проверок.
-    document.cookie = 'cookie_consent=' + (decision === 'accept' ? '1' : '0') +
-                      '; path=/; max-age=' + (60 * 60 * 24 * 365) + '; SameSite=Lax';
-    banner.hidden = true;
-    if (decision === 'accept' && window.__loadAnalytics) {
-      try { window.__loadAnalytics(); } catch (e) {}
-    }
-  }
-  function hasDecision() {
-    try { if (localStorage.getItem(KEY)) return true; } catch (e) {}
-    return /(?:^|;\s*)cookie_consent=/.test(document.cookie);
-  }
-  if (!hasDecision()) {
-    banner.hidden = false;
-  }
-  banner.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-cookie-action]');
-    if (!btn) return;
-    save(btn.dataset.cookieAction);
-  });
-})();
-</script>
+{% include "components/_cookie_banner.html" %}
 
 <div class="auth-modal" id="authModal" hidden role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
   <div class="auth-dialog">
