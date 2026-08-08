@@ -34,6 +34,16 @@ SCREENSHOT_DIR.mkdir(exist_ok=True)
 _ENV_BROWSER = os.getenv("E2E_BROWSER", "").strip().lower()
 ALL_BROWSERS = ["chromium", "firefox", "webkit"]
 BROWSERS = [_ENV_BROWSER] if _ENV_BROWSER in ALL_BROWSERS else ALL_BROWSERS
+PUBLIC_PAGE_PATHS = (
+    "/help/",
+    "/terms/",
+    "/privacy/",
+    "/personal-data-consent/",
+    "/cookies/",
+    "/login/",
+    "/register/",
+    "/password-reset/",
+)
 
 
 @pytest.fixture(scope="session", params=BROWSERS)
@@ -238,3 +248,40 @@ def test_seo_files(xb_page, xb_browser_name):
     r = xb_page.request.get(BASE_URL + "/sitemap.xml")
     assert r.ok, f"/sitemap.xml → HTTP {r.status}"
     assert "<urlset" in r.text() and "<loc>" in r.text()
+
+
+@pytest.mark.parametrize("path", PUBLIC_PAGE_PATHS)
+def test_public_pages_render_on_desktop_and_mobile(xb_page, path):
+    """Публичные страницы не теряют ресурсы и не выходят за экран."""
+    errors: list[str] = []
+    failed_assets: list[tuple[int, str]] = []
+    xb_page.on("pageerror", lambda exc: errors.append(str(exc)))
+    xb_page.on(
+        "response",
+        lambda response: failed_assets.append((response.status, response.url))
+        if response.status >= 400 and "/static/" in response.url
+        else None,
+    )
+
+    response = xb_page.goto(BASE_URL + path, wait_until="networkidle")
+    assert response and response.ok, (path, response.status if response else None)
+    assert "Consolidator Parts" in xb_page.title()
+    assert xb_page.locator("body").is_visible()
+    assert xb_page.locator("#cookie-banner").count() == 1
+
+    desktop_overflow = xb_page.evaluate(
+        "() => document.documentElement.scrollWidth - document.documentElement.clientWidth"
+    )
+    assert desktop_overflow <= 0, (path, "desktop", desktop_overflow)
+
+    xb_page.set_viewport_size({"width": 375, "height": 667})
+    xb_page.reload(wait_until="networkidle")
+    mobile_overflow = xb_page.evaluate(
+        "() => document.documentElement.scrollWidth - document.documentElement.clientWidth"
+    )
+    assert mobile_overflow <= 0, (path, "mobile", mobile_overflow)
+    visible_text = xb_page.locator("body").inner_text().lower()
+    assert "server error" not in visible_text
+    assert "traceback" not in visible_text
+    assert not errors, (path, errors)
+    assert not failed_assets, (path, failed_assets)
