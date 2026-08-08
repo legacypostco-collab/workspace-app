@@ -71,7 +71,7 @@ def test_operator_logistics_active_routes(operator_page: Page):
 # ── Сценарий 4: Cookie banner persistence ──────────────────────
 
 def test_cookie_banner_accepts_and_persists(page: Page, base_url):
-    """Гость управляет категориями, а выбор сохраняется в защищённом cookie."""
+    """Без подключённой аналитики сохраняется только необходимый выбор."""
     page.goto(f"{base_url}/")
     page.evaluate("localStorage.removeItem('cookie_consent')")
     page.context.clear_cookies()
@@ -79,16 +79,17 @@ def test_cookie_banner_accepts_and_persists(page: Page, base_url):
     # Banner появляется
     banner = page.locator("#cookie-banner")
     expect(banner).to_be_visible(timeout=3000)
+    expect(page.locator("[data-cookie-action='accept']")).to_have_count(0)
     page.locator("[data-cookie-action='settings']").click()
     settings = page.locator("#cookie-settings")
     expect(settings).to_be_visible()
-    page.locator("#cookie-analytics").check()
-    page.locator("[data-cookie-action='save']").click()
+    expect(settings.locator("#cookie-analytics")).to_have_count(0)
+    settings.locator("[data-cookie-action='necessary']").click()
     expect(banner).to_be_hidden()
     consent = page.evaluate("JSON.parse(localStorage.getItem('cookie_consent'))")
-    assert consent["version"] == "2026-08-08"
+    assert consent["version"] == "2026-08-09"
     assert consent["necessary"] is True
-    assert consent["analytics"] is True
+    assert consent["analytics"] is False
     stored_cookie = next(
         cookie for cookie in page.context.cookies()
         if cookie["name"] == "cookie_consent"
@@ -100,7 +101,7 @@ def test_cookie_banner_accepts_and_persists(page: Page, base_url):
     expect(banner).to_be_hidden(timeout=2000)
     page.locator("[data-cookie-manage]").click()
     expect(settings).to_be_visible()
-    expect(page.locator("#cookie-analytics")).to_be_checked()
+    expect(settings.locator("#cookie-analytics")).to_have_count(0)
 
 
 # ── Сценарий 5: Поддержка ──────────────────────────────────────

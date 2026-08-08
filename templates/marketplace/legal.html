@@ -33,7 +33,7 @@
     .legal-table th{color:#ececec;background:#222;}.legal-table tr:last-child td{border-bottom:0;}
     .legal-cookie-control{min-height:40px;padding:9px 14px;color:#ececec;background:#242424;border:1px solid rgba(255,255,255,.14);border-radius:8px;font:inherit;font-weight:600;cursor:pointer;}
     .legal-cookie-control:hover{border-color:rgba(232,74,33,.5);}
-    @media(max-width:640px){.legal-header{padding:14px 16px}.legal-logo{font-size:15px}.legal-logo img{width:24px;height:24px}.legal-back{padding-inline:10px}.legal-content{padding:32px 16px 60px}.legal-tabs{margin-right:-16px;padding-right:16px}.legal-tab{padding:10px 11px}h1{font-size:28px;overflow-wrap:anywhere}h2{font-size:18px}}
+    @media(max-width:640px){.legal-header{padding:14px 16px}.legal-logo{font-size:15px}.legal-logo img{width:24px;height:24px}.legal-back{padding-inline:10px}.legal-content{padding:32px 16px 60px}.legal-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;overflow:visible;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.08)}.legal-tab{min-width:0;margin:0;padding:9px 8px;white-space:normal;text-align:center;border:0;background:#1a1a1a}.legal-tab.active{background:#25201e;border:0}h1{font-size:28px;overflow-wrap:anywhere}h2{font-size:18px}}
   </style>
 </head>
 <body>
@@ -138,7 +138,7 @@
 
   {% else %}
     <h1>{% trans "Использование файлов cookie" %}</h1>
-    <div class="legal-meta">{% trans "Редакция от" %} {{ legal_updated_at }}</div>
+    <div class="legal-meta">{% trans "Версия выбора" %} {{ cookie_consent_version }} · {% trans "редакция от" %} {{ legal_updated_at }}</div>
     <p>{% trans "До выбора пользователя платформа использует только технически необходимые файлы. Необязательные средства аналитики могут запускаться только после отдельного разрешения." %}</p>
     <h2>{% trans "Фактический состав" %}</h2>
     <div class="legal-table-wrap"><table class="legal-table">
@@ -153,9 +153,17 @@
     <h2>{% trans "Локальное хранилище браузера" %}</h2>
     <p>{% trans "В локальном хранилище могут сохраняться тема, язык, звук уведомлений, размер боковой панели, активный диалог и версия выбора cookie. Эти значения остаются в браузере пользователя и могут быть удалены через его настройки." %}</p>
     <h2>{% trans "Аналитика" %}</h2>
-    <p>{% trans "На дату этой редакции внешние аналитические счётчики на публичных страницах не подключены. Если они будут подключены, код загрузки должен проверить сохранённое разрешение, а здесь будут заранее указаны поставщик, имена идентификаторов, цели и сроки." %}</p>
+    {% if analytics_enabled %}
+      <p>{% trans "Аналитика включается только после отдельного разрешения пользователя. Поставщик, имена идентификаторов, цели и сроки должны быть перечислены в этой редакции до запуска счётчика." %}</p>
+    {% else %}
+      <p>{% trans "На дату этой редакции внешние аналитические счётчики не подключены. Поэтому платформа не предлагает разрешать аналитику и сохраняет только выбор об использовании необходимых файлов." %}</p>
+    {% endif %}
     <h2>{% trans "Изменение выбора" %}</h2>
-    <p>{% trans "Вы можете в любой момент отключить аналитику. Новый выбор заменяет предыдущий и применяется к последующим загрузкам страниц. Удаление необходимых файлов в браузере завершит сессию или нарушит отправку защищённых форм." %}</p>
+    {% if analytics_enabled %}
+      <p>{% trans "Вы можете в любой момент отключить аналитику. Новый выбор заменяет предыдущий и применяется к последующим загрузкам страниц. Удаление необходимых файлов в браузере завершит сессию или нарушит отправку защищённых форм." %}</p>
+    {% else %}
+      <p>{% trans "Вы можете повторно открыть настройки и сохранить актуальный выбор. Удаление необходимых файлов в браузере завершит сессию или нарушит отправку защищённых форм." %}</p>
+    {% endif %}
     <button type="button" class="legal-cookie-control" data-cookie-manage>{% trans "Открыть настройки cookie" %}</button>
   {% endif %}
 </main>

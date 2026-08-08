@@ -228,6 +228,10 @@ body.cookie-settings-open {
     grid-column: 1 / -1;
   }
 
+  .cookie-consent__actions .cookie-button--analytics {
+    grid-column: 1 / -1;
+  }
+
   .cookie-settings {
     align-items: end;
     padding: 10px;

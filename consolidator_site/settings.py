@@ -107,6 +107,8 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 
 DEBUG = _env_bool("DEBUG_MODE", False)
+COOKIE_CONSENT_VERSION = _env("COOKIE_CONSENT_VERSION", "2026-08-09")
+ANALYTICS_ENABLED = _env_bool("ANALYTICS_ENABLED", False)
 SECRET_KEY = _env("SECRET_KEY")
 if not SECRET_KEY:
     if DEBUG:
@@ -227,6 +229,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "marketplace.context_processors.privacy_controls",
             ],
         },
     },

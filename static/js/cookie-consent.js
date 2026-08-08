@@ -8,6 +8,7 @@
   if (!banner || !settings) return;
 
   var version = banner.dataset.consentVersion || "1";
+  var analyticsEnabled = banner.dataset.analyticsEnabled === "true";
   var analytics = settings.querySelector("#cookie-analytics");
   var lastFocus = null;
 
@@ -41,10 +42,11 @@
   }
 
   function persist(allowAnalytics) {
+    var analyticsAllowed = analyticsEnabled && Boolean(allowAnalytics);
     var value = {
       version: version,
       necessary: true,
-      analytics: Boolean(allowAnalytics),
+      analytics: analyticsAllowed,
       decided_at: new Date().toISOString()
     };
     var serialized = JSON.stringify(value);
@@ -57,14 +59,14 @@
     banner.hidden = true;
     closeSettings();
     window.dispatchEvent(new CustomEvent("cookieconsentchange", {detail: value}));
-    if (value.analytics && typeof window.__loadAnalytics === "function") {
+    if (analyticsEnabled && value.analytics && typeof window.__loadAnalytics === "function") {
       window.__loadAnalytics();
     }
   }
 
   function openSettings() {
     var current = readConsent();
-    analytics.checked = Boolean(current && current.analytics);
+    if (analytics) analytics.checked = Boolean(current && current.analytics);
     lastFocus = document.activeElement;
     settings.hidden = false;
     document.body.classList.add("cookie-settings-open");
@@ -91,7 +93,7 @@
     if (action === "accept") persist(true);
     if (action === "necessary") persist(false);
     if (action === "settings") openSettings();
-    if (action === "save") persist(analytics.checked);
+    if (action === "save") persist(analytics && analytics.checked);
     if (action === "close") closeSettings();
   });
 
@@ -102,6 +104,15 @@
     if (event.key === "Escape" && !settings.hidden) closeSettings();
   });
 
-  banner.hidden = Boolean(readConsent());
+  var currentConsent = readConsent();
+  banner.hidden = Boolean(currentConsent);
+  if (
+    analyticsEnabled
+    && currentConsent
+    && currentConsent.analytics
+    && typeof window.__loadAnalytics === "function"
+  ) {
+    window.__loadAnalytics();
+  }
   window.cookieConsent = {open: openSettings, read: readConsent};
 })();

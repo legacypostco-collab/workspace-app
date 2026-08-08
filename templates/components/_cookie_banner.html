@@ -1,33 +1,40 @@
 {% load static i18n %}
-<link rel="stylesheet" href="{% static 'css/cookie-consent.css' %}?v=20260808_01">
+<link rel="stylesheet" href="{% static 'css/cookie-consent.css' %}?v=20260809_01">
 
 <section id="cookie-banner"
          class="cookie-consent"
          role="region"
          aria-label="{% trans 'Настройки файлов cookie' %}"
          data-testid="cookie-banner"
-         data-consent-version="2026-08-08"
+         data-consent-version="{{ cookie_consent_version }}"
+         data-analytics-enabled="{{ analytics_enabled|yesno:'true,false' }}"
          hidden>
   <div class="cookie-consent__content">
     <strong>{% trans "Настройки файлов cookie" %}</strong>
     <p>
-      {% trans "Необходимые файлы обеспечивают вход и защиту форм. Необязательная аналитика включается только с вашего разрешения." %}
+      {% if analytics_enabled %}
+        {% trans "Необходимые файлы обеспечивают вход и защиту форм. Аналитика включается только с вашего отдельного разрешения." %}
+      {% else %}
+        {% trans "Сервис использует только необходимые файлы для входа, защиты форм, языка и сохранения вашего выбора." %}
+      {% endif %}
       <a href="{% url 'cookies' %}">{% trans "Состав и сроки хранения" %}</a>
     </p>
   </div>
   <div class="cookie-consent__actions">
     <button type="button" class="cookie-button cookie-button--quiet"
             data-cookie-action="necessary" data-testid="cookie-reject">
-      {% trans "Только необходимые" %}
+      {% if analytics_enabled %}{% trans "Только необходимые" %}{% else %}{% trans "Понятно" %}{% endif %}
     </button>
     <button type="button" class="cookie-button cookie-button--quiet"
             data-cookie-action="settings">
       {% trans "Настроить" %}
     </button>
-    <button type="button" class="cookie-button cookie-button--primary"
-            data-cookie-action="accept" data-testid="cookie-accept">
-      {% trans "Разрешить аналитику" %}
-    </button>
+    {% if analytics_enabled %}
+      <button type="button" class="cookie-button cookie-button--quiet cookie-button--analytics"
+              data-cookie-action="accept" data-testid="cookie-accept">
+        {% trans "Разрешить аналитику" %}
+      </button>
+    {% endif %}
   </div>
 </section>
 
@@ -50,20 +57,27 @@
         </div>
         <span class="cookie-category__required">{% trans "Всегда включены" %}</span>
       </div>
-      <label class="cookie-category" for="cookie-analytics">
-        <div>
-          <strong>{% trans "Аналитические" %}</strong>
-          <p>{% trans "Обезличенная оценка посещаемости и ошибок. Сейчас внешние аналитические счётчики не подключены; разрешение сохранится для их возможного подключения." %}</p>
-        </div>
-        <input id="cookie-analytics" type="checkbox">
-      </label>
+      {% if analytics_enabled %}
+        <label class="cookie-category" for="cookie-analytics">
+          <div>
+            <strong>{% trans "Аналитические" %}</strong>
+            <p>{% trans "Оценка посещаемости и ошибок в объёме, указанном в правилах использования файлов cookie." %}</p>
+          </div>
+          <input id="cookie-analytics" type="checkbox">
+        </label>
+      {% endif %}
     </div>
     <footer class="cookie-settings__foot">
       <a href="{% url 'cookies' %}">{% trans "Подробные правила" %}</a>
-      <button type="button" class="cookie-button cookie-button--primary"
-              data-cookie-action="save">{% trans "Сохранить выбор" %}</button>
+      {% if analytics_enabled %}
+        <button type="button" class="cookie-button cookie-button--primary"
+                data-cookie-action="save">{% trans "Сохранить выбор" %}</button>
+      {% else %}
+        <button type="button" class="cookie-button cookie-button--primary"
+                data-cookie-action="necessary">{% trans "Понятно" %}</button>
+      {% endif %}
     </footer>
   </div>
 </div>
 
-<script src="{% static 'js/cookie-consent.js' %}?v=20260808_01" defer></script>
+<script src="{% static 'js/cookie-consent.js' %}?v=20260809_01" defer></script>

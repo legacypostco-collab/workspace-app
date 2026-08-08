@@ -67,7 +67,7 @@ def context(browser: Browser) -> BrowserContext:
         ignore_https_errors=True,
     )
     consent = quote(json.dumps({
-        "version": "2026-08-08",
+        "version": "2026-08-09",
         "necessary": True,
         "analytics": False,
         "decided_at": "e2e-fixture",
