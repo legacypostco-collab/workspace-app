@@ -38,6 +38,18 @@ services:
       timeout: 3s
       retries: 10
 
+  clamav:
+    image: ${CLAMAV_IMAGE:-clamav/clamav:stable}
+    restart: unless-stopped
+    stop_grace_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    volumes:
+      - clamdata:/var/lib/clamav
+
   web:
     build: .
     init: true
@@ -65,6 +77,9 @@ services:
       CHANNELS_REDIS_URL: redis://redis:6379/1
       DEFAULT_CACHE_URL: redis://redis:6379/2
       PRICELIST_CACHE_URL: redis://redis:6379/4
+      CLAMD_HOST: ${CLAMD_HOST:-clamav}
+      CLAMD_PORT: ${CLAMD_PORT:-3310}
+      CLAMD_TIMEOUT_SECONDS: ${CLAMD_TIMEOUT_SECONDS:-30}
       # безопасные дефолты для локального запуска без .env:
       SECRET_KEY: ${SECRET_KEY:-}
       QR_SECRET: ${QR_SECRET:-}
@@ -76,6 +91,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/readyz/', timeout=5).read()"]
@@ -160,5 +177,6 @@ services:
 volumes:
   pgdata:
   redisdata:
+  clamdata:
   media:
   static:

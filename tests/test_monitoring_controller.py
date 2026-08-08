@@ -107,3 +107,20 @@ class MonitoringControllerTests(TestCase):
         self.assertFalse(result.ok)
         self.assertIn("restarted-4-times", result.summary)
         self.assertEqual(result.value, 4)
+
+    @patch.dict("os.environ", {}, clear=True)
+    def test_docker_requires_antivirus_by_default(self):
+        self.controller._run = Mock(
+            return_value=Mock(
+                returncode=0,
+                stdout=json.dumps([
+                    {"Service": name, "State": "running", "Health": "healthy"}
+                    for name in ("db", "redis", "web", "worker", "beat")
+                ]),
+            )
+        )
+
+        result = self.controller.check_docker()
+
+        self.assertFalse(result.ok)
+        self.assertIn("clamav:missing", result.summary)

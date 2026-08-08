@@ -318,7 +318,7 @@ class Controller:
         required = {
             item.strip()
             for item in os.getenv(
-                "MONITOR_DOCKER_SERVICES", "db,redis,web,worker,beat"
+                "MONITOR_DOCKER_SERVICES", "db,redis,web,worker,beat,clamav"
             ).split(",")
             if item.strip()
         }
