@@ -25,10 +25,22 @@ from .models import (
 
 @admin.register(NewsletterSubscriber)
 class NewsletterSubscriberAdmin(admin.ModelAdmin):
-    list_display = ("email", "is_active", "created_at", "updated_at")
+    list_display = (
+        "email",
+        "is_active",
+        "consent_version",
+        "consented_at",
+        "created_at",
+    )
     list_filter = ("is_active", "created_at")
     search_fields = ("email",)
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = (
+        "consent_version",
+        "consented_at",
+        "consent_source",
+        "created_at",
+        "updated_at",
+    )
 
 
 @admin.register(KnowledgeBaseEntry)

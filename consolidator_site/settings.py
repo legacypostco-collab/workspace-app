@@ -108,7 +108,9 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 DEBUG = _env_bool("DEBUG_MODE", False)
 COOKIE_CONSENT_VERSION = _env("COOKIE_CONSENT_VERSION", "2026-08-09")
+PRIVACY_POLICY_VERSION = _env("PRIVACY_POLICY_VERSION", "PRIVACY-2026-08-09")
 ANALYTICS_ENABLED = _env_bool("ANALYTICS_ENABLED", False)
+NEWSLETTER_ENABLED = _env_bool("NEWSLETTER_ENABLED", False)
 SECRET_KEY = _env("SECRET_KEY")
 if not SECRET_KEY:
     if DEBUG:

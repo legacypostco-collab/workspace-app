@@ -46,6 +46,7 @@ def test_public_urls_render(client, url):
 def test_legal_pages_publish_operator_and_consent_version(client, settings):
     settings.PLATFORM_LEGAL_NAME = "Test Legal Operator"
     settings.PLATFORM_PAYMENT_CONTACT_EMAIL = "privacy@example.test"
+    settings.PRIVACY_POLICY_VERSION = "PRIVACY-TEST-1"
 
     privacy = client.get("/privacy/")
     consent = client.get("/personal-data-consent/")
@@ -53,6 +54,7 @@ def test_legal_pages_publish_operator_and_consent_version(client, settings):
     assert privacy.status_code == consent.status_code == 200
     assert b"Test Legal Operator" in privacy.content
     assert b"privacy@example.test" in privacy.content
+    assert b"PRIVACY-TEST-1" in privacy.content
     assert b"PD-2026-08-08" in consent.content
     assert b"Test Legal Operator" in consent.content
 

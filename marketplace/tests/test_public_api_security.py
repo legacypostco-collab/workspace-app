@@ -4,15 +4,16 @@ from marketplace.models import NewsletterSubscriber
 
 
 class PublicApiSecurityTests(TestCase):
+    @override_settings(NEWSLETTER_ENABLED=True)
     def test_newsletter_response_does_not_reveal_existing_address(self):
         first = self.client.post(
             "/api/v1/newsletter/subscribe/",
-            {"email": "subscriber@example.com"},
+            {"email": "subscriber@example.com", "consent": True},
             content_type="application/json",
         )
         second = self.client.post(
             "/api/v1/newsletter/subscribe/",
-            {"email": "subscriber@example.com"},
+            {"email": "subscriber@example.com", "consent": True},
             content_type="application/json",
         )
 

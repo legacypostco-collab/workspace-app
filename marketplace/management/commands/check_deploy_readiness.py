@@ -135,6 +135,12 @@ class Command(BaseCommand):
                 "EMAIL_USE_TLS and EMAIL_USE_SSL cannot both be enabled."
             )
 
+        if bool(getattr(settings, "NEWSLETTER_ENABLED", False)):
+            errors.append(
+                "NEWSLETTER_ENABLED must remain disabled until double opt-in "
+                "and self-service unsubscribe delivery are configured."
+            )
+
         # Admin password via env
         if not (
             os.getenv("DJANGO_ADMIN_PASSWORD")

@@ -559,7 +559,8 @@ def _legal_context(page_key: str) -> dict:
 
     return {
         "page_key": page_key,
-        "legal_updated_at": "08.08.2026",
+        "legal_updated_at": "09.08.2026",
+        "privacy_policy_version": settings.PRIVACY_POLICY_VERSION,
         "personal_consent_version": "PD-2026-08-08",
         "operator": {
             "name": getattr(settings, "PLATFORM_LEGAL_NAME", "")

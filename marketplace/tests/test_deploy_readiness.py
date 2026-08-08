@@ -5,6 +5,18 @@ from django.test import SimpleTestCase, override_settings
 
 
 class DeployReadinessSecurityTests(SimpleTestCase):
+    @override_settings(NEWSLETTER_ENABLED=True)
+    def test_production_blocks_incomplete_newsletter_flow(self):
+        output = StringIO()
+
+        with self.assertRaises(SystemExit):
+            call_command("check_deploy_readiness", stdout=output)
+
+        self.assertIn(
+            "NEWSLETTER_ENABLED must remain disabled",
+            output.getvalue(),
+        )
+
     @override_settings(SETTLEMENT_REQUIRED=False)
     def test_production_requires_strict_settlement_validation(self):
         output = StringIO()

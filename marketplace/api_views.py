@@ -826,16 +826,42 @@ def api_newsletter_subscribe(request):
     from django.core.validators import validate_email
     from django.core.exceptions import ValidationError
 
+    if not settings.NEWSLETTER_ENABLED:
+        return Response({"detail": "Not found."}, status=404)
+
+    if request.data.get("consent") is not True:
+        return Response({"ok": False, "error": "consent_required"}, status=400)
+
     email = (request.data.get("email") or "").strip().lower()
     try:
         validate_email(email)
     except ValidationError:
         return Response({"ok": False, "error": "invalid_email"}, status=400)
 
-    subscriber, created = NewsletterSubscriber.objects.get_or_create(email=email)
-    if not created and not subscriber.is_active:
+    consented_at = timezone.now()
+    consent_version = settings.PRIVACY_POLICY_VERSION
+    subscriber, created = NewsletterSubscriber.objects.get_or_create(
+        email=email,
+        defaults={
+            "consent_version": consent_version,
+            "consented_at": consented_at,
+            "consent_source": "public_api",
+        },
+    )
+    if not created and (not subscriber.is_active or not subscriber.consented_at):
         subscriber.is_active = True
-        subscriber.save(update_fields=["is_active", "updated_at"])
+        subscriber.consent_version = consent_version
+        subscriber.consented_at = consented_at
+        subscriber.consent_source = "public_api"
+        subscriber.save(
+            update_fields=[
+                "is_active",
+                "consent_version",
+                "consented_at",
+                "consent_source",
+                "updated_at",
+            ]
+        )
     # Do not reveal whether an address was already present in the database.
     return Response({"ok": True}, status=202)
 

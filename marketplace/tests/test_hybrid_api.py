@@ -67,22 +67,55 @@ class HybridApiTests(TestCase):
         with self.assertRaises(RuntimeError):
             get_payment_adapter("stub")
 
+    def test_newsletter_is_hidden_until_delivery_is_configured(self):
+        response = self.client.post(
+            "/api/v1/newsletter/subscribe/",
+            {"email": "reader@example.com", "consent": True},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(NewsletterSubscriber.objects.exists())
+
+    @override_settings(
+        NEWSLETTER_ENABLED=True,
+        PRIVACY_POLICY_VERSION="PRIVACY-TEST-1",
+    )
+    def test_newsletter_requires_separate_consent(self):
+        response = self.client.post(
+            "/api/v1/newsletter/subscribe/",
+            {"email": "reader@example.com"},
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "consent_required")
+        self.assertFalse(NewsletterSubscriber.objects.exists())
+
+    @override_settings(
+        NEWSLETTER_ENABLED=True,
+        PRIVACY_POLICY_VERSION="PRIVACY-TEST-1",
+    )
     def test_newsletter_subscription_is_persisted_and_deduplicated(self):
         first = self.client.post(
             "/api/v1/newsletter/subscribe/",
-            {"email": " Reader@Example.com "},
+            {"email": " Reader@Example.com ", "consent": True},
             content_type="application/json",
         )
         self.assertEqual(first.status_code, 202)
         self.assertEqual(first.json(), {"ok": True})
         self.assertEqual(
-            NewsletterSubscriber.objects.filter(email="reader@example.com").count(),
+            NewsletterSubscriber.objects.filter(
+                email="reader@example.com",
+                consent_version="PRIVACY-TEST-1",
+                consented_at__isnull=False,
+            ).count(),
             1,
         )
 
         repeated = self.client.post(
             "/api/v1/newsletter/subscribe/",
-            {"email": "reader@example.com"},
+            {"email": "reader@example.com", "consent": True},
             content_type="application/json",
         )
         self.assertEqual(repeated.status_code, 202)

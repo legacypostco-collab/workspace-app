@@ -2606,6 +2606,9 @@ class ErpSyncLog(models.Model):
 class NewsletterSubscriber(models.Model):
     email = models.EmailField(unique=True)
     is_active = models.BooleanField(default=True, db_index=True)
+    consent_version = models.CharField(max_length=40, blank=True)
+    consented_at = models.DateTimeField(null=True, blank=True)
+    consent_source = models.CharField(max_length=32, default="public_api")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
