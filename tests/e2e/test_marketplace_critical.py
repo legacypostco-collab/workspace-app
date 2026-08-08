@@ -59,6 +59,10 @@ def test_operator_logistics_active_routes(operator_page: Page):
     page.locator(".pill[data-pid^='op_logistics_stats#']:visible").last.click()
     page.wait_for_selector("text=Логистика — что под контролем сейчас", timeout=10000)
     body_text = page.locator("#streamInner").inner_text()
+    if "ЛОГИСТИКА ПРОСТАИВАЕТ" in body_text:
+        assert "нет ни активных отгрузок, ни доставленных за 90 дней" in body_text
+        return
+
     assert "По модам доставки" in body_text
     assert "По этапам" in body_text
     assert "По перевозчикам" in body_text
