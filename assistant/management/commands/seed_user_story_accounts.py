@@ -37,10 +37,16 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         add_seed_password_argument(parser)
-        parser.add_argument(
+        cleanup_group = parser.add_mutually_exclusive_group()
+        cleanup_group.add_argument(
             "--reset",
             action="store_true",
             help="Delete previous user-story accounts and their related data.",
+        )
+        cleanup_group.add_argument(
+            "--cleanup-only",
+            action="store_true",
+            help="Delete user-story accounts and exit without recreating them.",
         )
 
     @transaction.atomic
@@ -57,7 +63,7 @@ class Command(BaseCommand):
             UserRole,
         )
 
-        if options["reset"]:
+        if options["reset"] or options["cleanup_only"]:
             from marketplace.models import (
                 Order,
                 SettlementContract,
@@ -77,6 +83,12 @@ class Command(BaseCommand):
             SettlementContract.objects.filter(order__in=story_orders).delete()
             story_orders.delete()
             User.objects.filter(username__in=ACCOUNT_ROLES).delete()
+
+        if options["cleanup_only"]:
+            self.stdout.write(
+                self.style.SUCCESS("User-story accounts and related data removed.")
+            )
+            return
 
         users = {}
         for username, role in ACCOUNT_ROLES.items():
